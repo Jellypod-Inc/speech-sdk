@@ -1,11 +1,11 @@
 from enum import Enum
 from typing import Literal
 from pydantic import BaseModel
-from elevenlabs import Voice
 
 class Platform(Enum):
     OPENAI = "OpenAI"
     ELEVENLABS = "ElevenLabs"
+    CAMBAI = "CambAI"
 
 class Voice(BaseModel):
     id: str
@@ -19,5 +19,11 @@ class OpenAIVoice(Voice):
 
 class ElevenLabsVoice(Voice):
     voice_model: str
-    voice: str 
+    voice: str
     platform: Platform = Platform.ELEVENLABS
+
+class CambAIVoice(Voice):
+    voice_model: str = "mars-flash"
+    voice: int
+    language: str = "en-us"
+    platform: Platform = Platform.CAMBAI

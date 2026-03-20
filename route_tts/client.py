@@ -4,7 +4,8 @@ from typing import List, Dict, Optional, Union, Tuple
 import openai
 from pydantic import BaseModel
 from route_tts.eleven_labs.client import CustomElevenLabsClient
-from route_tts.voices import OpenAIVoice, ElevenLabsVoice, Platform, Voice
+from route_tts.camb_ai.client import CambAIClient
+from route_tts.voices import OpenAIVoice, ElevenLabsVoice, CambAIVoice, Platform, Voice
 from pydub import AudioSegment
 
 class SpeechBlock(BaseModel):
@@ -12,17 +13,21 @@ class SpeechBlock(BaseModel):
     text: str
 
 class TTS:
-    def __init__(self, voices: List[Voice], openai_api_key: str = None, elevenlabs_api_key: str = None):
+    def __init__(self, voices: List[Voice], openai_api_key: str = None, elevenlabs_api_key: str = None, camb_api_key: str = None):
         self.voices: Dict[str, Voice] = {voice.id: voice for voice in voices}
 
         self.openai_client = None
         self.elevenlabs_client = None
+        self.camb_client = None
 
         if openai_api_key or os.getenv("OPENAI_API_KEY"):
             self.openai_client = openai.OpenAI(api_key=openai_api_key or os.getenv("OPENAI_API_KEY"))
 
         if elevenlabs_api_key or os.getenv("ELEVEN_API_KEY"):
             self.elevenlabs_client = CustomElevenLabsClient(api_key=elevenlabs_api_key or os.getenv("ELEVEN_API_KEY"))
+
+        if camb_api_key or os.getenv("CAMB_API_KEY"):
+            self.camb_client = CambAIClient(api_key=camb_api_key or os.getenv("CAMB_API_KEY"))
 
     def initialize_voices(self, voices: List[Voice]):
         """
@@ -146,8 +151,10 @@ class TTS:
                             eleven_labs_speech_block_group.append(speech_block)
                     else:
                         # Create the current segment audio
-                        eleven_labs_audio_segments = self.generate_eleven_labs_audio_group(eleven_labs_speech_block_group)
-                        audio_segments.extend([segment for segment, _ in eleven_labs_audio_segments])
+                        if eleven_labs_speech_block_group:
+                            eleven_labs_audio_segments = self.generate_eleven_labs_audio_group(eleven_labs_speech_block_group)
+                            audio_segments.extend([segment for segment, _ in eleven_labs_audio_segments])
+                            eleven_labs_speech_block_group.clear()
 
                         # Generate this speech block
                         audio_segment = self.generate_speech(speech_block)
@@ -243,6 +250,8 @@ class TTS:
         elif voice.platform == Platform.ELEVENLABS:
             audio_data, _ = self._generate_elevenlabs_speech(voice, speech_block.text)
             return self._create_audio_segment(audio_data)
+        elif voice.platform == Platform.CAMBAI:
+            return self._generate_camb_speech(voice, speech_block.text)
         else:
             raise ValueError(f"Unsupported platform: {voice.platform}")
 
@@ -280,6 +289,18 @@ class TTS:
             raise ValueError("No request-id found in response headers")
 
         return audio_data, request_id
+
+    def _generate_camb_speech(self, voice: CambAIVoice, text: str) -> AudioSegment:
+        if not self.camb_client:
+            raise ValueError("CAMB AI client is not initialized. Please provide a valid CAMB API key.")
+
+        audio_data = self.camb_client.generate_speech(
+            text=text,
+            voice_id=voice.voice,
+            model_id=voice.voice_model,
+            language=voice.language,
+        )
+        return self._create_audio_segment(audio_data)
 
     def _create_audio_segment(self, audio_data: bytes) -> AudioSegment:
         return AudioSegment.from_file(io.BytesIO(audio_data))

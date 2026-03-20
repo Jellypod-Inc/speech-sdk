@@ -5,6 +5,7 @@
 Supported TTS Platforms:
 - [x] OpenAI
 - [x] ElevenLabs
+- [x] CAMB AI
 - [ ] Play.HT *(Coming soon)*
 - [ ] Amazon Polly *(Coming soon)*
 - [ ] Deepgram *(Coming soon)*
@@ -52,6 +53,7 @@ Before running the application, you need to set up the following environment var
 ```
 export OPENAI_API_KEY=your_openai_api_key_here
 export ELEVEN_API_KEY=your_elevenlabs_api_key_here
+export CAMB_API_KEY=your_camb_api_key_here
 ```
 
 You can set these environment variables in your shell or add them to a `.env` file in the root directory of the project. Alternatively, you can pass the API keys directly when initializing the TTS client.
@@ -77,6 +79,18 @@ ElevenLabsVoice(
     id=<any_unique_id>
     voice=<eleven labs voice id>
     voice_model: <eleven_multilingual_v1 | eleven_turbo_v2 | eleven_turbo_v2_5> // Others may have been released
+)
+```
+
+#### CAMB AI
+CAMB AI offers TTS via MARS models. Refer to the CAMB AI documentation for available voices and languages.
+
+```
+CambAIVoice(
+    id=<any_unique_id>
+    voice=<camb ai voice id (integer)>
+    voice_model=<mars-flash | mars-pro | mars-instruct>
+    language=<BCP-47 code, e.g. "en-us">
 )
 ```
 

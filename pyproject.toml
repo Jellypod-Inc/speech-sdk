@@ -13,6 +13,7 @@ pydantic = "^2.8.2"
 openai = "^1.43.0"
 pydub = "^0.25.1"
 elevenlabs = "^1.7.0"
+camb-sdk = "^1.5.10"
 pytest = "^8.3.2"
 pytest-asyncio = "^0.24.0"
 
