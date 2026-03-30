@@ -1,0 +1,40 @@
+{
+  "name": "speech-sdk",
+  "version": "1.0.0",
+  "description": "A TypeScript SDK for text-to-speech with multiple provider support",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./openai": {
+      "types": "./dist/providers/openai/index.d.ts",
+      "default": "./dist/providers/openai/index.js"
+    },
+    "./elevenlabs": {
+      "types": "./dist/providers/elevenlabs/index.d.ts",
+      "default": "./dist/providers/elevenlabs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["tts", "text-to-speech", "speech", "openai", "elevenlabs", "ai"],
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}
