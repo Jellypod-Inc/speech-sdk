@@ -8,6 +8,14 @@ A TypeScript SDK for text-to-speech with multiple provider support. Universal (N
 npm install speech-sdk
 ```
 
+### Using an AI Coding Assistant?
+
+Add the speech-sdk skill to give your AI assistant full knowledge of this library:
+
+```bash
+npx skills add Jellypod-Inc/speech-sdk --skill use-speech-sdk
+```
+
 ## Quick Start
 
 ```ts
