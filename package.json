@@ -37,6 +37,10 @@
     "ai"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jellypod-Inc/speech-sdk"
+  },
   "dependencies": {
     "p-retry": "^8.0.0"
   },
