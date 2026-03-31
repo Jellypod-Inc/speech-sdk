@@ -1,9 +1,9 @@
+import pRetry, { AbortError } from 'p-retry';
 import type { ResolvedModel } from './speech-provider.js';
 import type { SpeechResult } from './speech-result.js';
 import { DefaultGeneratedAudioFile } from './speech-result.js';
-import { NoSpeechGeneratedError } from './errors.js';
+import { NoSpeechGeneratedError, ApiError } from './errors.js';
 import { resolveModel } from './resolve-provider.js';
-import { withRetry } from './retry.js';
 
 export async function generateSpeech<
   T extends Record<string, unknown> = Record<string, unknown>,
@@ -21,7 +21,7 @@ export async function generateSpeech<
 
   const resolved = resolveModel(model);
 
-  const result = await withRetry(
+  const result = await pRetry(
     () =>
       resolved.provider.generate({
         modelId: resolved.modelId,
@@ -31,7 +31,16 @@ export async function generateSpeech<
         abortSignal,
         headers,
       }),
-    { maxRetries, abortSignal },
+    {
+      retries: maxRetries,
+      signal: abortSignal,
+      shouldRetry: ({ error }) => {
+        if (ApiError.isInstance(error) && error.statusCode < 500) {
+          return false;
+        }
+        return true;
+      },
+    },
   );
 
   const audioData = result.audio;

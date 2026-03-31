@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { generateSpeech } from '../generate-speech.js';
 import type { SpeechProvider } from '../speech-provider.js';
+import { ApiError } from '../errors.js';
 
 function createMockProvider(
   overrides?: Partial<ReturnType<SpeechProvider['generate']> extends Promise<infer T> ? T : never>,
@@ -114,8 +115,10 @@ describe('generateSpeech', () => {
   });
 
   it('retries on 5xx errors', async () => {
-    const error = new Error('Server error') as Error & { statusCode: number };
-    error.statusCode = 500;
+    const error = new ApiError('Server error', {
+      statusCode: 500,
+      model: 'mock/test-model',
+    });
 
     const provider: SpeechProvider = {
       id: 'mock',
@@ -140,8 +143,10 @@ describe('generateSpeech', () => {
   });
 
   it('does not retry on 4xx errors', async () => {
-    const error = new Error('Auth error') as Error & { statusCode: number };
-    error.statusCode = 401;
+    const error = new ApiError('Auth error', {
+      statusCode: 401,
+      model: 'mock/test-model',
+    });
 
     const provider: SpeechProvider = {
       id: 'mock',
