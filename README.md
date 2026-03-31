@@ -1,11 +1,11 @@
-# speech-sdk
+# Speech SDK
 
-A TypeScript SDK for text-to-speech with multiple provider support. Universal (Node, Edge, Browser).
+Universal Text-To-Speech TypeScript SDK with Multi-Provider Support (ElevenLabs, OpenAI, and more). Cross-platform (Node, Edge, Browser), Open-Source, and Minimal Dependencies.
 
 ## Install
 
 ```bash
-npm install speech-sdk
+npm install @Jellypod-Inc/speech-sdk
 ```
 
 ### Using an AI Coding Assistant?
