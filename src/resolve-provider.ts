@@ -45,6 +45,6 @@ export function resolveModel(
   const provider = createBuiltinProvider(providerName);
   return {
     provider,
-    modelId: modelId ?? provider.defaultModel,
+    modelId: modelId || provider.defaultModel,
   };
 }

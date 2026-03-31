@@ -13,12 +13,10 @@ function hasMarker(error: unknown, sym: symbol): boolean {
 
 export class SpeechSDKError extends Error {
   private readonly [speechSDKErrorSymbol] = true;
-  readonly cause?: unknown;
 
   constructor(message: string, options?: { cause?: unknown }) {
-    super(message);
+    super(message, options);
     this.name = 'SpeechSDKError';
-    this.cause = options?.cause;
   }
 
   static isInstance(error: unknown): error is SpeechSDKError {
