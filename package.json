@@ -1,6 +1,6 @@
 {
   "name": "@jellypod/speech-sdk",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A TypeScript SDK for text-to-speech with multiple provider support",
   "type": "module",
   "main": "./dist/index.js",
