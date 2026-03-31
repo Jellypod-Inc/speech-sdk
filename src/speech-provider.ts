@@ -4,6 +4,7 @@ export interface SpeechProvider<
 > {
   id: string;
   defaultModel: TModel;
+  supportedLanguages: readonly string[];
 
   generate(options: {
     modelId: string;

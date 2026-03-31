@@ -17,6 +17,12 @@ export class ElevenLabsSpeechProvider
 {
   readonly id = 'elevenlabs';
   readonly defaultModel = 'eleven_multilingual_v2';
+  readonly supportedLanguages = [
+    'ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fil',
+    'fr', 'he', 'hi', 'hr', 'hu', 'id', 'it', 'ja', 'ko', 'ms',
+    'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sk', 'sv', 'ta', 'th',
+    'tr', 'uk', 'vi', 'zh',
+  ] as const;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
