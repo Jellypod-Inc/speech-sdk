@@ -1,6 +1,6 @@
 import type { SpeechProvider } from '../../speech-provider.js';
 import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import { openaiSpeechOptionsSchema, type OpenAISpeechOptions } from './openai-options.js';
+import type { OpenAISpeechOptions } from './openai-options.js';
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
@@ -43,21 +43,12 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const parsed = options.providerOptions
-      ? openaiSpeechOptionsSchema.parse(options.providerOptions)
-      : {};
-
     const body: Record<string, unknown> = {
       model: options.modelId,
       input: options.text,
       voice: options.voice,
+      ...options.providerOptions,
     };
-
-    if (parsed.speed != null) body.speed = parsed.speed;
-    if (parsed.instructions != null) body.instructions = parsed.instructions;
-    if (parsed.outputFormat != null) {
-      body.response_format = parsed.outputFormat;
-    }
 
     const url = `${this.baseURL}/audio/speech`;
 

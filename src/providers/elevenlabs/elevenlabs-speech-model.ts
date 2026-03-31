@@ -1,10 +1,7 @@
 import type { SpeechProvider } from '../../speech-provider.js';
 import { SpeechSDKError } from '../../errors.js';
 import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import {
-  elevenlabsSpeechOptionsSchema,
-  type ElevenLabsSpeechOptions,
-} from './elevenlabs-options.js';
+import type { ElevenLabsSpeechOptions } from './elevenlabs-options.js';
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -52,56 +49,19 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const parsed = options.providerOptions
-      ? elevenlabsSpeechOptionsSchema.parse(options.providerOptions)
-      : {};
+    const providerOptions = options.providerOptions ?? {};
+    const { output_format, enable_logging, optimize_streaming_latency, ...bodyOptions } = providerOptions as Record<string, unknown>;
 
     const body: Record<string, unknown> = {
       text: options.text,
       model_id: options.modelId,
+      ...bodyOptions,
     };
 
-    const voiceSettings: Record<string, unknown> = {};
-    if (parsed.voiceSettings) {
-      if (parsed.voiceSettings.stability != null)
-        voiceSettings.stability = parsed.voiceSettings.stability;
-      if (parsed.voiceSettings.similarityBoost != null)
-        voiceSettings.similarity_boost = parsed.voiceSettings.similarityBoost;
-      if (parsed.voiceSettings.style != null)
-        voiceSettings.style = parsed.voiceSettings.style;
-      if (parsed.voiceSettings.speed != null)
-        voiceSettings.speed = parsed.voiceSettings.speed;
-      if (parsed.voiceSettings.useSpeakerBoost != null)
-        voiceSettings.use_speaker_boost = parsed.voiceSettings.useSpeakerBoost;
-    }
-    if (Object.keys(voiceSettings).length > 0) {
-      body.voice_settings = voiceSettings;
-    }
-
-    if (parsed.previousRequestIds)
-      body.previous_request_ids = parsed.previousRequestIds;
-    if (parsed.nextRequestIds) body.next_request_ids = parsed.nextRequestIds;
-    if (parsed.previousText) body.previous_text = parsed.previousText;
-    if (parsed.nextText) body.next_text = parsed.nextText;
-    if (parsed.seed != null) body.seed = parsed.seed;
-    if (parsed.languageCode) body.language_code = parsed.languageCode;
-    if (parsed.applyTextNormalization)
-      body.apply_text_normalization = parsed.applyTextNormalization;
-    if (parsed.applyLanguageTextNormalization != null)
-      body.apply_language_text_normalization =
-        parsed.applyLanguageTextNormalization;
-    if (parsed.pronunciationDictionaryLocators) {
-      body.pronunciation_dictionary_locators =
-        parsed.pronunciationDictionaryLocators.map((loc) => ({
-          pronunciation_dictionary_id: loc.pronunciationDictionaryId,
-          ...(loc.versionId && { version_id: loc.versionId }),
-        }));
-    }
-
     const queryParams = new URLSearchParams();
-    if (parsed.outputFormat) {
-      queryParams.set('output_format', parsed.outputFormat);
-    }
+    if (output_format != null) queryParams.set('output_format', String(output_format));
+    if (enable_logging != null) queryParams.set('enable_logging', String(enable_logging));
+    if (optimize_streaming_latency != null) queryParams.set('optimize_streaming_latency', String(optimize_streaming_latency));
 
     let url = `${this.baseURL}/v1/text-to-speech/${options.voice}`;
     const queryString = queryParams.toString();

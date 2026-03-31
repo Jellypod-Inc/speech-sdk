@@ -60,7 +60,7 @@ describe('ElevenLabsSpeechProvider', () => {
     expect(headers['xi-api-key']).toBe('xi-test-key');
   });
 
-  it('maps providerOptions to request body with snake_case', async () => {
+  it('passes providerOptions through to request body', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -81,31 +81,21 @@ describe('ElevenLabsSpeechProvider', () => {
       text: 'Hello',
       voice: 'v1',
       providerOptions: {
-        voiceSettings: {
-          stability: 0.5,
-          similarityBoost: 0.8,
-          useSpeakerBoost: true,
-        },
-        previousRequestIds: ['req-1', 'req-2'],
-        previousText: 'previous paragraph',
-        nextText: 'next paragraph',
+        voice_settings: { stability: 0.5, similarity_boost: 0.8 },
+        previous_request_ids: ['req-1', 'req-2'],
         seed: 42,
-        languageCode: 'en',
+        language_code: 'en',
       },
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.voice_settings.stability).toBe(0.5);
-    expect(body.voice_settings.similarity_boost).toBe(0.8);
-    expect(body.voice_settings.use_speaker_boost).toBe(true);
+    expect(body.voice_settings).toEqual({ stability: 0.5, similarity_boost: 0.8 });
     expect(body.previous_request_ids).toEqual(['req-1', 'req-2']);
-    expect(body.previous_text).toBe('previous paragraph');
-    expect(body.next_text).toBe('next paragraph');
     expect(body.seed).toBe(42);
     expect(body.language_code).toBe('en');
   });
 
-  it('passes outputFormat as query parameter', async () => {
+  it('passes output_format as query parameter', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -126,7 +116,7 @@ describe('ElevenLabsSpeechProvider', () => {
       text: 'Hello',
       voice: 'v1',
       providerOptions: {
-        outputFormat: 'mp3_44100_192',
+        output_format: 'mp3_44100_192',
       },
     });
 

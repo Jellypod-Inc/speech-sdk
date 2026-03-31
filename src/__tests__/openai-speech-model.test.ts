@@ -71,7 +71,7 @@ describe('OpenAISpeechProvider', () => {
       providerOptions: {
         speed: 1.5,
         instructions: 'Speak slowly',
-        outputFormat: 'wav',
+        response_format: 'wav',
       },
     });
 
