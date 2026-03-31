@@ -1,0 +1,195 @@
+# speech-sdk
+
+A TypeScript SDK for text-to-speech with multiple provider support. Universal (Node, Edge, Browser).
+
+## Install
+
+```bash
+npm install speech-sdk
+```
+
+## Quick Start
+
+```ts
+import { generateSpeech } from 'speech-sdk';
+
+const result = await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: 'Hello from speech-sdk!',
+  voice: 'alloy',
+});
+
+// Access the audio
+result.audio.uint8Array;  // Uint8Array
+result.audio.base64;      // string (lazy-computed)
+result.audio.mediaType;   // "audio/mpeg"
+```
+
+## Model Strings
+
+Use unified `provider/model` strings:
+
+```ts
+// OpenAI
+generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
+generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'nova' });
+generateSpeech({ model: 'openai/tts-1-hd', text: '...', voice: 'echo' });
+
+// ElevenLabs
+generateSpeech({ model: 'elevenlabs/eleven_v3', text: '...', voice: 'voice-id' });
+generateSpeech({ model: 'elevenlabs/eleven_multilingual_v2', text: '...', voice: 'voice-id' });
+generateSpeech({ model: 'elevenlabs/eleven_flash_v2_5', text: '...', voice: 'voice-id' });
+
+// Provider only — uses default model
+generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });
+generateSpeech({ model: 'elevenlabs', text: '...', voice: 'voice-id' });
+```
+
+## Provider Options
+
+Pass provider-specific API parameters via `providerOptions`. These are sent directly to the provider's API — use the API's field names.
+
+### OpenAI
+
+```ts
+const result = await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: 'Hello!',
+  voice: 'alloy',
+  providerOptions: {
+    speed: 1.5,
+    instructions: 'Speak in a cheerful tone',
+    response_format: 'wav',
+  },
+});
+```
+
+### ElevenLabs
+
+```ts
+const result = await generateSpeech({
+  model: 'elevenlabs/eleven_multilingual_v2',
+  text: 'Hello!',
+  voice: 'your-voice-id',
+  providerOptions: {
+    voice_settings: { stability: 0.5, similarity_boost: 0.8 },
+    output_format: 'mp3_44100_192',
+    language_code: 'en',
+  },
+});
+```
+
+#### Request Stitching
+
+ElevenLabs supports [request stitching](https://elevenlabs.io/docs/api-reference/how-to-use-request-stitching) for maintaining continuity across multiple generations. The `requestId` is returned in `providerMetadata`:
+
+```ts
+const first = await generateSpeech({
+  model: 'elevenlabs/eleven_multilingual_v2',
+  text: 'First paragraph...',
+  voice: 'your-voice-id',
+});
+
+const second = await generateSpeech({
+  model: 'elevenlabs/eleven_multilingual_v2',
+  text: 'Second paragraph...',
+  voice: 'your-voice-id',
+  providerOptions: {
+    previous_request_ids: [first.providerMetadata?.requestId],
+  },
+});
+```
+
+## Custom Configuration
+
+Use factory functions when you need custom API keys, base URLs, or fetch implementations:
+
+```ts
+import { generateSpeech } from 'speech-sdk';
+import { createOpenAI } from 'speech-sdk/openai';
+import { createElevenLabs } from 'speech-sdk/elevenlabs';
+
+const myOpenAI = createOpenAI({
+  apiKey: 'sk-...',
+  baseURL: 'https://my-proxy.com/v1',
+});
+
+const myElevenLabs = createElevenLabs({
+  apiKey: '...',
+  baseURL: 'https://my-proxy.com',
+});
+
+const result = await generateSpeech({
+  model: myOpenAI('gpt-4o-mini-tts'),
+  text: 'Hello!',
+  voice: 'alloy',
+});
+```
+
+### API Key Resolution
+
+When using string models (e.g., `'openai/tts-1'`), API keys are resolved from environment variables:
+
+| Provider | Environment Variable |
+|---|---|
+| OpenAI | `OPENAI_API_KEY` |
+| ElevenLabs | `ELEVENLABS_API_KEY` |
+
+Factory functions accept an explicit `apiKey` option which takes precedence over environment variables.
+
+## Options
+
+```ts
+generateSpeech({
+  model: string | ResolvedModel,  // required
+  text: string,                   // required
+  voice: string,                  // required
+  providerOptions?: object,       // provider-specific API params
+  maxRetries?: number,            // default: 2 (retries on 5xx/network errors)
+  abortSignal?: AbortSignal,      // cancel the request
+  headers?: Record<string, string>, // additional HTTP headers
+});
+```
+
+## Result
+
+```ts
+interface SpeechResult {
+  audio: {
+    uint8Array: Uint8Array;   // raw audio bytes
+    base64: string;           // base64 encoded (lazy)
+    mediaType: string;        // e.g. "audio/mpeg"
+  };
+  providerMetadata?: Record<string, unknown>;
+}
+```
+
+## Error Handling
+
+```ts
+import { generateSpeech, ApiError, SpeechSDKError } from 'speech-sdk';
+
+try {
+  const result = await generateSpeech({ ... });
+} catch (error) {
+  if (error instanceof ApiError) {
+    console.log(error.statusCode);  // 401
+    console.log(error.model);       // "openai/gpt-4o-mini-tts"
+    console.log(error.responseBody);
+  }
+}
+```
+
+| Error | When |
+|---|---|
+| `ApiError` | Provider API returns a non-2xx response |
+| `NoSpeechGeneratedError` | Provider returned empty audio |
+| `SpeechSDKError` | Base class for all errors |
+
+## Retry
+
+Built-in retry with exponential backoff via [p-retry](https://github.com/sindresorhus/p-retry). Retries on 5xx and network errors. Does not retry 4xx errors. Default: 2 retries.
+
+## License
+
+MIT
