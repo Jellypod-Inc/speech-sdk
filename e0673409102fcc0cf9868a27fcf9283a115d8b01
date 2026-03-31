@@ -1,0 +1,23 @@
+skills/use-speech-sdk/SKILL.md
+  bff2a78425f95a02 3,10-14,21,165-167,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "e0673409102fcc0cf9868a27fcf9283a115d8b01",
+  "prompts": {
+    "bff2a78425f95a02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77755ca0-6bfa-4aa3-b0f5-51065bb5f6f6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 6,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}
