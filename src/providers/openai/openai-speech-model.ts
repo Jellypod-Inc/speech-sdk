@@ -50,7 +50,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     const body: Record<string, unknown> = {
       model: options.modelId,
       input: options.text,
-      voice: options.voice ?? 'alloy',
+      voice: options.voice,
     };
 
     if (parsed.speed != null) body.speed = parsed.speed;

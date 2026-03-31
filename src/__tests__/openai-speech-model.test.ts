@@ -142,25 +142,6 @@ describe('OpenAISpeechProvider', () => {
     expect(url).toBe('https://my-proxy.com/v1/audio/speech');
   });
 
-  it('uses default voice alloy when none provided', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'content-type': 'audio/mpeg' }),
-      arrayBuffer: async () => new Uint8Array([1]).buffer,
-    });
-
-    const provider = new OpenAISpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
-    });
-
-    await provider.generate({ modelId: 'tts-1', text: 'Hello' });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.voice).toBe('alloy');
-  });
-
   it('merges additional headers', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
