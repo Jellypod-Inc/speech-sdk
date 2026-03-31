@@ -144,6 +144,18 @@ try {
 
 Built-in retry with exponential backoff via [p-retry](https://github.com/sindresorhus/p-retry). Retries on 5xx and network errors. Does not retry 4xx errors. Default: 2 retries.
 
+## Development
+
+```bash
+pnpm install
+pnpm test                       # unit tests
+pnpm run test:e2e               # all e2e tests (requires API keys)
+pnpm run test:e2e openai        # only OpenAI e2e tests
+pnpm run test:e2e elevenlabs    # only ElevenLabs e2e tests
+```
+
+E2E tests hit real provider APIs. Set `OPENAI_API_KEY` and `ELEVENLABS_API_KEY` in a `.env` file at the project root, or export them in your shell.
+
 ## License
 
 MIT
