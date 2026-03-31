@@ -24,7 +24,7 @@ export interface ProviderRegistry {
 export type GenerateSpeechOptions<T extends Record<string, unknown> = Record<string, unknown>> = {
   model: string | ResolvedModel<T>;
   text: string;
-  voice?: string;
+  voice: string;
   providerOptions?: T;
   maxRetries?: number;
   abortSignal?: AbortSignal;

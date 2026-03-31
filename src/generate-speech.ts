@@ -10,7 +10,7 @@ export async function generateSpeech<
 >(options: {
   model: string | ResolvedModel<T>;
   text: string;
-  voice?: string;
+  voice: string;
   providerOptions?: T;
   maxRetries?: number;
   abortSignal?: AbortSignal;
