@@ -1,18 +1,24 @@
 ---
 name: use-speech-sdk
-description: "How to use the speech-sdk library for text-to-speech generation with multiple providers (OpenAI, ElevenLabs). Use this skill whenever the user wants to generate speech audio, convert text to speech, work with TTS providers, use generateSpeech, or integrate speech-sdk into their application. Also trigger when you see imports from 'speech-sdk', 'speech-sdk/openai', or 'speech-sdk/elevenlabs' in the codebase."
+description: "How to use the speech-sdk library for text-to-speech generation with multiple providers (OpenAI, ElevenLabs). Use this skill whenever the user wants to generate speech audio, convert text to speech, work with TTS providers, use generateSpeech, or integrate speech-sdk into their application. Also trigger when you see imports from '@jellypod/speech-sdk', 'speech-sdk', or related subpath imports in the codebase."
 ---
 
 # speech-sdk
 
 A TypeScript SDK for text-to-speech with multiple provider support. Universal (Node, Edge, Browser).
 
+## Install
+
+```bash
+npm install @jellypod/speech-sdk
+```
+
 ## Core API
 
 One function: `generateSpeech`. It takes a model string, text, voice, and returns audio.
 
 ```ts
-import { generateSpeech } from 'speech-sdk';
+import { generateSpeech } from '@jellypod/speech-sdk';
 
 const result = await generateSpeech({
   model: 'openai/gpt-4o-mini-tts',
@@ -156,9 +162,9 @@ const second = await generateSpeech({
 When you need custom API keys, base URLs, or fetch implementations, use factory functions instead of string models:
 
 ```ts
-import { generateSpeech } from 'speech-sdk';
-import { createOpenAI } from 'speech-sdk/openai';
-import { createElevenLabs } from 'speech-sdk/elevenlabs';
+import { generateSpeech } from '@jellypod/speech-sdk';
+import { createOpenAI } from '@jellypod/speech-sdk/openai';
+import { createElevenLabs } from '@jellypod/speech-sdk/elevenlabs';
 
 const myOpenAI = createOpenAI({
   apiKey: 'sk-...',                    // explicit key (overrides env var)
@@ -186,7 +192,7 @@ Factory functions with explicit `apiKey` take precedence over env vars.
 Three error types, all extending `SpeechSDKError`:
 
 ```ts
-import { generateSpeech, ApiError, NoSpeechGeneratedError, SpeechSDKError } from 'speech-sdk';
+import { generateSpeech, ApiError, NoSpeechGeneratedError, SpeechSDKError } from '@jellypod/speech-sdk';
 
 try {
   const result = await generateSpeech({ ... });
