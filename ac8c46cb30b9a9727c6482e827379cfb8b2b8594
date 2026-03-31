@@ -1,0 +1,23 @@
+.github/workflows/publish.yml
+  bff2a78425f95a02 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.23",
+  "base_commit_sha": "ac8c46cb30b9a9727c6482e827379cfb8b2b8594",
+  "prompts": {
+    "bff2a78425f95a02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77755ca0-6bfa-4aa3-b0f5-51065bb5f6f6",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 0,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    }
+  }
+}
