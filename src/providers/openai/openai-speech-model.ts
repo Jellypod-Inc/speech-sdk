@@ -15,7 +15,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
   private static readonly LANGUAGES = [
     'af', 'ar', 'bg', 'bn', 'bs', 'ca', 'cs', 'cy', 'da', 'de',
     'el', 'en', 'es', 'et', 'fi', 'fr', 'gl', 'gu', 'he', 'hi',
-    'hr', 'hu', 'id', 'is', 'it', 'ja', 'jw', 'ka', 'kk', 'km',
+    'hr', 'hu', 'id', 'is', 'it', 'ja', 'jv', 'ka', 'kk', 'km',
     'kn', 'ko', 'lo', 'lt', 'lv', 'mk', 'ml', 'mn', 'mr', 'ms',
     'my', 'ne', 'nl', 'no', 'pa', 'pl', 'pt', 'ro', 'ru', 'si',
     'sk', 'sl', 'so', 'sq', 'sr', 'su', 'sv', 'sw', 'ta', 'te',
@@ -51,10 +51,10 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     providerMetadata?: Record<string, unknown>;
   }> {
     const body: Record<string, unknown> = {
+      ...options.providerOptions,
       model: options.modelId,
       input: options.text,
       voice: options.voice,
-      ...options.providerOptions,
     };
 
     const url = `${this.baseURL}/audio/speech`;

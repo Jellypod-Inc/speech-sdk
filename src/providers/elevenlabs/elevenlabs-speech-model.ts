@@ -75,9 +75,9 @@ export class ElevenLabsSpeechProvider
     const { output_format, enable_logging, optimize_streaming_latency, ...bodyOptions } = providerOptions as Record<string, unknown>;
 
     const body: Record<string, unknown> = {
+      ...bodyOptions,
       text: options.text,
       model_id: options.modelId,
-      ...bodyOptions,
     };
 
     const queryParams = new URLSearchParams();
