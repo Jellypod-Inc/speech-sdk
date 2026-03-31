@@ -2,7 +2,6 @@ export interface GeneratedAudioFile {
   readonly uint8Array: Uint8Array;
   readonly base64: string;
   readonly mediaType: string;
-  readonly format: string;
 }
 
 export interface SpeechResult {
@@ -10,15 +9,8 @@ export interface SpeechResult {
   readonly providerMetadata?: Record<string, unknown>;
 }
 
-function deriveFormat(mediaType: string): string {
-  if (mediaType === 'audio/mpeg') return 'mp3';
-  const parts = mediaType.split('/');
-  return parts.length === 2 ? parts[1] : 'mp3';
-}
-
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {
   readonly mediaType: string;
-  readonly format: string;
 
   private _data: string | Uint8Array;
   private _uint8Array?: Uint8Array;
@@ -27,7 +19,6 @@ export class DefaultGeneratedAudioFile implements GeneratedAudioFile {
   constructor({ data, mediaType }: { data: string | Uint8Array; mediaType: string }) {
     this._data = data;
     this.mediaType = mediaType;
-    this.format = deriveFormat(mediaType);
   }
 
   get uint8Array(): Uint8Array {

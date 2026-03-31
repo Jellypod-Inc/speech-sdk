@@ -20,20 +20,11 @@ describe('DefaultGeneratedAudioFile', () => {
     expect(file.uint8Array).toEqual(new Uint8Array([72, 101, 108, 108, 111]));
   });
 
-  it('derives mp3 from audio/mpeg', () => {
-    const file = new DefaultGeneratedAudioFile({
-      data: new Uint8Array([1]),
-      mediaType: 'audio/mpeg',
-    });
-    expect(file.format).toBe('mp3');
-  });
-
   it('exposes mediaType', () => {
     const file = new DefaultGeneratedAudioFile({
       data: new Uint8Array([1]),
       mediaType: 'audio/wav',
     });
     expect(file.mediaType).toBe('audio/wav');
-    expect(file.format).toBe('wav');
   });
 });

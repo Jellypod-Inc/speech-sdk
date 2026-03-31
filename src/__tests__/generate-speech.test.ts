@@ -30,7 +30,6 @@ describe('generateSpeech', () => {
       new Uint8Array([72, 101, 108, 108, 111]),
     );
     expect(result.audio.mediaType).toBe('audio/mpeg');
-    expect(result.audio.format).toBe('mp3');
     expect(result.audio.base64).toBe(btoa('Hello'));
   });
 
