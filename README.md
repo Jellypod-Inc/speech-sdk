@@ -25,80 +25,26 @@ result.audio.base64;      // string (lazy-computed)
 result.audio.mediaType;   // "audio/mpeg"
 ```
 
-## Model Strings
+## Supported Providers
 
-Use unified `provider/model` strings:
+Use unified `provider/model` strings. Passing just the provider name uses its default model.
 
-```ts
-// OpenAI
-generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
-generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'nova' });
-generateSpeech({ model: 'openai/tts-1-hd', text: '...', voice: 'echo' });
-
-// ElevenLabs
-generateSpeech({ model: 'elevenlabs/eleven_v3', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs/eleven_multilingual_v2', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs/eleven_flash_v2_5', text: '...', voice: 'voice-id' });
-
-// Provider only — uses default model
-generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });
-generateSpeech({ model: 'elevenlabs', text: '...', voice: 'voice-id' });
-```
-
-## Provider Options
-
-Pass provider-specific API parameters via `providerOptions`. These are sent directly to the provider's API — use the API's field names.
-
-### OpenAI
+| Provider | Model String | Default |
+|---|---|---|
+| OpenAI | `openai/gpt-4o-mini-tts` | Yes |
+| OpenAI | `openai/tts-1` | |
+| OpenAI | `openai/tts-1-hd` | |
+| ElevenLabs | `elevenlabs/eleven_v3` | |
+| ElevenLabs | `elevenlabs/eleven_multilingual_v2` | Yes |
+| ElevenLabs | `elevenlabs/eleven_flash_v2_5` | |
+| ElevenLabs | `elevenlabs/eleven_flash_v2` | |
 
 ```ts
-const result = await generateSpeech({
-  model: 'openai/gpt-4o-mini-tts',
-  text: 'Hello!',
-  voice: 'alloy',
-  providerOptions: {
-    speed: 1.5,
-    instructions: 'Speak in a cheerful tone',
-    response_format: 'wav',
-  },
-});
+generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'alloy' });
+generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });       // uses default model
 ```
 
-### ElevenLabs
-
-```ts
-const result = await generateSpeech({
-  model: 'elevenlabs/eleven_multilingual_v2',
-  text: 'Hello!',
-  voice: 'your-voice-id',
-  providerOptions: {
-    voice_settings: { stability: 0.5, similarity_boost: 0.8 },
-    output_format: 'mp3_44100_192',
-    language_code: 'en',
-  },
-});
-```
-
-#### Request Stitching
-
-ElevenLabs supports [request stitching](https://elevenlabs.io/docs/api-reference/how-to-use-request-stitching) for maintaining continuity across multiple generations. The `requestId` is returned in `providerMetadata`:
-
-```ts
-const first = await generateSpeech({
-  model: 'elevenlabs/eleven_multilingual_v2',
-  text: 'First paragraph...',
-  voice: 'your-voice-id',
-});
-
-const second = await generateSpeech({
-  model: 'elevenlabs/eleven_multilingual_v2',
-  text: 'Second paragraph...',
-  voice: 'your-voice-id',
-  providerOptions: {
-    previous_request_ids: [first.providerMetadata?.requestId],
-  },
-});
-```
+Provider-specific API parameters can be passed via `providerOptions` — these are sent directly to the provider's API using the API's own field names.
 
 ## Custom Configuration
 
