@@ -1,25 +1,17 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 1.0.0 (2026-03-30)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Initial release — full rewrite from Python to TypeScript.
 
-## 0.3.0 - 2024-09-10
-- Remove buffers
-- Add ElevenLabs Request Conditioning/Switching
+### Features
 
-## [0.2.0] - 2024-09-10
-- Update Voice object model field to voice_model
-- Decrease min Python version to 3.8
-
-## [0.1.2] - 2024-08-30
-- Add audio normalization (on by default) on speech outputs
-
-## [0.1.1] - 2024-08-30
-- Modify module exports
-
-## [0.1.0] - 2024-08-30
-- Initial project setup
-- Basic TTS client implementation with support for OpenAI and ElevenLabs platforms
-- Voice and SpeechBlock data models
-- Environment variable support for API keys
+- `generateSpeech()` function with unified model strings (`openai/tts-1`, `elevenlabs/eleven_multilingual_v2`)
+- OpenAI provider (`createOpenAI`) — default model `gpt-4o-mini-tts`
+- ElevenLabs provider (`createElevenLabs`) — default model `eleven_multilingual_v2`, request stitching via `providerOptions`
+- Type-safe provider options validated with Zod
+- `GeneratedAudioFile` with lazy `base64`/`uint8Array` conversion
+- Built-in retry via `p-retry` (skips 4xx, retries 5xx/network errors)
+- Factory functions for custom API keys, base URLs, and fetch implementations
+- Subpath exports: `speech-sdk/openai`, `speech-sdk/elevenlabs`
+- Universal target (Node, Edge, Browser)

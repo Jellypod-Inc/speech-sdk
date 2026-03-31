@@ -1,9 +1,4 @@
-/prompts
-
-/output
-
-__pycache__/
-
+node_modules/
 dist/
-
-.DS_STORE
+*.tsbuildinfo
+docs/superpowers/
