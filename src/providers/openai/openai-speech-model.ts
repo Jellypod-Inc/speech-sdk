@@ -47,16 +47,10 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
       ? openaiSpeechOptionsSchema.parse(options.providerOptions)
       : {};
 
-    const BUILTIN_VOICES = [
-      'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable',
-      'onyx', 'nova', 'sage', 'shimmer', 'verse', 'marin', 'cedar',
-    ];
-
-    const voice = options.voice ?? 'alloy';
     const body: Record<string, unknown> = {
       model: options.modelId,
       input: options.text,
-      voice: BUILTIN_VOICES.includes(voice) ? voice : { id: voice },
+      voice: options.voice ?? 'alloy',
     };
 
     if (parsed.speed != null) body.speed = parsed.speed;
