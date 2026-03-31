@@ -35,7 +35,7 @@ export async function generateSpeech<
       retries: maxRetries,
       signal: abortSignal,
       shouldRetry: ({ error }) => {
-        if (ApiError.isInstance(error) && error.statusCode < 500) {
+        if (error instanceof ApiError && error.statusCode < 500) {
           return false;
         }
         return true;
