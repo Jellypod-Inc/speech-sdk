@@ -161,6 +161,52 @@ describe('OpenAISpeechProvider', () => {
     expect(body.voice).toBe('alloy');
   });
 
+  it('wraps custom voice ID as object', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'audio/mpeg' }),
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    });
+
+    const provider = new OpenAISpeechProvider({
+      apiKey: 'test-key',
+      fetch: mockFetch,
+    });
+
+    await provider.generate({
+      modelId: 'gpt-4o-mini-tts',
+      text: 'Hello',
+      voice: 'voice_1234',
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.voice).toEqual({ id: 'voice_1234' });
+  });
+
+  it('passes built-in voice as string', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'audio/mpeg' }),
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    });
+
+    const provider = new OpenAISpeechProvider({
+      apiKey: 'test-key',
+      fetch: mockFetch,
+    });
+
+    await provider.generate({
+      modelId: 'gpt-4o-mini-tts',
+      text: 'Hello',
+      voice: 'coral',
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.voice).toBe('coral');
+  });
+
   it('merges additional headers', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
