@@ -11,7 +11,8 @@ export interface OpenAISpeechProviderConfig {
 export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeechOptions> {
   readonly id = 'openai';
   readonly defaultModel = 'gpt-4o-mini-tts';
-  readonly supportedLanguages = [
+
+  private static readonly LANGUAGES = [
     'af', 'ar', 'bg', 'bn', 'bs', 'ca', 'cs', 'cy', 'da', 'de',
     'el', 'en', 'es', 'et', 'fi', 'fr', 'gl', 'gu', 'he', 'hi',
     'hr', 'hu', 'id', 'is', 'it', 'ja', 'jw', 'ka', 'kk', 'km',
@@ -19,6 +20,12 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     'my', 'ne', 'nl', 'no', 'pa', 'pl', 'pt', 'ro', 'ru', 'si',
     'sk', 'sl', 'so', 'sq', 'sr', 'su', 'sv', 'sw', 'ta', 'te',
     'th', 'tl', 'tr', 'uk', 'ur', 'vi', 'zh',
+  ] as const;
+
+  readonly models = [
+    { id: 'gpt-4o-mini-tts', languages: OpenAISpeechProvider.LANGUAGES },
+    { id: 'tts-1', languages: OpenAISpeechProvider.LANGUAGES },
+    { id: 'tts-1-hd', languages: OpenAISpeechProvider.LANGUAGES },
   ] as const;
 
   private readonly apiKey: string | undefined;

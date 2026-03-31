@@ -1,10 +1,15 @@
+export interface ModelInfo {
+  id: string;
+  languages: readonly string[];
+}
+
 export interface SpeechProvider<
   TModel extends string = string,
   TOptions extends Record<string, unknown> = Record<string, unknown>,
 > {
   id: string;
   defaultModel: TModel;
-  supportedLanguages: readonly string[];
+  models: readonly ModelInfo[];
 
   generate(options: {
     modelId: string;
