@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from './speech-provider.js';
-import type { SpeechResult, GeneratedAudioFile } from './speech-result.js';
+import type { ResolvedModel } from './speech-provider.js';
+import type { SpeechResult } from './speech-result.js';
 import { DefaultGeneratedAudioFile } from './speech-result.js';
 import { NoSpeechGeneratedError } from './errors.js';
 import { resolveModel } from './resolve-provider.js';
@@ -35,12 +35,8 @@ export async function generateSpeech<
   );
 
   const audioData = result.audio;
-  const isEmpty =
-    audioData instanceof Uint8Array
-      ? audioData.length === 0
-      : typeof audioData === 'string' && audioData.length === 0;
 
-  if (isEmpty) {
+  if (audioData.length === 0) {
     throw new NoSpeechGeneratedError();
   }
 

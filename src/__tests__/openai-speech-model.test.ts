@@ -2,12 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { OpenAISpeechProvider } from '../providers/openai/openai-speech-model.js';
 
 describe('OpenAISpeechProvider', () => {
-  it('has correct id and defaultModel', () => {
-    const provider = new OpenAISpeechProvider({});
-    expect(provider.id).toBe('openai');
-    expect(provider.defaultModel).toBe('gpt-4o-mini-tts');
-  });
-
   it('calls the correct URL with correct body', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

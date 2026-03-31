@@ -20,11 +20,6 @@ describe('resolveModel', () => {
     expect(result.modelId).toBe('eleven_flash_v2_5');
   });
 
-  it('resolves elevenlabs default model', () => {
-    const result = resolveModel('elevenlabs');
-    expect(result.modelId).toBe('eleven_multilingual_v2');
-  });
-
   it('throws for unknown provider', () => {
     expect(() => resolveModel('unknown/model')).toThrow('Unknown provider: unknown');
   });

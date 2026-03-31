@@ -1,11 +1,15 @@
-const speechSDKErrorMarker = 'speech-sdk.error';
-const speechSDKErrorSymbol = Symbol.for(speechSDKErrorMarker);
+const speechSDKErrorSymbol = Symbol.for('speech-sdk.error');
+const apiErrorSymbol = Symbol.for('speech-sdk.error.api');
+const noSpeechSymbol = Symbol.for('speech-sdk.error.no-speech');
 
-const apiErrorMarker = 'speech-sdk.error.api';
-const apiErrorSymbol = Symbol.for(apiErrorMarker);
-
-const noSpeechMarker = 'speech-sdk.error.no-speech';
-const noSpeechSymbol = Symbol.for(noSpeechMarker);
+function hasMarker(error: unknown, sym: symbol): boolean {
+  return (
+    error != null &&
+    typeof error === 'object' &&
+    sym in error &&
+    (error as Record<symbol, unknown>)[sym] === true
+  );
+}
 
 export class SpeechSDKError extends Error {
   private readonly [speechSDKErrorSymbol] = true;
@@ -18,12 +22,7 @@ export class SpeechSDKError extends Error {
   }
 
   static isInstance(error: unknown): error is SpeechSDKError {
-    return (
-      error != null &&
-      typeof error === 'object' &&
-      Symbol.for(speechSDKErrorMarker) in error &&
-      (error as Record<symbol, unknown>)[Symbol.for(speechSDKErrorMarker)] === true
-    );
+    return hasMarker(error, speechSDKErrorSymbol);
   }
 }
 
@@ -50,12 +49,7 @@ export class ApiError extends SpeechSDKError {
   }
 
   static isInstance(error: unknown): error is ApiError {
-    return (
-      error != null &&
-      typeof error === 'object' &&
-      Symbol.for(apiErrorMarker) in error &&
-      (error as Record<symbol, unknown>)[Symbol.for(apiErrorMarker)] === true
-    );
+    return hasMarker(error, apiErrorSymbol);
   }
 }
 
@@ -68,11 +62,6 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
   }
 
   static isInstance(error: unknown): error is NoSpeechGeneratedError {
-    return (
-      error != null &&
-      typeof error === 'object' &&
-      Symbol.for(noSpeechMarker) in error &&
-      (error as Record<symbol, unknown>)[Symbol.for(noSpeechMarker)] === true
-    );
+    return hasMarker(error, noSpeechSymbol);
   }
 }

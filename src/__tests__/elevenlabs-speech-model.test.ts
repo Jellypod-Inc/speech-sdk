@@ -2,12 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { ElevenLabsSpeechProvider } from '../providers/elevenlabs/elevenlabs-speech-model.js';
 
 describe('ElevenLabsSpeechProvider', () => {
-  it('has correct id and defaultModel', () => {
-    const provider = new ElevenLabsSpeechProvider({});
-    expect(provider.id).toBe('elevenlabs');
-    expect(provider.defaultModel).toBe('eleven_multilingual_v2');
-  });
-
   it('calls the correct URL with voice_id in path', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

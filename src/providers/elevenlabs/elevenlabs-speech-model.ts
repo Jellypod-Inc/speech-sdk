@@ -1,5 +1,6 @@
 import type { SpeechProvider } from '../../speech-provider.js';
-import { ApiError, SpeechSDKError } from '../../errors.js';
+import { SpeechSDKError } from '../../errors.js';
+import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
 import {
   elevenlabsSpeechOptionsSchema,
   type ElevenLabsSpeechOptions,
@@ -25,16 +26,6 @@ export class ElevenLabsSpeechProvider
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? 'https://api.elevenlabs.io';
     this.fetchFn = config.fetch ?? globalThis.fetch;
-  }
-
-  private resolveApiKey(): string {
-    const key = this.apiKey ?? (typeof process !== 'undefined' ? process.env?.ELEVENLABS_API_KEY : undefined);
-    if (!key) {
-      throw new Error(
-        'ElevenLabs API key is required. Pass it via apiKey option or set the ELEVENLABS_API_KEY environment variable.',
-      );
-    }
-    return key;
   }
 
   async generate(options: {
@@ -64,7 +55,6 @@ export class ElevenLabsSpeechProvider
       model_id: options.modelId,
     };
 
-    // Map voice settings from camelCase to snake_case
     const voiceSettings: Record<string, unknown> = {};
     if (parsed.voiceSettings) {
       if (parsed.voiceSettings.stability != null)
@@ -82,7 +72,6 @@ export class ElevenLabsSpeechProvider
       body.voice_settings = voiceSettings;
     }
 
-    // Map other options
     if (parsed.previousRequestIds)
       body.previous_request_ids = parsed.previousRequestIds;
     if (parsed.nextRequestIds) body.next_request_ids = parsed.nextRequestIds;
@@ -103,7 +92,6 @@ export class ElevenLabsSpeechProvider
         }));
     }
 
-    // Build URL with query params
     const queryParams = new URLSearchParams();
     if (parsed.outputFormat) {
       queryParams.set('output_format', parsed.outputFormat);
@@ -119,21 +107,14 @@ export class ElevenLabsSpeechProvider
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'xi-api-key': this.resolveApiKey(),
+        'xi-api-key': resolveApiKey(this.apiKey, 'ELEVENLABS_API_KEY', 'ElevenLabs'),
         ...options.headers,
       },
       body: JSON.stringify(body),
       signal: options.abortSignal,
     });
 
-    if (!response.ok) {
-      const responseBody = await response.text().catch(() => undefined);
-      throw new ApiError(`ElevenLabs API error: ${response.status}`, {
-        statusCode: response.status,
-        model: `elevenlabs/${options.modelId}`,
-        responseBody,
-      });
-    }
+    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';

@@ -4,10 +4,8 @@ export interface RetryOptions {
 }
 
 function isRetryableError(error: unknown): boolean {
-  // Network errors (fetch failures) are TypeErrors
   if (error instanceof TypeError) return true;
 
-  // Retry 5xx status codes
   if (
     error != null &&
     typeof error === 'object' &&
@@ -38,12 +36,10 @@ export async function withRetry<T>(
         throw error;
       }
 
-      // Check abort signal before retrying
       if (abortSignal?.aborted) {
         throw error;
       }
 
-      // Exponential backoff: ~200ms, ~400ms, ~800ms
       const delay = Math.pow(2, attempt) * 100;
       await new Promise(resolve => setTimeout(resolve, delay));
     }

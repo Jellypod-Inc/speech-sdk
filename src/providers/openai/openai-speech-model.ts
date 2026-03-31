@@ -1,5 +1,5 @@
 import type { SpeechProvider } from '../../speech-provider.js';
-import { ApiError } from '../../errors.js';
+import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
 import { openaiSpeechOptionsSchema, type OpenAISpeechOptions } from './openai-options.js';
 
 export interface OpenAISpeechProviderConfig {
@@ -20,16 +20,6 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? 'https://api.openai.com/v1';
     this.fetchFn = config.fetch ?? globalThis.fetch;
-  }
-
-  private resolveApiKey(): string {
-    const key = this.apiKey ?? (typeof process !== 'undefined' ? process.env?.OPENAI_API_KEY : undefined);
-    if (!key) {
-      throw new Error(
-        'OpenAI API key is required. Pass it via apiKey option or set the OPENAI_API_KEY environment variable.',
-      );
-    }
-    return key;
   }
 
   async generate(options: {
@@ -66,21 +56,14 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.resolveApiKey()}`,
+        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'OPENAI_API_KEY', 'OpenAI')}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
       signal: options.abortSignal,
     });
 
-    if (!response.ok) {
-      const responseBody = await response.text().catch(() => undefined);
-      throw new ApiError(`OpenAI API error: ${response.status}`, {
-        statusCode: response.status,
-        model: `openai/${options.modelId}`,
-        responseBody,
-      });
-    }
+    await handleErrorResponse(response, `openai/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';
