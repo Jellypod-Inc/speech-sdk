@@ -41,9 +41,12 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,
-      reference_id: options.voice,
       text: options.text,
     };
+
+    if (options.voice) {
+      body.reference_id = options.voice;
+    }
 
     const response = await this.fetchFn(url, {
       method: 'POST',
