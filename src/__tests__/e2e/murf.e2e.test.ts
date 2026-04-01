@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createMurf } from '../../providers/murf/murf-provider.js';
+import { createMurf } from '../../providers/murf/index.js';
 
 const hasKey = !!process.env.MURF_API_KEY;
 

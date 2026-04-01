@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { FalSpeechProvider } from '../providers/fal/fal-speech-model.js';
+import { FalSpeechProvider } from '../providers/fal/index.js';
 
 describe('FalSpeechProvider', () => {
   it('uses modelId in URL path', async () => {

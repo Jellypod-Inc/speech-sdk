@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createMistral } from '../../providers/mistral/mistral-provider.js';
+import { createMistral } from '../../providers/mistral/index.js';
 
 const hasKey = !!process.env.MISTRAL_API_KEY;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createResemble } from '../../providers/resemble/resemble-provider.js';
+import { createResemble } from '../../providers/resemble/index.js';
 
 const hasKey = !!process.env.RESEMBLE_API_KEY;
 

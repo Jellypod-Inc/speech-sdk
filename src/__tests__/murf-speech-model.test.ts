@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MurfSpeechProvider } from '../providers/murf/murf-speech-model.js';
+import { MurfSpeechProvider } from '../providers/murf/index.js';
 
 describe('MurfSpeechProvider', () => {
   const mockJsonResponse = (encodedAudio = 'dGVzdA==') =>

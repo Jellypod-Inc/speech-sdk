@@ -8,10 +8,10 @@ import { HumeSpeechProvider } from './providers/hume/index.js';
 import { GoogleSpeechProvider } from './providers/google/index.js';
 import { FishAudioSpeechProvider } from './providers/fish-audio/index.js';
 import { UnrealSpeechProvider } from './providers/unreal-speech/index.js';
-import { MurfSpeechProvider } from './providers/murf/murf-speech-model.js';
-import { ResembleSpeechProvider } from './providers/resemble/resemble-speech-model.js';
-import { FalSpeechProvider } from './providers/fal/fal-speech-model.js';
-import { MistralSpeechProvider } from './providers/mistral/mistral-speech-model.js';
+import { MurfSpeechProvider } from './providers/murf/index.js';
+import { ResembleSpeechProvider } from './providers/resemble/index.js';
+import { FalSpeechProvider } from './providers/fal/index.js';
+import { MistralSpeechProvider } from './providers/mistral/index.js';
 
 function isResolvedModel(model: unknown): model is ResolvedModel {
   return (

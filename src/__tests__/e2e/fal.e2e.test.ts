@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createFal } from '../../providers/fal/fal-provider.js';
+import { createFal } from '../../providers/fal/index.js';
 
 const hasKey = !!process.env.FAL_API_KEY;
 

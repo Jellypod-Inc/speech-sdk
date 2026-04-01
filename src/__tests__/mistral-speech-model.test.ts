@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MistralSpeechProvider } from '../providers/mistral/mistral-speech-model.js';
+import { MistralSpeechProvider } from '../providers/mistral/index.js';
 
 describe('MistralSpeechProvider', () => {
   const mockJsonResponse = (data: Record<string, unknown>) =>

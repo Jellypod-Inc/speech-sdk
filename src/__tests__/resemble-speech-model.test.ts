@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ResembleSpeechProvider } from '../providers/resemble/resemble-speech-model.js';
+import { ResembleSpeechProvider } from '../providers/resemble/index.js';
 
 describe('ResembleSpeechProvider', () => {
   const mockJsonResponse = (audioContent = 'dGVzdA==') =>
