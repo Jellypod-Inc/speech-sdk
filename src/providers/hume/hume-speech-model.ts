@@ -13,6 +13,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
   readonly models = [
     { id: 'octave-2', languages: ['en'] as const },
+    { id: 'octave-1', languages: ['en'] as const },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -23,6 +24,12 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? 'https://api.hume.ai/v0';
     this.fetchFn = config.fetch ?? globalThis.fetch;
+  }
+
+  private resolveVersion(modelId: string): string | undefined {
+    if (modelId === 'octave-2') return '2';
+    if (modelId === 'octave-1') return '1';
+    return undefined;
   }
 
   async generate(options: {
@@ -39,13 +46,19 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   }> {
     const utterance: Record<string, unknown> = { text: options.text };
     if (options.voice) {
-      utterance.voice = { name: options.voice };
+      utterance.voice = { name: options.voice, provider: 'HUME_AI' };
     }
+
+    const version = this.resolveVersion(options.modelId);
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,
       utterances: [utterance],
     };
+
+    if (version != null) {
+      body.version = version;
+    }
 
     const url = `${this.baseURL}/tts/file`;
 

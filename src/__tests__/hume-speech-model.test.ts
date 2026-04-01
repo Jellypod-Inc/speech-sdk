@@ -63,8 +63,28 @@ describe('HumeSpeechProvider', () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.utterances).toEqual([
-      { text: 'Hello world', voice: { name: 'Kora' } },
+      { text: 'Hello world', voice: { name: 'Kora', provider: 'HUME_AI' } },
     ]);
+  });
+
+  it('maps octave-2 modelId to version "2" in body', async () => {
+    const mockFetch = createMockFetch();
+    const provider = new HumeSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+    await provider.generate({ modelId: 'octave-2', text: 'Hi', voice: 'Kora' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.version).toBe('2');
+  });
+
+  it('maps octave-1 modelId to version "1" in body', async () => {
+    const mockFetch = createMockFetch();
+    const provider = new HumeSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+    await provider.generate({ modelId: 'octave-1', text: 'Hi' });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.version).toBe('1');
   });
 
   it('returns binary audio response', async () => {
