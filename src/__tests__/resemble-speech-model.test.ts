@@ -41,7 +41,7 @@ describe('ResembleSpeechProvider', () => {
     await provider.generate({ modelId: 'default', text: 'Hi' });
 
     const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['Authorization']).toBe('Bearer resemble-key-123');
+    expect(init.headers['Authorization']).toBe('resemble-key-123');
   });
 
   it('sends correct body with voice_uuid and data', async () => {

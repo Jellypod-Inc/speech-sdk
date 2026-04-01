@@ -49,7 +49,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'RESEMBLE_API_KEY', 'Resemble')}`,
+        'Authorization': resolveApiKey(this.apiKey, 'RESEMBLE_API_KEY', 'Resemble'),
         ...options.headers,
       },
       body: JSON.stringify(body),

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
 import { createResemble } from '../../providers/resemble/resemble-provider.js';
 
-const hasKey = !!process.env.RESEMBLE_API_KEY;
+const hasKey = !!process.env.RESEMBLE_API_KEY && !!process.env.RESEMBLE_VOICE_UUID;
 
 describe.skipIf(!hasKey)('Resemble e2e', () => {
   const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
