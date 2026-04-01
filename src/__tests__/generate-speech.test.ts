@@ -9,6 +9,7 @@ function createMockProvider(
   return {
     id: 'mock',
     defaultModel: 'mock-model',
+    models: [],
     generate: vi.fn().mockResolvedValue({
       audio: new Uint8Array([72, 101, 108, 108, 111]), // "Hello"
       mediaType: 'audio/mpeg',
@@ -122,6 +123,7 @@ describe('generateSpeech', () => {
     const provider: SpeechProvider = {
       id: 'mock',
       defaultModel: 'mock-model',
+      models: [],
       generate: vi
         .fn()
         .mockRejectedValueOnce(error)
@@ -150,6 +152,7 @@ describe('generateSpeech', () => {
     const provider: SpeechProvider = {
       id: 'mock',
       defaultModel: 'mock-model',
+      models: [],
       generate: vi.fn().mockRejectedValue(error),
     };
 
