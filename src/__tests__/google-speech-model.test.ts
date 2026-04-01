@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { GoogleSpeechProvider } from '../providers/google/google-speech-model.js';
+import { GoogleSpeechProvider } from '../providers/google/index.js';
 
 describe('GoogleSpeechProvider', () => {
   const geminiResponse = {

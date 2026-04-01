@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createGoogle } from '../../providers/google/google-provider.js';
+import { createGoogle } from '../../providers/google/index.js';
 
 const hasKey = !!process.env.GOOGLE_API_KEY;
 

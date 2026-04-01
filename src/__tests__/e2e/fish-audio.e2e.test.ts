@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createFishAudio } from '../../providers/fish-audio/fish-audio-provider.js';
+import { createFishAudio } from '../../providers/fish-audio/index.js';
 
 const hasKey = !!process.env.FISH_AUDIO_API_KEY;
 

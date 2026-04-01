@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createUnrealSpeech } from '../../providers/unreal-speech/unreal-speech-provider.js';
+import { createUnrealSpeech } from '../../providers/unreal-speech/index.js';
 
 const hasKey = !!process.env.UNREAL_SPEECH_API_KEY;
 

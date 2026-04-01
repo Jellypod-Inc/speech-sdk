@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createHume } from '../../providers/hume/hume-provider.js';
+import { createHume } from '../../providers/hume/index.js';
 
 const hasKey = !!process.env.HUME_API_KEY;
 

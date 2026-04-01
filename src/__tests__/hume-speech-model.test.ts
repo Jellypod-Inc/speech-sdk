@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { HumeSpeechProvider } from '../providers/hume/hume-speech-model.js';
+import { HumeSpeechProvider } from '../providers/hume/index.js';
 
 describe('HumeSpeechProvider', () => {
   function createMockFetch() {

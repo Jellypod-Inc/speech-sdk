@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { FishAudioSpeechProvider } from '../providers/fish-audio/fish-audio-speech-model.js';
+import { FishAudioSpeechProvider } from '../providers/fish-audio/index.js';
 
 describe('FishAudioSpeechProvider', () => {
   it('sends model as a request header, not in body', async () => {

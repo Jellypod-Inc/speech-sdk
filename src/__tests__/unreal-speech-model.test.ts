@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { UnrealSpeechProvider } from '../providers/unreal-speech/unreal-speech-speech-model.js';
+import { UnrealSpeechProvider } from '../providers/unreal-speech/index.js';
 
 describe('UnrealSpeechProvider', () => {
   it('sends PascalCase body keys (VoiceId, Text)', async () => {
