@@ -44,7 +44,7 @@ case 'fish-audio':
       return new MurfSpeechProvider({});
     case 'resemble':
       return new ResembleSpeechProvider({});
-case 'fal':
+case 'fal-ai':
       return new FalSpeechProvider({});
     case 'mistral':
       return new MistralSpeechProvider({});

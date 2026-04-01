@@ -49,7 +49,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | [Unreal Speech](https://docs.v8.unrealspeech.com) | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` | [API Reference](https://docs.v8.unrealspeech.com) |
 | [Murf](https://murf.ai/api/docs) | `murf` | `GEN2` | `MURF_API_KEY` | [API Reference](https://murf.ai/api/docs/api-reference/text-to-speech/generate) |
 | [Resemble](https://docs.resemble.ai) | `resemble` | `default` | `RESEMBLE_API_KEY` | [API Reference](https://docs.resemble.ai/api-reference/text-to-speech/synthesize) |
-| [fal](https://fal.ai/models) | `fal` | *(user-specified)* | `FAL_API_KEY` | [API Reference](https://fal.ai/models) |
+| [fal](https://fal.ai/models) | `fal-ai` | *(user-specified)* | `FAL_API_KEY` | [API Reference](https://fal.ai/models) |
 | [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` | [API Reference](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) |
 
 ```ts

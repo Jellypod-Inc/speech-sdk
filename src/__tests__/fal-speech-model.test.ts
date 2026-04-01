@@ -23,7 +23,7 @@ describe('FalSpeechProvider', () => {
     });
 
     await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello world',
       voice: 'en-male',
     });
@@ -52,7 +52,7 @@ describe('FalSpeechProvider', () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'fal-ai/inworld-tts', text: 'Hi' });
+    await provider.generate({ modelId: 'inworld-tts', text: 'Hi' });
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers['Authorization']).toBe('Key fal-key-123');
@@ -79,7 +79,7 @@ describe('FalSpeechProvider', () => {
     });
 
     await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello',
       voice: 'en-female',
     });
@@ -110,7 +110,7 @@ describe('FalSpeechProvider', () => {
     });
 
     await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello',
       voice: { url: 'https://example.com/ref.wav' },
     });
@@ -142,7 +142,7 @@ describe('FalSpeechProvider', () => {
     });
 
     const result = await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello',
     });
 
@@ -177,7 +177,7 @@ describe('FalSpeechProvider', () => {
     });
 
     await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello',
       providerOptions: { language: 'en', speed: 1.5 },
     });
@@ -196,7 +196,7 @@ describe('FalSpeechProvider', () => {
 
     await expect(
       provider.generate({ modelId: '', text: 'Hello' }),
-    ).rejects.toThrow('fal requires a modelId');
+    ).rejects.toThrow('fal-ai requires a model ID');
   });
 
   it('omits voice fields when no voice is provided', async () => {
@@ -220,7 +220,7 @@ describe('FalSpeechProvider', () => {
     });
 
     await provider.generate({
-      modelId: 'fal-ai/inworld-tts',
+      modelId: 'inworld-tts',
       text: 'Hello',
     });
 

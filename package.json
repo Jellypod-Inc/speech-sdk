@@ -51,7 +51,7 @@
       "types": "./dist/providers/resemble/index.d.ts",
       "default": "./dist/providers/resemble/index.js"
     },
-"./fal": {
+"./fal-ai": {
       "types": "./dist/providers/fal/index.d.ts",
       "default": "./dist/providers/fal/index.js"
     },

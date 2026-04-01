@@ -9,7 +9,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
 
   it('generates audio via string model identifier', async () => {
     const result = await generateSpeech({
-      model: 'fal/fal-ai/kokoro/american-english',
+      model: 'fal-ai/kokoro/american-english',
       text: TEST_TEXT,
       voice: 'af_heart',
     });
@@ -22,7 +22,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
   it('generates audio via factory', async () => {
     const fal = createFal();
     const result = await generateSpeech({
-      model: fal('fal-ai/kokoro/american-english'),
+      model: fal('kokoro/american-english'),
       text: TEST_TEXT,
       voice: 'af_heart',
     });

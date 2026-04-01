@@ -9,7 +9,7 @@ export interface FalSpeechProviderConfig {
 }
 
 export class FalSpeechProvider implements SpeechProvider<string, string | { url: string }> {
-  readonly id = 'fal';
+  readonly id = 'fal-ai';
   readonly defaultModel = '';
 
   readonly models = [] as const;
@@ -37,10 +37,10 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
     providerMetadata?: Record<string, unknown>;
   }> {
     if (!options.modelId) {
-      throw new Error('fal requires a modelId (e.g., "fal-ai/inworld-tts"). No default model is available.');
+      throw new Error('fal-ai requires a model ID (e.g., "fal-ai/inworld-tts"). No default model is available.');
     }
 
-    const url = `${this.baseURL}/${options.modelId}`;
+    const url = `${this.baseURL}/fal-ai/${options.modelId}`;
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,
@@ -66,7 +66,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fal/${options.modelId}`);
+    await handleErrorResponse(response, `fal-ai/${options.modelId}`);
 
     const json = await response.json() as { audio: { url: string } };
 
@@ -77,7 +77,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
     if (!audioResponse.ok) {
       throw new ApiError(`API error: ${audioResponse.status}`, {
         statusCode: audioResponse.status,
-        model: `fal/${options.modelId}`,
+        model: `fal-ai/${options.modelId}`,
         responseBody: await audioResponse.text().catch(() => undefined),
       });
     }
