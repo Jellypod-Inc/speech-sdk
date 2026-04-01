@@ -1,11 +1,11 @@
 ---
 name: speech-sdk
-description: "How to use the speech-sdk library for text-to-speech generation with multiple providers (OpenAI, ElevenLabs). Use this skill whenever the user wants to generate speech audio, convert text to speech, work with TTS providers, use generateSpeech, or integrate speech-sdk into their application. Also trigger when you see imports from '@speech-sdk/core', 'speech-sdk', or related subpath imports in the codebase."
+description: "How to use @speech-sdk/core for text-to-speech generation with 12 providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google, Fish Audio, Unreal Speech, Murf, Resemble, fal, Mistral). Use this skill whenever the user wants to generate speech audio, convert text to speech, work with TTS providers, use generateSpeech, or integrate speech-sdk into their application. Also trigger when you see imports from '@speech-sdk/core' or related subpath imports in the codebase."
 ---
 
-# speech-sdk
+# @speech-sdk/core
 
-A TypeScript SDK for text-to-speech with multiple provider support. Universal (Node, Edge, Browser).
+Universal TypeScript TTS SDK with multi-provider support. Cross-platform (Node, Edge, Browser).
 
 ## Install
 
@@ -31,48 +31,64 @@ result.audio.base64;      // string — lazy-computed base64
 result.audio.mediaType;   // "audio/mpeg"
 ```
 
-## Model Strings
+## Supported Providers
 
 Use `provider/model-id` format. Passing just the provider name uses its default model.
 
-### OpenAI
-
-Default model: `gpt-4o-mini-tts`
+| Provider | String Prefix | Default Model | Env Var |
+|---|---|---|---|
+| OpenAI | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` |
+| ElevenLabs | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` |
+| Deepgram | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` |
+| Cartesia | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` |
+| Hume | `hume` | `octave-2` | `HUME_API_KEY` |
+| Google (Gemini TTS) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` |
+| Fish Audio | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
+| Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
+| Murf | `murf` | `GEN2` | `MURF_API_KEY` |
+| Resemble | `resemble` | `default` | `RESEMBLE_API_KEY` |
+| fal | `fal-ai` | *(user-specified)* | `FAL_API_KEY` |
+| Mistral | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
 
 ```ts
 generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
-generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'nova' });
-generateSpeech({ model: 'openai/tts-1-hd', text: '...', voice: 'echo' });
-generateSpeech({ model: 'openai', text: '...', voice: 'alloy' }); // uses default
-```
-
-### ElevenLabs
-
-Default model: `eleven_multilingual_v2`
-
-```ts
 generateSpeech({ model: 'elevenlabs/eleven_v3', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs/eleven_multilingual_v2', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs/eleven_flash_v2_5', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs/eleven_flash_v2', text: '...', voice: 'voice-id' });
-generateSpeech({ model: 'elevenlabs', text: '...', voice: 'voice-id' }); // uses default
+generateSpeech({ model: 'deepgram/aura-2', text: '...', voice: 'thalia-en' });
+generateSpeech({ model: 'cartesia/sonic-3', text: '...', voice: 'voice-id' });
+generateSpeech({ model: 'hume/octave-2', text: '...', voice: 'voice-name' });
+generateSpeech({ model: 'google', text: '...', voice: 'Kore' });
+generateSpeech({ model: 'fish-audio/s2-pro', text: '...', voice: 'voice-id' });
+generateSpeech({ model: 'murf/GEN2', text: '...', voice: 'en-US-natalie' });
+generateSpeech({ model: 'mistral/voxtral-mini-tts-2603', text: '...', voice: 'jessica' });
+generateSpeech({ model: 'openai', text: '...', voice: 'alloy' }); // uses default model
 ```
 
 ## Function Signature
-
-All fields on `generateSpeech`:
 
 ```ts
 generateSpeech({
   model: string | ResolvedModel,  // required — 'openai/tts-1' or factory result
   text: string,                   // required — text to convert
-  voice: string,                  // required — voice ID or name
+  voice: Voice,                   // required — string ID, { url } or { audio } for cloning
   providerOptions?: object,       // provider-specific API params (passed through directly)
   maxRetries?: number,            // default: 2 (retries on 5xx/network errors only)
   abortSignal?: AbortSignal,      // cancel the request
   headers?: Record<string, string>, // additional HTTP headers
 });
 ```
+
+### Voice Type
+
+The `voice` field accepts three forms:
+
+```ts
+type Voice =
+  | string                          // voice ID or name (all providers)
+  | { url: string }                 // reference audio URL (fal)
+  | { audio: string | Uint8Array }  // inline reference audio (Mistral)
+```
+
+Most providers use a string voice ID. Mistral and fal support instant voice cloning by passing reference audio inline — no voice is saved, it just mimics the reference for that generation.
 
 ## Result Shape
 
@@ -179,13 +195,58 @@ const result = await generateSpeech({
 });
 ```
 
+### Factory Subpath Imports
+
+Each provider has a factory function available via subpath import:
+
+| Import | Factory |
+|---|---|
+| `@speech-sdk/core/openai` | `createOpenAI` |
+| `@speech-sdk/core/elevenlabs` | `createElevenLabs` |
+| `@speech-sdk/core/deepgram` | `createDeepgram` |
+| `@speech-sdk/core/cartesia` | `createCartesia` |
+| `@speech-sdk/core/hume` | `createHume` |
+| `@speech-sdk/core/google` | `createGoogle` |
+| `@speech-sdk/core/fish-audio` | `createFishAudio` |
+| `@speech-sdk/core/unreal-speech` | `createUnrealSpeech` |
+| `@speech-sdk/core/murf` | `createMurf` |
+| `@speech-sdk/core/resemble` | `createResemble` |
+| `@speech-sdk/core/fal-ai` | `createFal` |
+| `@speech-sdk/core/mistral` | `createMistral` |
+
 ### API Key Resolution
 
-When using string models, keys are read from environment variables:
-- OpenAI: `OPENAI_API_KEY`
-- ElevenLabs: `ELEVENLABS_API_KEY`
+When using string models, keys are read from environment variables (see Supported Providers table above). Factory functions with explicit `apiKey` take precedence over env vars.
 
-Factory functions with explicit `apiKey` take precedence over env vars.
+## Voice Cloning
+
+Some providers support instant voice cloning via reference audio. Pass a voice object instead of a string — no voice is saved, it just mimics the reference for that generation.
+
+```ts
+import { createMistral } from '@speech-sdk/core/mistral';
+
+const mistral = createMistral();
+
+// Clone from inline base64 audio
+const result = await generateSpeech({
+  model: mistral(),
+  text: 'Hello!',
+  voice: { audio: 'base64-encoded-audio...' },
+});
+```
+
+```ts
+import { createFal } from '@speech-sdk/core/fal-ai';
+
+const fal = createFal();
+
+// Clone from a reference audio URL
+const result = await generateSpeech({
+  model: fal('fal-ai/chatterbox'),
+  text: 'Hello!',
+  voice: { url: 'https://example.com/reference.wav' },
+});
+```
 
 ## Error Handling
 
@@ -258,15 +319,13 @@ For contributors working on the library itself:
 
 - `src/generate-speech.ts` — public `generateSpeech()` function
 - `src/resolve-provider.ts` — parses `provider/model` strings, instantiates built-in providers
-- `src/speech-provider.ts` — `SpeechProvider` interface that all providers implement
+- `src/speech-provider.ts` — `SpeechProvider` interface, `Voice` type, `ResolvedModel`
 - `src/speech-result.ts` — `SpeechResult` and `DefaultGeneratedAudioFile` with lazy conversion
 - `src/provider-utils.ts` — shared `resolveApiKey()` and `handleErrorResponse()`
 - `src/errors.ts` — `SpeechSDKError`, `ApiError`, `NoSpeechGeneratedError`
-- `src/providers/openai/` — OpenAI provider implementation
-- `src/providers/elevenlabs/` — ElevenLabs provider implementation
+- `src/providers/<name>/index.ts` — each provider in a single consolidated file
 
 Adding a new provider means:
-1. Create `src/providers/<name>/<name>-speech-model.ts` implementing `SpeechProvider`
-2. Create `src/providers/<name>/<name>-provider.ts` with a `create<Name>()` factory
-3. Add a case to `createBuiltinProvider()` in `resolve-provider.ts`
-4. Add subpath export to `package.json`
+1. Create `src/providers/<name>/index.ts` implementing `SpeechProvider`
+2. Add a case to `createBuiltinProvider()` in `resolve-provider.ts`
+3. Add subpath export to `package.json`
