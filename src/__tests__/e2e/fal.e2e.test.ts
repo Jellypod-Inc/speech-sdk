@@ -51,7 +51,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
       const result = await generateSpeech({
         model: fal('chatterbox/text-to-speech'),
         text: TEST_TEXT,
-        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -63,7 +63,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
       const result = await generateSpeech({
         model: fal('lux-tts'),
         text: TEST_TEXT,
-        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
         providerOptions: { prompt: TEST_TEXT },
       });
 
@@ -76,7 +76,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
       const result = await generateSpeech({
         model: fal('tada/3b/text-to-speech'),
         text: TEST_TEXT,
-        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
         providerOptions: { prompt: TEST_TEXT },
       });
 
@@ -89,7 +89,7 @@ describe.skipIf(!hasKey)('fal e2e', () => {
       const result = await generateSpeech({
         model: fal('tada/1b/text-to-speech'),
         text: TEST_TEXT,
-        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
         providerOptions: { prompt: TEST_TEXT },
       });
 
