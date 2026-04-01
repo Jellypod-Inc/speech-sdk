@@ -26,7 +26,7 @@ describe('ResembleSpeechProvider', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://f.cluster.resemble.ai/synthesize');
+    expect(url).toBe('https://p.cluster.resemble.ai/synthesize');
     expect(init.method).toBe('POST');
   });
 
