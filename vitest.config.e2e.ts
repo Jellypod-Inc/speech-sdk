@@ -9,5 +9,6 @@ export default defineConfig({
     include: ['src/__tests__/e2e/**/*.e2e.test.ts'],
     testTimeout: 60_000,
     hookTimeout: 60_000,
+    sequence: { concurrent: true },
   },
 });
