@@ -63,7 +63,7 @@ describe('UnrealSpeechProvider', () => {
 
     // First call: API endpoint
     const [firstUrl] = mockFetch.mock.calls[0];
-    expect(firstUrl).toBe('https://api.v7.unrealspeech.com/speech');
+    expect(firstUrl).toBe('https://api.v8.unrealspeech.com/speech');
 
     // Second call: S3 audio URL
     const [secondUrl] = mockFetch.mock.calls[1];
