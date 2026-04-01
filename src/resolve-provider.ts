@@ -6,7 +6,6 @@ import { DeepgramSpeechProvider } from './providers/deepgram/deepgram-speech-mod
 import { CartesiaSpeechProvider } from './providers/cartesia/cartesia-speech-model.js';
 import { HumeSpeechProvider } from './providers/hume/hume-speech-model.js';
 import { GoogleSpeechProvider } from './providers/google/google-speech-model.js';
-import { SpeechifySpeechProvider } from './providers/speechify/speechify-speech-model.js';
 import { FishAudioSpeechProvider } from './providers/fish-audio/fish-audio-speech-model.js';
 import { UnrealSpeechProvider } from './providers/unreal-speech/unreal-speech-speech-model.js';
 import { MurfSpeechProvider } from './providers/murf/murf-speech-model.js';
@@ -37,9 +36,7 @@ case 'hume':
       return new HumeSpeechProvider({});
     case 'google':
       return new GoogleSpeechProvider({});
-    case 'speechify':
-      return new SpeechifySpeechProvider({});
-    case 'fish-audio':
+case 'fish-audio':
       return new FishAudioSpeechProvider({});
     case 'unreal-speech':
       return new UnrealSpeechProvider({});

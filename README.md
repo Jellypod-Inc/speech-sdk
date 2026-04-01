@@ -45,7 +45,6 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | Cartesia | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` |
 | Hume | `hume` | `octave-2` | `HUME_API_KEY` |
 | Google Cloud TTS | `google` | `default` | `GOOGLE_API_KEY` |
-| Speechify | `speechify` | `simba-multilingual` | `SPEECHIFY_API_KEY` |
 | Fish Audio | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
 | Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
 | Murf | `murf` | `GEN2` | `MURF_API_KEY` |

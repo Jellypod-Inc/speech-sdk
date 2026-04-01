@@ -35,11 +35,7 @@
       "types": "./dist/providers/google/index.d.ts",
       "default": "./dist/providers/google/index.js"
     },
-    "./speechify": {
-      "types": "./dist/providers/speechify/index.d.ts",
-      "default": "./dist/providers/speechify/index.js"
-    },
-    "./fish-audio": {
+"./fish-audio": {
       "types": "./dist/providers/fish-audio/index.d.ts",
       "default": "./dist/providers/fish-audio/index.js"
     },
