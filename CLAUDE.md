@@ -17,7 +17,7 @@ E2E tests hit real provider APIs and require keys in `.env` or exported in shell
 
 ## Architecture
 
-This is `@jellypod/speech-sdk` — a universal TTS SDK (Node, Edge, Browser) with a single public function `generateSpeech()` and a provider abstraction for multi-provider support.
+This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a single public function `generateSpeech()` and a provider abstraction for multi-provider support.
 
 **Core flow:** `generateSpeech()` → `resolveModel()` → `provider.generate()` → `SpeechResult`
 
