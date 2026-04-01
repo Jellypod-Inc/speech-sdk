@@ -22,9 +22,9 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   ] as const;
 
   readonly models = [
-    { id: 'gpt-4o-mini-tts', languages: OpenAISpeechProvider.LANGUAGES },
-    { id: 'tts-1', languages: OpenAISpeechProvider.LANGUAGES },
-    { id: 'tts-1-hd', languages: OpenAISpeechProvider.LANGUAGES },
+    { id: 'gpt-4o-mini-tts', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2025-03-20', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    { id: 'tts-1', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2023-11-06', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    { id: 'tts-1-hd', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2023-11-06', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
   ] as const;
 
   private readonly apiKey: string | undefined;

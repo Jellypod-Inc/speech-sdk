@@ -12,7 +12,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'default';
 
   readonly models = [
-    { id: 'default', languages: ['en'] },
+    { id: 'default', languages: ['en', 'ar', 'da', 'de', 'el', 'es', 'fi', 'fr', 'he', 'hi', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sv', 'sw', 'tr', 'zh'], releaseDate: '2025-09-04', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

@@ -12,7 +12,13 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
   readonly id = 'fal-ai';
   readonly defaultModel = '';
 
-  readonly models = [] as const;
+  readonly models = [
+    { id: 'f5-tts', languages: ['en', 'zh', 'fr', 'it', 'hi', 'ja', 'ru', 'es', 'fi'], releaseDate: '2024-10-08', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    { id: 'kokoro', languages: ['en', 'fr', 'ko', 'ja', 'zh'], releaseDate: '2025-01-27', openSource: true, inlineVoiceCloning: false, zeroDataRetention: false },
+    { id: 'dia-tts', languages: ['en'], releaseDate: '2025-04-21', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    { id: 'orpheus-tts', languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh'], releaseDate: '2025-03-18', openSource: true, inlineVoiceCloning: false, zeroDataRetention: false },
+    { id: 'index-tts-2', languages: ['en', 'zh'], releaseDate: '2025-09-08', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+  ] as const;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

@@ -12,8 +12,8 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'sonic-3';
 
   readonly models = [
-    { id: 'sonic-3', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'hi', 'it', 'ko', 'nl', 'pl', 'ru', 'sv', 'tr'] },
-    { id: 'sonic-2', languages: ['en'] },
+    { id: 'sonic-3', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'hi', 'it', 'ko', 'nl', 'pl', 'ru', 'sv', 'tr', 'tl', 'bg', 'ro', 'ar', 'cs', 'el', 'fi', 'hr', 'ms', 'sk', 'da', 'ta', 'uk', 'hu', 'no', 'vi', 'bn', 'th', 'he', 'ka', 'id', 'te', 'gu', 'kn', 'ml', 'mr', 'pa'], releaseDate: '2025-10-27', openSource: false, inlineVoiceCloning: true, zeroDataRetention: false },
+    { id: 'sonic-2', languages: ['en'], releaseDate: '2025-03-13', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

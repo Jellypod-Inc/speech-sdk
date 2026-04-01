@@ -12,7 +12,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 's2-pro';
 
   readonly models = [
-    { id: 's2-pro', languages: ['en'] },
+    { id: 's2-pro', languages: ['ja', 'en', 'zh', 'ko', 'es', 'pt', 'ar', 'ru', 'fr', 'de'], releaseDate: '2026-03-09', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

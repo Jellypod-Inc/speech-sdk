@@ -12,8 +12,8 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'octave-2';
 
   readonly models = [
-    { id: 'octave-2', languages: ['en'] as const },
-    { id: 'octave-1', languages: ['en'] as const },
+    { id: 'octave-2', languages: ['en', 'fr', 'de', 'es', 'pt', 'ja', 'ko', 'hi', 'it', 'ar', 'ru'] as const, releaseDate: '2025-10-01', openSource: false, inlineVoiceCloning: true, zeroDataRetention: false },
+    { id: 'octave-1', languages: ['en'] as const, releaseDate: '2025-03-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

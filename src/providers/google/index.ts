@@ -12,8 +12,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'gemini-2.5-flash-preview-tts';
 
   readonly models = [
-    { id: 'gemini-2.5-flash-preview-tts', languages: ['en'] },
-    { id: 'gemini-2.5-pro-preview-tts', languages: ['en'] },
+    { id: 'gemini-2.5-flash-preview-tts', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'ko', 'hi', 'it', 'nl', 'pl', 'ru', 'sv', 'tr', 'id', 'ar', 'cs', 'da', 'fi', 'el', 'hu', 'ro', 'uk'], releaseDate: '2025-05-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
+    { id: 'gemini-2.5-pro-preview-tts', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'ko', 'hi', 'it', 'nl', 'pl', 'ru', 'sv', 'tr', 'id', 'ar', 'cs', 'da', 'fi', 'el', 'hu', 'ro', 'uk'], releaseDate: '2025-05-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;
