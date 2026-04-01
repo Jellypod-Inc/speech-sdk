@@ -2,91 +2,75 @@ import { describe, it, expect, vi } from 'vitest';
 import { GoogleSpeechProvider } from '../providers/google/google-speech-model.js';
 
 describe('GoogleSpeechProvider', () => {
-  const mockBase64 = btoa('test');
+  const geminiResponse = {
+    candidates: [{
+      content: {
+        parts: [{ inlineData: { mimeType: 'audio/mp3', data: 'dGVzdA==' } }],
+      },
+    }],
+  };
 
-  function createMockFetch() {
+  function createMockFetch(data = geminiResponse) {
     return vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => ({ audioContent: mockBase64 }),
+      json: async () => data,
     });
   }
 
-  it('puts API key in query param, not header', async () => {
+  it('calls the Gemini API with model in URL and API key as query param', async () => {
     const mockFetch = createMockFetch();
-
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
-    });
+    const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await provider.generate({
-      modelId: 'default',
+      modelId: 'gemini-2.5-flash-tts',
       text: 'Hello',
-      voice: 'en-US-Neural2-A',
+      voice: 'Kore',
     });
 
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://texttospeech.googleapis.com/v1/text:synthesize?key=test-key');
+    expect(url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=test-key',
+    );
+    expect(init.method).toBe('POST');
     expect(init.headers['Authorization']).toBeUndefined();
   });
 
-  it('derives languageCode from voice name', async () => {
+  it('sends correct body with contents and speech_config', async () => {
     const mockFetch = createMockFetch();
-
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
-    });
+    const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await provider.generate({
-      modelId: 'default',
-      text: 'Hola',
-      voice: 'es-ES-Standard-B',
-    });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.voice.languageCode).toBe('es-ES');
-    expect(body.voice.name).toBe('es-ES-Standard-B');
-  });
-
-  it('sends correct body structure with input.text, voice, audioConfig', async () => {
-    const mockFetch = createMockFetch();
-
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
-    });
-
-    await provider.generate({
-      modelId: 'default',
+      modelId: 'gemini-2.5-flash-tts',
       text: 'Hello world',
-      voice: 'en-US-Neural2-A',
+      voice: 'Zephyr',
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.input).toEqual({ text: 'Hello world' });
-    expect(body.voice).toEqual({ name: 'en-US-Neural2-A', languageCode: 'en-US' });
-    expect(body.audioConfig).toEqual({ audioEncoding: 'MP3' });
+    expect(body.contents).toEqual([
+      { role: 'user', parts: [{ text: 'Hello world' }] },
+    ]);
+    expect(body.generationConfig.responseModalities).toEqual(['audio']);
+    expect(body.generationConfig.speech_config).toEqual({
+      voice_config: {
+        prebuilt_voice_config: { voice_name: 'Zephyr' },
+      },
+    });
   });
 
-  it('parses base64 audioContent from JSON response', async () => {
+  it('returns base64 audio from Gemini response', async () => {
     const mockFetch = createMockFetch();
-
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
-    });
+    const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     const result = await provider.generate({
-      modelId: 'default',
+      modelId: 'gemini-2.5-flash-tts',
       text: 'Hello',
-      voice: 'en-US-Neural2-A',
+      voice: 'Kore',
     });
 
-    expect(result.audio).toBe(mockBase64);
-    expect(result.mediaType).toBe('audio/mpeg');
+    expect(result.audio).toBe('dGVzdA==');
+    expect(result.mediaType).toBe('audio/mp3');
   });
 
   it('throws on error response', async () => {
@@ -97,51 +81,51 @@ describe('GoogleSpeechProvider', () => {
       text: async () => '{"error": "forbidden"}',
     });
 
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'bad-key',
-      fetch: mockFetch,
-    });
+    const provider = new GoogleSpeechProvider({ apiKey: 'bad-key', fetch: mockFetch });
 
     await expect(
-      provider.generate({ modelId: 'default', text: 'Hello', voice: 'en-US-Neural2-A' }),
+      provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' }),
     ).rejects.toThrow();
   });
 
-  it('spreads providerOptions into body', async () => {
-    const mockFetch = createMockFetch();
-
-    const provider = new GoogleSpeechProvider({
-      apiKey: 'test-key',
-      fetch: mockFetch,
+  it('throws when no audio data in response', async () => {
+    const mockFetch = createMockFetch({
+      candidates: [{ content: { parts: [{ text: 'no audio' }] } }],
     });
 
-    await provider.generate({
-      modelId: 'default',
-      text: 'Hello',
-      voice: 'en-US-Neural2-A',
-      providerOptions: { speakingRate: 1.5 },
-    });
+    const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.speakingRate).toBe(1.5);
+    await expect(
+      provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' }),
+    ).rejects.toThrow('No audio data');
   });
 
   it('uses custom baseURL', async () => {
     const mockFetch = createMockFetch();
-
     const provider = new GoogleSpeechProvider({
       apiKey: 'test-key',
-      baseURL: 'https://my-proxy.com/v1',
+      baseURL: 'https://my-proxy.com/v1beta',
       fetch: mockFetch,
     });
 
-    await provider.generate({
-      modelId: 'default',
-      text: 'Hello',
-      voice: 'en-US-Neural2-A',
-    });
+    await provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v1/text:synthesize?key=test-key');
+    expect(url).toBe('https://my-proxy.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=test-key');
+  });
+
+  it('spreads providerOptions into generationConfig', async () => {
+    const mockFetch = createMockFetch();
+    const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+    await provider.generate({
+      modelId: 'gemini-2.5-flash-tts',
+      text: 'Hello',
+      voice: 'Kore',
+      providerOptions: { temperature: 0.5 },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.generationConfig.temperature).toBe(0.5);
   });
 });

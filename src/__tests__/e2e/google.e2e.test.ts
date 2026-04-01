@@ -4,14 +4,14 @@ import { createGoogle } from '../../providers/google/google-provider.js';
 
 const hasKey = !!process.env.GOOGLE_API_KEY;
 
-describe.skipIf(!hasKey)('Google e2e', () => {
+describe.skipIf(!hasKey)('Google (Gemini TTS) e2e', () => {
   const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
 
   it('generates audio via string model identifier', async () => {
     const result = await generateSpeech({
-      model: 'google/default',
+      model: 'google/gemini-2.5-flash-tts',
       text: TEST_TEXT,
-      voice: 'en-US-Neural2-A',
+      voice: 'Kore',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ describe.skipIf(!hasKey)('Google e2e', () => {
     const result = await generateSpeech({
       model: google(),
       text: TEST_TEXT,
-      voice: 'en-US-Neural2-A',
+      voice: 'Kore',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

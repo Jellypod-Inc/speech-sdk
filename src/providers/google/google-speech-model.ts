@@ -9,10 +9,11 @@ export interface GoogleSpeechProviderConfig {
 
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = 'google';
-  readonly defaultModel = 'default';
+  readonly defaultModel = 'gemini-2.5-flash-tts';
 
   readonly models = [
-    { id: 'default', languages: ['en'] as const },
+    { id: 'gemini-2.5-flash-tts', languages: ['en'] },
+    { id: 'gemini-2.5-pro-preview-tts', languages: ['en'] },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -21,17 +22,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: GoogleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://texttospeech.googleapis.com/v1';
+    this.baseURL = config.baseURL ?? 'https://generativelanguage.googleapis.com/v1beta';
     this.fetchFn = config.fetch ?? globalThis.fetch;
-  }
-
-  /**
-   * Derives languageCode from a voice name.
-   * E.g., "en-US-Neural2-A" → "en-US"
-   */
-  private deriveLanguageCode(voice: string): string {
-    const parts = voice.split('-');
-    return parts.slice(0, 2).join('-');
   }
 
   async generate(options: {
@@ -46,19 +38,33 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const apiKey = resolveApiKey(this.apiKey, 'GOOGLE_API_KEY', 'Google Cloud TTS');
+    const apiKey = resolveApiKey(this.apiKey, 'GOOGLE_API_KEY', 'Google');
 
-    const voiceName = options.voice ?? 'en-US-Neural2-A';
-    const languageCode = this.deriveLanguageCode(voiceName);
+    const voiceName = options.voice ?? 'Kore';
 
-    const body: Record<string, unknown> = {
-      ...options.providerOptions,
-      input: { text: options.text },
-      voice: { name: voiceName, languageCode },
-      audioConfig: { audioEncoding: 'MP3' },
+    const speechConfig: Record<string, unknown> = {
+      voice_config: {
+        prebuilt_voice_config: {
+          voice_name: voiceName,
+        },
+      },
     };
 
-    const url = `${this.baseURL}/text:synthesize?key=${apiKey}`;
+    const body: Record<string, unknown> = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: options.text }],
+        },
+      ],
+      generationConfig: {
+        responseModalities: ['audio'],
+        speech_config: speechConfig,
+        ...options.providerOptions,
+      },
+    };
+
+    const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
 
     const response = await this.fetchFn(url, {
       method: 'POST',
@@ -72,11 +78,25 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `google/${options.modelId}`);
 
-    const json = (await response.json()) as { audioContent: string };
+    const json = await response.json() as {
+      candidates: Array<{
+        content: {
+          parts: Array<{ inlineData?: { mimeType: string; data: string } }>;
+        };
+      }>;
+    };
+
+    const part = json.candidates?.[0]?.content?.parts?.find(
+      (p) => p.inlineData != null,
+    );
+
+    if (!part?.inlineData) {
+      throw new Error('No audio data in Gemini TTS response');
+    }
 
     return {
-      audio: json.audioContent,
-      mediaType: 'audio/mpeg',
+      audio: part.inlineData.data,
+      mediaType: part.inlineData.mimeType ?? 'audio/mp3',
     };
   }
 }

@@ -37,20 +37,20 @@ result.audio.mediaType;   // "audio/mpeg"
 
 Use `provider/model` strings. Passing just the provider name uses its default model.
 
-| Provider | String Prefix | Default Model | Env Var |
-|---|---|---|---|
-| OpenAI | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` |
-| ElevenLabs | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` |
-| Deepgram | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` |
-| Cartesia | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` |
-| Hume | `hume` | `octave-2` | `HUME_API_KEY` |
-| Google Cloud TTS | `google` | `default` | `GOOGLE_API_KEY` |
-| Fish Audio | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
-| Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
-| Murf | `murf` | `GEN2` | `MURF_API_KEY` |
-| Resemble | `resemble` | `default` | `RESEMBLE_API_KEY` |
-| fal | `fal` | *(user-specified)* | `FAL_API_KEY` |
-| Mistral | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
+| Provider | String Prefix | Default Model | Env Var | Docs |
+|---|---|---|---|---|
+| [OpenAI](https://platform.openai.com/docs/guides/text-to-speech) | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` | [API Reference](https://platform.openai.com/docs/api-reference/audio/createSpeech) |
+| [ElevenLabs](https://elevenlabs.io/docs) | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` | [API Reference](https://elevenlabs.io/docs/api-reference/text-to-speech/convert) |
+| [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` | [API Reference](https://developers.deepgram.com/docs/tts-models) |
+| [Cartesia](https://docs.cartesia.ai) | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` | [API Reference](https://docs.cartesia.ai/api-reference/tts/bytes) |
+| [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `octave-2` | `HUME_API_KEY` | [API Reference](https://dev.hume.ai/reference/text-to-speech-tts/synthesize-json) |
+| [Google (Gemini TTS)](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-tts` | `GOOGLE_API_KEY` | [API Reference](https://ai.google.dev/gemini-api/docs/text-generation) |
+| [Fish Audio](https://docs.fish.audio) | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` | [API Reference](https://docs.fish.audio/developer-guide/core-features/text-to-speech) |
+| [Unreal Speech](https://docs.v8.unrealspeech.com) | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` | [API Reference](https://docs.v8.unrealspeech.com) |
+| [Murf](https://murf.ai/api/docs) | `murf` | `GEN2` | `MURF_API_KEY` | [API Reference](https://murf.ai/api/docs/api-reference/text-to-speech/generate) |
+| [Resemble](https://docs.resemble.ai) | `resemble` | `default` | `RESEMBLE_API_KEY` | [API Reference](https://docs.resemble.ai/api-reference/text-to-speech/synthesize) |
+| [fal](https://fal.ai/models) | `fal` | *(user-specified)* | `FAL_API_KEY` | [API Reference](https://fal.ai/models) |
+| [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` | [API Reference](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) |
 
 ```ts
 generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'alloy' });
