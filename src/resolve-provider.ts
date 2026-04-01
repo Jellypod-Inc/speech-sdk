@@ -2,6 +2,9 @@ import type { SpeechProvider, ResolvedModel } from './speech-provider.js';
 import { SpeechSDKError } from './errors.js';
 import { OpenAISpeechProvider } from './providers/openai/openai-speech-model.js';
 import { ElevenLabsSpeechProvider } from './providers/elevenlabs/elevenlabs-speech-model.js';
+import { DeepgramSpeechProvider } from './providers/deepgram/deepgram-speech-model.js';
+import { LMNTSpeechProvider } from './providers/lmnt/lmnt-speech-model.js';
+import { WellSaidSpeechProvider } from './providers/wellsaid/wellsaid-speech-model.js';
 
 function isResolvedModel(model: unknown): model is ResolvedModel {
   return (
@@ -18,6 +21,12 @@ function createBuiltinProvider(name: string): SpeechProvider {
       return new OpenAISpeechProvider({});
     case 'elevenlabs':
       return new ElevenLabsSpeechProvider({});
+    case 'deepgram':
+      return new DeepgramSpeechProvider({});
+    case 'lmnt':
+      return new LMNTSpeechProvider({});
+    case 'wellsaid':
+      return new WellSaidSpeechProvider({});
     default:
       throw new SpeechSDKError(`Unknown provider: ${name}`);
   }

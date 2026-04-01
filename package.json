@@ -18,6 +18,18 @@
     "./elevenlabs": {
       "types": "./dist/providers/elevenlabs/index.d.ts",
       "default": "./dist/providers/elevenlabs/index.js"
+    },
+    "./deepgram": {
+      "types": "./dist/providers/deepgram/index.d.ts",
+      "default": "./dist/providers/deepgram/index.js"
+    },
+    "./lmnt": {
+      "types": "./dist/providers/lmnt/index.d.ts",
+      "default": "./dist/providers/lmnt/index.js"
+    },
+    "./wellsaid": {
+      "types": "./dist/providers/wellsaid/index.d.ts",
+      "default": "./dist/providers/wellsaid/index.js"
     }
   },
   "files": [
