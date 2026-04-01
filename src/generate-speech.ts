@@ -1,17 +1,15 @@
 import pRetry, { AbortError } from 'p-retry';
-import type { ResolvedModel } from './speech-provider.js';
+import type { ResolvedModel, Voice } from './speech-provider.js';
 import type { SpeechResult } from './speech-result.js';
 import { DefaultGeneratedAudioFile } from './speech-result.js';
 import { NoSpeechGeneratedError, ApiError } from './errors.js';
 import { resolveModel } from './resolve-provider.js';
 
-export async function generateSpeech<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(options: {
-  model: string | ResolvedModel<T>;
+export async function generateSpeech<V extends Voice = Voice>(options: {
+  model: string | ResolvedModel<V>;
   text: string;
-  voice: string;
-  providerOptions?: T;
+  voice: V;
+  providerOptions?: Record<string, unknown>;
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;

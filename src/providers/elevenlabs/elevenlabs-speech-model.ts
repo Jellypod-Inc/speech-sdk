@@ -1,7 +1,6 @@
 import type { SpeechProvider } from '../../speech-provider.js';
 import { SpeechSDKError } from '../../errors.js';
 import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import type { ElevenLabsSpeechOptions } from './elevenlabs-options.js';
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -10,7 +9,7 @@ export interface ElevenLabsSpeechProviderConfig {
 }
 
 export class ElevenLabsSpeechProvider
-  implements SpeechProvider<string, ElevenLabsSpeechOptions>
+  implements SpeechProvider<string, string>
 {
   readonly id = 'elevenlabs';
   readonly defaultModel = 'eleven_multilingual_v2';
@@ -57,7 +56,7 @@ export class ElevenLabsSpeechProvider
     modelId: string;
     text: string;
     voice?: string;
-    providerOptions?: ElevenLabsSpeechOptions;
+    providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{

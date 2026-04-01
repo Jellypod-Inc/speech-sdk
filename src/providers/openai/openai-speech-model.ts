@@ -1,6 +1,5 @@
 import type { SpeechProvider } from '../../speech-provider.js';
 import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import type { OpenAISpeechOptions } from './openai-options.js';
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
@@ -8,7 +7,7 @@ export interface OpenAISpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeechOptions> {
+export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   readonly id = 'openai';
   readonly defaultModel = 'gpt-4o-mini-tts';
 
@@ -42,7 +41,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, OpenAISpeech
     modelId: string;
     text: string;
     voice?: string;
-    providerOptions?: OpenAISpeechOptions;
+    providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{

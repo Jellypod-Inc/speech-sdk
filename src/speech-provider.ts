@@ -1,3 +1,8 @@
+export type Voice =
+  | string
+  | { url: string }
+  | { audio: string | Uint8Array }
+
 export interface ModelInfo {
   id: string;
   languages: readonly string[];
@@ -5,7 +10,7 @@ export interface ModelInfo {
 
 export interface SpeechProvider<
   TModel extends string = string,
-  TOptions extends Record<string, unknown> = Record<string, unknown>,
+  TVoice extends Voice = Voice,
 > {
   id: string;
   defaultModel: TModel;
@@ -14,8 +19,8 @@ export interface SpeechProvider<
   generate(options: {
     modelId: string;
     text: string;
-    voice?: string;
-    providerOptions?: TOptions;
+    voice?: TVoice;
+    providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
@@ -25,9 +30,7 @@ export interface SpeechProvider<
   }>;
 }
 
-export interface ResolvedModel<
-  TOptions extends Record<string, unknown> = Record<string, unknown>,
-> {
-  provider: SpeechProvider<string, TOptions>;
+export interface ResolvedModel<TVoice extends Voice = Voice> {
+  provider: SpeechProvider<string, TVoice>;
   modelId: string;
 }
