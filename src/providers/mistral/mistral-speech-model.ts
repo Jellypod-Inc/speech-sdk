@@ -38,6 +38,7 @@ export class MistralSpeechProvider
     mediaType: string;
   }> {
     const body: Record<string, unknown> = {
+      response_format: 'mp3',
       ...options.providerOptions,
       model: options.modelId,
       input: options.text,

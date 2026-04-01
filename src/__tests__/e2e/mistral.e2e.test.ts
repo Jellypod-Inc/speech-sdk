@@ -11,7 +11,7 @@ describe.skipIf(!hasKey)('Mistral e2e', () => {
     const result = await generateSpeech({
       model: 'mistral/voxtral-mini-tts-2603',
       text: TEST_TEXT,
-      voice: 'jessica',
+      voice: 'en_paul_neutral',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ describe.skipIf(!hasKey)('Mistral e2e', () => {
     const result = await generateSpeech({
       model: mistral(),
       text: TEST_TEXT,
-      voice: 'jessica',
+      voice: 'en_paul_neutral',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
