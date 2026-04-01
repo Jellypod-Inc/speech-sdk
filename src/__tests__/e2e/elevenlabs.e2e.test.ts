@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createElevenLabs } from '../../providers/elevenlabs/elevenlabs-provider.js';
+import { createElevenLabs } from '../../providers/elevenlabs/index.js';
 
 const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
 // ElevenLabs default "George" voice — replace if this voice ID expires

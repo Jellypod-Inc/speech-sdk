@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createOpenAI } from '../../providers/openai/openai-provider.js';
+import { createOpenAI } from '../../providers/openai/index.js';
 
 const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
 const VOICE = 'alloy';

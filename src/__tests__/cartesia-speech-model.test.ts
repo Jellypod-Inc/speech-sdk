@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CartesiaSpeechProvider } from '../providers/cartesia/cartesia-speech-model.js';
+import { CartesiaSpeechProvider } from '../providers/cartesia/index.js';
 
 describe('CartesiaSpeechProvider', () => {
   it('calls the correct URL', async () => {

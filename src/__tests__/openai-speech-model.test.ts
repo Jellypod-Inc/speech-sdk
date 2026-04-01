@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { OpenAISpeechProvider } from '../providers/openai/openai-speech-model.js';
+import { OpenAISpeechProvider } from '../providers/openai/index.js';
 
 describe('OpenAISpeechProvider', () => {
   it('calls the correct URL with correct body', async () => {

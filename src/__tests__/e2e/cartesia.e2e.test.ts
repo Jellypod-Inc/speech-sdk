@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createCartesia } from '../../providers/cartesia/cartesia-provider.js';
+import { createCartesia } from '../../providers/cartesia/index.js';
 
 const hasKey = !!process.env.CARTESIA_API_KEY;
 

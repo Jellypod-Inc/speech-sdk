@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
-import { createDeepgram } from '../../providers/deepgram/deepgram-provider.js';
+import { createDeepgram } from '../../providers/deepgram/index.js';
 
 const hasKey = !!process.env.DEEPGRAM_API_KEY;
 

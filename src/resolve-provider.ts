@@ -1,9 +1,9 @@
 import type { SpeechProvider, ResolvedModel } from './speech-provider.js';
 import { SpeechSDKError } from './errors.js';
-import { OpenAISpeechProvider } from './providers/openai/openai-speech-model.js';
-import { ElevenLabsSpeechProvider } from './providers/elevenlabs/elevenlabs-speech-model.js';
-import { DeepgramSpeechProvider } from './providers/deepgram/deepgram-speech-model.js';
-import { CartesiaSpeechProvider } from './providers/cartesia/cartesia-speech-model.js';
+import { OpenAISpeechProvider } from './providers/openai/index.js';
+import { ElevenLabsSpeechProvider } from './providers/elevenlabs/index.js';
+import { DeepgramSpeechProvider } from './providers/deepgram/index.js';
+import { CartesiaSpeechProvider } from './providers/cartesia/index.js';
 import { HumeSpeechProvider } from './providers/hume/hume-speech-model.js';
 import { GoogleSpeechProvider } from './providers/google/google-speech-model.js';
 import { FishAudioSpeechProvider } from './providers/fish-audio/fish-audio-speech-model.js';

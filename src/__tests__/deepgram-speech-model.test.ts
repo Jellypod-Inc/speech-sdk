@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { DeepgramSpeechProvider } from '../providers/deepgram/deepgram-speech-model.js';
+import { DeepgramSpeechProvider } from '../providers/deepgram/index.js';
 
 describe('DeepgramSpeechProvider', () => {
   it('calls the correct URL with model+voice in query param', async () => {
