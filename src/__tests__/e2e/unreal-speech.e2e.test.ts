@@ -11,7 +11,7 @@ describe.skipIf(!hasKey)('Unreal Speech e2e', () => {
     const result = await generateSpeech({
       model: 'unreal-speech/default',
       text: TEST_TEXT,
-      voice: 'Scarlett',
+      voice: 'Sierra',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ describe.skipIf(!hasKey)('Unreal Speech e2e', () => {
     const result = await generateSpeech({
       model: unrealSpeech(),
       text: TEST_TEXT,
-      voice: 'Scarlett',
+      voice: 'Sierra',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
