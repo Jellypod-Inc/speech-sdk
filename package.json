@@ -30,6 +30,10 @@
     "./wellsaid": {
       "types": "./dist/providers/wellsaid/index.d.ts",
       "default": "./dist/providers/wellsaid/index.js"
+    },
+    "./mistral": {
+      "types": "./dist/providers/mistral/index.d.ts",
+      "default": "./dist/providers/mistral/index.js"
     }
   },
   "files": [
