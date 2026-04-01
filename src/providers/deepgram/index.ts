@@ -12,7 +12,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'aura-2';
 
   readonly models = [
-    { id: 'aura-2', languages: ['en'] },
+    { id: 'aura-2', languages: ['en', 'es', 'de', 'fr', 'it', 'ja', 'nl'], releaseDate: '2025-04-15', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
   ] as const;
 
   private readonly apiKey: string | undefined;

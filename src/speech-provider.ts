@@ -6,6 +6,10 @@ export type Voice =
 export interface ModelInfo {
   id: string;
   languages: readonly string[];
+  releaseDate: string;
+  openSource: boolean;
+  inlineVoiceCloning: boolean;
+  zeroDataRetention: boolean;
 }
 
 export interface SpeechProvider<

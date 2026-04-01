@@ -12,8 +12,8 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'GEN2';
 
   readonly models = [
-    { id: 'GEN2', languages: ['en'] },
-    { id: 'FALCON', languages: ['en'] },
+    { id: 'GEN2', languages: ['en', 'de', 'es', 'fr', 'zh', 'ar', 'hi', 'bn', 'ta', 'pt', 'it', 'ja', 'ko', 'nl', 'pl', 'ru', 'sv', 'tr', 'id', 'ms', 'tl', 'cs', 'fi', 'th', 'vi', 'da', 'no', 'ro', 'el', 'hu', 'uk', 'sk', 'bg'], releaseDate: '2025-01-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
+    { id: 'FALCON', languages: ['en'], releaseDate: '2025-01-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

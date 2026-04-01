@@ -13,7 +13,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
   readonly defaultModel = 'default';
 
   readonly models = [
-    { id: 'default', languages: ['en'] },
+    { id: 'default', languages: ['en', 'zh', 'hi', 'es', 'pt', 'ja', 'fr', 'it'], releaseDate: '2025-06-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;

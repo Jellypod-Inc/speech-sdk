@@ -36,10 +36,10 @@ export class ElevenLabsSpeechProvider
   ] as const;
 
   readonly models = [
-    { id: 'eleven_v3', languages: ElevenLabsSpeechProvider.V3_LANGUAGES },
-    { id: 'eleven_multilingual_v2', languages: ElevenLabsSpeechProvider.V2_LANGUAGES },
-    { id: 'eleven_flash_v2_5', languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES },
-    { id: 'eleven_flash_v2', languages: ['en'] as const },
+    { id: 'eleven_v3', languages: ElevenLabsSpeechProvider.V3_LANGUAGES, releaseDate: '2025-06-08', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    { id: 'eleven_multilingual_v2', languages: ElevenLabsSpeechProvider.V2_LANGUAGES, releaseDate: '2023-08-22', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    { id: 'eleven_flash_v2_5', languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES, releaseDate: '2024-12-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    { id: 'eleven_flash_v2', languages: ['en'] as const, releaseDate: '2024-12-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
   ] as const;
 
   private readonly apiKey: string | undefined;

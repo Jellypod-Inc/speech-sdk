@@ -13,7 +13,7 @@ export class MistralSpeechProvider
   readonly id = 'mistral';
   readonly defaultModel = 'voxtral-mini-tts-2603';
   readonly models = [
-    { id: 'voxtral-mini-tts-2603', languages: ['en'] as const },
+    { id: 'voxtral-mini-tts-2603', languages: ['en', 'fr', 'de', 'es', 'nl', 'pt', 'it', 'hi', 'ar'] as const, releaseDate: '2026-03-23', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
   ] as const;
 
   private readonly apiKey: string | undefined;
