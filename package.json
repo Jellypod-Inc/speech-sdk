@@ -55,11 +55,7 @@
       "types": "./dist/providers/resemble/index.d.ts",
       "default": "./dist/providers/resemble/index.js"
     },
-    "./wellsaid": {
-      "types": "./dist/providers/wellsaid/index.d.ts",
-      "default": "./dist/providers/wellsaid/index.js"
-    },
-    "./fal": {
+"./fal": {
       "types": "./dist/providers/fal/index.d.ts",
       "default": "./dist/providers/fal/index.js"
     },

@@ -50,7 +50,6 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
 | Murf | `murf` | `GEN2` | `MURF_API_KEY` |
 | Resemble | `resemble` | `default` | `RESEMBLE_API_KEY` |
-| WellSaid Labs | `wellsaid` | `default` | `WELLSAID_API_KEY` |
 | fal | `fal` | *(user-specified)* | `FAL_API_KEY` |
 | Mistral | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
 

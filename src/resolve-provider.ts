@@ -11,7 +11,6 @@ import { FishAudioSpeechProvider } from './providers/fish-audio/fish-audio-speec
 import { UnrealSpeechProvider } from './providers/unreal-speech/unreal-speech-speech-model.js';
 import { MurfSpeechProvider } from './providers/murf/murf-speech-model.js';
 import { ResembleSpeechProvider } from './providers/resemble/resemble-speech-model.js';
-import { WellSaidSpeechProvider } from './providers/wellsaid/wellsaid-speech-model.js';
 import { FalSpeechProvider } from './providers/fal/fal-speech-model.js';
 import { MistralSpeechProvider } from './providers/mistral/mistral-speech-model.js';
 
@@ -48,9 +47,7 @@ case 'hume':
       return new MurfSpeechProvider({});
     case 'resemble':
       return new ResembleSpeechProvider({});
-    case 'wellsaid':
-      return new WellSaidSpeechProvider({});
-    case 'fal':
+case 'fal':
       return new FalSpeechProvider({});
     case 'mistral':
       return new MistralSpeechProvider({});
