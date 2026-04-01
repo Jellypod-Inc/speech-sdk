@@ -6,7 +6,7 @@ const hasKey = !!process.env.RESEMBLE_API_KEY;
 
 describe.skipIf(!hasKey)('Resemble e2e', () => {
   const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
-  const voice = 'fb2d2858';
+  const voice = process.env.RESEMBLE_VOICE_UUID ?? 'fb2d2858';
 
   it('generates audio via string model identifier', async () => {
     const result = await generateSpeech({

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm install              # install dependencies
 pnpm build                # compile TypeScript (tsc)
 pnpm test                 # run unit tests
-pnpm test -- --filter "test name"  # run a single test by name
+pnpm test -- -t "test name"  # run a single test by name
 pnpm run test:e2e         # run e2e tests (requires OPENAI_API_KEY / ELEVENLABS_API_KEY)
 pnpm run typecheck        # type-check without emitting
 ```

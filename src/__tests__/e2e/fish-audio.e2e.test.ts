@@ -11,7 +11,7 @@ describe.skipIf(!hasKey)('Fish Audio e2e', () => {
     const result = await generateSpeech({
       model: 'fish-audio/s2-pro',
       text: TEST_TEXT,
-      voice: '59e9dc1cb20c452584788a2690c80970',
+      voice: process.env.FISH_AUDIO_VOICE_ID ?? '59e9dc1cb20c452584788a2690c80970',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ describe.skipIf(!hasKey)('Fish Audio e2e', () => {
     const result = await generateSpeech({
       model: fishAudio(),
       text: TEST_TEXT,
-      voice: '59e9dc1cb20c452584788a2690c80970',
+      voice: process.env.FISH_AUDIO_VOICE_ID ?? '59e9dc1cb20c452584788a2690c80970',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

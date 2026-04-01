@@ -101,9 +101,12 @@ const result = await generateSpeech({
   text: 'Hello!',
   voice: { audio: 'base64-encoded-audio...' },
 });
+```
 
-// Clone from URL (fal)
-import { createFal } from '@speech-sdk/core/fal';
+Clone from a URL (fal):
+
+```ts
+import { createFal } from '@speech-sdk/core/fal-ai';
 
 const fal = createFal();
 const result = await generateSpeech({

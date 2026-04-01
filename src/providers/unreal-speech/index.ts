@@ -41,9 +41,9 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/speech`;
 
     const body: Record<string, unknown> = {
+      ...options.providerOptions,
       AudioFormat: 'mp3',
       OutputFormat: 'uri',
-      ...options.providerOptions,
       VoiceId: options.voice,
       Text: options.text,
     };
