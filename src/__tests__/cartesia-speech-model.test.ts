@@ -27,7 +27,7 @@ describe('CartesiaSpeechProvider', () => {
     expect(init.method).toBe('POST');
   });
 
-  it('sends Bearer auth and Cartesia-Version headers', async () => {
+  it('sends X-API-Key auth and Cartesia-Version headers', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -43,7 +43,7 @@ describe('CartesiaSpeechProvider', () => {
     await provider.generate({ modelId: 'sonic-2', text: 'Hi' });
 
     const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['Authorization']).toBe('Bearer cartesia-key-123');
+    expect(init.headers['X-API-Key']).toBe('cartesia-key-123');
     expect(init.headers['Cartesia-Version']).toBe('2025-04-16');
   });
 
@@ -70,6 +70,11 @@ describe('CartesiaSpeechProvider', () => {
     expect(body.model_id).toBe('sonic-2');
     expect(body.transcript).toBe('Hello world');
     expect(body.voice).toEqual({ mode: 'id', id: 'voice-abc' });
+    expect(body.output_format).toEqual({
+      container: 'wav',
+      encoding: 'pcm_f32le',
+      sample_rate: 44100,
+    });
   });
 
   it('returns binary audio data and mediaType', async () => {

@@ -9,9 +9,10 @@ export interface CartesiaSpeechProviderConfig {
 
 export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   readonly id = 'cartesia';
-  readonly defaultModel = 'sonic-2';
+  readonly defaultModel = 'sonic-3';
 
   readonly models = [
+    { id: 'sonic-3', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'hi', 'it', 'ko', 'nl', 'pl', 'ru', 'sv', 'tr'] },
     { id: 'sonic-2', languages: ['en'] },
   ] as const;
 
@@ -40,6 +41,11 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/tts/bytes`;
 
     const body: Record<string, unknown> = {
+      output_format: {
+        container: 'wav',
+        encoding: 'pcm_f32le',
+        sample_rate: 44100,
+      },
       ...options.providerOptions,
       model_id: options.modelId,
       transcript: options.text,
@@ -50,7 +56,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'CARTESIA_API_KEY', 'Cartesia')}`,
+        'X-API-Key': resolveApiKey(this.apiKey, 'CARTESIA_API_KEY', 'Cartesia'),
         'Cartesia-Version': '2025-04-16',
         ...options.headers,
       },
