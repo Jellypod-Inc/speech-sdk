@@ -1,11 +1,11 @@
 # Speech SDK
 
-Universal Text-To-Speech TypeScript SDK with Multi-Provider Support (ElevenLabs, OpenAI, and more). Cross-platform (Node, Edge, Browser), Open-Source, and Minimal Dependencies.
+Universal Text-To-Speech TypeScript SDK with Multi-Provider Support. Cross-platform (Node, Edge, Browser), Open-Source, and Minimal Dependencies.
 
 ## Install
 
 ```bash
-npm install @Jellypod-Inc/speech-sdk
+npm install @jellypod/speech-sdk
 ```
 
 ### Using an AI Coding Assistant?
@@ -19,7 +19,7 @@ npx skills add Jellypod-Inc/speech-sdk --skill use-speech-sdk
 ## Quick Start
 
 ```ts
-import { generateSpeech } from 'speech-sdk';
+import { generateSpeech } from '@jellypod/speech-sdk';
 
 const result = await generateSpeech({
   model: 'openai/gpt-4o-mini-tts',
@@ -35,21 +35,31 @@ result.audio.mediaType;   // "audio/mpeg"
 
 ## Supported Providers
 
-Use unified `provider/model` strings. Passing just the provider name uses its default model.
+Use `provider/model` strings. Passing just the provider name uses its default model.
 
-| Provider | Model String | Default |
-|---|---|---|
-| OpenAI | `openai/gpt-4o-mini-tts` | Yes |
-| OpenAI | `openai/tts-1` | |
-| OpenAI | `openai/tts-1-hd` | |
-| ElevenLabs | `elevenlabs/eleven_v3` | |
-| ElevenLabs | `elevenlabs/eleven_multilingual_v2` | Yes |
-| ElevenLabs | `elevenlabs/eleven_flash_v2_5` | |
-| ElevenLabs | `elevenlabs/eleven_flash_v2` | |
+| Provider | String Prefix | Default Model | Env Var |
+|---|---|---|---|
+| OpenAI | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` |
+| ElevenLabs | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` |
+| Deepgram | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` |
+| Cartesia | `cartesia` | `sonic-2` | `CARTESIA_API_KEY` |
+| LMNT | `lmnt` | `blizzard` | `LMNT_API_KEY` |
+| Hume | `hume` | `octave-2` | `HUME_API_KEY` |
+| Google Cloud TTS | `google` | `default` | `GOOGLE_API_KEY` |
+| Speechify | `speechify` | `simba-multilingual` | `SPEECHIFY_API_KEY` |
+| Fish Audio | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
+| Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
+| Murf | `murf` | `GEN2` | `MURF_API_KEY` |
+| Resemble | `resemble` | `default` | `RESEMBLE_API_KEY` |
+| WellSaid Labs | `wellsaid` | `default` | `WELLSAID_API_KEY` |
+| fal | `fal` | *(user-specified)* | `FAL_API_KEY` |
+| Mistral | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
 
 ```ts
 generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'alloy' });
-generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });       // uses default model
+generateSpeech({ model: 'elevenlabs/eleven_v3', text: '...', voice: 'voice-id' });
+generateSpeech({ model: 'deepgram/aura-2', text: '...', voice: 'thalia-en' });
+generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });  // uses default model
 ```
 
 Provider-specific API parameters can be passed via `providerOptions` — these are sent directly to the provider's API using the API's own field names.
@@ -59,18 +69,13 @@ Provider-specific API parameters can be passed via `providerOptions` — these a
 Use factory functions when you need custom API keys, base URLs, or fetch implementations:
 
 ```ts
-import { generateSpeech } from 'speech-sdk';
-import { createOpenAI } from 'speech-sdk/openai';
-import { createElevenLabs } from 'speech-sdk/elevenlabs';
+import { generateSpeech } from '@jellypod/speech-sdk';
+import { createOpenAI } from '@jellypod/speech-sdk/openai';
+import { createElevenLabs } from '@jellypod/speech-sdk/elevenlabs';
 
 const myOpenAI = createOpenAI({
   apiKey: 'sk-...',
   baseURL: 'https://my-proxy.com/v1',
-});
-
-const myElevenLabs = createElevenLabs({
-  apiKey: '...',
-  baseURL: 'https://my-proxy.com',
 });
 
 const result = await generateSpeech({
@@ -82,14 +87,34 @@ const result = await generateSpeech({
 
 ### API Key Resolution
 
-When using string models (e.g., `'openai/tts-1'`), API keys are resolved from environment variables:
+When using string models (e.g., `'openai/tts-1'`), API keys are resolved from environment variables (see table above). Factory functions accept an explicit `apiKey` option which takes precedence.
 
-| Provider | Environment Variable |
-|---|---|
-| OpenAI | `OPENAI_API_KEY` |
-| ElevenLabs | `ELEVENLABS_API_KEY` |
+## Voice Cloning
 
-Factory functions accept an explicit `apiKey` option which takes precedence over environment variables.
+Some providers support voice cloning via reference audio. Pass a voice object instead of a string:
+
+```ts
+import { createMistral } from '@jellypod/speech-sdk/mistral';
+
+const mistral = createMistral();
+
+// Clone from base64 audio
+const result = await generateSpeech({
+  model: mistral(),
+  text: 'Hello!',
+  voice: { audio: 'base64-encoded-audio...' },
+});
+
+// Clone from URL (fal)
+import { createFal } from '@jellypod/speech-sdk/fal';
+
+const fal = createFal();
+const result = await generateSpeech({
+  model: fal('fal-ai/chatterbox'),
+  text: 'Hello!',
+  voice: { url: 'https://example.com/reference.wav' },
+});
+```
 
 ## Options
 
@@ -97,7 +122,7 @@ Factory functions accept an explicit `apiKey` option which takes precedence over
 generateSpeech({
   model: string | ResolvedModel,  // required
   text: string,                   // required
-  voice: string,                  // required
+  voice: Voice,                   // required
   providerOptions?: object,       // provider-specific API params
   maxRetries?: number,            // default: 2 (retries on 5xx/network errors)
   abortSignal?: AbortSignal,      // cancel the request
@@ -121,7 +146,7 @@ interface SpeechResult {
 ## Error Handling
 
 ```ts
-import { generateSpeech, ApiError, SpeechSDKError } from 'speech-sdk';
+import { generateSpeech, ApiError, SpeechSDKError } from '@jellypod/speech-sdk';
 
 try {
   const result = await generateSpeech({ ... });
@@ -149,12 +174,11 @@ Built-in retry with exponential backoff via [p-retry](https://github.com/sindres
 ```bash
 pnpm install
 pnpm test                       # unit tests
-pnpm run test:e2e               # all e2e tests (requires API keys)
-pnpm run test:e2e openai        # only OpenAI e2e tests
-pnpm run test:e2e elevenlabs    # only ElevenLabs e2e tests
+pnpm run test:e2e               # e2e tests (requires API keys)
+pnpm run typecheck              # type-check without emitting
 ```
 
-E2E tests hit real provider APIs. Set `OPENAI_API_KEY` and `ELEVENLABS_API_KEY` in a `.env` file at the project root, or export them in your shell.
+E2E tests hit real provider APIs. Set the relevant API key environment variables in a `.env` file or export them in your shell.
 
 ## License
 
