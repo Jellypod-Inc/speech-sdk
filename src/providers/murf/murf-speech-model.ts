@@ -13,6 +13,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
   readonly models = [
     { id: 'GEN2', languages: ['en'] },
+    { id: 'FALCON', languages: ['en'] },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -33,18 +34,26 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
-    audio: string;
+    audio: string | Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const url = `${this.baseURL}/speech/generate`;
+    const isFalcon = options.modelId === 'FALCON';
+    const url = isFalcon
+      ? `${this.baseURL}/speech/stream`
+      : `${this.baseURL}/speech/generate`;
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,
       voiceId: options.voice,
       text: options.text,
-      encodeAsBase64: true,
     };
+
+    if (isFalcon) {
+      body.model = 'FALCON';
+    } else {
+      body.encodeAsBase64 = true;
+    }
 
     const response = await this.fetchFn(url, {
       method: 'POST',
@@ -59,8 +68,16 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `murf/${options.modelId}`);
 
-    const json = await response.json() as { encodedAudio: string };
+    if (isFalcon) {
+      const arrayBuffer = await response.arrayBuffer();
+      const mediaType = response.headers.get('content-type') ?? 'audio/wav';
+      return {
+        audio: new Uint8Array(arrayBuffer),
+        mediaType,
+      };
+    }
 
+    const json = await response.json() as { encodedAudio: string };
     return {
       audio: json.encodedAudio,
       mediaType: 'audio/wav',

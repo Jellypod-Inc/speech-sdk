@@ -152,4 +152,68 @@ describe('MurfSpeechProvider', () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.speed).toBe(1.2);
   });
+
+  describe('FALCON model', () => {
+    it('uses /speech/stream endpoint', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'audio/wav' }),
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      });
+
+      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+      await provider.generate({
+        modelId: 'FALCON',
+        text: 'Hello',
+        voice: 'en-US-natalie',
+      });
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://api.murf.ai/v1/speech/stream');
+    });
+
+    it('sends model: FALCON in body and no encodeAsBase64', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'audio/wav' }),
+        arrayBuffer: async () => new Uint8Array([1]).buffer,
+      });
+
+      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+      await provider.generate({
+        modelId: 'FALCON',
+        text: 'Hello',
+        voice: 'en-US-natalie',
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model).toBe('FALCON');
+      expect(body.encodeAsBase64).toBeUndefined();
+    });
+
+    it('returns binary audio from stream response', async () => {
+      const audioData = new Uint8Array([10, 20, 30]);
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'audio/wav' }),
+        arrayBuffer: async () => audioData.buffer,
+      });
+
+      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+
+      const result = await provider.generate({
+        modelId: 'FALCON',
+        text: 'Hello',
+        voice: 'en-US-natalie',
+      });
+
+      expect(new Uint8Array(result.audio as Uint8Array)).toEqual(audioData);
+      expect(result.mediaType).toBe('audio/wav');
+    });
+  });
 });
