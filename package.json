@@ -23,13 +23,49 @@
       "types": "./dist/providers/deepgram/index.d.ts",
       "default": "./dist/providers/deepgram/index.js"
     },
+    "./cartesia": {
+      "types": "./dist/providers/cartesia/index.d.ts",
+      "default": "./dist/providers/cartesia/index.js"
+    },
     "./lmnt": {
       "types": "./dist/providers/lmnt/index.d.ts",
       "default": "./dist/providers/lmnt/index.js"
     },
+    "./hume": {
+      "types": "./dist/providers/hume/index.d.ts",
+      "default": "./dist/providers/hume/index.js"
+    },
+    "./google": {
+      "types": "./dist/providers/google/index.d.ts",
+      "default": "./dist/providers/google/index.js"
+    },
+    "./speechify": {
+      "types": "./dist/providers/speechify/index.d.ts",
+      "default": "./dist/providers/speechify/index.js"
+    },
+    "./fish-audio": {
+      "types": "./dist/providers/fish-audio/index.d.ts",
+      "default": "./dist/providers/fish-audio/index.js"
+    },
+    "./unreal-speech": {
+      "types": "./dist/providers/unreal-speech/index.d.ts",
+      "default": "./dist/providers/unreal-speech/index.js"
+    },
+    "./murf": {
+      "types": "./dist/providers/murf/index.d.ts",
+      "default": "./dist/providers/murf/index.js"
+    },
+    "./resemble": {
+      "types": "./dist/providers/resemble/index.d.ts",
+      "default": "./dist/providers/resemble/index.js"
+    },
     "./wellsaid": {
       "types": "./dist/providers/wellsaid/index.d.ts",
       "default": "./dist/providers/wellsaid/index.js"
+    },
+    "./fal": {
+      "types": "./dist/providers/fal/index.d.ts",
+      "default": "./dist/providers/fal/index.js"
     },
     "./mistral": {
       "types": "./dist/providers/mistral/index.d.ts",
