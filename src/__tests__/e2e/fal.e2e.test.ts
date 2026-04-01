@@ -33,17 +33,6 @@ describe.skipIf(!hasKey)('fal e2e', () => {
     });
   });
 
-  describe('chatterbox/text-to-speech', () => {
-    it('generates audio', async () => {
-      const result = await generateSpeech({
-        model: fal('chatterbox/text-to-speech'),
-        text: TEST_TEXT,
-      });
-
-      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    });
-  });
-
   describe('minimax/speech-02-hd', () => {
     it('generates audio', async () => {
       const result = await generateSpeech({
@@ -56,11 +45,26 @@ describe.skipIf(!hasKey)('fal e2e', () => {
     });
   });
 
+  // Voice cloning models — require audio_url reference, tested with providerOptions
+  describe('chatterbox/text-to-speech', () => {
+    it('generates audio with reference voice URL', async () => {
+      const result = await generateSpeech({
+        model: fal('chatterbox/text-to-speech'),
+        text: TEST_TEXT,
+        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+    });
+  });
+
   describe('lux-tts', () => {
-    it('generates audio', async () => {
+    it('generates audio with reference voice URL', async () => {
       const result = await generateSpeech({
         model: fal('lux-tts'),
         text: TEST_TEXT,
+        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        providerOptions: { prompt: TEST_TEXT },
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -68,10 +72,12 @@ describe.skipIf(!hasKey)('fal e2e', () => {
   });
 
   describe('tada/3b/text-to-speech', () => {
-    it('generates audio', async () => {
+    it('generates audio with reference voice URL', async () => {
       const result = await generateSpeech({
         model: fal('tada/3b/text-to-speech'),
         text: TEST_TEXT,
+        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        providerOptions: { prompt: TEST_TEXT },
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -79,10 +85,12 @@ describe.skipIf(!hasKey)('fal e2e', () => {
   });
 
   describe('tada/1b/text-to-speech', () => {
-    it('generates audio', async () => {
+    it('generates audio with reference voice URL', async () => {
       const result = await generateSpeech({
         model: fal('tada/1b/text-to-speech'),
         text: TEST_TEXT,
+        voice: { url: 'https://cdn.thatapicompany.com/audio/male-voice-sample.mp3' },
+        providerOptions: { prompt: TEST_TEXT },
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
