@@ -1,6 +1,8 @@
 # Speech SDK
 
-Universal Text-To-Speech TypeScript SDK with Multi-Provider Support. Cross-platform (Node, Edge, Browser), Open-Source, and Minimal Dependencies.
+The Speech SDK is a lightweight, provider-agnostic TypeScript toolkit designed to help build text-to-speech powered applications using popular providers like OpenAI, ElevenLabs, Deepgram, Cartesia, Google, and more. Cross-platform (Node.js, Edge, Browser) with minimal dependencies.
+
+To learn more about the Speech SDK, check out [https://speechsdk.dev/](https://speechsdk.dev/).
 
 ## Install
 
