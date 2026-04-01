@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateSpeech } from '../../generate-speech.js';
 import { createFishAudio } from '../../providers/fish-audio/fish-audio-provider.js';
 
-const hasKey = !!process.env.FISH_AUDIO_API_KEY && !!process.env.FISH_AUDIO_VOICE_ID;
+const hasKey = !!process.env.FISH_AUDIO_API_KEY;
 
 describe.skipIf(!hasKey)('Fish Audio e2e', () => {
   const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
@@ -11,7 +11,7 @@ describe.skipIf(!hasKey)('Fish Audio e2e', () => {
     const result = await generateSpeech({
       model: 'fish-audio/s2-pro',
       text: TEST_TEXT,
-      voice: process.env.FISH_AUDIO_VOICE_ID!,
+      voice: '59e9dc1cb20c452584788a2690c80970',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ describe.skipIf(!hasKey)('Fish Audio e2e', () => {
     const result = await generateSpeech({
       model: fishAudio(),
       text: TEST_TEXT,
-      voice: process.env.FISH_AUDIO_VOICE_ID!,
+      voice: '59e9dc1cb20c452584788a2690c80970',
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
