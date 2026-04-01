@@ -44,7 +44,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` | [API Reference](https://developers.deepgram.com/docs/tts-models) |
 | [Cartesia](https://docs.cartesia.ai) | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` | [API Reference](https://docs.cartesia.ai/api-reference/tts/bytes) |
 | [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `octave-2` | `HUME_API_KEY` | [API Reference](https://dev.hume.ai/reference/text-to-speech-tts/synthesize-json) |
-| [Google (Gemini TTS)](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-tts` | `GOOGLE_API_KEY` | [API Reference](https://ai.google.dev/gemini-api/docs/text-generation) |
+| [Google (Gemini TTS)](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` | [API Reference](https://ai.google.dev/gemini-api/docs/text-generation) |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` | [API Reference](https://docs.fish.audio/developer-guide/core-features/text-to-speech) |
 | [Unreal Speech](https://docs.v8.unrealspeech.com) | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` | [API Reference](https://docs.v8.unrealspeech.com) |
 | [Murf](https://murf.ai/api/docs) | `murf` | `GEN2` | `MURF_API_KEY` | [API Reference](https://murf.ai/api/docs/api-reference/text-to-speech/generate) |

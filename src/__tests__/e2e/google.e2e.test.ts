@@ -9,7 +9,7 @@ describe.skipIf(!hasKey)('Google (Gemini TTS) e2e', () => {
 
   it('generates audio via string model identifier', async () => {
     const result = await generateSpeech({
-      model: 'google/gemini-2.5-flash-tts',
+      model: 'google/gemini-2.5-flash-preview-tts',
       text: TEST_TEXT,
       voice: 'Kore',
     });

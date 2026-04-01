@@ -9,10 +9,10 @@ export interface GoogleSpeechProviderConfig {
 
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = 'google';
-  readonly defaultModel = 'gemini-2.5-flash-tts';
+  readonly defaultModel = 'gemini-2.5-flash-preview-tts';
 
   readonly models = [
-    { id: 'gemini-2.5-flash-tts', languages: ['en'] },
+    { id: 'gemini-2.5-flash-preview-tts', languages: ['en'] },
     { id: 'gemini-2.5-pro-preview-tts', languages: ['en'] },
   ] as const;
 

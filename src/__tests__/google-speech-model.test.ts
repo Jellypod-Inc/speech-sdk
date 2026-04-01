@@ -24,14 +24,14 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await provider.generate({
-      modelId: 'gemini-2.5-flash-tts',
+      modelId: 'gemini-2.5-flash-preview-tts',
       text: 'Hello',
       voice: 'Kore',
     });
 
     const [url, init] = mockFetch.mock.calls[0];
     expect(url).toBe(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=test-key',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=test-key',
     );
     expect(init.method).toBe('POST');
     expect(init.headers['Authorization']).toBeUndefined();
@@ -42,7 +42,7 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await provider.generate({
-      modelId: 'gemini-2.5-flash-tts',
+      modelId: 'gemini-2.5-flash-preview-tts',
       text: 'Hello world',
       voice: 'Zephyr',
     });
@@ -64,7 +64,7 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     const result = await provider.generate({
-      modelId: 'gemini-2.5-flash-tts',
+      modelId: 'gemini-2.5-flash-preview-tts',
       text: 'Hello',
       voice: 'Kore',
     });
@@ -84,7 +84,7 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'bad-key', fetch: mockFetch });
 
     await expect(
-      provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' }),
+      provider.generate({ modelId: 'gemini-2.5-flash-preview-tts', text: 'Hello', voice: 'Kore' }),
     ).rejects.toThrow();
   });
 
@@ -96,7 +96,7 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await expect(
-      provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' }),
+      provider.generate({ modelId: 'gemini-2.5-flash-preview-tts', text: 'Hello', voice: 'Kore' }),
     ).rejects.toThrow('No audio data');
   });
 
@@ -108,10 +108,10 @@ describe('GoogleSpeechProvider', () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'gemini-2.5-flash-tts', text: 'Hello', voice: 'Kore' });
+    await provider.generate({ modelId: 'gemini-2.5-flash-preview-tts', text: 'Hello', voice: 'Kore' });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=test-key');
+    expect(url).toBe('https://my-proxy.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=test-key');
   });
 
   it('spreads providerOptions into generationConfig', async () => {
@@ -119,7 +119,7 @@ describe('GoogleSpeechProvider', () => {
     const provider = new GoogleSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
 
     await provider.generate({
-      modelId: 'gemini-2.5-flash-tts',
+      modelId: 'gemini-2.5-flash-preview-tts',
       text: 'Hello',
       voice: 'Kore',
       providerOptions: { temperature: 0.5 },
