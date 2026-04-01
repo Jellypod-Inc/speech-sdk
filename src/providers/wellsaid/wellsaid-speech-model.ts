@@ -9,7 +9,7 @@ export interface WellSaidSpeechProviderConfig {
 
 export class WellSaidSpeechProvider implements SpeechProvider<string, string> {
   readonly id = 'wellsaid';
-  readonly defaultModel = '';
+  readonly defaultModel = 'default';
 
   readonly models = [
     { id: 'default', languages: ['en'] },

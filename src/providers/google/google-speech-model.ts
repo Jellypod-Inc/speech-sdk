@@ -42,7 +42,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
-    audio: Uint8Array;
+    audio: string;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
@@ -73,14 +73,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `google/${options.modelId}`);
 
     const json = (await response.json()) as { audioContent: string };
-    const binaryString = atob(json.audioContent);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
 
     return {
-      audio: bytes,
+      audio: json.audioContent,
       mediaType: 'audio/mpeg',
     };
   }

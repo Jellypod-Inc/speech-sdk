@@ -85,9 +85,7 @@ describe('GoogleSpeechProvider', () => {
       voice: 'en-US-Neural2-A',
     });
 
-    // 'test' encoded as base64 is 'dGVzdA=='
-    const expected = new TextEncoder().encode('test');
-    expect(new Uint8Array(result.audio as Uint8Array)).toEqual(expected);
+    expect(result.audio).toBe(mockBase64);
     expect(result.mediaType).toBe('audio/mpeg');
   });
 
