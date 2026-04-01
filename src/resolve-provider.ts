@@ -1,5 +1,20 @@
-import type { ResolvedModel } from './speech-provider.js';
+import type { SpeechProvider, ResolvedModel } from './speech-provider.js';
 import { SpeechSDKError } from './errors.js';
+import { OpenAISpeechProvider } from './providers/openai/openai-speech-model.js';
+import { ElevenLabsSpeechProvider } from './providers/elevenlabs/elevenlabs-speech-model.js';
+import { DeepgramSpeechProvider } from './providers/deepgram/deepgram-speech-model.js';
+import { CartesiaSpeechProvider } from './providers/cartesia/cartesia-speech-model.js';
+import { LMNTSpeechProvider } from './providers/lmnt/lmnt-speech-model.js';
+import { HumeSpeechProvider } from './providers/hume/hume-speech-model.js';
+import { GoogleSpeechProvider } from './providers/google/google-speech-model.js';
+import { SpeechifySpeechProvider } from './providers/speechify/speechify-speech-model.js';
+import { FishAudioSpeechProvider } from './providers/fish-audio/fish-audio-speech-model.js';
+import { UnrealSpeechProvider } from './providers/unreal-speech/unreal-speech-speech-model.js';
+import { MurfSpeechProvider } from './providers/murf/murf-speech-model.js';
+import { ResembleSpeechProvider } from './providers/resemble/resemble-speech-model.js';
+import { WellSaidSpeechProvider } from './providers/wellsaid/wellsaid-speech-model.js';
+import { FalSpeechProvider } from './providers/fal/fal-speech-model.js';
+import { MistralSpeechProvider } from './providers/mistral/mistral-speech-model.js';
 
 function isResolvedModel(model: unknown): model is ResolvedModel {
   return (
@@ -10,6 +25,43 @@ function isResolvedModel(model: unknown): model is ResolvedModel {
   );
 }
 
+function createBuiltinProvider(name: string): SpeechProvider {
+  switch (name) {
+    case 'openai':
+      return new OpenAISpeechProvider({});
+    case 'elevenlabs':
+      return new ElevenLabsSpeechProvider({});
+    case 'deepgram':
+      return new DeepgramSpeechProvider({});
+    case 'cartesia':
+      return new CartesiaSpeechProvider({});
+    case 'lmnt':
+      return new LMNTSpeechProvider({});
+    case 'hume':
+      return new HumeSpeechProvider({});
+    case 'google':
+      return new GoogleSpeechProvider({});
+    case 'speechify':
+      return new SpeechifySpeechProvider({});
+    case 'fish-audio':
+      return new FishAudioSpeechProvider({});
+    case 'unreal-speech':
+      return new UnrealSpeechProvider({});
+    case 'murf':
+      return new MurfSpeechProvider({});
+    case 'resemble':
+      return new ResembleSpeechProvider({});
+    case 'wellsaid':
+      return new WellSaidSpeechProvider({});
+    case 'fal':
+      return new FalSpeechProvider({});
+    case 'mistral':
+      return new MistralSpeechProvider({});
+    default:
+      throw new SpeechSDKError(`Unknown provider: ${name}`);
+  }
+}
+
 export function resolveModel(
   model: string | ResolvedModel,
 ): ResolvedModel {
@@ -17,11 +69,21 @@ export function resolveModel(
     return model;
   }
 
-  throw new SpeechSDKError(
-    `String model identifiers like "${model}" are not supported yet. ` +
-    `Use a provider factory instead:\n\n` +
-    `  import { createOpenAI } from '@jellypod/speech-sdk/openai';\n` +
-    `  const openai = createOpenAI();\n` +
-    `  generateSpeech({ model: openai('tts-1'), ... })`,
-  );
+  const slashIndex = model.indexOf('/');
+  let providerName: string;
+  let modelId: string | undefined;
+
+  if (slashIndex !== -1) {
+    providerName = model.slice(0, slashIndex);
+    modelId = model.slice(slashIndex + 1);
+  } else {
+    providerName = model;
+    modelId = undefined;
+  }
+
+  const provider = createBuiltinProvider(providerName);
+  return {
+    provider,
+    modelId: modelId || provider.defaultModel,
+  };
 }
