@@ -27,11 +27,7 @@
       "types": "./dist/providers/cartesia/index.d.ts",
       "default": "./dist/providers/cartesia/index.js"
     },
-    "./lmnt": {
-      "types": "./dist/providers/lmnt/index.d.ts",
-      "default": "./dist/providers/lmnt/index.js"
-    },
-    "./hume": {
+"./hume": {
       "types": "./dist/providers/hume/index.d.ts",
       "default": "./dist/providers/hume/index.js"
     },

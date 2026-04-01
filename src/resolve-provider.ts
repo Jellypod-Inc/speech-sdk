@@ -4,7 +4,6 @@ import { OpenAISpeechProvider } from './providers/openai/openai-speech-model.js'
 import { ElevenLabsSpeechProvider } from './providers/elevenlabs/elevenlabs-speech-model.js';
 import { DeepgramSpeechProvider } from './providers/deepgram/deepgram-speech-model.js';
 import { CartesiaSpeechProvider } from './providers/cartesia/cartesia-speech-model.js';
-import { LMNTSpeechProvider } from './providers/lmnt/lmnt-speech-model.js';
 import { HumeSpeechProvider } from './providers/hume/hume-speech-model.js';
 import { GoogleSpeechProvider } from './providers/google/google-speech-model.js';
 import { SpeechifySpeechProvider } from './providers/speechify/speechify-speech-model.js';
@@ -35,9 +34,7 @@ function createBuiltinProvider(name: string): SpeechProvider {
       return new DeepgramSpeechProvider({});
     case 'cartesia':
       return new CartesiaSpeechProvider({});
-    case 'lmnt':
-      return new LMNTSpeechProvider({});
-    case 'hume':
+case 'hume':
       return new HumeSpeechProvider({});
     case 'google':
       return new GoogleSpeechProvider({});

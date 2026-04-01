@@ -42,8 +42,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | OpenAI | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` |
 | ElevenLabs | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` |
 | Deepgram | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` |
-| Cartesia | `cartesia` | `sonic-2` | `CARTESIA_API_KEY` |
-| LMNT | `lmnt` | `blizzard` | `LMNT_API_KEY` |
+| Cartesia | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` |
 | Hume | `hume` | `octave-2` | `HUME_API_KEY` |
 | Google Cloud TTS | `google` | `default` | `GOOGLE_API_KEY` |
 | Speechify | `speechify` | `simba-multilingual` | `SPEECHIFY_API_KEY` |
