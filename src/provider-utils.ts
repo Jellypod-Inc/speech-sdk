@@ -24,7 +24,7 @@ export async function handleErrorResponse(
 ): Promise<void> {
   if (!response.ok) {
     const responseBody = await response.text().catch(() => undefined);
-    throw new ApiError(`API error: ${response.status}`, {
+    throw new ApiError(`API error: ${response.status}${responseBody ? ` - ${responseBody}` : ''}`, {
       statusCode: response.status,
       model,
       responseBody,
