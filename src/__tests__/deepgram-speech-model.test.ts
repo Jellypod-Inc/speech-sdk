@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { OpenAISpeechProvider } from '../providers/openai/index.js';
+import { DeepgramSpeechProvider } from '../providers/deepgram/index.js';
 
-describe('OpenAISpeechProvider', () => {
-  it('calls the correct URL with correct body', async () => {
+describe('DeepgramSpeechProvider', () => {
+  it('calls the correct URL with model+voice in query param', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -10,29 +10,27 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'aura-2',
       text: 'Hello world',
-      voice: 'alloy',
+      voice: 'thalia-en',
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://api.openai.com/v1/audio/speech');
+    expect(url).toBe('https://api.deepgram.com/v1/speak?model=aura-2-thalia-en');
     expect(init.method).toBe('POST');
 
     const body = JSON.parse(init.body);
-    expect(body.model).toBe('tts-1');
-    expect(body.input).toBe('Hello world');
-    expect(body.voice).toBe('alloy');
+    expect(body.text).toBe('Hello world');
   });
 
-  it('sends authorization header', async () => {
+  it('uses modelId alone when no voice is provided', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -40,45 +38,34 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
-      apiKey: 'sk-test-123',
-      fetch: mockFetch,
-    });
-
-    await provider.generate({ modelId: 'tts-1', text: 'Hi' });
-
-    const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['Authorization']).toBe('Bearer sk-test-123');
-  });
-
-  it('maps providerOptions to request body', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'content-type': 'audio/wav' }),
-      arrayBuffer: async () => new Uint8Array([1]).buffer,
-    });
-
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
-    await provider.generate({
-      modelId: 'gpt-4o-mini-tts',
-      text: 'Hello',
-      voice: 'nova',
-      providerOptions: {
-        speed: 1.5,
-        instructions: 'Speak slowly',
-        response_format: 'wav',
-      },
+    await provider.generate({ modelId: 'aura-2', text: 'Hi' });
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://api.deepgram.com/v1/speak?model=aura-2');
+  });
+
+  it('sends Token auth header', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'audio/mpeg' }),
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.speed).toBe(1.5);
-    expect(body.instructions).toBe('Speak slowly');
-    expect(body.response_format).toBe('wav');
+    const provider = new DeepgramSpeechProvider({
+      apiKey: 'dg-test-123',
+      fetch: mockFetch,
+    });
+
+    await provider.generate({ modelId: 'aura-2', text: 'Hi' });
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers['Authorization']).toBe('Token dg-test-123');
   });
 
   it('returns audio data and mediaType', async () => {
@@ -90,13 +77,13 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => audioData.buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     const result = await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'aura-2',
       text: 'Hello',
     });
 
@@ -104,7 +91,7 @@ describe('OpenAISpeechProvider', () => {
     expect(result.mediaType).toBe('audio/mpeg');
   });
 
-  it('throws ApiError on non-ok response', async () => {
+  it('throws on error response', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -112,13 +99,13 @@ describe('OpenAISpeechProvider', () => {
       text: async () => '{"error": "invalid_api_key"}',
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'bad-key',
       fetch: mockFetch,
     });
 
     await expect(
-      provider.generate({ modelId: 'tts-1', text: 'Hello' }),
+      provider.generate({ modelId: 'aura-2', text: 'Hello' }),
     ).rejects.toThrow();
   });
 
@@ -130,19 +117,19 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'test-key',
       baseURL: 'https://my-proxy.com/v1',
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'tts-1', text: 'Hello' });
+    await provider.generate({ modelId: 'aura-2', text: 'Hello' });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v1/audio/speech');
+    expect(url).toBe('https://my-proxy.com/v1/speak?model=aura-2');
   });
 
-  it('merges additional headers', async () => {
+  it('spreads providerOptions into body', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -150,18 +137,18 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new DeepgramSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'aura-2',
       text: 'Hello',
-      headers: { 'X-Request-Id': 'abc-123' },
+      providerOptions: { sample_rate: 24000 },
     });
 
-    const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-Request-Id']).toBe('abc-123');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.sample_rate).toBe(24000);
   });
 });

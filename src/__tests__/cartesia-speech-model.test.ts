@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { OpenAISpeechProvider } from '../providers/openai/index.js';
+import { CartesiaSpeechProvider } from '../providers/cartesia/index.js';
 
-describe('OpenAISpeechProvider', () => {
-  it('calls the correct URL with correct body', async () => {
+describe('CartesiaSpeechProvider', () => {
+  it('calls the correct URL', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -10,29 +10,24 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'sonic-2',
       text: 'Hello world',
-      voice: 'alloy',
+      voice: 'voice-123',
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://api.openai.com/v1/audio/speech');
+    expect(url).toBe('https://api.cartesia.ai/tts/bytes');
     expect(init.method).toBe('POST');
-
-    const body = JSON.parse(init.body);
-    expect(body.model).toBe('tts-1');
-    expect(body.input).toBe('Hello world');
-    expect(body.voice).toBe('alloy');
   });
 
-  it('sends authorization header', async () => {
+  it('sends X-API-Key auth and Cartesia-Version headers', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -40,71 +35,72 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
-      apiKey: 'sk-test-123',
+    const provider = new CartesiaSpeechProvider({
+      apiKey: 'cartesia-key-123',
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'tts-1', text: 'Hi' });
+    await provider.generate({ modelId: 'sonic-2', text: 'Hi' });
 
     const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['Authorization']).toBe('Bearer sk-test-123');
+    expect(init.headers['X-API-Key']).toBe('cartesia-key-123');
+    expect(init.headers['Cartesia-Version']).toBe('2025-04-16');
   });
 
-  it('maps providerOptions to request body', async () => {
+  it('sends correct body with nested voice object', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ 'content-type': 'audio/wav' }),
+      headers: new Headers({ 'content-type': 'audio/mpeg' }),
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'gpt-4o-mini-tts',
-      text: 'Hello',
-      voice: 'nova',
-      providerOptions: {
-        speed: 1.5,
-        instructions: 'Speak slowly',
-        response_format: 'wav',
-      },
+      modelId: 'sonic-2',
+      text: 'Hello world',
+      voice: 'voice-abc',
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.speed).toBe(1.5);
-    expect(body.instructions).toBe('Speak slowly');
-    expect(body.response_format).toBe('wav');
+    expect(body.model_id).toBe('sonic-2');
+    expect(body.transcript).toBe('Hello world');
+    expect(body.voice).toEqual({ mode: 'id', id: 'voice-abc' });
+    expect(body.output_format).toEqual({
+      container: 'wav',
+      encoding: 'pcm_f32le',
+      sample_rate: 44100,
+    });
   });
 
-  it('returns audio data and mediaType', async () => {
+  it('returns binary audio data and mediaType', async () => {
     const audioData = new Uint8Array([10, 20, 30]);
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ 'content-type': 'audio/mpeg' }),
+      headers: new Headers({ 'content-type': 'audio/wav' }),
       arrayBuffer: async () => audioData.buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     const result = await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'sonic-2',
       text: 'Hello',
     });
 
     expect(new Uint8Array(result.audio as Uint8Array)).toEqual(audioData);
-    expect(result.mediaType).toBe('audio/mpeg');
+    expect(result.mediaType).toBe('audio/wav');
   });
 
-  it('throws ApiError on non-ok response', async () => {
+  it('throws on error response', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -112,13 +108,13 @@ describe('OpenAISpeechProvider', () => {
       text: async () => '{"error": "invalid_api_key"}',
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'bad-key',
       fetch: mockFetch,
     });
 
     await expect(
-      provider.generate({ modelId: 'tts-1', text: 'Hello' }),
+      provider.generate({ modelId: 'sonic-2', text: 'Hello' }),
     ).rejects.toThrow();
   });
 
@@ -130,19 +126,19 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'test-key',
-      baseURL: 'https://my-proxy.com/v1',
+      baseURL: 'https://my-proxy.com',
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'tts-1', text: 'Hello' });
+    await provider.generate({ modelId: 'sonic-2', text: 'Hello' });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v1/audio/speech');
+    expect(url).toBe('https://my-proxy.com/tts/bytes');
   });
 
-  it('merges additional headers', async () => {
+  it('spreads providerOptions into body', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -150,18 +146,18 @@ describe('OpenAISpeechProvider', () => {
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
 
-    const provider = new OpenAISpeechProvider({
+    const provider = new CartesiaSpeechProvider({
       apiKey: 'test-key',
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'tts-1',
+      modelId: 'sonic-2',
       text: 'Hello',
-      headers: { 'X-Request-Id': 'abc-123' },
+      providerOptions: { output_format: { container: 'wav' } },
     });
 
-    const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-Request-Id']).toBe('abc-123');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.output_format).toEqual({ container: 'wav' });
   });
 });

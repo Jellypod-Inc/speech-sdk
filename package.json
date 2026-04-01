@@ -1,7 +1,7 @@
 {
-  "name": "@jellypod/speech-sdk",
-  "version": "0.0.3",
-  "description": "A TypeScript SDK for text-to-speech with multiple provider support",
+  "name": "@speech-sdk/core",
+  "version": "0.0.1",
+  "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
   "type": "module",
   "packageManager": "pnpm@10.11.1",
   "main": "./dist/index.js",
@@ -18,6 +18,46 @@
     "./elevenlabs": {
       "types": "./dist/providers/elevenlabs/index.d.ts",
       "default": "./dist/providers/elevenlabs/index.js"
+    },
+    "./deepgram": {
+      "types": "./dist/providers/deepgram/index.d.ts",
+      "default": "./dist/providers/deepgram/index.js"
+    },
+    "./cartesia": {
+      "types": "./dist/providers/cartesia/index.d.ts",
+      "default": "./dist/providers/cartesia/index.js"
+    },
+"./hume": {
+      "types": "./dist/providers/hume/index.d.ts",
+      "default": "./dist/providers/hume/index.js"
+    },
+    "./google": {
+      "types": "./dist/providers/google/index.d.ts",
+      "default": "./dist/providers/google/index.js"
+    },
+"./fish-audio": {
+      "types": "./dist/providers/fish-audio/index.d.ts",
+      "default": "./dist/providers/fish-audio/index.js"
+    },
+    "./unreal-speech": {
+      "types": "./dist/providers/unreal-speech/index.d.ts",
+      "default": "./dist/providers/unreal-speech/index.js"
+    },
+    "./murf": {
+      "types": "./dist/providers/murf/index.d.ts",
+      "default": "./dist/providers/murf/index.js"
+    },
+    "./resemble": {
+      "types": "./dist/providers/resemble/index.d.ts",
+      "default": "./dist/providers/resemble/index.js"
+    },
+"./fal-ai": {
+      "types": "./dist/providers/fal/index.d.ts",
+      "default": "./dist/providers/fal/index.js"
+    },
+    "./mistral": {
+      "types": "./dist/providers/mistral/index.d.ts",
+      "default": "./dist/providers/mistral/index.js"
     }
   },
   "files": [

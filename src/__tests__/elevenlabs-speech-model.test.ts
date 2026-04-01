@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ElevenLabsSpeechProvider } from '../providers/elevenlabs/elevenlabs-speech-model.js';
+import { ElevenLabsSpeechProvider } from '../providers/elevenlabs/index.js';
 
 describe('ElevenLabsSpeechProvider', () => {
   it('calls the correct URL with voice_id in path', async () => {
