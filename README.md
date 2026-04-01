@@ -5,7 +5,7 @@ Universal Text-To-Speech TypeScript SDK with Multi-Provider Support. Cross-platf
 ## Install
 
 ```bash
-npm install @jellypod/speech-sdk
+npm install @speech-sdk/core
 ```
 
 ### Using an AI Coding Assistant?
@@ -13,13 +13,13 @@ npm install @jellypod/speech-sdk
 Add the speech-sdk skill to give your AI assistant full knowledge of this library:
 
 ```bash
-npx skills add Jellypod-Inc/speech-sdk --skill use-speech-sdk
+npx skills add Jellypod-Inc/speech-sdk --skill speech-sdk
 ```
 
 ## Quick Start
 
 ```ts
-import { generateSpeech } from '@jellypod/speech-sdk';
+import { generateSpeech } from '@speech-sdk/core';
 
 const result = await generateSpeech({
   model: 'openai/gpt-4o-mini-tts',
@@ -66,9 +66,9 @@ Provider-specific API parameters can be passed via `providerOptions` — these a
 Use factory functions when you need custom API keys, base URLs, or fetch implementations:
 
 ```ts
-import { generateSpeech } from '@jellypod/speech-sdk';
-import { createOpenAI } from '@jellypod/speech-sdk/openai';
-import { createElevenLabs } from '@jellypod/speech-sdk/elevenlabs';
+import { generateSpeech } from '@speech-sdk/core';
+import { createOpenAI } from '@speech-sdk/core/openai';
+import { createElevenLabs } from '@speech-sdk/core/elevenlabs';
 
 const myOpenAI = createOpenAI({
   apiKey: 'sk-...',
@@ -91,7 +91,7 @@ When using string models (e.g., `'openai/tts-1'`), API keys are resolved from en
 Some providers support voice cloning via reference audio. Pass a voice object instead of a string:
 
 ```ts
-import { createMistral } from '@jellypod/speech-sdk/mistral';
+import { createMistral } from '@speech-sdk/core/mistral';
 
 const mistral = createMistral();
 
@@ -103,7 +103,7 @@ const result = await generateSpeech({
 });
 
 // Clone from URL (fal)
-import { createFal } from '@jellypod/speech-sdk/fal';
+import { createFal } from '@speech-sdk/core/fal';
 
 const fal = createFal();
 const result = await generateSpeech({
@@ -143,7 +143,7 @@ interface SpeechResult {
 ## Error Handling
 
 ```ts
-import { generateSpeech, ApiError, SpeechSDKError } from '@jellypod/speech-sdk';
+import { generateSpeech, ApiError, SpeechSDKError } from '@speech-sdk/core';
 
 try {
   const result = await generateSpeech({ ... });
