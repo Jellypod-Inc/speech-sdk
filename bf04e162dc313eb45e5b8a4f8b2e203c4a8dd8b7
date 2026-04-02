@@ -1,0 +1,38 @@
+src/__tests__/generate-speech.test.ts
+  522e2f507cb6f2c0 231-243
+src/generate-speech.ts
+  522e2f507cb6f2c0 47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "bf04e162dc313eb45e5b8a4f8b2e203c4a8dd8b7",
+  "prompts": {
+    "522e2f507cb6f2c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86aaa6a-5797-4651-b838-59550357de92",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 16,
+      "total_deletions": 1,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 1,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
