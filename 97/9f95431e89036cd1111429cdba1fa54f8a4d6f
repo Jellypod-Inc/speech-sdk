@@ -1,0 +1,45 @@
+src/audio-tags.ts
+  522e2f507cb6f2c0 1-24
+src/index.ts
+  522e2f507cb6f2c0 3
+src/providers/cartesia/index.ts
+  522e2f507cb6f2c0 3,20-36,47-94
+src/errors.ts
+  522e2f507cb6f2c0 31-32
+src/providers/elevenlabs/index.ts
+  522e2f507cb6f2c0 4,46-47,58-71
+src/generate-speech.ts
+  522e2f507cb6f2c0 7,18,22,24-49,55,87
+src/__tests__/audio-tags.test.ts
+  522e2f507cb6f2c0 1-103
+src/__tests__/generate-speech.test.ts
+  522e2f507cb6f2c0 8,18,146-284
+src/__tests__/cartesia-speech-model.test.ts
+  522e2f507cb6f2c0 141-260
+src/speech-result.ts
+  522e2f507cb6f2c0 10
+src/speech-provider.ts
+  522e2f507cb6f2c0 23-27
+src/__tests__/elevenlabs-speech-model.test.ts
+  522e2f507cb6f2c0 201-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "979f95431e89036cd1111429cdba1fa54f8a4d6f",
+  "prompts": {
+    "522e2f507cb6f2c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86aaa6a-5797-4651-b838-59550357de92",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 591,
+      "total_deletions": 6,
+      "accepted_lines": 589,
+      "overriden_lines": 0
+    }
+  }
+}
