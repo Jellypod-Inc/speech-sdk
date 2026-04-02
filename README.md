@@ -4,6 +4,9 @@ The Speech SDK is a lightweight, provider-agnostic TypeScript toolkit designed t
 
 To learn more about the Speech SDK, check out [https://speechsdk.dev/](https://speechsdk.dev/).
 
+<img width="1200" height="630" alt="og-3" src="https://github.com/user-attachments/assets/b90c0235-9405-4939-bffa-75fc82be5afb" />
+
+
 ## Install
 
 ```bash
