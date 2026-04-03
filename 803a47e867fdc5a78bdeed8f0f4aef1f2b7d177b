@@ -1,0 +1,25 @@
+src/__tests__/preprocess-text.test.ts
+  670a05ceb2441dc3 3,6,8,10-11,13,16,18-19,21,24,26-27,30,32,34-35,37,39,41-42,46-47,50-51,54-55
+src/preprocess-text.ts
+  670a05ceb2441dc3 4,6-18,20-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "803a47e867fdc5a78bdeed8f0f4aef1f2b7d177b",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 84,
+      "total_deletions": 0,
+      "accepted_lines": 48,
+      "overriden_lines": 32
+    }
+  }
+}
