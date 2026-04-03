@@ -1,0 +1,40 @@
+package.json
+  986951fd3751284d 3
+src/__tests__/number-expansion.test.ts
+  670a05ceb2441dc3 91-94,97-99
+README.md
+  670a05ceb2441dc3 94-127,158-198,206,214-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "7e92c67885275c90cf6c2ccd15269707d8fe7e2a",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 44,
+      "accepted_lines": 91,
+      "overriden_lines": 0
+    },
+    "986951fd3751284d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5958833-34ae-4df6-8ca2-8c93506a74b1",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
