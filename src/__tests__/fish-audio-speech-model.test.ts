@@ -114,6 +114,35 @@ describe("FishAudioSpeechProvider", () => {
     ).rejects.toThrow();
   });
 
+  it("passes audio tags through for s2-pro", () => {
+    const provider = new FishAudioSpeechProvider({ apiKey: "test-key" });
+    const text = "I can't believe it [gasp] you actually did it [laugh]";
+    const result = provider.processAudioTags(text, "s2-pro");
+
+    expect(result.text).toBe(text);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("strips audio tags for unsupported models", () => {
+    const provider = new FishAudioSpeechProvider({ apiKey: "test-key" });
+    const text = "Hello [laugh] world";
+    const result = provider.processAudioTags(text, "some-other-model");
+
+    expect(result.text).toBe("Hello world");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("[laugh]");
+    expect(result.warnings[0]).toContain("fish-audio/some-other-model");
+  });
+
+  it("returns text unchanged when no audio tags present", () => {
+    const provider = new FishAudioSpeechProvider({ apiKey: "test-key" });
+    const text = "Hello world";
+    const result = provider.processAudioTags(text, "s2-pro");
+
+    expect(result.text).toBe(text);
+    expect(result.warnings).toEqual([]);
+  });
+
   it("spreads providerOptions into body", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

@@ -134,39 +134,37 @@ export class ElevenLabsSpeechProvider
   readonly models = [
     {
       id: "eleven_v3",
+      audioTags: true,
       languages: ElevenLabsSpeechProvider.V3_LANGUAGES,
       releaseDate: "2025-06-08",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_multilingual_v2",
+      audioTags: false,
       languages: ElevenLabsSpeechProvider.V2_LANGUAGES,
       releaseDate: "2023-08-22",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_flash_v2_5",
+      audioTags: false,
       languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES,
       releaseDate: "2024-12-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_flash_v2",
+      audioTags: false,
       languages: ["en"] as const,
       releaseDate: "2024-12-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
   ] as const;
-
-  private static readonly AUDIO_TAG_MODELS = ["eleven_v3"] as const;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -182,11 +180,7 @@ export class ElevenLabsSpeechProvider
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (
-      (ElevenLabsSpeechProvider.AUDIO_TAG_MODELS as readonly string[]).includes(
-        modelId
-      )
-    ) {
+    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `elevenlabs/${modelId}`);

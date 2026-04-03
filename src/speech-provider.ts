@@ -1,12 +1,12 @@
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
 export interface ModelInfo {
+  audioTags: boolean;
   id: string;
   inlineVoiceCloning: boolean;
   languages: readonly string[];
   openSource: boolean;
   releaseDate: string;
-  zeroDataRetention: boolean;
 }
 
 export interface SpeechProvider<

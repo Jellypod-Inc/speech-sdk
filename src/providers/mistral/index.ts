@@ -15,6 +15,7 @@ export class MistralSpeechProvider
   readonly models = [
     {
       id: "voxtral-mini-tts-2603",
+      audioTags: false,
       languages: [
         "en",
         "fr",
@@ -29,7 +30,6 @@ export class MistralSpeechProvider
       releaseDate: "2026-03-23",
       openSource: true,
       inlineVoiceCloning: true,
-      zeroDataRetention: false,
     },
   ] as const;
 

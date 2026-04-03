@@ -41,9 +41,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         "uk",
       ],
       releaseDate: "2025-05-01",
+      audioTags: false,
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
     {
       id: "gemini-2.5-pro-preview-tts",
@@ -74,9 +74,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         "uk",
       ],
       releaseDate: "2025-05-01",
+      audioTags: false,
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
   ] as const;
 

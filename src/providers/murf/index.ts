@@ -14,6 +14,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "GEN2",
+      audioTags: false,
       languages: [
         "en",
         "de",
@@ -52,15 +53,14 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-01-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
     {
       id: "FALCON",
+      audioTags: false,
       languages: ["en"],
       releaseDate: "2025-01-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
   ] as const;
 
