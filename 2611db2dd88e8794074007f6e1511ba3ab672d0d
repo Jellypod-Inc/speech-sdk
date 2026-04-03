@@ -1,0 +1,23 @@
+src/generate-speech.ts
+  670a05ceb2441dc3 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "2611db2dd88e8794074007f6e1511ba3ab672d0d",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
