@@ -91,6 +91,40 @@ const result = await generateSpeech({
 
 When using string models (e.g., `'openai/tts-1'`), API keys are resolved from environment variables (see table above). Factory functions accept an explicit `apiKey` option which takes precedence.
 
+## Audio Tags
+
+Use bracket syntax `[tag]` to add expressive audio cues like laughter, sighs, or emotions. Provider support varies — unsupported tags are automatically stripped with warnings returned in `result.warnings`.
+
+```ts
+const result = await generateSpeech({
+  model: 'elevenlabs/eleven_v3',
+  text: '[laugh] Oh that is so funny! [sigh] But seriously though.',
+  voice: 'voice-id',
+});
+
+console.log(result.warnings); // undefined — eleven_v3 supports all tags
+```
+
+### Provider behavior
+
+| Provider | Behavior |
+|---|---|
+| ElevenLabs (`eleven_v3`) | All `[tag]` passed through natively |
+| Cartesia (`sonic-3`) | Emotion tags (`[happy]`, `[sad]`, `[angry]`, etc.) converted to SSML; `[laughter]` passed through; unknown tags stripped |
+| All others | Tags stripped and warnings returned |
+
+```ts
+// Unsupported provider — tags are stripped with warnings
+const result = await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: '[laugh] Hello world',
+  voice: 'alloy',
+});
+
+console.log(result.warnings);
+// ["Audio tag [laugh] is not supported by openai/gpt-4o-mini-tts and was removed."]
+```
+
 ## Voice Cloning
 
 Some providers support voice cloning via reference audio. Pass a voice object instead of a string:
