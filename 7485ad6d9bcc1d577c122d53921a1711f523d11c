@@ -1,0 +1,25 @@
+src/locale-format.ts
+  670a05ceb2441dc3 1-44,46-56
+src/__tests__/locale-format.test.ts
+  670a05ceb2441dc3 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "7485ad6d9bcc1d577c122d53921a1711f523d11c",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 123,
+      "total_deletions": 0,
+      "accepted_lines": 122,
+      "overriden_lines": 1
+    }
+  }
+}
