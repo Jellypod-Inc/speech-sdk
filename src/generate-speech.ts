@@ -1,6 +1,7 @@
 import pRetry from "p-retry";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import { preprocessText } from "./preprocess-text.js";
 import { resolveModel } from "./resolve-provider.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
@@ -14,6 +15,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
+  options?: import("./types.js").SpeechOptions;
 }): Promise<SpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
@@ -21,23 +23,25 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const resolved = resolveModel(model);
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
 
+  const preprocessedText = preprocessText(options.text, options.options);
+
   let processedText: string;
   let warnings: string[];
 
   if (resolved.provider.processAudioTags) {
     ({ text: processedText, warnings } = resolved.provider.processAudioTags(
-      options.text,
+      preprocessedText,
       resolved.modelId
     ));
   } else {
-    const tags = detectAudioTags(options.text);
+    const tags = detectAudioTags(preprocessedText);
     if (tags.length > 0) {
       ({ text: processedText, warnings } = stripAudioTags(
-        options.text,
+        preprocessedText,
         modelIdentifier
       ));
     } else {
-      processedText = options.text;
+      processedText = preprocessedText;
       warnings = [];
     }
   }
