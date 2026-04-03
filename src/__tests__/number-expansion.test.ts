@@ -88,16 +88,15 @@ describe("expandNumbers", () => {
       expect(expandNumbers("Drink H2O daily", "en-US")).toBe("Drink H2O daily");
     });
 
-    it("does not expand 4-digit standalone numbers (likely years)", () => {
-      expect(expandNumbers("Founded in 2024 by engineers", "en-US")).toBe(
-        "Founded in 2024 by engineers"
-      );
+    it("expands 4-digit numbers like years", () => {
+      const result = expandNumbers("Founded in 2024 by engineers", "en-US");
+      expect(result.toLowerCase()).toContain("two thousand");
+      expect(result).not.toContain("2024");
     });
 
-    it("does not expand numbers longer than 15 digits", () => {
-      expect(expandNumbers("ID: 1234567890123456 is here", "en-US")).toBe(
-        "ID: 1234567890123456 is here"
-      );
+    it("expands large numbers", () => {
+      const result = expandNumbers("ID: 1234567890 is here", "en-US");
+      expect(result).not.toContain("1234567890");
     });
 
     it("does not expand numbers in ranges", () => {

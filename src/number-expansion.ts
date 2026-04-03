@@ -3,8 +3,6 @@ import { getFormatInfo } from "./locale-format.js";
 
 const CURRENCY_SYMBOLS = "\\$€£¥₹₩₪₫₱₿฿₺₴₸";
 const CURRENCY_SYMBOL_PATTERN = `[${CURRENCY_SYMBOLS}]|R\\$`;
-const MAX_DIGITS = 15;
-const FOUR_DIGIT_RE = /^\d{4}$/;
 
 function convertToWords(num: number, locale: string): string | null {
   try {
@@ -75,19 +73,6 @@ function parseLocaleNumber(
   return num;
 }
 
-function shouldSkipNumber(raw: string): boolean {
-  // Skip if too many digits (IDs)
-  const digitCount = raw.replace(/\D/g, "").length;
-  if (digitCount > MAX_DIGITS) {
-    return true;
-  }
-  // Skip 4-digit standalone numbers (years)
-  if (FOUR_DIGIT_RE.test(raw)) {
-    return true;
-  }
-  return false;
-}
-
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -107,9 +92,6 @@ function expandCurrencyPrefix(
   );
 
   return text.replace(pattern, (_match, _sym, numStr) => {
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = parseLocaleNumber(numStr, decimal, group);
     if (num === null) {
       return _match;
@@ -134,9 +116,6 @@ function expandCurrencySuffix(
   );
 
   return text.replace(pattern, (_match, numStr, _sym) => {
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = parseLocaleNumber(numStr, decimal, group);
     if (num === null) {
       return _match;
@@ -152,9 +131,6 @@ function expandOrdinals(text: string, locale: string): string {
   }
   const pattern = /(?<!\w)(\d+)(st|nd|rd|th)(?!\w)/g;
   return text.replace(pattern, (_match, numStr, _suffix) => {
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = Number.parseInt(numStr, 10);
     if (!Number.isFinite(num)) {
       return _match;
@@ -183,9 +159,6 @@ function expandGroupedIntegers(
     if (!validGroups) {
       return _match;
     }
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = parseLocaleNumber(numStr, decimal, group);
     if (num === null) {
       return _match;
@@ -205,9 +178,6 @@ function expandDecimals(
   const pattern = new RegExp(`(?<![\\w-])(\\d+${decEsc}\\d+)(?![\\w-])`, "g");
 
   return text.replace(pattern, (_match, numStr) => {
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = parseLocaleNumber(numStr, decimal, group);
     if (num === null) {
       return _match;
@@ -230,9 +200,6 @@ function expandPlainIntegers(
     "g"
   );
   return text.replace(pattern, (_match, numStr) => {
-    if (shouldSkipNumber(numStr)) {
-      return _match;
-    }
     const num = Number.parseInt(numStr, 10);
     if (!Number.isFinite(num)) {
       return _match;

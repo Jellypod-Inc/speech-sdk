@@ -91,6 +91,40 @@ const result = await generateSpeech({
 
 When using string models (e.g., `'openai/tts-1'`), API keys are resolved from environment variables (see table above). Factory functions accept an explicit `apiKey` option which takes precedence.
 
+## Audio Tags
+
+Use bracket syntax `[tag]` to add expressive audio cues like laughter, sighs, or emotions. Provider support varies — unsupported tags are automatically stripped with warnings returned in `result.warnings`.
+
+```ts
+const result = await generateSpeech({
+  model: 'elevenlabs/eleven_v3',
+  text: '[laugh] Oh that is so funny! [sigh] But seriously though.',
+  voice: 'voice-id',
+});
+
+console.log(result.warnings); // undefined — eleven_v3 supports all tags
+```
+
+### Provider behavior
+
+| Provider | Behavior |
+|---|---|
+| ElevenLabs (`eleven_v3`) | All `[tag]` passed through natively |
+| Cartesia (`sonic-3`) | Emotion tags (`[happy]`, `[sad]`, `[angry]`, etc.) converted to SSML; `[laughter]` passed through; unknown tags stripped |
+| All others | Tags stripped and warnings returned |
+
+```ts
+// Unsupported provider — tags are stripped with warnings
+const result = await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: '[laugh] Hello world',
+  voice: 'alloy',
+});
+
+console.log(result.warnings);
+// ["Audio tag [laugh] is not supported by openai/gpt-4o-mini-tts and was removed."]
+```
+
 ## Voice Cloning
 
 Some providers support voice cloning via reference audio. Pass a voice object instead of a string:
@@ -121,6 +155,47 @@ const result = await generateSpeech({
 });
 ```
 
+## Symbol Expansion
+
+By default, the SDK automatically expands numbers and currency symbols into spoken words before sending text to the TTS provider. This improves pronunciation quality across languages.
+
+```ts
+// Numbers and currency are expanded automatically
+await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: 'I bought 3 apples for $4.50',
+  voice: 'alloy',
+});
+// Provider receives: "I bought three apples for four dollars and fifty cents"
+```
+
+Language is auto-detected from the input text using [tinyld](https://github.com/nicedoc/tinyld), and numbers are expanded in the detected locale using [to-words](https://github.com/mhrdwan/to-words):
+
+```ts
+// French text is detected and expanded with French number words
+await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: "J'ai acheté 3 pommes pour 4,50€",
+  voice: 'alloy',
+  options: { symbolExpansion: true, locale: 'fr-FR' }, // or let it auto-detect
+});
+```
+
+**What gets expanded:** plain integers (`42`), grouped numbers (`1,000,000`), decimals (`3.14`), currency (`$50`, `50€`), and English ordinals (`3rd`).
+
+**What stays unchanged:** identifiers (`B747`, `H2O`) and ranges (`50-100`).
+
+To disable expansion:
+
+```ts
+await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: 'Flight B747 departs at gate 3',
+  voice: 'alloy',
+  options: { symbolExpansion: false },
+});
+```
+
 ## Options
 
 ```ts
@@ -128,12 +203,20 @@ generateSpeech({
   model: string | ResolvedModel,  // required
   text: string,                   // required
   voice: Voice,                   // required
+  options?: SpeechOptions,        // SDK-level options (see below)
   providerOptions?: object,       // provider-specific API params
   maxRetries?: number,            // default: 2 (retries on 5xx/network errors)
   abortSignal?: AbortSignal,      // cancel the request
   headers?: Record<string, string>, // additional HTTP headers
 });
 ```
+
+### `SpeechOptions`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `symbolExpansion` | `boolean` | `true` | Expand numbers and currency into spoken words |
+| `locale` | `string` | auto-detected | Override locale for expansion (e.g. `'de-DE'`). Only valid when `symbolExpansion` is `true`. |
 
 ## Result
 
