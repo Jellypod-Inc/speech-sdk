@@ -1,0 +1,23 @@
+package.json
+  dabbaf41a5771c94 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "7a8ee65bcaf929735076eee9e40c2083de1ad105",
+  "prompts": {
+    "dabbaf41a5771c94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a37f5ec1-8dfb-423a-b62f-ab671ce38900",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
