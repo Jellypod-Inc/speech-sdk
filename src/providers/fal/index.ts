@@ -17,6 +17,7 @@ export class FalSpeechProvider
   readonly models = [
     {
       id: "f5-tts",
+      audioTags: false,
       languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
       releaseDate: "2024-10-08",
       openSource: true,
@@ -25,6 +26,7 @@ export class FalSpeechProvider
     },
     {
       id: "kokoro",
+      audioTags: false,
       languages: ["en", "fr", "ko", "ja", "zh"],
       releaseDate: "2025-01-27",
       openSource: true,
@@ -33,6 +35,7 @@ export class FalSpeechProvider
     },
     {
       id: "dia-tts",
+      audioTags: false,
       languages: ["en"],
       releaseDate: "2025-04-21",
       openSource: true,
@@ -41,6 +44,7 @@ export class FalSpeechProvider
     },
     {
       id: "orpheus-tts",
+      audioTags: false,
       languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
       releaseDate: "2025-03-18",
       openSource: true,
@@ -49,6 +53,7 @@ export class FalSpeechProvider
     },
     {
       id: "index-tts-2",
+      audioTags: false,
       languages: ["en", "zh"],
       releaseDate: "2025-09-08",
       openSource: true,

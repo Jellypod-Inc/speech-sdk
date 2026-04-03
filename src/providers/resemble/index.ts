@@ -14,6 +14,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "default",
+      audioTags: false,
       languages: [
         "en",
         "ar",

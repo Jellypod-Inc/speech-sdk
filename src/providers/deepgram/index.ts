@@ -14,6 +14,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "aura-2",
+      audioTags: false,
       languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
       releaseDate: "2025-04-15",
       openSource: false,

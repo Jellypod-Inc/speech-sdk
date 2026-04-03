@@ -1,6 +1,7 @@
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
 export interface ModelInfo {
+  audioTags: boolean;
   id: string;
   inlineVoiceCloning: boolean;
   languages: readonly string[];

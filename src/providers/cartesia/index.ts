@@ -15,6 +15,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "sonic-3",
+      audioTags: true,
       languages: [
         "en",
         "fr",
@@ -66,6 +67,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     },
     {
       id: "sonic-2",
+      audioTags: false,
       languages: ["en"],
       releaseDate: "2025-03-13",
       openSource: false,
@@ -73,8 +75,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       zeroDataRetention: false,
     },
   ] as const;
-
-  private static readonly AUDIO_TAG_MODELS = ["sonic-3"] as const;
 
   private static readonly PASSTHROUGH_TAGS = ["laughter"] as const;
 
@@ -153,11 +153,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (
-      !(CartesiaSpeechProvider.AUDIO_TAG_MODELS as readonly string[]).includes(
-        modelId
-      )
-    ) {
+    if (!this.models.some((m) => m.id === modelId && m.audioTags)) {
       return stripAudioTags(text, `cartesia/${modelId}`);
     }
 

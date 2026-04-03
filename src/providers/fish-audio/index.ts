@@ -1,3 +1,4 @@
+import { stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
@@ -14,6 +15,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "s2-pro",
+      audioTags: true,
       languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
       releaseDate: "2026-03-09",
       openSource: true,
@@ -30,6 +32,16 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.fish.audio";
     this.fetchFn = config.fetch ?? globalThis.fetch;
+  }
+
+  processAudioTags(
+    text: string,
+    modelId: string
+  ): { text: string; warnings: string[] } {
+    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
+      return { text, warnings: [] };
+    }
+    return stripAudioTags(text, `fish-audio/${modelId}`);
   }
 
   async generate(options: {

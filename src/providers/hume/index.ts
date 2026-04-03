@@ -14,6 +14,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "octave-2",
+      audioTags: false,
       languages: [
         "en",
         "fr",
@@ -34,6 +35,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     },
     {
       id: "octave-1",
+      audioTags: false,
       languages: ["en"] as const,
       releaseDate: "2025-03-01",
       openSource: false,
