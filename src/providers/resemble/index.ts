@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
@@ -8,11 +8,42 @@ export interface ResembleSpeechProviderConfig {
 }
 
 export class ResembleSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'resemble';
-  readonly defaultModel = 'default';
+  readonly id = "resemble";
+  readonly defaultModel = "default";
 
   readonly models = [
-    { id: 'default', languages: ['en', 'ar', 'da', 'de', 'el', 'es', 'fi', 'fr', 'he', 'hi', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sv', 'sw', 'tr', 'zh'], releaseDate: '2025-09-04', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    {
+      id: "default",
+      languages: [
+        "en",
+        "ar",
+        "da",
+        "de",
+        "el",
+        "es",
+        "fi",
+        "fr",
+        "he",
+        "hi",
+        "it",
+        "ja",
+        "ko",
+        "ms",
+        "nl",
+        "no",
+        "pl",
+        "pt",
+        "ru",
+        "sv",
+        "sw",
+        "tr",
+        "zh",
+      ],
+      releaseDate: "2025-09-04",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -21,7 +52,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: ResembleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://f.cluster.resemble.ai';
+    this.baseURL = config.baseURL ?? "https://f.cluster.resemble.ai";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -46,10 +77,14 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
     };
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': resolveApiKey(this.apiKey, 'RESEMBLE_API_KEY', 'Resemble'),
+        "Content-Type": "application/json",
+        Authorization: resolveApiKey(
+          this.apiKey,
+          "RESEMBLE_API_KEY",
+          "Resemble"
+        ),
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -58,11 +93,11 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `resemble/${options.modelId}`);
 
-    const json = await response.json() as { audio_content: string };
+    const json = (await response.json()) as { audio_content: string };
 
     return {
       audio: json.audio_content,
-      mediaType: 'audio/wav',
+      mediaType: "audio/wav",
     };
   }
 }

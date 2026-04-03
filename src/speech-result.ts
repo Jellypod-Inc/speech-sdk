@@ -1,28 +1,34 @@
 export interface GeneratedAudioFile {
-  readonly uint8Array: Uint8Array;
   readonly base64: string;
   readonly mediaType: string;
+  readonly uint8Array: Uint8Array;
 }
 
 export interface SpeechResult {
   readonly audio: GeneratedAudioFile;
   readonly providerMetadata?: Record<string, unknown>;
+  readonly warnings?: string[];
 }
 
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {
   readonly mediaType: string;
 
-  private _data: string | Uint8Array;
+  private readonly _data: string | Uint8Array;
   private _uint8Array?: Uint8Array;
   private _base64?: string;
 
-  constructor({ data, mediaType }: { data: string | Uint8Array; mediaType: string }) {
+  constructor({
+    data,
+    mediaType,
+  }: { data: string | Uint8Array; mediaType: string }) {
     this._data = data;
     this.mediaType = mediaType;
   }
 
   get uint8Array(): Uint8Array {
-    if (this._uint8Array != null) return this._uint8Array;
+    if (this._uint8Array != null) {
+      return this._uint8Array;
+    }
     if (this._data instanceof Uint8Array) {
       this._uint8Array = this._data;
     } else {
@@ -37,13 +43,15 @@ export class DefaultGeneratedAudioFile implements GeneratedAudioFile {
   }
 
   get base64(): string {
-    if (this._base64 != null) return this._base64;
-    if (typeof this._data === 'string') {
+    if (this._base64 != null) {
+      return this._base64;
+    }
+    if (typeof this._data === "string") {
       this._base64 = this._data;
     } else {
-      let binaryString = '';
-      for (let i = 0; i < this._data.length; i++) {
-        binaryString += String.fromCharCode(this._data[i]);
+      let binaryString = "";
+      for (const byte of this._data) {
+        binaryString += String.fromCharCode(byte);
       }
       this._base64 = btoa(binaryString);
     }

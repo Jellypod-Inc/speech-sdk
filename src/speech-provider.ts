@@ -1,14 +1,11 @@
-export type Voice =
-  | string
-  | { url: string }
-  | { audio: string | Uint8Array }
+export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
 export interface ModelInfo {
   id: string;
-  languages: readonly string[];
-  releaseDate: string;
-  openSource: boolean;
   inlineVoiceCloning: boolean;
+  languages: readonly string[];
+  openSource: boolean;
+  releaseDate: string;
   zeroDataRetention: boolean;
 }
 
@@ -16,9 +13,7 @@ export interface SpeechProvider<
   TModel extends string = string,
   TVoice extends Voice = Voice,
 > {
-  id: string;
   defaultModel: TModel;
-  models: readonly ModelInfo[];
 
   generate(options: {
     modelId: string;
@@ -32,9 +27,16 @@ export interface SpeechProvider<
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }>;
+  id: string;
+  models: readonly ModelInfo[];
+
+  processAudioTags?(
+    text: string,
+    modelId: string
+  ): { text: string; warnings: string[] };
 }
 
 export interface ResolvedModel<TVoice extends Voice = Voice> {
-  provider: SpeechProvider<string, TVoice>;
   modelId: string;
+  provider: SpeechProvider<string, TVoice>;
 }

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Speech SDK
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance when working with code in this repository.
 
 ## Commands
 
@@ -11,6 +11,8 @@ pnpm test                 # run unit tests
 pnpm test -- -t "test name"  # run a single test by name
 pnpm run test:e2e         # run e2e tests (requires OPENAI_API_KEY / ELEVENLABS_API_KEY)
 pnpm run typecheck        # type-check without emitting
+pnpm fix                  # format/lint via ultracite (biome)
+pnpm check                # check for lint issues
 ```
 
 E2E tests hit real provider APIs and require keys in `.env` or exported in shell. Unit tests are in `src/__tests__/*.test.ts`, e2e tests in `src/__tests__/e2e/*.e2e.test.ts`.
@@ -43,3 +45,29 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 - Zero runtime dependencies besides `p-retry`
 - `providerOptions` are passed through to provider APIs untransformed
 - Tests use vitest with globals enabled
+- Run `pnpm fix` before committing to ensure formatting compliance
+
+## Code Standards
+
+Formatting and linting enforced by Biome via ultracite. Husky pre-commit hook runs tests and lint automatically.
+
+### TypeScript
+
+- Prefer `unknown` over `any`
+- Use const assertions (`as const`) for immutable values
+- Leverage type narrowing instead of type assertions
+- Use `const` by default, `let` only when needed, never `var`
+- Use `async/await` over promise chains
+- Prefer `for...of` over `.forEach()`
+
+### Error Handling
+
+- Throw `Error` objects with descriptive messages, not strings
+- Prefer early returns over nested conditionals
+- Don't catch errors just to rethrow them
+
+### Testing
+
+- Write assertions inside `it()` or `test()` blocks
+- Use async/await, not done callbacks
+- Don't commit `.only` or `.skip`

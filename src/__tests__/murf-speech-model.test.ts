@@ -1,108 +1,108 @@
-import { describe, it, expect, vi } from 'vitest';
-import { MurfSpeechProvider } from '../providers/murf/index.js';
+import { describe, expect, it, vi } from "vitest";
+import { MurfSpeechProvider } from "../providers/murf/index.js";
 
-describe('MurfSpeechProvider', () => {
-  const mockJsonResponse = (encodedAudio = 'dGVzdA==') =>
+describe("MurfSpeechProvider", () => {
+  const mockJsonResponse = (encodedAudio = "dGVzdA==") =>
     vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ 'content-type': 'application/json' }),
+      headers: new Headers({ "content-type": "application/json" }),
       json: async () => ({ encodedAudio }),
     });
 
-  it('calls the correct URL', async () => {
+  it("calls the correct URL", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'GEN2',
-      text: 'Hello world',
-      voice: 'en-US-natalie',
+      modelId: "GEN2",
+      text: "Hello world",
+      voice: "en-US-natalie",
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://api.murf.ai/v1/speech/generate');
-    expect(init.method).toBe('POST');
+    expect(url).toBe("https://api.murf.ai/v1/speech/generate");
+    expect(init.method).toBe("POST");
   });
 
-  it('sends api-key header (lowercase)', async () => {
+  it("sends api-key header (lowercase)", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'murf-key-123',
+      apiKey: "murf-key-123",
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'GEN2', text: 'Hi' });
+    await provider.generate({ modelId: "GEN2", text: "Hi" });
 
     const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['api-key']).toBe('murf-key-123');
+    expect(init.headers["api-key"]).toBe("murf-key-123");
     // Should NOT have Authorization header
-    expect(init.headers['Authorization']).toBeUndefined();
+    expect(init.headers.Authorization).toBeUndefined();
   });
 
-  it('sends correct body with voiceId, text, and encodeAsBase64', async () => {
+  it("sends correct body with voiceId, text, and encodeAsBase64", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'GEN2',
-      text: 'Hello world',
-      voice: 'en-US-natalie',
+      modelId: "GEN2",
+      text: "Hello world",
+      voice: "en-US-natalie",
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.voiceId).toBe('en-US-natalie');
-    expect(body.text).toBe('Hello world');
+    expect(body.voiceId).toBe("en-US-natalie");
+    expect(body.text).toBe("Hello world");
     expect(body.encodeAsBase64).toBe(true);
   });
 
-  it('always injects encodeAsBase64: true even with providerOptions', async () => {
+  it("always injects encodeAsBase64: true even with providerOptions", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'GEN2',
-      text: 'Hello',
-      providerOptions: { style: 'conversational' },
+      modelId: "GEN2",
+      text: "Hello",
+      providerOptions: { style: "conversational" },
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.encodeAsBase64).toBe(true);
-    expect(body.style).toBe('conversational');
+    expect(body.style).toBe("conversational");
   });
 
-  it('returns base64 audio string and mediaType', async () => {
-    const mockFetch = mockJsonResponse('YXVkaW9kYXRh');
+  it("returns base64 audio string and mediaType", async () => {
+    const mockFetch = mockJsonResponse("YXVkaW9kYXRh");
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     const result = await provider.generate({
-      modelId: 'GEN2',
-      text: 'Hello',
+      modelId: "GEN2",
+      text: "Hello",
     });
 
-    expect(result.audio).toBe('YXVkaW9kYXRh');
-    expect(result.mediaType).toBe('audio/wav');
+    expect(result.audio).toBe("YXVkaW9kYXRh");
+    expect(result.mediaType).toBe("audio/wav");
   });
 
-  it('throws on error response', async () => {
+  it("throws on error response", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -111,41 +111,41 @@ describe('MurfSpeechProvider', () => {
     });
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'bad-key',
+      apiKey: "bad-key",
       fetch: mockFetch,
     });
 
     await expect(
-      provider.generate({ modelId: 'GEN2', text: 'Hello' }),
+      provider.generate({ modelId: "GEN2", text: "Hello" })
     ).rejects.toThrow();
   });
 
-  it('uses custom baseURL', async () => {
+  it("uses custom baseURL", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
-      baseURL: 'https://my-proxy.com/v1',
+      apiKey: "test-key",
+      baseURL: "https://my-proxy.com/v1",
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: 'GEN2', text: 'Hello' });
+    await provider.generate({ modelId: "GEN2", text: "Hello" });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v1/speech/generate');
+    expect(url).toBe("https://my-proxy.com/v1/speech/generate");
   });
 
-  it('spreads providerOptions into body', async () => {
+  it("spreads providerOptions into body", async () => {
     const mockFetch = mockJsonResponse();
 
     const provider = new MurfSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'GEN2',
-      text: 'Hello',
+      modelId: "GEN2",
+      text: "Hello",
       providerOptions: { speed: 1.2 },
     });
 
@@ -153,67 +153,76 @@ describe('MurfSpeechProvider', () => {
     expect(body.speed).toBe(1.2);
   });
 
-  describe('FALCON model', () => {
-    it('uses /speech/stream endpoint', async () => {
+  describe("FALCON model", () => {
+    it("uses /speech/stream endpoint", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'audio/wav' }),
+        headers: new Headers({ "content-type": "audio/wav" }),
         arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
       });
 
-      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+      const provider = new MurfSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
 
       await provider.generate({
-        modelId: 'FALCON',
-        text: 'Hello',
-        voice: 'en-US-natalie',
+        modelId: "FALCON",
+        text: "Hello",
+        voice: "en-US-natalie",
       });
 
       const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe('https://api.murf.ai/v1/speech/stream');
+      expect(url).toBe("https://api.murf.ai/v1/speech/stream");
     });
 
-    it('sends model: FALCON in body and no encodeAsBase64', async () => {
+    it("sends model: FALCON in body and no encodeAsBase64", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'audio/wav' }),
+        headers: new Headers({ "content-type": "audio/wav" }),
         arrayBuffer: async () => new Uint8Array([1]).buffer,
       });
 
-      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+      const provider = new MurfSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
 
       await provider.generate({
-        modelId: 'FALCON',
-        text: 'Hello',
-        voice: 'en-US-natalie',
+        modelId: "FALCON",
+        text: "Hello",
+        voice: "en-US-natalie",
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.model).toBe('FALCON');
+      expect(body.model).toBe("FALCON");
       expect(body.encodeAsBase64).toBeUndefined();
     });
 
-    it('returns binary audio from stream response', async () => {
+    it("returns binary audio from stream response", async () => {
       const audioData = new Uint8Array([10, 20, 30]);
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'audio/wav' }),
+        headers: new Headers({ "content-type": "audio/wav" }),
         arrayBuffer: async () => audioData.buffer,
       });
 
-      const provider = new MurfSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+      const provider = new MurfSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
 
       const result = await provider.generate({
-        modelId: 'FALCON',
-        text: 'Hello',
-        voice: 'en-US-natalie',
+        modelId: "FALCON",
+        text: "Hello",
+        voice: "en-US-natalie",
       });
 
       expect(new Uint8Array(result.audio as Uint8Array)).toEqual(audioData);
-      expect(result.mediaType).toBe('audio/wav');
+      expect(result.mediaType).toBe("audio/wav");
     });
   });
 });

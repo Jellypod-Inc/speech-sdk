@@ -1,117 +1,123 @@
-import { describe, it, expect, vi } from 'vitest';
-import { HumeSpeechProvider } from '../providers/hume/index.js';
+import { describe, expect, it, vi } from "vitest";
+import { HumeSpeechProvider } from "../providers/hume/index.js";
 
-describe('HumeSpeechProvider', () => {
+describe("HumeSpeechProvider", () => {
   function createMockFetch() {
     return vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ 'content-type': 'audio/mpeg' }),
+      headers: new Headers({ "content-type": "audio/mpeg" }),
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     });
   }
 
-  it('calls the correct URL', async () => {
+  it("calls the correct URL", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
-      voice: 'Kora',
+      modelId: "octave-2",
+      text: "Hello",
+      voice: "Kora",
     });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://api.hume.ai/v0/tts/file');
+    expect(url).toBe("https://api.hume.ai/v0/tts/file");
   });
 
-  it('sends X-Hume-Api-Key header', async () => {
+  it("sends X-Hume-Api-Key header", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'hume-test-123',
+      apiKey: "hume-test-123",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
-      voice: 'Kora',
+      modelId: "octave-2",
+      text: "Hello",
+      voice: "Kora",
     });
 
     const [, init] = mockFetch.mock.calls[0];
-    expect(init.headers['X-Hume-Api-Key']).toBe('hume-test-123');
+    expect(init.headers["X-Hume-Api-Key"]).toBe("hume-test-123");
   });
 
-  it('wraps text and voice in utterances array', async () => {
+  it("wraps text and voice in utterances array", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello world',
-      voice: 'Kora',
+      modelId: "octave-2",
+      text: "Hello world",
+      voice: "Kora",
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.utterances).toEqual([
-      { text: 'Hello world', voice: { name: 'Kora', provider: 'HUME_AI' } },
+      { text: "Hello world", voice: { name: "Kora", provider: "HUME_AI" } },
     ]);
   });
 
   it('maps octave-2 modelId to version "2" in body', async () => {
     const mockFetch = createMockFetch();
-    const provider = new HumeSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+    const provider = new HumeSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
 
-    await provider.generate({ modelId: 'octave-2', text: 'Hi', voice: 'Kora' });
+    await provider.generate({ modelId: "octave-2", text: "Hi", voice: "Kora" });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.version).toBe('2');
+    expect(body.version).toBe("2");
   });
 
   it('maps octave-1 modelId to version "1" in body', async () => {
     const mockFetch = createMockFetch();
-    const provider = new HumeSpeechProvider({ apiKey: 'test-key', fetch: mockFetch });
+    const provider = new HumeSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
 
-    await provider.generate({ modelId: 'octave-1', text: 'Hi' });
+    await provider.generate({ modelId: "octave-1", text: "Hi" });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.version).toBe('1');
+    expect(body.version).toBe("1");
   });
 
-  it('returns binary audio response', async () => {
+  it("returns binary audio response", async () => {
     const audioData = new Uint8Array([10, 20, 30]);
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ 'content-type': 'audio/wav' }),
+      headers: new Headers({ "content-type": "audio/wav" }),
       arrayBuffer: async () => audioData.buffer,
     });
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     const result = await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
-      voice: 'Kora',
+      modelId: "octave-2",
+      text: "Hello",
+      voice: "Kora",
     });
 
     expect(new Uint8Array(result.audio as Uint8Array)).toEqual(audioData);
-    expect(result.mediaType).toBe('audio/wav');
+    expect(result.mediaType).toBe("audio/wav");
   });
 
-  it('throws on error response', async () => {
+  it("throws on error response", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -120,67 +126,67 @@ describe('HumeSpeechProvider', () => {
     });
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'bad-key',
+      apiKey: "bad-key",
       fetch: mockFetch,
     });
 
     await expect(
-      provider.generate({ modelId: 'octave-2', text: 'Hello', voice: 'Kora' }),
+      provider.generate({ modelId: "octave-2", text: "Hello", voice: "Kora" })
     ).rejects.toThrow();
   });
 
-  it('sends utterance without voice when voice is not provided', async () => {
+  it("sends utterance without voice when voice is not provided", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
+      modelId: "octave-2",
+      text: "Hello",
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.utterances).toEqual([{ text: 'Hello' }]);
+    expect(body.utterances).toEqual([{ text: "Hello" }]);
   });
 
-  it('spreads providerOptions into body', async () => {
+  it("spreads providerOptions into body", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
-      voice: 'Kora',
-      providerOptions: { format: 'wav' },
+      modelId: "octave-2",
+      text: "Hello",
+      voice: "Kora",
+      providerOptions: { format: "wav" },
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.format).toBe('wav');
+    expect(body.format).toBe("wav");
   });
 
-  it('uses custom baseURL', async () => {
+  it("uses custom baseURL", async () => {
     const mockFetch = createMockFetch();
 
     const provider = new HumeSpeechProvider({
-      apiKey: 'test-key',
-      baseURL: 'https://my-proxy.com/v0',
+      apiKey: "test-key",
+      baseURL: "https://my-proxy.com/v0",
       fetch: mockFetch,
     });
 
     await provider.generate({
-      modelId: 'octave-2',
-      text: 'Hello',
-      voice: 'Kora',
+      modelId: "octave-2",
+      text: "Hello",
+      voice: "Kora",
     });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://my-proxy.com/v0/tts/file');
+    expect(url).toBe("https://my-proxy.com/v0/tts/file");
   });
 });

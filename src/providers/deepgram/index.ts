@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface DeepgramSpeechProviderConfig {
   apiKey?: string;
@@ -8,11 +8,18 @@ export interface DeepgramSpeechProviderConfig {
 }
 
 export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'deepgram';
-  readonly defaultModel = 'aura-2';
+  readonly id = "deepgram";
+  readonly defaultModel = "aura-2";
 
   readonly models = [
-    { id: 'aura-2', languages: ['en', 'es', 'de', 'fr', 'it', 'ja', 'nl'], releaseDate: '2025-04-15', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    {
+      id: "aura-2",
+      languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
+      releaseDate: "2025-04-15",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: true,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -21,7 +28,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: DeepgramSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.deepgram.com/v1';
+    this.baseURL = config.baseURL ?? "https://api.deepgram.com/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -49,10 +56,10 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     };
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Token ${resolveApiKey(this.apiKey, 'DEEPGRAM_API_KEY', 'Deepgram')}`,
+        "Content-Type": "application/json",
+        Authorization: `Token ${resolveApiKey(this.apiKey, "DEEPGRAM_API_KEY", "Deepgram")}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -62,7 +69,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `deepgram/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
 
     return {
       audio: new Uint8Array(arrayBuffer),

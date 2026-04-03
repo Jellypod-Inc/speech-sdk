@@ -1,7 +1,7 @@
 export class SpeechSDKError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
-    this.name = 'SpeechSDKError';
+    this.name = "SpeechSDKError";
   }
 }
 
@@ -17,10 +17,10 @@ export class ApiError extends SpeechSDKError {
       model: string;
       responseBody?: unknown;
       cause?: unknown;
-    },
+    }
   ) {
     super(message, { cause: options.cause });
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.statusCode = options.statusCode;
     this.model = options.model;
     this.responseBody = options.responseBody;
@@ -28,8 +28,8 @@ export class ApiError extends SpeechSDKError {
 }
 
 export class NoSpeechGeneratedError extends SpeechSDKError {
-  constructor() {
-    super('No speech audio was generated.');
-    this.name = 'NoSpeechGeneratedError';
+  constructor(message?: string) {
+    super(message ?? "No speech audio was generated.");
+    this.name = "NoSpeechGeneratedError";
   }
 }

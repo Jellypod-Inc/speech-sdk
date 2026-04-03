@@ -1,6 +1,6 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import { ApiError } from '../../errors.js';
+import { ApiError } from "../../errors.js";
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface FalSpeechProviderConfig {
   apiKey?: string;
@@ -8,16 +8,53 @@ export interface FalSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-export class FalSpeechProvider implements SpeechProvider<string, string | { url: string }> {
-  readonly id = 'fal-ai';
-  readonly defaultModel = '';
+export class FalSpeechProvider
+  implements SpeechProvider<string, string | { url: string }>
+{
+  readonly id = "fal-ai";
+  readonly defaultModel = "";
 
   readonly models = [
-    { id: 'f5-tts', languages: ['en', 'zh', 'fr', 'it', 'hi', 'ja', 'ru', 'es', 'fi'], releaseDate: '2024-10-08', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
-    { id: 'kokoro', languages: ['en', 'fr', 'ko', 'ja', 'zh'], releaseDate: '2025-01-27', openSource: true, inlineVoiceCloning: false, zeroDataRetention: false },
-    { id: 'dia-tts', languages: ['en'], releaseDate: '2025-04-21', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
-    { id: 'orpheus-tts', languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh'], releaseDate: '2025-03-18', openSource: true, inlineVoiceCloning: false, zeroDataRetention: false },
-    { id: 'index-tts-2', languages: ['en', 'zh'], releaseDate: '2025-09-08', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    {
+      id: "f5-tts",
+      languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
+      releaseDate: "2024-10-08",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
+    {
+      id: "kokoro",
+      languages: ["en", "fr", "ko", "ja", "zh"],
+      releaseDate: "2025-01-27",
+      openSource: true,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
+    {
+      id: "dia-tts",
+      languages: ["en"],
+      releaseDate: "2025-04-21",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
+    {
+      id: "orpheus-tts",
+      languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
+      releaseDate: "2025-03-18",
+      openSource: true,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
+    {
+      id: "index-tts-2",
+      languages: ["en", "zh"],
+      releaseDate: "2025-09-08",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -26,7 +63,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
 
   constructor(config: FalSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://fal.run';
+    this.baseURL = config.baseURL ?? "https://fal.run";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -43,7 +80,9 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
     providerMetadata?: Record<string, unknown>;
   }> {
     if (!options.modelId) {
-      throw new Error('fal-ai requires a model ID (e.g., "fal-ai/inworld-tts"). No default model is available.');
+      throw new Error(
+        'fal-ai requires a model ID (e.g., "fal-ai/inworld-tts"). No default model is available.'
+      );
     }
 
     const url = `${this.baseURL}/fal-ai/${options.modelId}`;
@@ -54,18 +93,18 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === 'string') {
+      if (typeof options.voice === "string") {
         body.voice = options.voice;
-      } else if ('url' in options.voice) {
+      } else if ("url" in options.voice) {
         body.audio_url = options.voice.url;
       }
     }
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Key ${resolveApiKey(this.apiKey, 'FAL_API_KEY', 'fal')}`,
+        "Content-Type": "application/json",
+        Authorization: `Key ${resolveApiKey(this.apiKey, "FAL_API_KEY", "fal")}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -74,7 +113,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
 
     await handleErrorResponse(response, `fal-ai/${options.modelId}`);
 
-    const json = await response.json() as { audio: { url: string } };
+    const json = (await response.json()) as { audio: { url: string } };
 
     const audioResponse = await this.fetchFn(json.audio.url, {
       signal: options.abortSignal,
@@ -92,7 +131,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
 
     return {
       audio: new Uint8Array(arrayBuffer),
-      mediaType: 'audio/mpeg',
+      mediaType: "audio/mpeg",
     };
   }
 }
@@ -100,7 +139,9 @@ export class FalSpeechProvider implements SpeechProvider<string, string | { url:
 export function createFal(config: FalSpeechProviderConfig = {}) {
   const provider = new FalSpeechProvider(config);
 
-  return function fal(modelId?: string): ResolvedModel<string | { url: string }> {
+  return function fal(
+    modelId?: string
+  ): ResolvedModel<string | { url: string }> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
