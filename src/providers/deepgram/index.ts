@@ -19,7 +19,6 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-04-15",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
   ] as const;
 

@@ -20,7 +20,6 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-06-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
   ] as const;
 

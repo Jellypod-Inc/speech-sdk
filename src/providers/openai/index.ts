@@ -89,7 +89,6 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       audioTags: false,
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "tts-1",
@@ -98,7 +97,6 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       audioTags: false,
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "tts-1-hd",
@@ -107,7 +105,6 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       audioTags: false,
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
   ] as const;
 

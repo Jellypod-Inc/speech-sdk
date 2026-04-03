@@ -139,7 +139,6 @@ export class ElevenLabsSpeechProvider
       releaseDate: "2025-06-08",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_multilingual_v2",
@@ -148,7 +147,6 @@ export class ElevenLabsSpeechProvider
       releaseDate: "2023-08-22",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_flash_v2_5",
@@ -157,7 +155,6 @@ export class ElevenLabsSpeechProvider
       releaseDate: "2024-12-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
     {
       id: "eleven_flash_v2",
@@ -166,7 +163,6 @@ export class ElevenLabsSpeechProvider
       releaseDate: "2024-12-01",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: true,
     },
   ] as const;
 

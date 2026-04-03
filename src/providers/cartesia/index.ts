@@ -63,7 +63,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-10-27",
       openSource: false,
       inlineVoiceCloning: true,
-      zeroDataRetention: false,
     },
     {
       id: "sonic-2",
@@ -72,7 +71,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-03-13",
       openSource: false,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
   ] as const;
 

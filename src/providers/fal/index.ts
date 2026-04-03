@@ -22,7 +22,6 @@ export class FalSpeechProvider
       releaseDate: "2024-10-08",
       openSource: true,
       inlineVoiceCloning: true,
-      zeroDataRetention: false,
     },
     {
       id: "kokoro",
@@ -31,7 +30,6 @@ export class FalSpeechProvider
       releaseDate: "2025-01-27",
       openSource: true,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
     {
       id: "dia-tts",
@@ -40,7 +38,6 @@ export class FalSpeechProvider
       releaseDate: "2025-04-21",
       openSource: true,
       inlineVoiceCloning: true,
-      zeroDataRetention: false,
     },
     {
       id: "orpheus-tts",
@@ -49,7 +46,6 @@ export class FalSpeechProvider
       releaseDate: "2025-03-18",
       openSource: true,
       inlineVoiceCloning: false,
-      zeroDataRetention: false,
     },
     {
       id: "index-tts-2",
@@ -58,7 +54,6 @@ export class FalSpeechProvider
       releaseDate: "2025-09-08",
       openSource: true,
       inlineVoiceCloning: true,
-      zeroDataRetention: false,
     },
   ] as const;
 
