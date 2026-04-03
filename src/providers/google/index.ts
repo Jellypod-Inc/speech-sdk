@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
@@ -8,12 +8,76 @@ export interface GoogleSpeechProviderConfig {
 }
 
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'google';
-  readonly defaultModel = 'gemini-2.5-flash-preview-tts';
+  readonly id = "google";
+  readonly defaultModel = "gemini-2.5-flash-preview-tts";
 
   readonly models = [
-    { id: 'gemini-2.5-flash-preview-tts', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'ko', 'hi', 'it', 'nl', 'pl', 'ru', 'sv', 'tr', 'id', 'ar', 'cs', 'da', 'fi', 'el', 'hu', 'ro', 'uk'], releaseDate: '2025-05-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
-    { id: 'gemini-2.5-pro-preview-tts', languages: ['en', 'fr', 'de', 'es', 'pt', 'zh', 'ja', 'ko', 'hi', 'it', 'nl', 'pl', 'ru', 'sv', 'tr', 'id', 'ar', 'cs', 'da', 'fi', 'el', 'hu', 'ro', 'uk'], releaseDate: '2025-05-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
+    {
+      id: "gemini-2.5-flash-preview-tts",
+      languages: [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "pt",
+        "zh",
+        "ja",
+        "ko",
+        "hi",
+        "it",
+        "nl",
+        "pl",
+        "ru",
+        "sv",
+        "tr",
+        "id",
+        "ar",
+        "cs",
+        "da",
+        "fi",
+        "el",
+        "hu",
+        "ro",
+        "uk",
+      ],
+      releaseDate: "2025-05-01",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
+    {
+      id: "gemini-2.5-pro-preview-tts",
+      languages: [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "pt",
+        "zh",
+        "ja",
+        "ko",
+        "hi",
+        "it",
+        "nl",
+        "pl",
+        "ru",
+        "sv",
+        "tr",
+        "id",
+        "ar",
+        "cs",
+        "da",
+        "fi",
+        "el",
+        "hu",
+        "ro",
+        "uk",
+      ],
+      releaseDate: "2025-05-01",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -22,7 +86,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: GoogleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://generativelanguage.googleapis.com/v1beta';
+    this.baseURL =
+      config.baseURL ?? "https://generativelanguage.googleapis.com/v1beta";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -38,9 +103,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const apiKey = resolveApiKey(this.apiKey, 'GOOGLE_API_KEY', 'Google');
+    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
 
-    const voiceName = options.voice ?? 'Kore';
+    const voiceName = options.voice ?? "Kore";
 
     const speechConfig: Record<string, unknown> = {
       voice_config: {
@@ -53,12 +118,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     const body: Record<string, unknown> = {
       contents: [
         {
-          role: 'user',
+          role: "user",
           parts: [{ text: options.text }],
         },
       ],
       generationConfig: {
-        responseModalities: ['audio'],
+        responseModalities: ["audio"],
         speech_config: speechConfig,
         ...options.providerOptions,
       },
@@ -67,9 +132,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -78,7 +143,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `google/${options.modelId}`);
 
-    const json = await response.json() as {
+    const json = (await response.json()) as {
       candidates: Array<{
         content: {
           parts: Array<{ inlineData?: { mimeType: string; data: string } }>;
@@ -87,16 +152,16 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
 
     const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData != null,
+      (p) => p.inlineData != null
     );
 
     if (!part?.inlineData) {
-      throw new Error('No audio data in Gemini TTS response');
+      throw new Error("No audio data in Gemini TTS response");
     }
 
     return {
       audio: part.inlineData.data,
-      mediaType: part.inlineData.mimeType ?? 'audio/mp3',
+      mediaType: part.inlineData.mimeType ?? "audio/mp3",
     };
   }
 }

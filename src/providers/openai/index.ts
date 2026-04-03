@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
@@ -8,23 +8,104 @@ export interface OpenAISpeechProviderConfig {
 }
 
 export class OpenAISpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'openai';
-  readonly defaultModel = 'gpt-4o-mini-tts';
+  readonly id = "openai";
+  readonly defaultModel = "gpt-4o-mini-tts";
 
   private static readonly LANGUAGES = [
-    'af', 'ar', 'bg', 'bn', 'bs', 'ca', 'cs', 'cy', 'da', 'de',
-    'el', 'en', 'es', 'et', 'fi', 'fr', 'gl', 'gu', 'he', 'hi',
-    'hr', 'hu', 'id', 'is', 'it', 'ja', 'jv', 'ka', 'kk', 'km',
-    'kn', 'ko', 'lo', 'lt', 'lv', 'mk', 'ml', 'mn', 'mr', 'ms',
-    'my', 'ne', 'nl', 'no', 'pa', 'pl', 'pt', 'ro', 'ru', 'si',
-    'sk', 'sl', 'so', 'sq', 'sr', 'su', 'sv', 'sw', 'ta', 'te',
-    'th', 'tl', 'tr', 'uk', 'ur', 'vi', 'zh',
+    "af",
+    "ar",
+    "bg",
+    "bn",
+    "bs",
+    "ca",
+    "cs",
+    "cy",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "gl",
+    "gu",
+    "he",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "is",
+    "it",
+    "ja",
+    "jv",
+    "ka",
+    "kk",
+    "km",
+    "kn",
+    "ko",
+    "lo",
+    "lt",
+    "lv",
+    "mk",
+    "ml",
+    "mn",
+    "mr",
+    "ms",
+    "my",
+    "ne",
+    "nl",
+    "no",
+    "pa",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "si",
+    "sk",
+    "sl",
+    "so",
+    "sq",
+    "sr",
+    "su",
+    "sv",
+    "sw",
+    "ta",
+    "te",
+    "th",
+    "tl",
+    "tr",
+    "uk",
+    "ur",
+    "vi",
+    "zh",
   ] as const;
 
   readonly models = [
-    { id: 'gpt-4o-mini-tts', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2025-03-20', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
-    { id: 'tts-1', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2023-11-06', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
-    { id: 'tts-1-hd', languages: OpenAISpeechProvider.LANGUAGES, releaseDate: '2023-11-06', openSource: false, inlineVoiceCloning: false, zeroDataRetention: true },
+    {
+      id: "gpt-4o-mini-tts",
+      languages: OpenAISpeechProvider.LANGUAGES,
+      releaseDate: "2025-03-20",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: true,
+    },
+    {
+      id: "tts-1",
+      languages: OpenAISpeechProvider.LANGUAGES,
+      releaseDate: "2023-11-06",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: true,
+    },
+    {
+      id: "tts-1-hd",
+      languages: OpenAISpeechProvider.LANGUAGES,
+      releaseDate: "2023-11-06",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: true,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -33,7 +114,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: OpenAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.openai.com/v1';
+    this.baseURL = config.baseURL ?? "https://api.openai.com/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -59,10 +140,10 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/audio/speech`;
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'OPENAI_API_KEY', 'OpenAI')}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "OPENAI_API_KEY", "OpenAI")}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -72,7 +153,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `openai/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
 
     return {
       audio: new Uint8Array(arrayBuffer),

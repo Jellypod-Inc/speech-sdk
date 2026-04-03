@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface HumeSpeechProviderConfig {
   apiKey?: string;
@@ -8,12 +8,38 @@ export interface HumeSpeechProviderConfig {
 }
 
 export class HumeSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'hume';
-  readonly defaultModel = 'octave-2';
+  readonly id = "hume";
+  readonly defaultModel = "octave-2";
 
   readonly models = [
-    { id: 'octave-2', languages: ['en', 'fr', 'de', 'es', 'pt', 'ja', 'ko', 'hi', 'it', 'ar', 'ru'] as const, releaseDate: '2025-10-01', openSource: false, inlineVoiceCloning: true, zeroDataRetention: false },
-    { id: 'octave-1', languages: ['en'] as const, releaseDate: '2025-03-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
+    {
+      id: "octave-2",
+      languages: [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "pt",
+        "ja",
+        "ko",
+        "hi",
+        "it",
+        "ar",
+        "ru",
+      ] as const,
+      releaseDate: "2025-10-01",
+      openSource: false,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
+    {
+      id: "octave-1",
+      languages: ["en"] as const,
+      releaseDate: "2025-03-01",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -22,13 +48,17 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: HumeSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.hume.ai/v0';
+    this.baseURL = config.baseURL ?? "https://api.hume.ai/v0";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
   private resolveVersion(modelId: string): string | undefined {
-    if (modelId === 'octave-2') return '2';
-    if (modelId === 'octave-1') return '1';
+    if (modelId === "octave-2") {
+      return "2";
+    }
+    if (modelId === "octave-1") {
+      return "1";
+    }
     return undefined;
   }
 
@@ -46,7 +76,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   }> {
     const utterance: Record<string, unknown> = { text: options.text };
     if (options.voice) {
-      utterance.voice = { name: options.voice, provider: 'HUME_AI' };
+      utterance.voice = { name: options.voice, provider: "HUME_AI" };
     }
 
     const version = this.resolveVersion(options.modelId);
@@ -63,10 +93,10 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/tts/file`;
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Hume-Api-Key': resolveApiKey(this.apiKey, 'HUME_API_KEY', 'Hume'),
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": resolveApiKey(this.apiKey, "HUME_API_KEY", "Hume"),
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -76,7 +106,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `hume/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
 
     return {
       audio: new Uint8Array(arrayBuffer),

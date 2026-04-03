@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface FishAudioSpeechProviderConfig {
   apiKey?: string;
@@ -8,11 +8,18 @@ export interface FishAudioSpeechProviderConfig {
 }
 
 export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'fish-audio';
-  readonly defaultModel = 's2-pro';
+  readonly id = "fish-audio";
+  readonly defaultModel = "s2-pro";
 
   readonly models = [
-    { id: 's2-pro', languages: ['ja', 'en', 'zh', 'ko', 'es', 'pt', 'ar', 'ru', 'fr', 'de'], releaseDate: '2026-03-09', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    {
+      id: "s2-pro",
+      languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+      releaseDate: "2026-03-09",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -21,7 +28,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: FishAudioSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.fish.audio';
+    this.baseURL = config.baseURL ?? "https://api.fish.audio";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -49,11 +56,11 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     }
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'FISH_AUDIO_API_KEY', 'Fish Audio')}`,
-        'model': options.modelId,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        model: options.modelId,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -63,7 +70,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `fish-audio/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get('content-type') ?? 'audio/mpeg';
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
 
     return {
       audio: new Uint8Array(arrayBuffer),

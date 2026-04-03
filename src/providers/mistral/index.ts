@@ -1,5 +1,5 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface MistralSpeechProviderConfig {
   apiKey?: string;
@@ -10,10 +10,27 @@ export interface MistralSpeechProviderConfig {
 export class MistralSpeechProvider
   implements SpeechProvider<string, string | { audio: string | Uint8Array }>
 {
-  readonly id = 'mistral';
-  readonly defaultModel = 'voxtral-mini-tts-2603';
+  readonly id = "mistral";
+  readonly defaultModel = "voxtral-mini-tts-2603";
   readonly models = [
-    { id: 'voxtral-mini-tts-2603', languages: ['en', 'fr', 'de', 'es', 'nl', 'pt', 'it', 'hi', 'ar'] as const, releaseDate: '2026-03-23', openSource: true, inlineVoiceCloning: true, zeroDataRetention: false },
+    {
+      id: "voxtral-mini-tts-2603",
+      languages: [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "nl",
+        "pt",
+        "it",
+        "hi",
+        "ar",
+      ] as const,
+      releaseDate: "2026-03-23",
+      openSource: true,
+      inlineVoiceCloning: true,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -22,7 +39,7 @@ export class MistralSpeechProvider
 
   constructor(config: MistralSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.mistral.ai/v1';
+    this.baseURL = config.baseURL ?? "https://api.mistral.ai/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -38,21 +55,21 @@ export class MistralSpeechProvider
     mediaType: string;
   }> {
     const body: Record<string, unknown> = {
-      response_format: 'mp3',
+      response_format: "mp3",
       ...options.providerOptions,
       model: options.modelId,
       input: options.text,
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === 'string') {
+      if (typeof options.voice === "string") {
         body.voice_id = options.voice;
-      } else if ('audio' in options.voice) {
+      } else if ("audio" in options.voice) {
         const audio = options.voice.audio;
         if (audio instanceof Uint8Array) {
-          let binaryString = '';
-          for (let i = 0; i < audio.length; i++) {
-            binaryString += String.fromCharCode(audio[i]);
+          let binaryString = "";
+          for (const byte of audio) {
+            binaryString += String.fromCharCode(byte);
           }
           body.ref_audio = btoa(binaryString);
         } else {
@@ -64,10 +81,10 @@ export class MistralSpeechProvider
     const url = `${this.baseURL}/audio/speech`;
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'MISTRAL_API_KEY', 'Mistral')}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -76,18 +93,20 @@ export class MistralSpeechProvider
 
     await handleErrorResponse(response, `mistral/${options.modelId}`);
 
-    const json = await response.json() as { audio_data: string };
+    const json = (await response.json()) as { audio_data: string };
 
     return {
       audio: json.audio_data,
-      mediaType: 'audio/mpeg',
+      mediaType: "audio/mpeg",
     };
   }
 }
 
 export function createMistral(config: MistralSpeechProviderConfig = {}) {
   const provider = new MistralSpeechProvider(config);
-  return function mistral(modelId?: string): ResolvedModel<string | { audio: string | Uint8Array }> {
+  return function mistral(
+    modelId?: string
+  ): ResolvedModel<string | { audio: string | Uint8Array }> {
     return { provider, modelId: modelId ?? provider.defaultModel };
   };
 }

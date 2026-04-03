@@ -1,44 +1,45 @@
-import { describe, it, expect } from 'vitest';
-import { generateSpeech } from '../../generate-speech.js';
-import { createFal } from '../../providers/fal/index.js';
+import { describe, expect, it } from "vitest";
+import { generateSpeech } from "../../generate-speech.js";
+import { createFal } from "../../providers/fal/index.js";
 
 const hasKey = !!process.env.FAL_API_KEY;
 
-describe.skipIf(!hasKey)('fal e2e', () => {
-  const TEST_TEXT = 'Hello, this is a test of the speech SDK.';
+describe.skipIf(!hasKey)("fal e2e", () => {
+  const TEST_TEXT = "Hello, this is a test of the speech SDK.";
   const fal = createFal();
 
-  describe('kokoro/american-english', () => {
-    it('generates audio', async () => {
+  describe("kokoro/american-english", () => {
+    it("generates audio", async () => {
       const result = await generateSpeech({
-        model: fal('kokoro/american-english'),
+        model: fal("kokoro/american-english"),
         text: TEST_TEXT,
-        voice: 'af_heart',
+        voice: "af_heart",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
       expect(result.audio.mediaType).toMatch(/^audio\//);
     });
   });
 
-  describe('inworld-tts', () => {
-    it('generates audio', async () => {
+  describe("inworld-tts", () => {
+    it("generates audio", async () => {
       const result = await generateSpeech({
-        model: fal('inworld-tts'),
+        model: fal("inworld-tts"),
         text: TEST_TEXT,
-        voice: 'Craig (en)',
+        voice: "Craig (en)",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     });
   });
 
-  describe('minimax/speech-02-hd', () => {
-    it('generates audio', async () => {
+  describe("minimax/speech-02-hd", () => {
+    it("generates audio", async () => {
       const result = await generateSpeech({
-        model: fal('minimax/speech-02-hd'),
+        model: fal("minimax/speech-02-hd"),
         text: TEST_TEXT,
-        voice: 'Friendly_Person',
+        voice: "Friendly_Person",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -46,24 +47,28 @@ describe.skipIf(!hasKey)('fal e2e', () => {
   });
 
   // Voice cloning models — require audio_url reference, tested with providerOptions
-  describe('chatterbox/text-to-speech', () => {
-    it('generates audio with reference voice URL', async () => {
+  describe("chatterbox/text-to-speech", () => {
+    it("generates audio with reference voice URL", async () => {
       const result = await generateSpeech({
-        model: fal('chatterbox/text-to-speech'),
+        model: fal("chatterbox/text-to-speech"),
         text: TEST_TEXT,
-        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
+        voice: {
+          url: "https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav",
+        },
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     });
   });
 
-  describe('lux-tts', () => {
-    it('generates audio with reference voice URL', async () => {
+  describe("lux-tts", () => {
+    it("generates audio with reference voice URL", async () => {
       const result = await generateSpeech({
-        model: fal('lux-tts'),
+        model: fal("lux-tts"),
         text: TEST_TEXT,
-        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
+        voice: {
+          url: "https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav",
+        },
         providerOptions: { prompt: TEST_TEXT },
       });
 
@@ -71,12 +76,14 @@ describe.skipIf(!hasKey)('fal e2e', () => {
     });
   });
 
-  describe('tada/3b/text-to-speech', () => {
-    it('generates audio with reference voice URL', async () => {
+  describe("tada/3b/text-to-speech", () => {
+    it("generates audio with reference voice URL", async () => {
       const result = await generateSpeech({
-        model: fal('tada/3b/text-to-speech'),
+        model: fal("tada/3b/text-to-speech"),
         text: TEST_TEXT,
-        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
+        voice: {
+          url: "https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav",
+        },
         providerOptions: { prompt: TEST_TEXT },
       });
 
@@ -84,12 +91,14 @@ describe.skipIf(!hasKey)('fal e2e', () => {
     });
   });
 
-  describe('tada/1b/text-to-speech', () => {
-    it('generates audio with reference voice URL', async () => {
+  describe("tada/1b/text-to-speech", () => {
+    it("generates audio with reference voice URL", async () => {
       const result = await generateSpeech({
-        model: fal('tada/1b/text-to-speech'),
+        model: fal("tada/1b/text-to-speech"),
         text: TEST_TEXT,
-        voice: { url: 'https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav' },
+        voice: {
+          url: "https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav",
+        },
         providerOptions: { prompt: TEST_TEXT },
       });
 
@@ -97,12 +106,12 @@ describe.skipIf(!hasKey)('fal e2e', () => {
     });
   });
 
-  describe('string model identifier', () => {
-    it('generates audio via string', async () => {
+  describe("string model identifier", () => {
+    it("generates audio via string", async () => {
       const result = await generateSpeech({
-        model: 'fal-ai/kokoro/american-english',
+        model: "fal-ai/kokoro/american-english",
         text: TEST_TEXT,
-        voice: 'af_heart',
+        voice: "af_heart",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

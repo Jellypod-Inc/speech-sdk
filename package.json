@@ -27,7 +27,7 @@
       "types": "./dist/providers/cartesia/index.d.ts",
       "default": "./dist/providers/cartesia/index.js"
     },
-"./hume": {
+    "./hume": {
       "types": "./dist/providers/hume/index.d.ts",
       "default": "./dist/providers/hume/index.js"
     },
@@ -35,7 +35,7 @@
       "types": "./dist/providers/google/index.d.ts",
       "default": "./dist/providers/google/index.js"
     },
-"./fish-audio": {
+    "./fish-audio": {
       "types": "./dist/providers/fish-audio/index.d.ts",
       "default": "./dist/providers/fish-audio/index.js"
     },
@@ -51,7 +51,7 @@
       "types": "./dist/providers/resemble/index.d.ts",
       "default": "./dist/providers/resemble/index.js"
     },
-"./fal-ai": {
+    "./fal-ai": {
       "types": "./dist/providers/fal/index.d.ts",
       "default": "./dist/providers/fal/index.js"
     },
@@ -69,7 +69,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "prepare": "husky"
   },
   "keywords": [
     "tts",
@@ -88,9 +91,12 @@
     "p-retry": "^8.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.9",
     "@types/node": "^25.5.0",
     "dotenv": "^17.3.1",
+    "husky": "^9.1.7",
     "typescript": "^5.8.0",
+    "ultracite": "7.4.2",
     "vitest": "^3.1.0"
   }
 }

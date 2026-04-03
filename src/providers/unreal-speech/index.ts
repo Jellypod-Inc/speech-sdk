@@ -1,6 +1,6 @@
-import type { SpeechProvider, ResolvedModel } from '../../speech-provider.js';
-import { resolveApiKey, handleErrorResponse } from '../../provider-utils.js';
-import { ApiError } from '../../errors.js';
+import { ApiError } from "../../errors.js";
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface UnrealSpeechProviderConfig {
   apiKey?: string;
@@ -9,11 +9,18 @@ export interface UnrealSpeechProviderConfig {
 }
 
 export class UnrealSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = 'unreal-speech';
-  readonly defaultModel = 'default';
+  readonly id = "unreal-speech";
+  readonly defaultModel = "default";
 
   readonly models = [
-    { id: 'default', languages: ['en', 'zh', 'hi', 'es', 'pt', 'ja', 'fr', 'it'], releaseDate: '2025-06-01', openSource: false, inlineVoiceCloning: false, zeroDataRetention: false },
+    {
+      id: "default",
+      languages: ["en", "zh", "hi", "es", "pt", "ja", "fr", "it"],
+      releaseDate: "2025-06-01",
+      openSource: false,
+      inlineVoiceCloning: false,
+      zeroDataRetention: false,
+    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -22,7 +29,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
   constructor(config: UnrealSpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? 'https://api.v8.unrealspeech.com';
+    this.baseURL = config.baseURL ?? "https://api.v8.unrealspeech.com";
     this.fetchFn = config.fetch ?? globalThis.fetch;
   }
 
@@ -42,17 +49,17 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,
-      AudioFormat: 'mp3',
-      OutputFormat: 'uri',
+      AudioFormat: "mp3",
+      OutputFormat: "uri",
       VoiceId: options.voice,
       Text: options.text,
     };
 
     const response = await this.fetchFn(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resolveApiKey(this.apiKey, 'UNREAL_SPEECH_API_KEY', 'Unreal Speech')}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "UNREAL_SPEECH_API_KEY", "Unreal Speech")}`,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -61,7 +68,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `unreal-speech/${options.modelId}`);
 
-    const json = await response.json() as { OutputUri: string };
+    const json = (await response.json()) as { OutputUri: string };
 
     const audioResponse = await this.fetchFn(json.OutputUri, {
       signal: options.abortSignal,
@@ -79,7 +86,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       audio: new Uint8Array(arrayBuffer),
-      mediaType: 'audio/mpeg',
+      mediaType: "audio/mpeg",
     };
   }
 }
