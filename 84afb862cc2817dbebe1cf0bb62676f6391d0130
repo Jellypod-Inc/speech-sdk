@@ -1,0 +1,57 @@
+src/providers/elevenlabs/index.ts
+  522e2f507cb6f2c0 170,181-182,184-186,188-194
+src/__tests__/audio-tags.test.ts
+  522e2f507cb6f2c0 3,7-8,13-14,17-18,21-22,27-28,31-32,35-36,39-40,43-44,47-48,51-52,55-57,62,64-66,73,76-77,81-83,87-89,93-94,98-99,102,104-106
+src/__tests__/elevenlabs-speech-model.test.ts
+  522e2f507cb6f2c0 207,210,212-214,217,220,222,225-226,229,232,234-236,241-243,251-253,255-258,261-265,267-269,272-273,275,277-279,281
+src/index.ts
+  670a05ceb2441dc3 1
+src/providers/cartesia/index.ts
+  522e2f507cb6f2c0 78,80-81,152-153,155-157,159-176,178-190,192,194-195,197-199
+src/audio-tags.ts
+  522e2f507cb6f2c0 1-8,10-17,19-20,25-27
+src/__tests__/generate-speech.test.ts
+  522e2f507cb6f2c0 20,150-151,155-157,159-160,162-164,166-167,171-173,175-178,180,183-186,190-191,196,198,200-201,203-206,211,213-216,218,221-225,230,232-235,237-240,246-248,250,252-256,260-262,264-267,269,271-275,279-281,283-285,287,289-293,297-302
+src/errors.ts
+  522e2f507cb6f2c0 31
+src/speech-result.ts
+  522e2f507cb6f2c0 10
+  670a05ceb2441dc3 53-54
+src/generate-speech.ts
+  522e2f507cb6f2c0 18,22,24-29,31-36,38-48,50-51,57,89
+src/__tests__/cartesia-speech-model.test.ts
+  522e2f507cb6f2c0 144,147,149-151,154,157-161,164,167-168,170-173,177-179,182,185,187,190-191,194,197-198,200-201,203-204,207,210,212-214,219-221,223-225,227-230,232-235,238-240,242,244-246,250-251,254,257,259-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "84afb862cc2817dbebe1cf0bb62676f6391d0130",
+  "prompts": {
+    "522e2f507cb6f2c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86aaa6a-5797-4651-b838-59550357de92",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 364,
+      "overriden_lines": 0
+    },
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
