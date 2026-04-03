@@ -1,0 +1,51 @@
+src/providers/fish-audio/index.ts
+  4da3fa1f87dab66c 1,18,37-46
+src/providers/elevenlabs/index.ts
+  4da3fa1f87dab66c 137,146,155,164,187
+src/providers/unreal-speech/index.ts
+  4da3fa1f87dab66c 18
+package.json
+  4da3fa1f87dab66c 3
+src/providers/murf/index.ts
+  4da3fa1f87dab66c 17,60
+src/providers/fal/index.ts
+  4da3fa1f87dab66c 20,29,38,47,56
+src/providers/resemble/index.ts
+  4da3fa1f87dab66c 17
+src/__tests__/fish-audio-speech-model.test.ts
+  4da3fa1f87dab66c 117-145
+src/providers/google/index.ts
+  4da3fa1f87dab66c 44,78
+src/speech-provider.ts
+  4da3fa1f87dab66c 4
+src/providers/mistral/index.ts
+  4da3fa1f87dab66c 18
+src/providers/openai/index.ts
+  4da3fa1f87dab66c 89,98,107
+src/providers/deepgram/index.ts
+  4da3fa1f87dab66c 17
+src/providers/cartesia/index.ts
+  4da3fa1f87dab66c 18,70,156
+src/providers/hume/index.ts
+  4da3fa1f87dab66c 17,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "1006b6c4d8c2cb54323925cb53372ae337762ebb",
+  "prompts": {
+    "4da3fa1f87dab66c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c966633-8035-4254-9b71-7f7c1c230795",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 76,
+      "total_deletions": 22,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}
