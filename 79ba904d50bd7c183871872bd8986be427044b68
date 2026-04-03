@@ -1,0 +1,25 @@
+src/__tests__/generate-speech.test.ts
+  670a05ceb2441dc3 303-347
+src/generate-speech.ts
+  670a05ceb2441dc3 4,18,26-27,33,37,40,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "79ba904d50bd7c183871872bd8986be427044b68",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 51,
+      "total_deletions": 4,
+      "accepted_lines": 53,
+      "overriden_lines": 0
+    }
+  }
+}
