@@ -238,7 +238,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `cartesia/${options.modelId}`);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const mediaType = response.headers.get("content-type") ?? "audio/wav";
 
     return {
       audio: new Uint8Array(arrayBuffer),
