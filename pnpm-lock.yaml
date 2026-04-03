@@ -11,12 +11,6 @@ importers:
       p-retry:
         specifier: ^8.0.0
         version: 8.0.0
-      tinyld:
-        specifier: ^1.3.4
-        version: 1.3.4
-      to-words:
-        specifier: ^5.4.0
-        version: 5.4.0
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.9
@@ -649,11 +643,6 @@ packages:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
 
-  tinyld@1.3.4:
-    resolution: {integrity: sha512-u26CNoaInA4XpDU+8s/6Cq8xHc2T5M4fXB3ICfXPokUQoLzmPgSZU02TAkFwFMJCWTjk53gtkS8pETTreZwCqw==}
-    engines: {node: '>= 12.10.0', npm: '>= 6.12.0', yarn: '>= 1.20.0'}
-    hasBin: true
-
   tinypool@1.1.1:
     resolution: {integrity: sha512-Zba82s87IFq9A9XmjiX5uZA/ARWDrB03OHlq+Vw1fSdt0I+4/Kutwy8BP4Y/y/aORMo61FQ0vIb5j44vSo5Pkg==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -665,11 +654,6 @@ packages:
   tinyspy@4.0.4:
     resolution: {integrity: sha512-azl+t0z7pw/z958Gy9svOTuzqIk6xq+NSheJzn5MMWtWTFywIacg2wUlzKFGtt3cthx0r2SxMK0yzJOR0IES7Q==}
     engines: {node: '>=14.0.0'}
-
-  to-words@5.4.0:
-    resolution: {integrity: sha512-ki+YWEP1vnDsDY1sHDdSdn71e/tF3nDZb7n9RyQnhgq1Cji/cMG3KqeCXxwZGIZttpYIfYCr5OcjjJp5SB7izg==}
-    engines: {node: '>=20.0.0'}
-    hasBin: true
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -1251,15 +1235,11 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
 
-  tinyld@1.3.4: {}
-
   tinypool@1.1.1: {}
 
   tinyrainbow@2.0.0: {}
 
   tinyspy@4.0.4: {}
-
-  to-words@5.4.0: {}
 
   typescript@5.9.3: {}
 

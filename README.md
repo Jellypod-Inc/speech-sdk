@@ -155,47 +155,6 @@ const result = await generateSpeech({
 });
 ```
 
-## Symbol Expansion
-
-By default, the SDK automatically expands numbers and currency symbols into spoken words before sending text to the TTS provider. This improves pronunciation quality across languages.
-
-```ts
-// Numbers and currency are expanded automatically
-await generateSpeech({
-  model: 'openai/gpt-4o-mini-tts',
-  text: 'I bought 3 apples for $4.50',
-  voice: 'alloy',
-});
-// Provider receives: "I bought three apples for four dollars and fifty cents"
-```
-
-Language is auto-detected from the input text using [tinyld](https://github.com/nicedoc/tinyld), and numbers are expanded in the detected locale using [to-words](https://github.com/mhrdwan/to-words):
-
-```ts
-// French text is detected and expanded with French number words
-await generateSpeech({
-  model: 'openai/gpt-4o-mini-tts',
-  text: "J'ai acheté 3 pommes pour 4,50€",
-  voice: 'alloy',
-  options: { symbolExpansion: true, locale: 'fr-FR' }, // or let it auto-detect
-});
-```
-
-**What gets expanded:** plain integers (`42`), grouped numbers (`1,000,000`), decimals (`3.14`), currency (`$50`, `50€`), and English ordinals (`3rd`).
-
-**What stays unchanged:** identifiers (`B747`, `H2O`) and ranges (`50-100`).
-
-To disable expansion:
-
-```ts
-await generateSpeech({
-  model: 'openai/gpt-4o-mini-tts',
-  text: 'Flight B747 departs at gate 3',
-  voice: 'alloy',
-  options: { symbolExpansion: false },
-});
-```
-
 ## Options
 
 ```ts
@@ -203,20 +162,12 @@ generateSpeech({
   model: string | ResolvedModel,  // required
   text: string,                   // required
   voice: Voice,                   // required
-  options?: SpeechOptions,        // SDK-level options (see below)
   providerOptions?: object,       // provider-specific API params
   maxRetries?: number,            // default: 2 (retries on 5xx/network errors)
   abortSignal?: AbortSignal,      // cancel the request
   headers?: Record<string, string>, // additional HTTP headers
 });
 ```
-
-### `SpeechOptions`
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `symbolExpansion` | `boolean` | `true` | Expand numbers and currency into spoken words |
-| `locale` | `string` | auto-detected | Override locale for expansion (e.g. `'de-DE'`). Only valid when `symbolExpansion` is `true`. |
 
 ## Result
 

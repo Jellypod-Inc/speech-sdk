@@ -9,4 +9,4 @@ export type {
   Voice,
 } from "./speech-provider.js";
 export type { GeneratedAudioFile, SpeechResult } from "./speech-result.js";
-export type { GenerateSpeechOptions, SpeechOptions } from "./types.js";
+export type { GenerateSpeechOptions } from "./types.js";

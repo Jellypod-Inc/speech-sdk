@@ -300,51 +300,6 @@ describe("generateSpeech", () => {
     });
   });
 
-  describe("symbol expansion", () => {
-    it("expands numbers in text by default", async () => {
-      const provider = createMockProvider();
-      await generateSpeech({
-        model: { provider, modelId: "test-model" },
-        text: "I bought 3 apples at the grocery store today",
-        voice: "test-voice",
-      });
-
-      const callArgs = (provider.generate as ReturnType<typeof vi.fn>).mock
-        .calls[0][0];
-      expect(callArgs.text.toLowerCase()).toContain("three");
-    });
-
-    it("does not expand when symbolExpansion is false", async () => {
-      const provider = createMockProvider();
-      await generateSpeech({
-        model: { provider, modelId: "test-model" },
-        text: "I bought 3 apples at the grocery store today",
-        voice: "test-voice",
-        options: { symbolExpansion: false },
-      });
-
-      expect(provider.generate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: expect.stringContaining("3"),
-        })
-      );
-    });
-
-    it("uses locale override when provided", async () => {
-      const provider = createMockProvider();
-      await generateSpeech({
-        model: { provider, modelId: "test-model" },
-        text: "Der Preis ist 3,14 Euro pro Stück",
-        voice: "test-voice",
-        options: { symbolExpansion: true, locale: "de-DE" },
-      });
-
-      const callArgs = (provider.generate as ReturnType<typeof vi.fn>).mock
-        .calls[0][0];
-      expect(callArgs.text.toLowerCase()).toContain("drei");
-    });
-  });
-
   it("does not retry on 4xx errors", async () => {
     const error = new ApiError("Auth error", {
       statusCode: 401,
