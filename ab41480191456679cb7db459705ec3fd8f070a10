@@ -1,0 +1,27 @@
+src/index.ts
+  dabbaf41a5771c94 12
+package.json
+  dabbaf41a5771c94 91
+src/generate-speech.ts
+  dabbaf41a5771c94 29,33,36,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "ab41480191456679cb7db459705ec3fd8f070a10",
+  "prompts": {
+    "dabbaf41a5771c94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a37f5ec1-8dfb-423a-b62f-ab671ce38900",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 112,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
