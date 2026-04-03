@@ -88,7 +88,9 @@
     "url": "https://github.com/Jellypod-Inc/speech-sdk"
   },
   "dependencies": {
-    "p-retry": "^8.0.0"
+    "p-retry": "^8.0.0",
+    "tinyld": "^1.3.4",
+    "to-words": "^5.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.9",
