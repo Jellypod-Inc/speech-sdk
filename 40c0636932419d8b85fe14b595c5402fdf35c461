@@ -1,0 +1,31 @@
+src/speech-result.ts
+  670a05ceb2441dc3 53-54
+src/index.ts
+  670a05ceb2441dc3 1
+src/providers/mistral/index.ts
+  670a05ceb2441dc3 71-72
+src/__tests__/number-expansion.test.ts
+  670a05ceb2441dc3 3,10-11,15-16,21-22,27-29,34-35,37,40,42-43,47-48,52-54,59-60,64-65,67,70,72-74,80-81,86-87,92-93,98-100,105-106,110-111,115-116,120-121,123,125,127-129,134-135,139-140,144-145,149-150,154-156,160-161,165-167,172-173,177-178,183-187
+src/number-expansion.ts
+  670a05ceb2441dc3 3-5,21-22,36-38,40-50,52-56,58,60-75,77-90,92-99,101-103,105-112,115,117,120,122-383,385,387-394,396,398-405,407-482,484,486-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "40c0636932419d8b85fe14b595c5402fdf35c461",
+  "prompts": {
+    "670a05ceb2441dc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "595cff2b-4e85-4fc3-8a34-d89890ec74de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 874,
+      "total_deletions": 307,
+      "accepted_lines": 530,
+      "overriden_lines": 153
+    }
+  }
+}
