@@ -6,6 +6,7 @@ import { resolveModel } from "./resolve-provider.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
+import type { SpeechOptions } from "./types.js";
 
 export async function generateSpeech<V extends Voice = Voice>(options: {
   model: string | ResolvedModel<V>;
@@ -15,7 +16,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  options?: import("./types.js").SpeechOptions;
+  options?: SpeechOptions;
 }): Promise<SpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
