@@ -302,11 +302,12 @@ describe("generateSpeech", () => {
   });
 
   it("works with browser-like fetch that requires correct this context", async () => {
-    const context = { isBrowserWindow: true };
     // Simulates browser fetch which throws "Illegal invocation" when
-    // called without the correct `this` binding (Window context).
+    // called without the correct `this` binding (Window/globalThis context).
+    // The mock is assigned unbound so the provider's .bind(globalThis) is
+    // what makes `this === globalThis` true at call time.
     const browserFetch = vi.fn(function (this: unknown) {
-      if (this !== context) {
+      if (this !== globalThis) {
         throw new TypeError(
           "Failed to execute 'fetch' on 'Window': Illegal invocation"
         );
@@ -320,7 +321,7 @@ describe("generateSpeech", () => {
     });
 
     const savedFetch = globalThis.fetch;
-    globalThis.fetch = browserFetch.bind(context) as typeof globalThis.fetch;
+    globalThis.fetch = browserFetch as typeof globalThis.fetch;
     try {
       const provider = new OpenAISpeechProvider({ apiKey: "test-key" });
       const result = await generateSpeech({
