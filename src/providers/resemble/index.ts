@@ -53,7 +53,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: ResembleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://f.cluster.resemble.ai";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {

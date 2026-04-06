@@ -29,7 +29,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: DeepgramSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.deepgram.com/v1";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {

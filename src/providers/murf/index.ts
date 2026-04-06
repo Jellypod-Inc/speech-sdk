@@ -71,7 +71,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: MurfSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.murf.ai/v1";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {

@@ -144,7 +144,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: CartesiaSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.cartesia.ai";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   processAudioTags(

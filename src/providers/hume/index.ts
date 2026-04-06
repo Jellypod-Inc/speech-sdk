@@ -49,7 +49,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: HumeSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.hume.ai/v0";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   private resolveVersion(modelId: string): string | undefined {

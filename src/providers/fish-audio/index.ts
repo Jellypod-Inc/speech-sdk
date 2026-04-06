@@ -30,7 +30,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: FishAudioSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.fish.audio";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   processAudioTags(
