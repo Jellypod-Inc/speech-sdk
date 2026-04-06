@@ -173,7 +173,7 @@ export class ElevenLabsSpeechProvider
   constructor(config: ElevenLabsSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.elevenlabs.io";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   processAudioTags(

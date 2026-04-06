@@ -30,7 +30,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
   constructor(config: UnrealSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.v8.unrealspeech.com";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {

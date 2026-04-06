@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
+import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 function createMockProvider(
@@ -298,6 +299,39 @@ describe("generateSpeech", () => {
 
       expect(result.warnings).toBeUndefined();
     });
+  });
+
+  it("works with browser-like fetch that requires correct this context", async () => {
+    // Simulates browser fetch which throws "Illegal invocation" when
+    // called without the correct `this` binding (Window/globalThis context).
+    // The mock is assigned unbound so the provider's .bind(globalThis) is
+    // what makes `this === globalThis` true at call time.
+    const browserFetch = vi.fn(function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError(
+          "Failed to execute 'fetch' on 'Window': Illegal invocation"
+        );
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "audio/mpeg" }),
+        arrayBuffer: async () => new Uint8Array([1]).buffer,
+      });
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = browserFetch as typeof globalThis.fetch;
+    try {
+      const provider = new OpenAISpeechProvider({ apiKey: "test-key" });
+      const result = await generateSpeech({
+        model: { provider, modelId: "tts-1" },
+        text: "Hello",
+      });
+      expect(result.audio).toBeDefined();
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
   });
 
   it("does not retry on 4xx errors", async () => {

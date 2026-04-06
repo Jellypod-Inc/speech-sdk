@@ -115,7 +115,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   constructor(config: OpenAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.openai.com/v1";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {

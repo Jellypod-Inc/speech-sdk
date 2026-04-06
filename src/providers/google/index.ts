@@ -88,7 +88,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     this.apiKey = config.apiKey;
     this.baseURL =
       config.baseURL ?? "https://generativelanguage.googleapis.com/v1beta";
-    this.fetchFn = config.fetch ?? globalThis.fetch;
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   async generate(options: {
