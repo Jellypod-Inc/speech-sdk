@@ -1,0 +1,23 @@
+src/__tests__/generate-speech.test.ts
+  0f14e3cdc9f86928 306-308,310,324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "36df2dafc7d195f29d3212669e45ffe082086d40",
+  "prompts": {
+    "0f14e3cdc9f86928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83acd4cf-d459-4d9b-9228-6ba3c5741983",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 4,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
