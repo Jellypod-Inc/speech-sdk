@@ -274,4 +274,21 @@ describe("OpenAISpeechProvider.generate with audio tags", () => {
     expect(body.input).toBe("Hello world");
     expect(body.instructions).toBeUndefined();
   });
+
+  it("forwards user-supplied providerOptions.instructions for tts-1", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "tts-1",
+      text: "Hello world",
+      voice: "alloy",
+      providerOptions: { instructions: "Speak slowly." },
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("Hello world");
+    expect(body.instructions).toBe("Speak slowly.");
+  });
 });
