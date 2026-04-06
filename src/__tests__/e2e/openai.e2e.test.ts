@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateSpeech } from "../../generate-speech.js";
 import { createOpenAI } from "../../providers/openai/index.js";
+import { saveAudioIfRequested } from "./save-audio.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
 const VOICE = "alloy";
@@ -84,5 +85,7 @@ describe("OpenAI e2e", () => {
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(1000);
     expect(result.warnings).toBeUndefined();
+
+    saveAudioIfRequested("openai-gpt-4o-mini-tts-audio-tags", result.audio);
   });
 });
