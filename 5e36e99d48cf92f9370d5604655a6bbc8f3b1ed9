@@ -1,0 +1,25 @@
+src/__tests__/openai-instructions.test.ts
+  11a3caa3941fe33f 1-79
+src/providers/openai/instructions.ts
+  11a3caa3941fe33f 1-73,75-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "5e36e99d48cf92f9370d5604655a6bbc8f3b1ed9",
+  "prompts": {
+    "11a3caa3941fe33f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e390210-f861-4ff9-a96b-3318d9f1f328",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 161,
+      "total_deletions": 0,
+      "accepted_lines": 158,
+      "overriden_lines": 1
+    }
+  }
+}
