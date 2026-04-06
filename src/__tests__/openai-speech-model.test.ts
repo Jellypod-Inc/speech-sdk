@@ -165,3 +165,113 @@ describe("OpenAISpeechProvider", () => {
     expect(headers["X-Request-Id"]).toBe("abc-123");
   });
 });
+
+describe("OpenAISpeechProvider.processAudioTags", () => {
+  const provider = new OpenAISpeechProvider({ apiKey: "test" });
+
+  it("passes text through unchanged for gpt-4o-mini-tts", () => {
+    const r = provider.processAudioTags(
+      "[cheerfully] Hi John [soft] I'm great",
+      "gpt-4o-mini-tts"
+    );
+    expect(r.text).toBe("[cheerfully] Hi John [soft] I'm great");
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("strips tags and warns for tts-1", () => {
+    const r = provider.processAudioTags("[laugh] Hello", "tts-1");
+    expect(r.text).toBe("Hello");
+    expect(r.warnings).toEqual([
+      "Audio tag [laugh] is not supported by openai/tts-1 and was removed.",
+    ]);
+  });
+
+  it("strips tags and warns for tts-1-hd", () => {
+    const r = provider.processAudioTags("[laugh] Hello", "tts-1-hd");
+    expect(r.text).toBe("Hello");
+    expect(r.warnings).toHaveLength(1);
+  });
+});
+
+describe("OpenAISpeechProvider.generate with audio tags", () => {
+  function mockFetch(): typeof globalThis.fetch {
+    return vi.fn(
+      async () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "audio/mpeg" },
+        })
+    ) as unknown as typeof globalThis.fetch;
+  }
+
+  it("extracts tags into instructions and sends cleaned input for gpt-4o-mini-tts", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "gpt-4o-mini-tts",
+      text: "[cheerfully] Hi John how are you? [soft] I'm feeling great",
+      voice: "alloy",
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("Hi John how are you? I'm feeling great");
+    expect(body.instructions).toBe(
+      "Delivery shifts through the text in order: begin cheerfully, then soft."
+    );
+    expect(body.model).toBe("gpt-4o-mini-tts");
+    expect(body.voice).toBe("alloy");
+  });
+
+  it("prepends user-supplied providerOptions.instructions before tag-derived instructions", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "gpt-4o-mini-tts",
+      text: "[cheerfully] Hi John",
+      voice: "alloy",
+      providerOptions: { instructions: "Speak with an English accent." },
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("Hi John");
+    expect(body.instructions).toBe(
+      "Speak with an English accent.\n\nSpeak cheerfully."
+    );
+  });
+
+  it("passes through text unchanged when no tags are present", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "gpt-4o-mini-tts",
+      text: "Hi John",
+      voice: "alloy",
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("Hi John");
+    expect(body.instructions).toBeUndefined();
+  });
+
+  it("does not parse tags for tts-1 (stripping already happened upstream via processAudioTags)", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "tts-1",
+      text: "Hello world", // already stripped
+      voice: "alloy",
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("Hello world");
+    expect(body.instructions).toBeUndefined();
+  });
+});
