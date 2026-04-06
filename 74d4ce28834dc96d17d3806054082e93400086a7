@@ -1,0 +1,23 @@
+src/__tests__/e2e/openai.e2e.test.ts
+  11a3caa3941fe33f 77-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "74d4ce28834dc96d17d3806054082e93400086a7",
+  "prompts": {
+    "11a3caa3941fe33f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e390210-f861-4ff9-a96b-3318d9f1f328",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 0,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
