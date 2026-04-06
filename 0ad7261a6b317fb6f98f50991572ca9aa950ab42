@@ -1,0 +1,27 @@
+.gitignore
+  11a3caa3941fe33f 8
+src/__tests__/e2e/openai.e2e.test.ts
+  11a3caa3941fe33f 4,88-89
+src/__tests__/e2e/save-audio.ts
+  11a3caa3941fe33f 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "0ad7261a6b317fb6f98f50991572ca9aa950ab42",
+  "prompts": {
+    "11a3caa3941fe33f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e390210-f861-4ff9-a96b-3318d9f1f328",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 0,
+      "accepted_lines": 60,
+      "overriden_lines": 0
+    }
+  }
+}
