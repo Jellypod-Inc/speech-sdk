@@ -74,4 +74,15 @@ describe("OpenAI e2e", () => {
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
   });
+
+  it("maps audio tag instructions to gpt-4o-mini-tts", async () => {
+    const result = await generateSpeech({
+      model: "openai/gpt-4o-mini-tts",
+      voice: "alloy",
+      text: "[cheerfully] Hello there! [soft] How are you today?",
+    });
+
+    expect(result.audio.uint8Array.byteLength).toBeGreaterThan(1000);
+    expect(result.warnings).toBeUndefined();
+  });
 });
