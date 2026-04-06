@@ -154,10 +154,10 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    // gpt-4o-mini-tts supports the SDK audio tag syntax via the `instructions`
-    // parameter. Leave raw tags in place so `generate()` can extract them and
+    // Models with audioTags flag support the SDK audio tag syntax.
+    // Leave raw tags in place so `generate()` can extract them and
     // build the instructions string in a single pass.
-    if (modelId === "gpt-4o-mini-tts") {
+    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `openai/${modelId}`);
