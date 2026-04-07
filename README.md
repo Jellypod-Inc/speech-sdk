@@ -62,11 +62,32 @@ while (true) {
 
 ### Capability check
 
-Each entry in `provider.models` has a `streaming: boolean` field. Calling `streamSpeech()` on a model where `streaming: false` (all fal models today) throws `StreamingNotSupportedError`.
+Each entry in `provider.models` exposes a `features` array. Use the `hasFeature` helper to check support:
+
+```ts
+import { hasFeature } from "@speech-sdk/core";
+
+const model = provider.models.find((m) => m.id === "tts-1");
+if (hasFeature(model, "streaming")) {
+  // safe to call streamSpeech()
+}
+```
+
+Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature (all fal models today) throws `StreamingNotSupportedError`.
 
 ### Retry semantics
 
 `streamSpeech()` retries only the initial request — until the provider returns response headers. Once bytes start flowing, mid-stream errors propagate to the `ReadableStream` consumer as a stream error and are **not** retried.
+
+### Provider behavior
+
+Streaming is a capability declared by each provider, but what you actually observe on the wire varies:
+
+- **Truly progressive** (audio arrives incrementally, low first-byte latency): OpenAI, ElevenLabs, Cartesia, Deepgram.
+- **Chunked but buffered server-side** (transport is chunked, but most audio arrives in a burst near the end): Fish Audio, Resemble.
+- **Single-chunk streaming** (`ReadableStream` resolves correctly but the provider buffers the entire synthesis before flushing): Google Gemini TTS via `generativelanguage.googleapis.com`. Real progressive Google TTS is only available through the Live API (`bidiGenerateContent`, WebSocket) or Cloud TTS `streamingSynthesize` (gRPC) — neither of which is supported by this SDK today.
+
+For applications where first-byte latency matters, reach for OpenAI, ElevenLabs, or Cartesia.
 
 ## Supported Providers
 

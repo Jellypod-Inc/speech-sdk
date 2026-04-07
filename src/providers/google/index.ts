@@ -170,6 +170,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
+  // NOTE: Gemini TTS on the Generative Language API (`streamGenerateContent`)
+  // buffers the full synthesis server-side and flushes in a single burst. This
+  // method returns a valid ReadableStream, but first-byte latency matches
+  // generateSpeech(). True progressive Google TTS is only available via:
+  //   - Live API (`bidiGenerateContent`, WebSocket) on native-audio models
+  //   - Cloud TTS `streamingSynthesize` (gRPC only; no REST binding)
+  // Neither is wired up in this SDK today.
   async stream(options: {
     modelId: string;
     text: string;
