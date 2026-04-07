@@ -1,0 +1,49 @@
+docs/providers/hume.md
+  efe593655babc64f 1-47
+docs/providers/cartesia.md
+  efe593655babc64f 1-55
+docs/providers/deepgram.md
+  efe593655babc64f 1-44
+docs/providers/README.md
+  efe593655babc64f 1-39
+docs/providers/openai.md
+  efe593655babc64f 1-62
+docs/providers/elevenlabs.md
+  efe593655babc64f 1-74
+docs/providers/google.md
+  efe593655babc64f 1-49
+docs/providers/fish-audio.md
+  efe593655babc64f 1-53
+docs/providers/unreal-speech.md
+  efe593655babc64f 1-42
+docs/providers/murf.md
+  efe593655babc64f 1-45
+docs/providers/fal.md
+  efe593655babc64f 1-47
+docs/providers/xai.md
+  efe593655babc64f 1-61
+docs/providers/resemble.md
+  efe593655babc64f 1-42
+docs/providers/mistral.md
+  efe593655babc64f 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "e2ac5d555cbbb780323dc27d21fb113ade473899",
+  "prompts": {
+    "efe593655babc64f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3986b559-36d5-4817-9796-790ecfee19ee",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 714,
+      "total_deletions": 0,
+      "accepted_lines": 714,
+      "overriden_lines": 0
+    }
+  }
+}
