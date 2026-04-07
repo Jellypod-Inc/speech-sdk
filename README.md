@@ -109,20 +109,22 @@ console.log(result.warnings); // undefined — eleven_v3 supports all tags
 
 | Provider | Behavior |
 |---|---|
+| OpenAI (`gpt-4o-mini-tts`) | Tags mapped to the `instructions` field for expressive delivery control |
 | ElevenLabs (`eleven_v3`) | All `[tag]` passed through natively |
 | Cartesia (`sonic-3`) | Emotion tags (`[happy]`, `[sad]`, `[angry]`, etc.) converted to SSML; `[laughter]` passed through; unknown tags stripped |
 | All others | Tags stripped and warnings returned |
 
 ```ts
-// Unsupported provider — tags are stripped with warnings
+// OpenAI gpt-4o-mini-tts — tags are mapped to the `instructions` field
 const result = await generateSpeech({
   model: 'openai/gpt-4o-mini-tts',
-  text: '[laugh] Hello world',
+  text: '[cheerfully] Hi John how are you? [soft] I\'m feeling great',
   voice: 'alloy',
 });
-
-console.log(result.warnings);
-// ["Audio tag [laugh] is not supported by openai/gpt-4o-mini-tts and was removed."]
+// Sent to OpenAI:
+//   input: "Hi John how are you? I'm feeling great"
+//   instructions: "Delivery shifts through the text in order: begin cheerfully, then soft."
+console.log(result.warnings); // undefined
 ```
 
 ## Voice Cloning

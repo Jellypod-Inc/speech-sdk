@@ -1,5 +1,7 @@
+import { stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import { buildOpenAIInstructionsFromTags } from "./instructions.js";
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
@@ -86,7 +88,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       id: "gpt-4o-mini-tts",
       languages: OpenAISpeechProvider.LANGUAGES,
       releaseDate: "2025-03-20",
-      audioTags: false,
+      audioTags: true,
       openSource: false,
       inlineVoiceCloning: false,
     },
@@ -118,6 +120,49 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
+  private buildRequestInput(
+    modelId: string,
+    text: string,
+    providerOptions: Record<string, unknown> | undefined
+  ): { input: string; instructions: string | undefined } {
+    if (modelId !== "gpt-4o-mini-tts") {
+      return { input: text, instructions: undefined };
+    }
+
+    const { text: cleaned, instructions: derived } =
+      buildOpenAIInstructionsFromTags(text);
+
+    const userInstructions = providerOptions?.instructions;
+    const userInstructionsStr =
+      typeof userInstructions === "string" && userInstructions.length > 0
+        ? userInstructions
+        : undefined;
+
+    let instructions: string | undefined;
+    if (userInstructionsStr && derived) {
+      instructions = `${userInstructionsStr}\n\n${derived}`;
+    } else if (userInstructionsStr) {
+      instructions = userInstructionsStr;
+    } else if (derived) {
+      instructions = derived;
+    }
+
+    return { input: cleaned, instructions };
+  }
+
+  processAudioTags(
+    text: string,
+    modelId: string
+  ): { text: string; warnings: string[] } {
+    // Models with audioTags flag support the SDK audio tag syntax.
+    // Leave raw tags in place so `generate()` can extract them and
+    // build the instructions string in a single pass.
+    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
+      return { text, warnings: [] };
+    }
+    return stripAudioTags(text, `openai/${modelId}`);
+  }
+
   async generate(options: {
     modelId: string;
     text: string;
@@ -130,12 +175,21 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    const { input, instructions } = this.buildRequestInput(
+      options.modelId,
+      options.text,
+      options.providerOptions
+    );
+
     const body: Record<string, unknown> = {
       ...options.providerOptions,
       model: options.modelId,
-      input: options.text,
+      input,
       voice: options.voice,
     };
+    if (instructions !== undefined) {
+      body.instructions = instructions;
+    }
 
     const url = `${this.baseURL}/audio/speech`;
 
