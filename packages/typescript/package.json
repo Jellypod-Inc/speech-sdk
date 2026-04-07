@@ -1,0 +1,100 @@
+{
+  "name": "@speech-sdk/core",
+  "version": "0.2.0",
+  "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
+  "type": "module",
+  "packageManager": "pnpm@10.11.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./openai": {
+      "types": "./dist/providers/openai/index.d.ts",
+      "default": "./dist/providers/openai/index.js"
+    },
+    "./elevenlabs": {
+      "types": "./dist/providers/elevenlabs/index.d.ts",
+      "default": "./dist/providers/elevenlabs/index.js"
+    },
+    "./deepgram": {
+      "types": "./dist/providers/deepgram/index.d.ts",
+      "default": "./dist/providers/deepgram/index.js"
+    },
+    "./cartesia": {
+      "types": "./dist/providers/cartesia/index.d.ts",
+      "default": "./dist/providers/cartesia/index.js"
+    },
+    "./hume": {
+      "types": "./dist/providers/hume/index.d.ts",
+      "default": "./dist/providers/hume/index.js"
+    },
+    "./google": {
+      "types": "./dist/providers/google/index.d.ts",
+      "default": "./dist/providers/google/index.js"
+    },
+    "./fish-audio": {
+      "types": "./dist/providers/fish-audio/index.d.ts",
+      "default": "./dist/providers/fish-audio/index.js"
+    },
+    "./unreal-speech": {
+      "types": "./dist/providers/unreal-speech/index.d.ts",
+      "default": "./dist/providers/unreal-speech/index.js"
+    },
+    "./murf": {
+      "types": "./dist/providers/murf/index.d.ts",
+      "default": "./dist/providers/murf/index.js"
+    },
+    "./resemble": {
+      "types": "./dist/providers/resemble/index.d.ts",
+      "default": "./dist/providers/resemble/index.js"
+    },
+    "./fal-ai": {
+      "types": "./dist/providers/fal/index.d.ts",
+      "default": "./dist/providers/fal/index.js"
+    },
+    "./mistral": {
+      "types": "./dist/providers/mistral/index.d.ts",
+      "default": "./dist/providers/mistral/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "ultracite check",
+    "fix": "ultracite fix"
+  },
+  "keywords": [
+    "tts",
+    "text-to-speech",
+    "speech",
+    "openai",
+    "elevenlabs",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jellypod-Inc/speech-sdk"
+  },
+  "dependencies": {
+    "p-retry": "^8.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.9",
+    "@types/node": "^25.5.0",
+    "dotenv": "^17.3.1",
+    "typescript": "^5.8.0",
+    "ultracite": "7.4.2",
+    "vitest": "^3.1.0"
+  }
+}

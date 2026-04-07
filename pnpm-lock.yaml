@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  packages/typescript:
     dependencies:
       p-retry:
         specifier: ^8.0.0

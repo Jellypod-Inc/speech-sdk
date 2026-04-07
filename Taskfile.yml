@@ -1,0 +1,39 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build all packages
+    cmds:
+      - task: ts:build
+      - task: go:build
+
+  test:
+    desc: Run tests for all packages
+    cmds:
+      - task: ts:test
+      - task: py:test
+      - task: go:test
+
+  ts:build:
+    dir: packages/typescript
+    cmds: [pnpm build]
+
+  ts:test:
+    dir: packages/typescript
+    cmds: [pnpm test]
+
+  py:test:
+    dir: packages/python
+    cmds: [pytest]
+
+  py:install:
+    dir: packages/python
+    cmds: [pip install -e ".[dev]"]
+
+  go:build:
+    dir: packages/go
+    cmds: [go build ./...]
+
+  go:test:
+    dir: packages/go
+    cmds: [go test ./...]
