@@ -30,6 +30,7 @@ export class MistralSpeechProvider
       releaseDate: "2026-03-23",
       openSource: true,
       inlineVoiceCloning: true,
+      streaming: true,
     },
   ] as const;
 

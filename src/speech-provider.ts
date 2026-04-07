@@ -7,6 +7,7 @@ export interface ModelInfo {
   languages: readonly string[];
   openSource: boolean;
   releaseDate: string;
+  streaming: boolean;
 }
 
 export interface SpeechProvider<

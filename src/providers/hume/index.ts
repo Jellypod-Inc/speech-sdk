@@ -31,6 +31,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-10-01",
       openSource: false,
       inlineVoiceCloning: true,
+      streaming: true,
     },
     {
       id: "octave-1",
@@ -39,6 +40,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-03-01",
       openSource: false,
       inlineVoiceCloning: false,
+      streaming: true,
     },
   ] as const;
 

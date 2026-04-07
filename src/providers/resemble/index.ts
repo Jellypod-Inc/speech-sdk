@@ -43,6 +43,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-09-04",
       openSource: true,
       inlineVoiceCloning: true,
+      streaming: true,
     },
   ] as const;
 

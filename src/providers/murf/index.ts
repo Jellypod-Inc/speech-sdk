@@ -53,6 +53,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-01-01",
       openSource: false,
       inlineVoiceCloning: false,
+      streaming: true,
     },
     {
       id: "FALCON",
@@ -61,6 +62,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2025-01-01",
       openSource: false,
       inlineVoiceCloning: false,
+      streaming: true,
     },
   ] as const;
 

@@ -20,6 +20,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       releaseDate: "2026-03-09",
       openSource: true,
       inlineVoiceCloning: true,
+      streaming: true,
     },
   ] as const;
 
