@@ -90,6 +90,50 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
       mediaType: "audio/mpeg",
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/stream`;
+
+    const body: Record<string, unknown> = {
+      AudioFormat: "mp3",
+      ...options.providerOptions,
+      VoiceId: options.voice,
+      Text: options.text,
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "UNREAL_SPEECH_API_KEY", "Unreal Speech")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `unreal-speech/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`unreal-speech/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createUnrealSpeech(config: UnrealSpeechProviderConfig = {}) {
