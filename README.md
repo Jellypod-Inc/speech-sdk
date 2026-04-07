@@ -40,27 +40,78 @@ result.audio.mediaType;   // "audio/mpeg"
 
 ## Streaming
 
-Stream audio bytes as they're generated for lower first-byte latency.
+Use `streamSpeech()` instead of `generateSpeech()` to receive audio bytes incrementally as the provider produces them. The result's `audio` field is a standard `ReadableStream<Uint8Array>` that works in Node, Edge runtimes, and browsers.
 
 ```ts
 import { streamSpeech } from "@speech-sdk/core";
 
 const { audio, mediaType } = await streamSpeech({
   model: "openai/tts-1",
-  text: "Hello world",
+  text: "Hello from the speech SDK!",
   voice: "alloy",
 });
+```
 
-// `audio` is a ReadableStream<Uint8Array>
+### Pipe to a file (Node)
+
+```ts
+import { createWriteStream } from "node:fs";
+import { Readable } from "node:stream";
+
+const { audio } = await streamSpeech({
+  model: "elevenlabs/eleven_flash_v2_5",
+  text: "Hello world",
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+});
+
+await new Promise((resolve, reject) => {
+  Readable.fromWeb(audio).pipe(createWriteStream("out.mp3")).on("finish", resolve).on("error", reject);
+});
+```
+
+### Forward to an HTTP response (Edge / Workers / Next.js Route Handler)
+
+```ts
+export async function GET() {
+  const { audio, mediaType } = await streamSpeech({
+    model: "cartesia/sonic-3",
+    text: "Streaming straight to the client.",
+    voice: "voice-id",
+  });
+
+  return new Response(audio, { headers: { "Content-Type": mediaType } });
+}
+```
+
+### Read chunks manually
+
+```ts
 const reader = audio.getReader();
 while (true) {
   const { value, done } = await reader.read();
   if (done) break;
-  // write `value` to a file, speaker, or transport
+  // value is a Uint8Array of audio bytes
 }
 ```
 
-Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature throws `StreamingNotSupportedError`. Retries apply only to the initial request; once bytes start flowing, mid-stream errors propagate to the consumer.
+### Capability check
+
+Check whether a model supports streaming before calling `streamSpeech()`:
+
+```ts
+import { hasFeature } from "@speech-sdk/core";
+
+const model = provider.models.find((m) => m.id === "tts-1");
+if (hasFeature(model, "streaming")) {
+  // safe to call streamSpeech()
+}
+```
+
+Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature throws `StreamingNotSupportedError`.
+
+### Errors and retries
+
+Retries apply only to the initial request, until response headers arrive. Once bytes start flowing, mid-stream errors propagate to the `ReadableStream` consumer as a stream error and are not retried. Pass `maxRetries` (default `2`) and an `abortSignal` the same way as `generateSpeech()`.
 
 ## Supported Providers
 
