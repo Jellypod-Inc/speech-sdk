@@ -1,0 +1,25 @@
+src/__tests__/murf-stream.test.ts
+  1ddc35dc606d183b 1-35
+src/providers/murf/index.ts
+  1ddc35dc606d183b 136-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "2a8ef7675329cfd8243a37dbab8fe71acd3aa1f0",
+  "prompts": {
+    "1ddc35dc606d183b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4ed94a5-5eab-41ee-a189-8b9b1f62a362",
+        "model": "<synthetic>"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 155,
+      "overriden_lines": 0
+    }
+  }
+}
