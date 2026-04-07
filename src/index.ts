@@ -8,10 +8,16 @@ export {
 } from "./errors.js";
 export { generateSpeech } from "./generate-speech.js";
 export type {
+  Feature,
   ModelInfo,
   ResolvedModel,
   SpeechProvider,
   Voice,
+} from "./speech-provider.js";
+export {
+  FEATURES,
+  getFeature,
+  hasFeature,
 } from "./speech-provider.js";
 export type { GeneratedAudioFile, SpeechResult } from "./speech-result.js";
 export { streamSpeech } from "./stream-speech.js";

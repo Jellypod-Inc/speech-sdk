@@ -1,7 +1,11 @@
 import { stripAudioTags } from "../../audio-tags.js";
 import { SpeechSDKError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -134,39 +138,27 @@ export class ElevenLabsSpeechProvider
   readonly models = [
     {
       id: "eleven_v3",
-      audioTags: true,
-      languages: ElevenLabsSpeechProvider.V3_LANGUAGES,
       releaseDate: "2025-06-08",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ElevenLabsSpeechProvider.V3_LANGUAGES,
+      features: ["streaming", "audio-tags"],
     },
     {
       id: "eleven_multilingual_v2",
-      audioTags: false,
-      languages: ElevenLabsSpeechProvider.V2_LANGUAGES,
       releaseDate: "2023-08-22",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ElevenLabsSpeechProvider.V2_LANGUAGES,
+      features: ["streaming"],
     },
     {
       id: "eleven_flash_v2_5",
-      audioTags: false,
-      languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES,
       releaseDate: "2024-12-01",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES,
+      features: ["streaming"],
     },
     {
       id: "eleven_flash_v2",
-      audioTags: false,
-      languages: ["en"] as const,
       releaseDate: "2024-12-01",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ["en"] as const,
+      features: ["streaming"],
     },
   ] as const;
 
@@ -220,7 +212,9 @@ export class ElevenLabsSpeechProvider
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
+    if (
+      this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `elevenlabs/${modelId}`);

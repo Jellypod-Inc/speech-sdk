@@ -23,6 +23,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "gemini-2.5-flash-preview-tts",
+      releaseDate: "2025-05-01",
       languages: [
         "en",
         "fr",
@@ -49,14 +50,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         "ro",
         "uk",
       ],
-      releaseDate: "2025-05-01",
-      audioTags: false,
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      features: ["streaming"],
     },
     {
       id: "gemini-2.5-pro-preview-tts",
+      releaseDate: "2025-05-01",
       languages: [
         "en",
         "fr",
@@ -83,11 +81,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         "ro",
         "uk",
       ],
-      releaseDate: "2025-05-01",
-      audioTags: false,
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      features: ["streaming"],
     },
   ] as const;
 

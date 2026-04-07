@@ -6,7 +6,12 @@ import {
   StreamingNotSupportedError,
 } from "./errors.js";
 import { resolveModel } from "./resolve-provider.js";
-import type { ResolvedModel, Voice } from "./speech-provider.js";
+import {
+  FEATURES,
+  hasFeature,
+  type ResolvedModel,
+  type Voice,
+} from "./speech-provider.js";
 import type { StreamSpeechResult } from "./stream-speech-result.js";
 
 export async function streamSpeech<V extends Voice = Voice>(options: {
@@ -27,7 +32,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId
   );
-  if (modelInfo && !modelInfo.streaming) {
+  if (modelInfo && !hasFeature(modelInfo, FEATURES.STREAMING)) {
     throw new StreamingNotSupportedError(modelIdentifier);
   }
   if (typeof resolved.provider.stream !== "function") {

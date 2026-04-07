@@ -1,6 +1,10 @@
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface CartesiaSpeechProviderConfig {
   apiKey?: string;
@@ -15,7 +19,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "sonic-3",
-      audioTags: true,
+      releaseDate: "2025-10-27",
       languages: [
         "en",
         "fr",
@@ -60,19 +64,13 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         "mr",
         "pa",
       ],
-      releaseDate: "2025-10-27",
-      openSource: false,
-      inlineVoiceCloning: true,
-      streaming: true,
+      features: ["streaming", "audio-tags", "inline-voice-cloning"],
     },
     {
       id: "sonic-2",
-      audioTags: false,
-      languages: ["en"],
       releaseDate: "2025-03-13",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ["en"],
+      features: ["streaming"],
     },
   ] as const;
 
@@ -153,7 +151,9 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (!this.models.some((m) => m.id === modelId && m.audioTags)) {
+    if (
+      !this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
       return stripAudioTags(text, `cartesia/${modelId}`);
     }
 

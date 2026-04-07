@@ -1,6 +1,10 @@
 import { stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 import { buildOpenAIInstructionsFromTags } from "./instructions.js";
 
 export interface OpenAISpeechProviderConfig {
@@ -86,30 +90,21 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "gpt-4o-mini-tts",
-      languages: OpenAISpeechProvider.LANGUAGES,
       releaseDate: "2025-03-20",
-      audioTags: true,
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: OpenAISpeechProvider.LANGUAGES,
+      features: ["streaming", "audio-tags"],
     },
     {
       id: "tts-1",
-      languages: OpenAISpeechProvider.LANGUAGES,
       releaseDate: "2023-11-06",
-      audioTags: false,
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: OpenAISpeechProvider.LANGUAGES,
+      features: ["streaming"],
     },
     {
       id: "tts-1-hd",
-      languages: OpenAISpeechProvider.LANGUAGES,
       releaseDate: "2023-11-06",
-      audioTags: false,
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: OpenAISpeechProvider.LANGUAGES,
+      features: ["streaming"],
     },
   ] as const;
 
@@ -160,7 +155,9 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     // Models with audioTags flag support the SDK audio tag syntax.
     // Leave raw tags in place so `generate()` can extract them and
     // build the instructions string in a single pass.
-    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
+    if (
+      this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `openai/${modelId}`);

@@ -11,7 +11,7 @@ import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
 import { UnrealSpeechProvider } from "../providers/unreal-speech/index.js";
-import type { SpeechProvider } from "../speech-provider.js";
+import { hasFeature, type SpeechProvider } from "../speech-provider.js";
 
 const streamingProviders: SpeechProvider[] = [
   new OpenAISpeechProvider({}),
@@ -27,19 +27,19 @@ const streamingProviders: SpeechProvider[] = [
   new GoogleSpeechProvider({}),
 ];
 
-describe("ModelInfo.streaming", () => {
+describe("ModelInfo streaming feature", () => {
   for (const provider of streamingProviders) {
-    it(`${provider.id}: every model has streaming: true`, () => {
+    it(`${provider.id}: every model has the streaming feature`, () => {
       for (const model of provider.models) {
-        expect(model.streaming).toBe(true);
+        expect(hasFeature(model, "streaming")).toBe(true);
       }
     });
   }
 
-  it("fal-ai: every model has streaming: false", () => {
+  it("fal-ai: no model has the streaming feature", () => {
     const fal = new FalSpeechProvider({});
     for (const model of fal.models) {
-      expect(model.streaming).toBe(false);
+      expect(hasFeature(model, "streaming")).toBe(false);
     }
   });
 });

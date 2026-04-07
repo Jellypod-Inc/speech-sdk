@@ -15,12 +15,9 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "default",
-      audioTags: false,
-      languages: ["en", "zh", "hi", "es", "pt", "ja", "fr", "it"],
       releaseDate: "2025-06-01",
-      openSource: false,
-      inlineVoiceCloning: false,
-      streaming: true,
+      languages: ["en", "zh", "hi", "es", "pt", "ja", "fr", "it"],
+      features: ["streaming"],
     },
   ] as const;
 

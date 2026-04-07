@@ -19,12 +19,9 @@ function makeProvider(overrides: Partial<SpeechProvider> = {}): SpeechProvider {
     models: [
       {
         id: "m1",
-        audioTags: false,
-        inlineVoiceCloning: false,
-        languages: ["en"],
-        openSource: false,
         releaseDate: "2025-01-01",
-        streaming: true,
+        languages: ["en"],
+        features: ["streaming"],
       },
     ],
     generate: vi.fn(),
@@ -53,17 +50,14 @@ describe("streamSpeech", () => {
     expect(value).toEqual(new Uint8Array([1, 2, 3]));
   });
 
-  it("throws StreamingNotSupportedError when model has streaming: false", async () => {
+  it("throws StreamingNotSupportedError when model lacks the streaming feature", async () => {
     const provider = makeProvider({
       models: [
         {
           id: "m1",
-          audioTags: false,
-          inlineVoiceCloning: false,
-          languages: ["en"],
-          openSource: false,
           releaseDate: "2025-01-01",
-          streaming: false,
+          languages: ["en"],
+          features: [],
         },
       ],
       stream: vi.fn(),

@@ -14,7 +14,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "default",
-      audioTags: false,
+      releaseDate: "2025-09-04",
       languages: [
         "en",
         "ar",
@@ -40,10 +40,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
         "tr",
         "zh",
       ],
-      releaseDate: "2025-09-04",
-      openSource: true,
-      inlineVoiceCloning: true,
-      streaming: true,
+      features: ["streaming", "open-source", "inline-voice-cloning"],
     },
   ] as const;
 
