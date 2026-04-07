@@ -1,5 +1,14 @@
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import { parseSseBase64Stream } from "../../sse-stream.js";
+
+function safeParseJson(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return null;
+  }
+}
 
 export interface MistralSpeechProviderConfig {
   apiKey?: string;
@@ -100,6 +109,104 @@ export class MistralSpeechProvider
       audio: json.audio_data,
       mediaType: "audio/mpeg",
     };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string | { audio: string | Uint8Array };
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const responseFormat =
+      (options.providerOptions?.response_format as string | undefined) ?? "mp3";
+
+    const body: Record<string, unknown> = {
+      response_format: "mp3",
+      ...options.providerOptions,
+      model: options.modelId,
+      input: options.text,
+      stream: true,
+    };
+
+    if (options.voice != null) {
+      if (typeof options.voice === "string") {
+        body.voice_id = options.voice;
+      } else if ("audio" in options.voice) {
+        const audio = options.voice.audio;
+        if (audio instanceof Uint8Array) {
+          let binaryString = "";
+          for (const byte of audio) {
+            binaryString += String.fromCharCode(byte);
+          }
+          body.ref_audio = btoa(binaryString);
+        } else {
+          body.ref_audio = audio;
+        }
+      }
+    }
+
+    const url = `${this.baseURL}/audio/speech`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
+        Accept: "text/event-stream",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `mistral/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`mistral/${options.modelId}: response has no body`);
+    }
+
+    const { stream } = parseSseBase64Stream(response.body, {
+      extractBase64(eventData) {
+        const json = safeParseJson(eventData) as {
+          event?: string;
+          data?: { audioData?: unknown };
+        } | null;
+        if (
+          json?.event === "speech.audio.delta" &&
+          typeof json.data?.audioData === "string"
+        ) {
+          return json.data.audioData;
+        }
+        return null;
+      },
+      extractMetadata(eventData) {
+        const json = safeParseJson(eventData) as {
+          event?: string;
+          data?: { usage?: Record<string, unknown> };
+        } | null;
+        if (json?.event === "speech.audio.done" && json.data?.usage) {
+          return { usage: json.data.usage };
+        }
+        return null;
+      },
+    });
+
+    let mediaType: string;
+    if (responseFormat === "opus") {
+      mediaType = "audio/opus";
+    } else if (responseFormat === "wav") {
+      mediaType = "audio/wav";
+    } else {
+      mediaType = "audio/mpeg";
+    }
+
+    return { stream, mediaType };
   }
 }
 
