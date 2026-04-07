@@ -1,0 +1,25 @@
+src/sse-stream.ts
+  1ddc35dc606d183b 1-7,9-83,85,87-99,101-116
+src/__tests__/sse-stream.test.ts
+  1ddc35dc606d183b 1-22,24,26-47,49,51-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "7e446e282856fb9a3bfe331b83b7498a63af3c70",
+  "prompts": {
+    "1ddc35dc606d183b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4ed94a5-5eab-41ee-a189-8b9b1f62a362",
+        "model": "<synthetic>"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 232,
+      "total_deletions": 33,
+      "accepted_lines": 209,
+      "overriden_lines": 5
+    }
+  }
+}
