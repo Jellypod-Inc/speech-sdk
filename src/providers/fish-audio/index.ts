@@ -89,6 +89,52 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       mediaType,
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/v1/tts`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      text: options.text,
+    };
+    if (options.voice) {
+      body.reference_id = options.voice;
+    }
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        model: options.modelId,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`fish-audio/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createFishAudio(config: FishAudioSpeechProviderConfig = {}) {
