@@ -217,6 +217,59 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       mediaType,
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const { input, instructions } = this.buildRequestInput(
+      options.modelId,
+      options.text,
+      options.providerOptions
+    );
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      model: options.modelId,
+      input,
+      voice: options.voice,
+    };
+    if (instructions !== undefined) {
+      body.instructions = instructions;
+    }
+
+    const url = `${this.baseURL}/audio/speech`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "OPENAI_API_KEY", "OpenAI")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `openai/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`openai/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createOpenAI(config: OpenAISpeechProviderConfig = {}) {
