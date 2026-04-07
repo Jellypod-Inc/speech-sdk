@@ -1,0 +1,55 @@
+src/stream-speech.ts
+  1ddc35dc606d183b 9-12,35
+src/providers/fish-audio/index.ts
+  1ddc35dc606d183b 4-5,23-27,29,48
+src/providers/mistral/index.ts
+  1ddc35dc606d183b 27,39
+src/providers/deepgram/index.ts
+  1ddc35dc606d183b 18-19
+src/__tests__/model-streaming-flag.test.ts
+  1ddc35dc606d183b 14,30,32,34,39,42
+src/providers/elevenlabs/index.ts
+  1ddc35dc606d183b 5-6,142-143,148-149,154-155,160-161,216
+src/__tests__/stream-speech.test.ts
+  1ddc35dc606d183b 23-24,53,59-60
+src/index.ts
+  1ddc35dc606d183b 11,17-20
+src/providers/cartesia/index.ts
+  1ddc35dc606d183b 4-5,22,67,72-73,155
+src/providers/fal/index.ts
+  1ddc35dc606d183b 21-22,27-28,33-34,39-40,45-46
+src/providers/unreal-speech/index.ts
+  1ddc35dc606d183b 19-20
+src/providers/openai/index.ts
+  1ddc35dc606d183b 4-5,94-95,100-101,106-107,159
+src/providers/hume/index.ts
+  1ddc35dc606d183b 17,31,36-37
+src/providers/resemble/index.ts
+  1ddc35dc606d183b 17,43
+src/providers/murf/index.ts
+  1ddc35dc606d183b 17,53,58-59
+src/providers/google/index.ts
+  1ddc35dc606d183b 26,53,57,84
+src/speech-provider.ts
+  1ddc35dc606d183b 3-11,14-15,17-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "09f96db66f8d930887c26456025a7198d6267fb0",
+  "prompts": {
+    "1ddc35dc606d183b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4ed94a5-5eab-41ee-a189-8b9b1f62a362",
+        "model": "<synthetic>"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 119,
+      "total_deletions": 159,
+      "accepted_lines": 127,
+      "overriden_lines": 6
+    }
+  }
+}
