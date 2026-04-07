@@ -58,6 +58,10 @@
     "./mistral": {
       "types": "./dist/providers/mistral/index.d.ts",
       "default": "./dist/providers/mistral/index.js"
+    },
+    "./xai": {
+      "types": "./dist/providers/xai/index.d.ts",
+      "default": "./dist/providers/xai/index.js"
     }
   },
   "files": [
