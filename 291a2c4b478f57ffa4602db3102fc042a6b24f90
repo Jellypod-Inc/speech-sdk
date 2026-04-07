@@ -1,0 +1,29 @@
+src/__tests__/deepgram-stream.test.ts
+  1ddc35dc606d183b 1-33
+src/__tests__/openai-stream.test.ts
+  1ddc35dc606d183b 4-5,30,60-61
+src/__tests__/elevenlabs-stream.test.ts
+  1ddc35dc606d183b 4-5,32,47-48
+src/providers/deepgram/index.ts
+  1ddc35dc606d183b 80-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "291a2c4b478f57ffa4602db3102fc042a6b24f90",
+  "prompts": {
+    "1ddc35dc606d183b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4ed94a5-5eab-41ee-a189-8b9b1f62a362",
+        "model": "<synthetic>"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 7,
+      "accepted_lines": 89,
+      "overriden_lines": 0
+    }
+  }
+}
