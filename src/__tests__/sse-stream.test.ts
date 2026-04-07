@@ -76,6 +76,23 @@ describe("parseSseBase64Stream", () => {
     expect(new TextDecoder().decode(bytes)).toBe("ABCD");
   });
 
+  it("handles CRLF event separators", async () => {
+    const sse = toStream([
+      'data: {"audioData":"QUI="}\r\n\r\n',
+      'data: {"audioData":"Q0Q="}\r\n\r\n',
+    ]);
+
+    const { stream } = parseSseBase64Stream(sse, {
+      extractBase64: (event) => {
+        const json = JSON.parse(event);
+        return typeof json.audioData === "string" ? json.audioData : null;
+      },
+    });
+
+    const bytes = await collect(stream);
+    expect(new TextDecoder().decode(bytes)).toBe("ABCD");
+  });
+
   it("resolves metadata promise from terminal event", async () => {
     const sse = toStream([
       'data: {"audioData":"QUI="}\n\n',

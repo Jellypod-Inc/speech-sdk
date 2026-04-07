@@ -21,7 +21,8 @@ function base64ToBytes(b64: string): Uint8Array {
 
 function parseEventData(rawEvent: string): string | null {
   const dataLines: string[] = [];
-  for (const line of rawEvent.split("\n")) {
+  for (const rawLine of rawEvent.split("\n")) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
     if (line.startsWith("data:")) {
       dataLines.push(line.slice(5).replace(LEADING_SPACE, ""));
     }
@@ -57,12 +58,21 @@ function drainBuffer(
   setMetadata: (m: Record<string, unknown> | undefined) => void
 ): void {
   for (;;) {
-    const sepIndex = state.buffer.indexOf("\n\n");
-    if (sepIndex === -1) {
+    const lfIndex = state.buffer.indexOf("\n\n");
+    const crlfIndex = state.buffer.indexOf("\r\n\r\n");
+    let sepIndex: number;
+    let sepLength: number;
+    if (crlfIndex !== -1 && (lfIndex === -1 || crlfIndex < lfIndex)) {
+      sepIndex = crlfIndex;
+      sepLength = 4;
+    } else if (lfIndex === -1) {
       break;
+    } else {
+      sepIndex = lfIndex;
+      sepLength = 2;
     }
     const rawEvent = state.buffer.slice(0, sepIndex);
-    state.buffer = state.buffer.slice(sepIndex + 2);
+    state.buffer = state.buffer.slice(sepIndex + sepLength);
     const eventData = parseEventData(rawEvent);
     if (eventData === null) {
       continue;
