@@ -180,6 +180,42 @@ export class ElevenLabsSpeechProvider
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
+  private buildRequest(
+    text: string,
+    modelId: string,
+    providerOptions: Record<string, unknown> | undefined
+  ): { body: Record<string, unknown>; queryString: string } {
+    const opts = providerOptions ?? {};
+    const {
+      output_format,
+      enable_logging,
+      optimize_streaming_latency,
+      ...bodyOptions
+    } = opts as Record<string, unknown>;
+
+    const body: Record<string, unknown> = {
+      ...bodyOptions,
+      text,
+      model_id: modelId,
+    };
+
+    const queryParams = new URLSearchParams();
+    if (output_format != null) {
+      queryParams.set("output_format", String(output_format));
+    }
+    if (enable_logging != null) {
+      queryParams.set("enable_logging", String(enable_logging));
+    }
+    if (optimize_streaming_latency != null) {
+      queryParams.set(
+        "optimize_streaming_latency",
+        String(optimize_streaming_latency)
+      );
+    }
+
+    return { body, queryString: queryParams.toString() };
+  }
+
   processAudioTags(
     text: string,
     modelId: string
@@ -208,36 +244,13 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const providerOptions = options.providerOptions ?? {};
-    const {
-      output_format,
-      enable_logging,
-      optimize_streaming_latency,
-      ...bodyOptions
-    } = providerOptions as Record<string, unknown>;
-
-    const body: Record<string, unknown> = {
-      ...bodyOptions,
-      text: options.text,
-      model_id: options.modelId,
-    };
-
-    const queryParams = new URLSearchParams();
-    if (output_format != null) {
-      queryParams.set("output_format", String(output_format));
-    }
-    if (enable_logging != null) {
-      queryParams.set("enable_logging", String(enable_logging));
-    }
-    if (optimize_streaming_latency != null) {
-      queryParams.set(
-        "optimize_streaming_latency",
-        String(optimize_streaming_latency)
-      );
-    }
+    const { body, queryString } = this.buildRequest(
+      options.text,
+      options.modelId,
+      options.providerOptions
+    );
 
     let url = `${this.baseURL}/v1/text-to-speech/${options.voice}`;
-    const queryString = queryParams.toString();
     if (queryString) {
       url += `?${queryString}`;
     }
@@ -266,6 +279,65 @@ export class ElevenLabsSpeechProvider
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+      providerMetadata: requestId ? { requestId } : undefined,
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    if (!options.voice) {
+      throw new SpeechSDKError(
+        "ElevenLabs requires a voice ID. Pass it via the voice option."
+      );
+    }
+
+    const { body, queryString } = this.buildRequest(
+      options.text,
+      options.modelId,
+      options.providerOptions
+    );
+
+    let url = `${this.baseURL}/v1/text-to-speech/${options.voice}/stream`;
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": resolveApiKey(
+          this.apiKey,
+          "ELEVENLABS_API_KEY",
+          "ElevenLabs"
+        ),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`elevenlabs/${options.modelId}: response has no body`);
+    }
+
+    const requestId = response.headers.get("request-id");
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
