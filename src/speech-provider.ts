@@ -35,6 +35,19 @@ export interface SpeechProvider<
     text: string,
     modelId: string
   ): { text: string; warnings: string[] };
+
+  stream?(options: {
+    modelId: string;
+    text: string;
+    voice?: TVoice;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }>;
 }
 
 export interface ResolvedModel<TVoice extends Voice = Voice> {
