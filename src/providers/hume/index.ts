@@ -115,6 +115,58 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       mediaType,
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const utterance: Record<string, unknown> = { text: options.text };
+    if (options.voice) {
+      utterance.voice = { name: options.voice, provider: "HUME_AI" };
+    }
+
+    const version = this.resolveVersion(options.modelId);
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      utterances: [utterance],
+    };
+    if (version != null) {
+      body.version = version;
+    }
+
+    const url = `${this.baseURL}/tts/stream/file`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": resolveApiKey(this.apiKey, "HUME_API_KEY", "Hume"),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `hume/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`hume/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createHume(config: HumeSpeechProviderConfig = {}) {
