@@ -40,7 +40,7 @@ result.audio.mediaType;   // "audio/mpeg"
 
 ## Streaming
 
-Stream audio bytes as they're generated for lower first-byte latency. Supported by every built-in provider **except fal**.
+Stream audio bytes as they're generated for lower first-byte latency.
 
 ```ts
 import { streamSpeech } from "@speech-sdk/core";
@@ -60,7 +60,7 @@ while (true) {
 }
 ```
 
-Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature (all fal models today) throws `StreamingNotSupportedError`. Retries apply only to the initial request; once bytes start flowing, mid-stream errors propagate to the consumer.
+Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature throws `StreamingNotSupportedError`. Retries apply only to the initial request; once bytes start flowing, mid-stream errors propagate to the consumer.
 
 ## Supported Providers
 
