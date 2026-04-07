@@ -1,0 +1,186 @@
+import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+
+export interface XaiSpeechProviderConfig {
+  apiKey?: string;
+  baseURL?: string;
+  fetch?: typeof globalThis.fetch;
+}
+
+export class XaiSpeechProvider implements SpeechProvider<string, string> {
+  readonly id = "xai";
+  readonly defaultModel = "grok-tts";
+
+  // BCP-47 codes per xAI docs. `auto` is accepted as a language value for
+  // auto-detection but isn't a language itself, so it's not listed here.
+  private static readonly LANGUAGES = [
+    "en",
+    "ar-EG",
+    "ar-SA",
+    "ar-AE",
+    "bn",
+    "zh",
+    "fr",
+    "de",
+    "hi",
+    "id",
+    "it",
+    "ja",
+    "ko",
+    "pt-BR",
+    "pt-PT",
+    "ru",
+    "es-MX",
+    "es-ES",
+    "tr",
+    "vi",
+  ] as const;
+
+  readonly models = [
+    {
+      id: "grok-tts",
+      releaseDate: "2025-11-01",
+      languages: XaiSpeechProvider.LANGUAGES,
+      features: ["streaming", "audio-tags"],
+    },
+  ] as const;
+
+  private readonly apiKey: string | undefined;
+  private readonly baseURL: string;
+  private readonly fetchFn: typeof globalThis.fetch;
+
+  constructor(config: XaiSpeechProviderConfig) {
+    this.apiKey = config.apiKey;
+    this.baseURL = config.baseURL ?? "https://api.x.ai/v1";
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+  }
+
+  // xAI natively supports bracket inline tags (`[pause]`, `[laugh]`) and
+  // angle-bracket wrapping tags (`<whisper>...</whisper>`), so we pass text
+  // through unchanged.
+  processAudioTags(text: string): { text: string; warnings: string[] } {
+    return { text, warnings: [] };
+  }
+
+  private buildBody(options: {
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+  }): Record<string, unknown> {
+    // `language` is required by xAI. Default to "auto" for language detection;
+    // users can override via providerOptions.language with a BCP-47 code.
+    const body: Record<string, unknown> = {
+      language: "auto",
+      ...options.providerOptions,
+      text: options.text,
+    };
+    if (options.voice != null) {
+      body.voice_id = options.voice;
+    }
+    return body;
+  }
+
+  private mediaTypeForCodec(codec: unknown): string {
+    if (codec === "wav") {
+      return "audio/wav";
+    }
+    if (codec === "pcm") {
+      return "audio/pcm";
+    }
+    if (codec === "mulaw") {
+      return "audio/basic";
+    }
+    if (codec === "alaw") {
+      return "audio/alaw";
+    }
+    return "audio/mpeg";
+  }
+
+  private codecFromBody(body: Record<string, unknown>): unknown {
+    const output = body.output_format as { codec?: unknown } | undefined;
+    return output?.codec;
+  }
+
+  async generate(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+  }> {
+    const body = this.buildBody(options);
+    const response = await this.fetchFn(`${this.baseURL}/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "XAI_API_KEY", "xAI")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `xai/${options.modelId}`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    const mediaType =
+      response.headers.get("content-type") ??
+      this.mediaTypeForCodec(this.codecFromBody(body));
+
+    return {
+      audio: new Uint8Array(arrayBuffer),
+      mediaType,
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
+    const body = this.buildBody(options);
+    const response = await this.fetchFn(`${this.baseURL}/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "XAI_API_KEY", "xAI")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `xai/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`xai/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType:
+        response.headers.get("content-type") ??
+        this.mediaTypeForCodec(this.codecFromBody(body)),
+    };
+  }
+}
+
+export function createXai(config: XaiSpeechProviderConfig = {}) {
+  const provider = new XaiSpeechProvider(config);
+  return function xai(modelId?: string): ResolvedModel<string> {
+    return {
+      provider,
+      modelId: modelId ?? provider.defaultModel,
+    };
+  };
+}
