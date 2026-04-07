@@ -1,4 +1,4 @@
-import { ApiError } from "../../errors.js";
+import { ApiError, StreamingNotSupportedError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
@@ -138,6 +138,12 @@ export class FalSpeechProvider
       audio: new Uint8Array(arrayBuffer),
       mediaType: "audio/mpeg",
     };
+  }
+
+  stream(options: { modelId: string }): Promise<never> {
+    return Promise.reject(
+      new StreamingNotSupportedError(`fal-ai/${options.modelId}`)
+    );
   }
 }
 
