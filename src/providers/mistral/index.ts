@@ -174,24 +174,24 @@ export class MistralSpeechProvider
     const { stream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
         const json = safeParseJson(eventData) as {
-          event?: string;
-          data?: { audioData?: unknown };
+          type?: string;
+          audio_data?: unknown;
         } | null;
         if (
-          json?.event === "speech.audio.delta" &&
-          typeof json.data?.audioData === "string"
+          json?.type === "speech.audio.delta" &&
+          typeof json.audio_data === "string"
         ) {
-          return json.data.audioData;
+          return json.audio_data;
         }
         return null;
       },
       extractMetadata(eventData) {
         const json = safeParseJson(eventData) as {
-          event?: string;
-          data?: { usage?: Record<string, unknown> };
+          type?: string;
+          usage?: Record<string, unknown>;
         } | null;
-        if (json?.event === "speech.audio.done" && json.data?.usage) {
-          return { usage: json.data.usage };
+        if (json?.type === "speech.audio.done" && json.usage) {
+          return { usage: json.usage };
         }
         return null;
       },

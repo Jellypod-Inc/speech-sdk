@@ -26,9 +26,9 @@ async function collect(
 describe("MistralSpeechProvider.stream", () => {
   it("decodes SSE speech.audio.delta events", async () => {
     const sse = [
-      'data: {"event":"speech.audio.delta","data":{"audioData":"QUI="}}\n\n',
-      'data: {"event":"speech.audio.delta","data":{"audioData":"Q0Q="}}\n\n',
-      'data: {"event":"speech.audio.done","data":{"usage":{"tokens":10}}}\n\n',
+      'event: speech.audio.delta\ndata: {"type":"speech.audio.delta","audio_data":"QUI="}\n\n',
+      'event: speech.audio.delta\ndata: {"type":"speech.audio.delta","audio_data":"Q0Q="}\n\n',
+      'event: speech.audio.done\ndata: {"type":"speech.audio.done","usage":{"tokens":10}}\n\n',
     ].join("");
     const encoder = new TextEncoder();
     const fetchMock = vi.fn().mockResolvedValue(
