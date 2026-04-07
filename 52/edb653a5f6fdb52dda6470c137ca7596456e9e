@@ -1,0 +1,29 @@
+src/__tests__/e2e/xai.e2e.test.ts
+  8f08edff949409fb 1-47
+package.json
+  8f08edff949409fb 61-64
+src/resolve-provider.ts
+  8f08edff949409fb 14,52-53
+src/providers/xai/index.ts
+  8f08edff949409fb 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "52edb653a5f6fdb52dda6470c137ca7596456e9e",
+  "prompts": {
+    "8f08edff949409fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abd9e9b-26ff-4f21-b462-436668f58432",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 219,
+      "total_deletions": 0,
+      "accepted_lines": 219,
+      "overriden_lines": 0
+    }
+  }
+}
