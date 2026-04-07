@@ -108,6 +108,8 @@ export function parseSseBase64Stream(
         while (true) {
           const { value, done } = await reader.read();
           if (done) {
+            state.buffer += decoder.decode();
+            drainBuffer(state, options, controller, setMetadata);
             break;
           }
           state.buffer += decoder.decode(value, { stream: true });
