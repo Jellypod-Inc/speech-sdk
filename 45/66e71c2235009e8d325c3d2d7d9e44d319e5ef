@@ -1,0 +1,25 @@
+README.md
+  fee3140ddb5729b0 134
+package.json
+  fee3140ddb5729b0 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "4566e71c2235009e8d325c3d2d7d9e44d319e5ef",
+  "prompts": {
+    "fee3140ddb5729b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b510be0-8254-4793-a00d-1a66a2893b54",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
