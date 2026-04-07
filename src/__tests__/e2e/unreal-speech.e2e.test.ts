@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateSpeech } from "../../generate-speech.js";
 import { createUnrealSpeech } from "../../providers/unreal-speech/index.js";
+import { streamSpeech } from "../../stream-speech.js";
+import { collectStream } from "./_collect-stream.js";
 
 const hasKey = !!process.env.UNREAL_SPEECH_API_KEY;
 
@@ -29,5 +31,17 @@ describe.skipIf(!hasKey)("Unreal Speech e2e", () => {
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+  });
+
+  it("streams audio via streamSpeech", async () => {
+    const result = await streamSpeech({
+      model: "unreal-speech/default",
+      text: TEST_TEXT,
+      voice: "Sierra",
+    });
+    const bytes = await collectStream(result.audio);
+    expect(bytes.byteLength).toBeGreaterThan(0);
+    // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
+    expect(result.mediaType).toMatch(/^audio\//);
   });
 });

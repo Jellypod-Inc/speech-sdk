@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { StreamingNotSupportedError } from "../../errors.js";
 import { generateSpeech } from "../../generate-speech.js";
 import { createFal } from "../../providers/fal/index.js";
+import { streamSpeech } from "../../stream-speech.js";
 
 const hasKey = !!process.env.FAL_API_KEY;
 
@@ -117,5 +119,15 @@ describe.skipIf(!hasKey)("fal e2e", () => {
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
       expect(result.audio.base64.length).toBeGreaterThan(0);
     });
+  });
+
+  it("rejects streaming with StreamingNotSupportedError", async () => {
+    await expect(
+      streamSpeech({
+        model: "fal-ai/kokoro/american-english",
+        text: TEST_TEXT,
+        voice: "af_heart",
+      })
+    ).rejects.toBeInstanceOf(StreamingNotSupportedError);
   });
 });
