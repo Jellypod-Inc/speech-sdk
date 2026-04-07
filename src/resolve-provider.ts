@@ -11,6 +11,7 @@ import { MurfSpeechProvider } from "./providers/murf/index.js";
 import { OpenAISpeechProvider } from "./providers/openai/index.js";
 import { ResembleSpeechProvider } from "./providers/resemble/index.js";
 import { UnrealSpeechProvider } from "./providers/unreal-speech/index.js";
+import { XaiSpeechProvider } from "./providers/xai/index.js";
 import type { ResolvedModel, SpeechProvider } from "./speech-provider.js";
 
 function isResolvedModel(model: unknown): model is ResolvedModel {
@@ -48,6 +49,8 @@ function createBuiltinProvider(name: string): SpeechProvider {
       return new FalSpeechProvider({});
     case "mistral":
       return new MistralSpeechProvider({});
+    case "xai":
+      return new XaiSpeechProvider({});
     default:
       throw new SpeechSDKError(`Unknown provider: ${name}`);
   }
