@@ -11,27 +11,29 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
   readonly id = "xai";
   readonly defaultModel = "grok-tts";
 
+  // BCP-47 codes per xAI docs. `auto` is accepted as a language value for
+  // auto-detection but isn't a language itself, so it's not listed here.
   private static readonly LANGUAGES = [
     "en",
-    "es",
+    "ar-EG",
+    "ar-SA",
+    "ar-AE",
+    "bn",
+    "zh",
     "fr",
     "de",
-    "it",
-    "pt",
-    "nl",
-    "pl",
-    "ru",
-    "tr",
-    "ar",
     "hi",
+    "id",
+    "it",
     "ja",
     "ko",
-    "zh",
-    "id",
+    "pt-BR",
+    "pt-PT",
+    "ru",
+    "es-MX",
+    "es-ES",
+    "tr",
     "vi",
-    "th",
-    "sv",
-    "da",
   ] as const;
 
   readonly models = [
@@ -53,14 +55,22 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
+  // xAI natively supports bracket inline tags (`[pause]`, `[laugh]`) and
+  // angle-bracket wrapping tags (`<whisper>...</whisper>`), so we pass text
+  // through unchanged.
+  processAudioTags(text: string): { text: string; warnings: string[] } {
+    return { text, warnings: [] };
+  }
+
   private buildBody(options: {
     text: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
   }): Record<string, unknown> {
+    // `language` is required by xAI. Default to "auto" for language detection;
+    // users can override via providerOptions.language with a BCP-47 code.
     const body: Record<string, unknown> = {
-      language: "en",
-      codec: "mp3",
+      language: "auto",
       ...options.providerOptions,
       text: options.text,
     };
@@ -71,13 +81,24 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
   }
 
   private mediaTypeForCodec(codec: unknown): string {
-    if (codec === "wav" || codec === "pcm") {
+    if (codec === "wav") {
       return "audio/wav";
     }
-    if (codec === "mulaw" || codec === "alaw") {
+    if (codec === "pcm") {
+      return "audio/pcm";
+    }
+    if (codec === "mulaw") {
       return "audio/basic";
     }
+    if (codec === "alaw") {
+      return "audio/alaw";
+    }
     return "audio/mpeg";
+  }
+
+  private codecFromBody(body: Record<string, unknown>): unknown {
+    const output = body.output_format as { codec?: unknown } | undefined;
+    return output?.codec;
   }
 
   async generate(options: {
@@ -108,7 +129,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     const arrayBuffer = await response.arrayBuffer();
     const mediaType =
       response.headers.get("content-type") ??
-      this.mediaTypeForCodec(body.codec);
+      this.mediaTypeForCodec(this.codecFromBody(body));
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -149,7 +170,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       stream: response.body,
       mediaType:
         response.headers.get("content-type") ??
-        this.mediaTypeForCodec(body.codec),
+        this.mediaTypeForCodec(this.codecFromBody(body)),
     };
   }
 }
