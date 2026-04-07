@@ -77,6 +77,52 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       mediaType,
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const modelParam = options.voice
+      ? `${options.modelId}-${options.voice}`
+      : options.modelId;
+
+    const url = `${this.baseURL}/speak?model=${encodeURIComponent(modelParam)}`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      text: options.text,
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${resolveApiKey(this.apiKey, "DEEPGRAM_API_KEY", "Deepgram")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `deepgram/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`deepgram/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {

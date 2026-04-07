@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 
+const ERROR_PATTERN = /openai\/tts-1.*401/;
+
 function bodyStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
   return new ReadableStream({
     start(c) {
@@ -25,7 +27,7 @@ describe("OpenAISpeechProvider.stream", () => {
       fetch: fetchMock as unknown as typeof globalThis.fetch,
     });
 
-    const result = await provider.stream!({
+    const result = await provider.stream?.({
       modelId: "tts-1",
       text: "hi",
       voice: "alloy",
@@ -55,7 +57,7 @@ describe("OpenAISpeechProvider.stream", () => {
     });
 
     await expect(
-      provider.stream!({ modelId: "tts-1", text: "hi", voice: "alloy" })
-    ).rejects.toThrow(/openai\/tts-1.*401/);
+      provider.stream?.({ modelId: "tts-1", text: "hi", voice: "alloy" })
+    ).rejects.toThrow(ERROR_PATTERN);
   });
 });

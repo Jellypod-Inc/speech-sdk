@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
 
+const VOICE_ERROR = /voice ID/;
+
 describe("ElevenLabsSpeechProvider.stream", () => {
   it("POSTs to /stream endpoint and returns response.body", async () => {
     const payload = new Uint8Array([7, 8, 9]);
@@ -27,7 +29,7 @@ describe("ElevenLabsSpeechProvider.stream", () => {
       fetch: fetchMock as unknown as typeof globalThis.fetch,
     });
 
-    const result = await provider.stream!({
+    const result = await provider.stream?.({
       modelId: "eleven_multilingual_v2",
       text: "hi",
       voice: "voice-abc",
@@ -42,7 +44,7 @@ describe("ElevenLabsSpeechProvider.stream", () => {
   it("requires a voice", async () => {
     const provider = new ElevenLabsSpeechProvider({ apiKey: "xi-test" });
     await expect(
-      provider.stream!({ modelId: "eleven_multilingual_v2", text: "hi" })
-    ).rejects.toThrow(/voice ID/);
+      provider.stream?.({ modelId: "eleven_multilingual_v2", text: "hi" })
+    ).rejects.toThrow(VOICE_ERROR);
   });
 });
