@@ -241,6 +241,56 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       mediaType,
     };
   }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/tts/bytes`;
+
+    const body: Record<string, unknown> = {
+      output_format: {
+        container: "wav",
+        encoding: "pcm_f32le",
+        sample_rate: 44_100,
+      },
+      ...options.providerOptions,
+      model_id: options.modelId,
+      transcript: options.text,
+      voice: { mode: "id", id: options.voice },
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
+        "Cartesia-Version": "2025-04-16",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`cartesia/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/wav",
+    };
+  }
 }
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {

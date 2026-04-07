@@ -5,3 +5,4 @@ docs/superpowers/
 .docs/superpowers/
 .env
 .worktrees/
+e2e-output/
