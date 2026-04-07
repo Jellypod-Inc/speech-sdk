@@ -38,6 +38,30 @@ result.audio.base64;      // string (lazy-computed)
 result.audio.mediaType;   // "audio/mpeg"
 ```
 
+## Streaming
+
+Stream audio bytes as they're generated for lower first-byte latency.
+
+```ts
+import { streamSpeech } from "@speech-sdk/core";
+
+const { audio, mediaType } = await streamSpeech({
+  model: "openai/tts-1",
+  text: "Hello world",
+  voice: "alloy",
+});
+
+// `audio` is a ReadableStream<Uint8Array>
+const reader = audio.getReader();
+while (true) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  // write `value` to a file, speaker, or transport
+}
+```
+
+Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` feature throws `StreamingNotSupportedError`. Retries apply only to the initial request; once bytes start flowing, mid-stream errors propagate to the consumer.
+
 ## Supported Providers
 
 Use `provider/model` strings. Passing just the provider name uses its default model.

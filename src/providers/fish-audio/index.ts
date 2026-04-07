@@ -1,6 +1,10 @@
 import { stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface FishAudioSpeechProviderConfig {
   apiKey?: string;
@@ -15,11 +19,14 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "s2-pro",
-      audioTags: true,
-      languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
       releaseDate: "2026-03-09",
-      openSource: true,
-      inlineVoiceCloning: true,
+      languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+      features: [
+        "streaming",
+        "audio-tags",
+        "open-source",
+        "inline-voice-cloning",
+      ],
     },
   ] as const;
 
@@ -37,7 +44,9 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (this.models.some((m) => m.id === modelId && m.audioTags)) {
+    if (
+      this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `fish-audio/${modelId}`);
@@ -86,6 +95,52 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/v1/tts`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      text: options.text,
+    };
+    if (options.voice) {
+      body.reference_id = options.voice;
+    }
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        model: options.modelId,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`fish-audio/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
 }

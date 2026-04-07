@@ -1,6 +1,10 @@
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface CartesiaSpeechProviderConfig {
   apiKey?: string;
@@ -15,7 +19,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "sonic-3",
-      audioTags: true,
+      releaseDate: "2025-10-27",
       languages: [
         "en",
         "fr",
@@ -60,17 +64,13 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         "mr",
         "pa",
       ],
-      releaseDate: "2025-10-27",
-      openSource: false,
-      inlineVoiceCloning: true,
+      features: ["streaming", "audio-tags", "inline-voice-cloning"],
     },
     {
       id: "sonic-2",
-      audioTags: false,
-      languages: ["en"],
       releaseDate: "2025-03-13",
-      openSource: false,
-      inlineVoiceCloning: false,
+      languages: ["en"],
+      features: ["streaming"],
     },
   ] as const;
 
@@ -151,7 +151,9 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    if (!this.models.some((m) => m.id === modelId && m.audioTags)) {
+    if (
+      !this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
       return stripAudioTags(text, `cartesia/${modelId}`);
     }
 
@@ -237,6 +239,56 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/tts/bytes`;
+
+    const body: Record<string, unknown> = {
+      output_format: {
+        container: "wav",
+        encoding: "pcm_f32le",
+        sample_rate: 44_100,
+      },
+      ...options.providerOptions,
+      model_id: options.modelId,
+      transcript: options.text,
+      voice: { mode: "id", id: options.voice },
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
+        "Cartesia-Version": "2025-04-16",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`cartesia/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
 }

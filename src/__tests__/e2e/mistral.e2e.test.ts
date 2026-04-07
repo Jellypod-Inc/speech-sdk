@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateSpeech } from "../../generate-speech.js";
 import { createMistral } from "../../providers/mistral/index.js";
+import { streamSpeech } from "../../stream-speech.js";
+import { collectStream } from "./_collect-stream.js";
 
 const hasKey = !!process.env.MISTRAL_API_KEY;
 
@@ -29,5 +31,17 @@ describe.skipIf(!hasKey)("Mistral e2e", () => {
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+  });
+
+  it("streams audio via streamSpeech", async () => {
+    const result = await streamSpeech({
+      model: "mistral/voxtral-mini-tts-2603",
+      text: TEST_TEXT,
+      voice: "en_paul_neutral",
+    });
+    const bytes = await collectStream(result.audio);
+    expect(bytes.byteLength).toBeGreaterThan(0);
+    // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
+    expect(result.mediaType).toMatch(/^audio\//);
   });
 });

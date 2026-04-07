@@ -15,11 +15,9 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "default",
-      audioTags: false,
-      languages: ["en", "zh", "hi", "es", "pt", "ja", "fr", "it"],
       releaseDate: "2025-06-01",
-      openSource: false,
-      inlineVoiceCloning: false,
+      languages: ["en", "zh", "hi", "es", "pt", "ja", "fr", "it"],
+      features: ["streaming"],
     },
   ] as const;
 
@@ -87,6 +85,50 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType: "audio/mpeg",
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/stream`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      AudioFormat: "mp3",
+      VoiceId: options.voice,
+      Text: options.text,
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "UNREAL_SPEECH_API_KEY", "Unreal Speech")}`,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `unreal-speech/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`unreal-speech/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
 }

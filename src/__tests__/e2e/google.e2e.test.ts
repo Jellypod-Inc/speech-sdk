@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateSpeech } from "../../generate-speech.js";
 import { createGoogle } from "../../providers/google/index.js";
+import { streamSpeech } from "../../stream-speech.js";
+import { collectStream } from "./_collect-stream.js";
 
 const hasKey = !!process.env.GOOGLE_API_KEY;
 
@@ -34,5 +36,17 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     });
+  });
+
+  it("streams audio via streamSpeech", async () => {
+    const result = await streamSpeech({
+      model: "google/gemini-2.5-flash-preview-tts",
+      text: TEST_TEXT,
+      voice: "Kore",
+    });
+    const bytes = await collectStream(result.audio);
+    expect(bytes.byteLength).toBeGreaterThan(0);
+    // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
+    expect(result.mediaType).toMatch(/^audio\//);
   });
 });

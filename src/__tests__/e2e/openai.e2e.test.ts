@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateSpeech } from "../../generate-speech.js";
 import { createOpenAI } from "../../providers/openai/index.js";
+import { streamSpeech } from "../../stream-speech.js";
+import { collectStream } from "./_collect-stream.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
 const VOICE = "alloy";
@@ -73,6 +75,18 @@ describe("OpenAI e2e", () => {
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+  });
+
+  it("streams audio via streamSpeech", async () => {
+    const result = await streamSpeech({
+      model: "openai/tts-1",
+      text: TEST_TEXT,
+      voice: VOICE,
+    });
+    const bytes = await collectStream(result.audio);
+    expect(bytes.byteLength).toBeGreaterThan(0);
+    // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
+    expect(result.mediaType).toMatch(/^audio\//);
   });
 
   it("maps audio tag instructions to gpt-4o-mini-tts", async () => {

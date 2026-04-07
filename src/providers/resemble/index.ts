@@ -14,7 +14,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "default",
-      audioTags: false,
+      releaseDate: "2025-09-04",
       languages: [
         "en",
         "ar",
@@ -40,9 +40,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
         "tr",
         "zh",
       ],
-      releaseDate: "2025-09-04",
-      openSource: true,
-      inlineVoiceCloning: true,
+      features: ["streaming", "open-source", "inline-voice-cloning"],
     },
   ] as const;
 
@@ -98,6 +96,53 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: json.audio_content,
       mediaType: "audio/wav",
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/stream`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      voice_uuid: options.voice,
+      data: options.text,
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: resolveApiKey(
+          this.apiKey,
+          "RESEMBLE_API_KEY",
+          "Resemble"
+        ),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `resemble/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`resemble/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
 }

@@ -1,4 +1,4 @@
-import { ApiError } from "../../errors.js";
+import { ApiError, StreamingNotSupportedError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
@@ -17,43 +17,33 @@ export class FalSpeechProvider
   readonly models = [
     {
       id: "f5-tts",
-      audioTags: false,
-      languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
       releaseDate: "2024-10-08",
-      openSource: true,
-      inlineVoiceCloning: true,
+      languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
+      features: ["open-source", "inline-voice-cloning"],
     },
     {
       id: "kokoro",
-      audioTags: false,
-      languages: ["en", "fr", "ko", "ja", "zh"],
       releaseDate: "2025-01-27",
-      openSource: true,
-      inlineVoiceCloning: false,
+      languages: ["en", "fr", "ko", "ja", "zh"],
+      features: ["open-source"],
     },
     {
       id: "dia-tts",
-      audioTags: false,
-      languages: ["en"],
       releaseDate: "2025-04-21",
-      openSource: true,
-      inlineVoiceCloning: true,
+      languages: ["en"],
+      features: ["open-source", "inline-voice-cloning"],
     },
     {
       id: "orpheus-tts",
-      audioTags: false,
-      languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
       releaseDate: "2025-03-18",
-      openSource: true,
-      inlineVoiceCloning: false,
+      languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
+      features: ["open-source"],
     },
     {
       id: "index-tts-2",
-      audioTags: false,
-      languages: ["en", "zh"],
       releaseDate: "2025-09-08",
-      openSource: true,
-      inlineVoiceCloning: true,
+      languages: ["en", "zh"],
+      features: ["open-source", "inline-voice-cloning"],
     },
   ] as const;
 
@@ -133,6 +123,12 @@ export class FalSpeechProvider
       audio: new Uint8Array(arrayBuffer),
       mediaType: "audio/mpeg",
     };
+  }
+
+  stream(options: { modelId: string }): Promise<never> {
+    return Promise.reject(
+      new StreamingNotSupportedError(`fal-ai/${options.modelId}`)
+    );
   }
 }
 

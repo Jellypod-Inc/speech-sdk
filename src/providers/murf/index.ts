@@ -14,7 +14,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
   readonly models = [
     {
       id: "GEN2",
-      audioTags: false,
+      releaseDate: "2025-01-01",
       languages: [
         "en",
         "de",
@@ -50,17 +50,13 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
         "sk",
         "bg",
       ],
-      releaseDate: "2025-01-01",
-      openSource: false,
-      inlineVoiceCloning: false,
+      features: ["streaming"],
     },
     {
       id: "FALCON",
-      audioTags: false,
-      languages: ["en"],
       releaseDate: "2025-01-01",
-      openSource: false,
-      inlineVoiceCloning: false,
+      languages: ["en"],
+      features: ["streaming"],
     },
   ] as const;
 
@@ -129,6 +125,50 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: json.encodedAudio,
       mediaType: "audio/wav",
+    };
+  }
+
+  async stream(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const url = `${this.baseURL}/speech/stream`;
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      voiceId: options.voice,
+      text: options.text,
+      model: options.modelId,
+    };
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": resolveApiKey(this.apiKey, "MURF_API_KEY", "Murf"),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `murf/${options.modelId}`);
+
+    if (!response.body) {
+      throw new Error(`murf/${options.modelId}: response has no body`);
+    }
+
+    return {
+      stream: response.body,
+      mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
 }

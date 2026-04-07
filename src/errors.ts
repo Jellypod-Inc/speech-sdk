@@ -33,3 +33,12 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
     this.name = "NoSpeechGeneratedError";
   }
 }
+
+export class StreamingNotSupportedError extends SpeechSDKError {
+  constructor(model: string) {
+    super(
+      `Streaming is not supported by ${model}. Use generateSpeech() instead.`
+    );
+    this.name = "StreamingNotSupportedError";
+  }
+}
