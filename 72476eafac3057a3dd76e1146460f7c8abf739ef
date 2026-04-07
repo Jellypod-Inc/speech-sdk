@@ -1,0 +1,25 @@
+src/stream-speech.ts
+  1ddc35dc606d183b 1-96
+src/__tests__/stream-speech.test.ts
+  1ddc35dc606d183b 1-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "72476eafac3057a3dd76e1146460f7c8abf739ef",
+  "prompts": {
+    "1ddc35dc606d183b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4ed94a5-5eab-41ee-a189-8b9b1f62a362",
+        "model": "<synthetic>"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 252,
+      "total_deletions": 0,
+      "accepted_lines": 250,
+      "overriden_lines": 0
+    }
+  }
+}
