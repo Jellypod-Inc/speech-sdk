@@ -131,6 +131,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | [Resemble](https://docs.resemble.ai) | `resemble` | `default` | `RESEMBLE_API_KEY` | [API Reference](https://docs.resemble.ai/api-reference/text-to-speech/synthesize) |
 | [fal](https://fal.ai/models) | `fal-ai` | *(user-specified)* | `FAL_API_KEY` | [API Reference](https://fal.ai/models) |
 | [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` | [API Reference](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) |
+| [xAI](https://docs.x.ai/docs/models) | `xai` | `grok-tts` | `XAI_API_KEY` | [API Reference](https://docs.x.ai/docs/api-reference#text-to-speech) |
 
 ```ts
 generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'alloy' });
