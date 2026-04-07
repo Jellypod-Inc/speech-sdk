@@ -1,0 +1,23 @@
+src/providers/xai/index.ts
+  8f08edff949409fb 14-15,18-22,26-27,30-35,58-64,70-71,73,87-90,93-94,99-101,132,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "c58930dc14a9fe37c6e5f1ff8e3c6c36321ce078",
+  "prompts": {
+    "8f08edff949409fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abd9e9b-26ff-4f21-b462-436668f58432",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 104,
+      "total_deletions": 79,
+      "accepted_lines": 39,
+      "overriden_lines": 0
+    }
+  }
+}
