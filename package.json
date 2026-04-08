@@ -94,12 +94,12 @@
     "p-retry": "^8.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.9",
+    "@biomejs/biome": "2.4.10",
     "@types/node": "^25.5.0",
     "dotenv": "^17.3.1",
-    "typescript": "^5.8.0",
-    "ultracite": "7.4.2",
-    "vite": "^7.3.2",
+    "typescript": "^6.0.2",
+    "ultracite": "7.4.3",
+    "vite": "^8.0.7",
     "vitest": "^4.1.3"
   }
 }
