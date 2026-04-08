@@ -5,13 +5,28 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # Never open PRs for major version bumps — they are the primary source of
+    # breaking changes under semver. Majors should be reviewed and adopted
+    # deliberately, not nudged in automatically.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
+        update-types:
+          - minor
+          - patch
       prod-dependencies:
         dependency-type: production
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
