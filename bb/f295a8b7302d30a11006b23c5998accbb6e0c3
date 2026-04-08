@@ -1,0 +1,25 @@
+.github/dependabot.yml
+  6a4f839b74860aeb 1-17
+.github/workflows/test.yml
+  6a4f839b74860aeb 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "bbf295a8b7302d30a11006b23c5998accbb6e0c3",
+  "prompts": {
+    "6a4f839b74860aeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31160d5e-cd8c-44df-8a21-898f33c943c2",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 23,
+      "total_deletions": 5,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
