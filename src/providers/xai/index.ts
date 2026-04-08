@@ -11,13 +11,12 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
   readonly id = "xai";
   readonly defaultModel = "grok-tts";
 
-  // BCP-47 codes per xAI docs. `auto` is accepted as a language value for
-  // auto-detection but isn't a language itself, so it's not listed here.
+  // ISO 639-1 codes, matching the rest of the SDK. xAI's API also accepts
+  // region-qualified BCP-47 codes (e.g. `pt-BR`, `es-MX`) and `auto` for
+  // detection — callers can pass either via `providerOptions.language`.
   private static readonly LANGUAGES = [
     "en",
-    "ar-EG",
-    "ar-SA",
-    "ar-AE",
+    "ar",
     "bn",
     "zh",
     "fr",
@@ -27,11 +26,9 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     "it",
     "ja",
     "ko",
-    "pt-BR",
-    "pt-PT",
+    "pt",
     "ru",
-    "es-MX",
-    "es-ES",
+    "es",
     "tr",
     "vi",
   ] as const;
