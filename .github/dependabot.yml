@@ -4,14 +4,35 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    # Collapse all npm updates into one grouped PR per week.
+    open-pull-requests-limit: 1
+    # Never open PRs for major version bumps — they are the primary source of
+    # breaking changes under semver. Majors should be reviewed and adopted
+    # deliberately, not nudged in automatically.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      dev-dependencies:
-        dependency-type: development
-      prod-dependencies:
-        dependency-type: production
+      npm-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    # Collapse all github-actions updates into one grouped PR per week.
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
