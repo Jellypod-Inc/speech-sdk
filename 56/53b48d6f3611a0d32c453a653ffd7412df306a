@@ -1,0 +1,27 @@
+src/stream-speech.ts
+  93a4ec6000aad727 8,74-75,98-110,114
+src/__tests__/metadata.test.ts
+  93a4ec6000aad727 4,102-200
+src/stream-speech-result.ts
+  93a4ec6000aad727 1-2,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "5653b48d6f3611a0d32c453a653ffd7412df306a",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 104,
+      "total_deletions": 2,
+      "accepted_lines": 132,
+      "overriden_lines": 0
+    }
+  }
+}
