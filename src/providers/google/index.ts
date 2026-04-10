@@ -1,6 +1,9 @@
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
+import { buildWavHeader, parseSampleRate, pcmToWav } from "./pcm-to-wav.js";
+
+const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
 function safeParseJson(input: string): unknown {
   try {
@@ -8,6 +11,41 @@ function safeParseJson(input: string): unknown {
   } catch {
     return null;
   }
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binaryString = atob(b64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function prependHeader(
+  source: ReadableStream<Uint8Array>,
+  header: Uint8Array
+): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(header);
+      const reader = source.getReader();
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          if (value) {
+            controller.enqueue(value);
+          }
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
 }
 
 export interface GoogleSpeechProviderConfig {
@@ -104,7 +142,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
-    audio: string;
+    audio: Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
@@ -164,9 +203,17 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error("No audio data in Gemini TTS response");
     }
 
+    // Gemini returns raw 16-bit mono PCM. Wrap in a WAV container so
+    // the audio is directly playable by any client.
+    const sampleRate =
+      parseSampleRate(part.inlineData.mimeType ?? "") ??
+      DEFAULT_GEMINI_SAMPLE_RATE;
+    const pcm = base64ToBytes(part.inlineData.data);
+    const wav = pcmToWav(pcm, sampleRate);
+
     return {
-      audio: part.inlineData.data,
-      mediaType: part.inlineData.mimeType ?? "audio/mp3",
+      audio: wav,
+      mediaType: "audio/wav",
     };
   }
 
@@ -232,7 +279,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error(`google/${options.modelId}: response has no body`);
     }
 
-    const { stream } = parseSseBase64Stream(response.body, {
+    const { stream: pcmStream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
         const json = safeParseJson(eventData) as {
           candidates?: Array<{
@@ -250,9 +297,20 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     });
 
+    // Prepend a WAV header so the stream is directly playable.
+    // Use 0xFFFFFFFF (max uint32) as dataSize since we don't know the
+    // final length — most players read until EOF.
+    const wavHeader = buildWavHeader({
+      sampleRate: DEFAULT_GEMINI_SAMPLE_RATE,
+      numChannels: 1,
+      bitsPerSample: 16,
+      dataSize: 0xff_ff_ff_ff,
+    });
+    const stream = prependHeader(pcmStream, wavHeader);
+
     return {
       stream,
-      mediaType: "audio/L16;rate=24000",
+      mediaType: "audio/wav",
     };
   }
 }

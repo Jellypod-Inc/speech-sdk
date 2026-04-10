@@ -2,11 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
 describe("GoogleSpeechProvider", () => {
+  // base64 of 4 bytes of 16-bit PCM (2 samples of silence)
+  const pcmBase64 = "AAAAAA==";
   const geminiResponse = {
     candidates: [
       {
         content: {
-          parts: [{ inlineData: { mimeType: "audio/mp3", data: "dGVzdA==" } }],
+          parts: [
+            {
+              inlineData: {
+                mimeType: "audio/L16;codec=pcm;rate=24000",
+                data: pcmBase64,
+              },
+            },
+          ],
         },
       },
     ],
@@ -67,7 +76,7 @@ describe("GoogleSpeechProvider", () => {
     });
   });
 
-  it("returns base64 audio from Gemini response", async () => {
+  it("wraps Gemini PCM output in a WAV container", async () => {
     const mockFetch = createMockFetch();
     const provider = new GoogleSpeechProvider({
       apiKey: "test-key",
@@ -80,8 +89,25 @@ describe("GoogleSpeechProvider", () => {
       voice: "Kore",
     });
 
-    expect(result.audio).toBe("dGVzdA==");
-    expect(result.mediaType).toBe("audio/mp3");
+    // Result should be a Uint8Array starting with "RIFF...WAVE" header
+    expect(result.audio).toBeInstanceOf(Uint8Array);
+    expect(result.mediaType).toBe("audio/wav");
+
+    const wav = result.audio as Uint8Array;
+    // 44-byte header + 4 bytes of PCM
+    expect(wav.length).toBe(48);
+    const riff = new TextDecoder().decode(wav.slice(0, 4));
+    expect(riff).toBe("RIFF");
+    const wave = new TextDecoder().decode(wav.slice(8, 12));
+    expect(wave).toBe("WAVE");
+    const fmt = new TextDecoder().decode(wav.slice(12, 16));
+    expect(fmt).toBe("fmt ");
+    const data = new TextDecoder().decode(wav.slice(36, 40));
+    expect(data).toBe("data");
+
+    // Verify sample rate in header (little-endian uint32 at offset 24)
+    const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+    expect(view.getUint32(24, true)).toBe(24_000);
   });
 
   it("throws on error response", async () => {

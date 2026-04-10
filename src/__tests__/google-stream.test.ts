@@ -71,7 +71,18 @@ describe("GoogleSpeechProvider.stream", () => {
       throw new Error("no result");
     }
     const decoded = await collect(result.stream);
-    expect(new TextDecoder().decode(decoded)).toBe("ABCD");
-    expect(result.mediaType).toBe("audio/L16;rate=24000");
+
+    // Stream should start with a WAV header (44 bytes) followed by the PCM
+    expect(result.mediaType).toBe("audio/wav");
+    expect(decoded.length).toBe(44 + 4);
+
+    const riff = new TextDecoder().decode(decoded.slice(0, 4));
+    expect(riff).toBe("RIFF");
+    const wave = new TextDecoder().decode(decoded.slice(8, 12));
+    expect(wave).toBe("WAVE");
+
+    // PCM payload follows the 44-byte header
+    const payload = new TextDecoder().decode(decoded.slice(44));
+    expect(payload).toBe("ABCD");
   });
 });
