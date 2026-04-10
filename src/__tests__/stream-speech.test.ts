@@ -125,6 +125,32 @@ describe("streamSpeech", () => {
     expect(streamFn).toHaveBeenCalledTimes(1);
   });
 
+  it("passes apiKey to provider when model is a string", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      body: bytesStream(new Uint8Array([1, 2, 3])),
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      const result = await streamSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "sk-custom-key",
+      });
+
+      expect(result.mediaType).toBe("audio/mpeg");
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers.Authorization).toBe("Bearer sk-custom-key");
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
   it("applies processAudioTags warnings", async () => {
     const streamFn = vi.fn().mockResolvedValue({
       stream: bytesStream(new Uint8Array([1])),

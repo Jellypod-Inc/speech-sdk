@@ -23,40 +23,47 @@ function isResolvedModel(model: unknown): model is ResolvedModel {
   );
 }
 
-function createBuiltinProvider(name: string): SpeechProvider {
+function createBuiltinProvider(
+  name: string,
+  options?: { apiKey?: string }
+): SpeechProvider {
+  const config = options?.apiKey ? { apiKey: options.apiKey } : {};
   switch (name) {
     case "openai":
-      return new OpenAISpeechProvider({});
+      return new OpenAISpeechProvider(config);
     case "elevenlabs":
-      return new ElevenLabsSpeechProvider({});
+      return new ElevenLabsSpeechProvider(config);
     case "deepgram":
-      return new DeepgramSpeechProvider({});
+      return new DeepgramSpeechProvider(config);
     case "cartesia":
-      return new CartesiaSpeechProvider({});
+      return new CartesiaSpeechProvider(config);
     case "hume":
-      return new HumeSpeechProvider({});
+      return new HumeSpeechProvider(config);
     case "google":
-      return new GoogleSpeechProvider({});
+      return new GoogleSpeechProvider(config);
     case "fish-audio":
-      return new FishAudioSpeechProvider({});
+      return new FishAudioSpeechProvider(config);
     case "unreal-speech":
-      return new UnrealSpeechProvider({});
+      return new UnrealSpeechProvider(config);
     case "murf":
-      return new MurfSpeechProvider({});
+      return new MurfSpeechProvider(config);
     case "resemble":
-      return new ResembleSpeechProvider({});
+      return new ResembleSpeechProvider(config);
     case "fal-ai":
-      return new FalSpeechProvider({});
+      return new FalSpeechProvider(config);
     case "mistral":
-      return new MistralSpeechProvider({});
+      return new MistralSpeechProvider(config);
     case "xai":
-      return new XaiSpeechProvider({});
+      return new XaiSpeechProvider(config);
     default:
       throw new SpeechSDKError(`Unknown provider: ${name}`);
   }
 }
 
-export function resolveModel(model: string | ResolvedModel): ResolvedModel {
+export function resolveModel(
+  model: string | ResolvedModel,
+  options?: { apiKey?: string }
+): ResolvedModel {
   if (isResolvedModel(model)) {
     return model;
   }
@@ -73,7 +80,7 @@ export function resolveModel(model: string | ResolvedModel): ResolvedModel {
     modelId = model.slice(slashIndex + 1);
   }
 
-  const provider = createBuiltinProvider(providerName);
+  const provider = createBuiltinProvider(providerName, options);
   return {
     provider,
     modelId: modelId || provider.defaultModel,
