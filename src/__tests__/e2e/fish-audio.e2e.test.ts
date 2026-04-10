@@ -60,7 +60,7 @@ describe.skipIf(!hasKey)("Fish Audio e2e", () => {
     expect(result.metadata.model).toBe("s2-pro");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
-    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
 });

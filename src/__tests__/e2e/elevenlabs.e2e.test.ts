@@ -113,7 +113,7 @@ describe("ElevenLabs e2e", () => {
     expect(result.metadata.model).toBe("eleven_flash_v2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
-    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
 });

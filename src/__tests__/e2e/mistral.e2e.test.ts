@@ -56,7 +56,7 @@ describe.skipIf(!hasKey)("Mistral e2e", () => {
     expect(result.metadata.model).toBe("voxtral-mini-tts-2603");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
-    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
 });

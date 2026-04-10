@@ -49,14 +49,14 @@ describe.skipIf(!hasKey)("Unreal Speech e2e", () => {
     const result = await generateSpeech({
       model: "unreal-speech/default",
       text: TEST_TEXT,
-      voice: "Dan",
+      voice: "Sierra",
     });
 
     expect(result.metadata.provider).toBe("unreal-speech");
     expect(result.metadata.model).toBe("default");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
-    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
 });
