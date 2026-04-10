@@ -1,0 +1,25 @@
+src/generate-speech.ts
+  93a4ec6000aad727 4,55-56,79-80,92-96,100,104
+src/speech-result.ts
+  93a4ec6000aad727 1-2,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "50837583b0ebff078f37faaa4c3b6b2f5f12f482",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 158,
+      "total_deletions": 6,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}

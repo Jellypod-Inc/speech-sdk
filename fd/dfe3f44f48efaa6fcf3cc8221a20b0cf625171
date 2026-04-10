@@ -1,0 +1,47 @@
+src/__tests__/e2e/openai.e2e.test.ts
+  93a4ec6000aad727 102-131
+src/__tests__/e2e/hume.e2e.test.ts
+  93a4ec6000aad727 49-63
+src/__tests__/e2e/deepgram.e2e.test.ts
+  93a4ec6000aad727 47-61
+src/__tests__/e2e/cartesia.e2e.test.ts
+  93a4ec6000aad727 51-65
+src/__tests__/e2e/fal.e2e.test.ts
+  93a4ec6000aad727 133-147
+src/__tests__/e2e/resemble.e2e.test.ts
+  93a4ec6000aad727 48-62
+src/__tests__/e2e/unreal-speech.e2e.test.ts
+  93a4ec6000aad727 47-61
+src/__tests__/e2e/google.e2e.test.ts
+  93a4ec6000aad727 52-66
+src/__tests__/e2e/murf.e2e.test.ts
+  93a4ec6000aad727 49-63
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  93a4ec6000aad727 104-118
+src/__tests__/e2e/mistral.e2e.test.ts
+  93a4ec6000aad727 47-61
+src/__tests__/e2e/fish-audio.e2e.test.ts
+  93a4ec6000aad727 50-65
+src/__tests__/e2e/xai.e2e.test.ts
+  93a4ec6000aad727 47-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "fddfe3f44f48efaa6fcf3cc8221a20b0cf625171",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 315,
+      "total_deletions": 64,
+      "accepted_lines": 211,
+      "overriden_lines": 0
+    }
+  }
+}

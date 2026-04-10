@@ -1,0 +1,25 @@
+src/providers/mistral/index.ts
+  93a4ec6000aad727 104-107,109-112,116
+src/providers/elevenlabs/index.ts
+  93a4ec6000aad727 273-277,281,339-340,346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "4976f0503436d7fa2be86559bb59a3a4bca85b5b",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
