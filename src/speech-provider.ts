@@ -60,6 +60,7 @@ export interface SpeechProvider<
     headers?: Record<string, string>;
   }): Promise<{
     audio: string | Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }>;
@@ -79,6 +80,7 @@ export interface SpeechProvider<
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
+    audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
