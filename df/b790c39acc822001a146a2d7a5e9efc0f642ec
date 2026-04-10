@@ -1,0 +1,29 @@
+package.json
+  93a4ec6000aad727 94
+src/audio-duration.ts
+  93a4ec6000aad727 1-37
+src/__tests__/metadata.test.ts
+  93a4ec6000aad727 82
+src/generate-speech.ts
+  93a4ec6000aad727 2,92-95,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "dfb790c39acc822001a146a2d7a5e9efc0f642ec",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 69,
+      "overriden_lines": 0
+    }
+  }
+}
