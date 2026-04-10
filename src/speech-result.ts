@@ -1,3 +1,5 @@
+import type { SpeechMetadata } from "./metadata.js";
+
 export interface GeneratedAudioFile {
   readonly base64: string;
   readonly mediaType: string;
@@ -6,6 +8,7 @@ export interface GeneratedAudioFile {
 
 export interface SpeechResult {
   readonly audio: GeneratedAudioFile;
+  readonly metadata: SpeechMetadata;
   readonly providerMetadata?: Record<string, unknown>;
   readonly warnings?: string[];
 }
