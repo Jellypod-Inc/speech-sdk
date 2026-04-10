@@ -1,0 +1,49 @@
+src/__tests__/e2e/xai.e2e.test.ts
+  93a4ec6000aad727 59
+src/__tests__/e2e/google.e2e.test.ts
+  93a4ec6000aad727 64
+src/__tests__/e2e/mistral.e2e.test.ts
+  93a4ec6000aad727 59
+src/__tests__/e2e/resemble.e2e.test.ts
+  93a4ec6000aad727 60
+src/__tests__/e2e/unreal-speech.e2e.test.ts
+  93a4ec6000aad727 52,59
+src/__tests__/e2e/openai.e2e.test.ts
+  93a4ec6000aad727 114
+src/__tests__/e2e/deepgram.e2e.test.ts
+  93a4ec6000aad727 52,59
+src/audio-duration.ts
+  93a4ec6000aad727 3-7,10-12,18-24,42-56,58-61
+src/__tests__/e2e/hume.e2e.test.ts
+  93a4ec6000aad727 61
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  93a4ec6000aad727 116
+src/__tests__/e2e/cartesia.e2e.test.ts
+  93a4ec6000aad727 63
+src/__tests__/e2e/murf.e2e.test.ts
+  93a4ec6000aad727 61
+src/__tests__/e2e/fish-audio.e2e.test.ts
+  93a4ec6000aad727 63
+src/__tests__/e2e/fal.e2e.test.ts
+  93a4ec6000aad727 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "c4e143c4cf9c09e2cc89156fd686eccd201fb429",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 33,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    }
+  }
+}
