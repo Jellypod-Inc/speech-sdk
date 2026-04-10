@@ -44,4 +44,19 @@ describe.skipIf(!hasKey)("Unreal Speech e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "unreal-speech/default",
+      text: TEST_TEXT,
+      voice: "Dan",
+    });
+
+    expect(result.metadata.provider).toBe("unreal-speech");
+    expect(result.metadata.model).toBe("default");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

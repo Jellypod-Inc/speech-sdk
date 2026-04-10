@@ -101,4 +101,19 @@ describe("ElevenLabs e2e", () => {
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "elevenlabs/eleven_flash_v2",
+      text: TEST_TEXT,
+      voice: VOICE,
+    });
+
+    expect(result.metadata.provider).toBe("elevenlabs");
+    expect(result.metadata.model).toBe("eleven_flash_v2");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

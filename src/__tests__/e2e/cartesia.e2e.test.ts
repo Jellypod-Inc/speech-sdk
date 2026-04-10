@@ -48,4 +48,19 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "cartesia/sonic-2",
+      text: TEST_TEXT,
+      voice,
+    });
+
+    expect(result.metadata.provider).toBe("cartesia");
+    expect(result.metadata.model).toBe("sonic-2");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

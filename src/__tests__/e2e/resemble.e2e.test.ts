@@ -45,4 +45,19 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "resemble/default",
+      text: TEST_TEXT,
+      voice,
+    });
+
+    expect(result.metadata.provider).toBe("resemble");
+    expect(result.metadata.model).toBe("default");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

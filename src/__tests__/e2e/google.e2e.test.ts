@@ -49,4 +49,19 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "google/gemini-2.5-flash-preview-tts",
+      text: TEST_TEXT,
+      voice: "Zephyr",
+    });
+
+    expect(result.metadata.provider).toBe("google");
+    expect(result.metadata.model).toBe("gemini-2.5-flash-preview-tts");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeGreaterThan(0);
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });
