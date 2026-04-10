@@ -100,10 +100,19 @@ export class MistralSpeechProvider
 
     await handleErrorResponse(response, `mistral/${options.modelId}`);
 
-    const json = (await response.json()) as { audio_data: string };
+    const json = (await response.json()) as {
+      audio_data: string;
+      usage?: { audio_duration_seconds?: number };
+    };
+
+    const audioDurationMs =
+      json.usage?.audio_duration_seconds == null
+        ? undefined
+        : Math.round(json.usage.audio_duration_seconds * 1000);
 
     return {
       audio: json.audio_data,
+      audioDurationMs,
       mediaType: "audio/mpeg",
     };
   }

@@ -149,4 +149,49 @@ describe("MistralSpeechProvider", () => {
     const [url] = mockFetch.mock.calls[0];
     expect(url).toBe("https://custom.api.com/v1/audio/speech");
   });
+
+  it("returns audioDurationMs from JSON response", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio_data: btoa("hello"),
+        usage: { audio_duration_seconds: 2.5 },
+      }),
+    });
+
+    const provider = new MistralSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "voxtral-mini-tts-2603",
+      text: "Hello world",
+    });
+
+    expect(result.audioDurationMs).toBe(2500);
+  });
+
+  it("omits audioDurationMs when usage is absent", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ audio_data: btoa("hello") }),
+    });
+
+    const provider = new MistralSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "voxtral-mini-tts-2603",
+      text: "Hello",
+    });
+
+    expect(result.audioDurationMs).toBeUndefined();
+  });
 });
