@@ -91,6 +91,7 @@
     "url": "https://github.com/Jellypod-Inc/speech-sdk"
   },
   "dependencies": {
+    "mediabunny": "^1.40.1",
     "p-retry": "^8.0.0"
   },
   "devDependencies": {

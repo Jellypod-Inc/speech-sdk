@@ -1,4 +1,5 @@
 import pRetry from "p-retry";
+import { computeAudioDuration } from "./audio-duration.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
 import type { SpeechMetadata } from "./metadata.js";
@@ -89,14 +90,16 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     mediaType: result.mediaType,
   });
 
+  const audioDurationMs =
+    (await computeAudioDuration(audioData, result.mediaType)) ??
+    result.audioDurationMs;
+
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: processedText.length,
     provider: resolved.provider.id,
     model: resolved.modelId,
-    ...(result.audioDurationMs != null && {
-      audioDurationMs: result.audioDurationMs,
-    }),
+    ...(audioDurationMs != null && { audioDurationMs }),
   };
 
   return {

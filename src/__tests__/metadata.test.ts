@@ -79,6 +79,7 @@ describe("generateSpeech metadata", () => {
 
   it("includes audioDurationMs when provider returns it", async () => {
     const provider = createMetadataProvider({ audioDurationMs: 1500 });
+
     const result = await generateSpeech({
       model: { provider, modelId: "test-model" },
       text: "Hello",
