@@ -10,6 +10,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   model: string | ResolvedModel<V>;
   text: string;
   voice: V;
+  apiKey?: string;
   providerOptions?: Record<string, unknown>;
   maxRetries?: number;
   abortSignal?: AbortSignal;
@@ -18,7 +19,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
 
-  const resolved = resolveModel(model);
+  const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
 
   let processedText: string;

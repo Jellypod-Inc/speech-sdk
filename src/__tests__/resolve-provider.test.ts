@@ -39,4 +39,26 @@ describe("resolveModel", () => {
     const result = resolveModel(resolved);
     expect(result).toBe(resolved);
   });
+
+  it("passes apiKey to the created provider", () => {
+    const result = resolveModel("openai/tts-1", { apiKey: "test-key-123" });
+    expect(result.provider.id).toBe("openai");
+    expect(result.modelId).toBe("tts-1");
+    // The provider is constructed with the apiKey; we verify it was created
+    // successfully (apiKey is stored privately, so we just ensure no error)
+  });
+
+  it("ignores apiKey when model is a ResolvedModel", () => {
+    const mockProvider = {
+      id: "test",
+      defaultModel: "test-model",
+      generate: async () => ({
+        audio: new Uint8Array(),
+        mediaType: "audio/mpeg",
+      }),
+    };
+    const resolved = { provider: mockProvider, modelId: "custom-model" };
+    const result = resolveModel(resolved, { apiKey: "ignored-key" });
+    expect(result).toBe(resolved);
+  });
 });

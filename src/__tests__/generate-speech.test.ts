@@ -334,6 +334,45 @@ describe("generateSpeech", () => {
     }
   });
 
+  it("passes apiKey to provider when model is a string", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "sk-custom-key",
+      });
+
+      expect(result.audio).toBeDefined();
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers.Authorization).toBe("Bearer sk-custom-key");
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("ignores apiKey when model is a ResolvedModel", async () => {
+    const provider = createMockProvider();
+    await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "Hello",
+      voice: "test-voice",
+      apiKey: "sk-should-be-ignored",
+    });
+
+    // The mock provider is used directly, apiKey does not affect it
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
   it("does not retry on 4xx errors", async () => {
     const error = new ApiError("Auth error", {
       statusCode: 401,
