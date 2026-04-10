@@ -59,6 +59,7 @@ export class MistralSpeechProvider
     headers?: Record<string, string>;
   }): Promise<{
     audio: string;
+    audioDurationMs?: number;
     mediaType: string;
   }> {
     const body: Record<string, unknown> = {

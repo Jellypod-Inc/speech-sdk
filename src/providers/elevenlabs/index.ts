@@ -229,6 +229,7 @@ export class ElevenLabsSpeechProvider
     headers?: Record<string, string>;
   }): Promise<{
     audio: Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
@@ -291,6 +292,7 @@ export class ElevenLabsSpeechProvider
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
+    audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
