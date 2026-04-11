@@ -1,6 +1,8 @@
 import pRetry from "p-retry";
+import { computeAudioDuration } from "./audio-duration.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
@@ -51,6 +53,8 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     );
   }
 
+  const startTime = performance.now();
+
   const result = await pRetry(
     () =>
       resolved.provider.generate({
@@ -73,6 +77,8 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     }
   );
 
+  const latencyMs = Math.round(performance.now() - startTime);
+
   const audioData = result.audio;
 
   if (audioData.length === 0) {
@@ -84,8 +90,21 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     mediaType: result.mediaType,
   });
 
+  const audioDurationMs =
+    (await computeAudioDuration(audioData, result.mediaType)) ??
+    result.audioDurationMs;
+
+  const metadata: SpeechMetadata = {
+    latencyMs,
+    inputChars: processedText.length,
+    provider: resolved.provider.id,
+    model: resolved.modelId,
+    ...(audioDurationMs != null && { audioDurationMs }),
+  };
+
   return {
     audio,
+    metadata,
     providerMetadata: result.providerMetadata,
     warnings: warnings.length > 0 ? warnings : undefined,
   };

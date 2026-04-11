@@ -46,4 +46,19 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "hume/octave-2",
+      text: TEST_TEXT,
+      voice: "Kora",
+    });
+
+    expect(result.metadata.provider).toBe("hume");
+    expect(result.metadata.model).toBe("octave-2");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

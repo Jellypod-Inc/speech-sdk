@@ -46,4 +46,19 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "murf/GEN2",
+      text: TEST_TEXT,
+      voice: "en-US-natalie",
+    });
+
+    expect(result.metadata.provider).toBe("murf");
+    expect(result.metadata.model).toBe("GEN2");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

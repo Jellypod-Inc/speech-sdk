@@ -7,6 +7,7 @@ export {
   StreamingNotSupportedError,
 } from "./errors.js";
 export { generateSpeech } from "./generate-speech.js";
+export type { SpeechMetadata } from "./metadata.js";
 export type {
   Feature,
   ModelInfo,

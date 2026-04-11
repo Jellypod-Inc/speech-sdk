@@ -99,4 +99,34 @@ describe("OpenAI e2e", () => {
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(1000);
     expect(result.warnings).toBeUndefined();
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "openai/tts-1",
+      text: TEST_TEXT,
+      voice: VOICE,
+    });
+
+    expect(result.metadata.provider).toBe("openai");
+    expect(result.metadata.model).toBe("tts-1");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
+
+  it("returns metadata with ttfbMs for streaming", async () => {
+    const result = await streamSpeech({
+      model: "openai/tts-1",
+      text: TEST_TEXT,
+      voice: VOICE,
+    });
+    await collectStream(result.audio);
+
+    expect(result.metadata.provider).toBe("openai");
+    expect(result.metadata.model).toBe("tts-1");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.ttfbMs).toBeGreaterThanOrEqual(0);
+  });
 });

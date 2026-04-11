@@ -5,6 +5,7 @@ import {
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
+import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
   FEATURES,
@@ -71,6 +72,8 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
 
   const streamFn = resolved.provider.stream.bind(resolved.provider);
 
+  const startTime = performance.now();
+
   const result = await pRetry(
     () =>
       streamFn({
@@ -93,9 +96,23 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
     }
   );
 
+  const ttfbMs = Math.round(performance.now() - startTime);
+
+  const metadata: SpeechMetadata = {
+    latencyMs: ttfbMs,
+    ttfbMs,
+    inputChars: processedText.length,
+    provider: resolved.provider.id,
+    model: resolved.modelId,
+    ...(result.audioDurationMs != null && {
+      audioDurationMs: result.audioDurationMs,
+    }),
+  };
+
   return {
     audio: result.stream,
     mediaType: result.mediaType,
+    metadata,
     providerMetadata: result.providerMetadata,
     warnings: warnings.length > 0 ? warnings : undefined,
   };

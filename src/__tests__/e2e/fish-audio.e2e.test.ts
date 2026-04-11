@@ -47,4 +47,20 @@ describe.skipIf(!hasKey)("Fish Audio e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "fish-audio/s2-pro",
+      text: TEST_TEXT,
+      voice:
+        process.env.FISH_AUDIO_VOICE_ID ?? "59e9dc1cb20c452584788a2690c80970",
+    });
+
+    expect(result.metadata.provider).toBe("fish-audio");
+    expect(result.metadata.model).toBe("s2-pro");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

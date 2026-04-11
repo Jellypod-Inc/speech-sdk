@@ -44,4 +44,19 @@ describe.skipIf(!hasKey)("Mistral e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "mistral/voxtral-mini-tts-2603",
+      text: TEST_TEXT,
+      voice: "en_paul_neutral",
+    });
+
+    expect(result.metadata.provider).toBe("mistral");
+    expect(result.metadata.model).toBe("voxtral-mini-tts-2603");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

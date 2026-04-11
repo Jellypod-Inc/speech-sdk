@@ -1,13 +1,72 @@
+import {
+  BufferTarget,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  Output,
+  WavOutputFormat,
+} from "mediabunny";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
-import { parseSseBase64Stream } from "../../sse-stream.js";
 
-function safeParseJson(input: string): unknown {
-  try {
-    return JSON.parse(input);
-  } catch {
-    return null;
+const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
+// biome-ignore lint/performance/useTopLevelRegex: single-use parser
+const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
+
+function parseSampleRate(mimeType: string): number | undefined {
+  const match = mimeType.match(RATE_PARAM);
+  if (!match) {
+    return undefined;
   }
+  const rate = Number(match[1]);
+  // Guard against malformed mime types (e.g. "rate=0") which would
+  // otherwise slip past the `??` fallback and produce an invalid WAV.
+  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binaryString = atob(b64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Wrap raw 16-bit mono PCM bytes in a WAV container using mediabunny's
+ * WavOutputFormat. Cross-platform (browser, Node, edge) and doesn't
+ * require Web Codecs global types.
+ */
+async function pcmToWav(
+  pcm: Uint8Array,
+  sampleRate: number
+): Promise<Uint8Array> {
+  const output = new Output({
+    format: new WavOutputFormat(),
+    target: new BufferTarget(),
+  });
+  const source = new EncodedAudioPacketSource("pcm-s16");
+  output.addAudioTrack(source);
+  await output.start();
+
+  // Each 16-bit mono sample is 2 bytes.
+  const numSamples = pcm.length / 2;
+  const durationSeconds = numSamples / sampleRate;
+  const packet = new EncodedPacket(pcm, "key", 0, durationSeconds, 0);
+  await source.add(packet, {
+    decoderConfig: {
+      codec: "pcm-s16",
+      numberOfChannels: 1,
+      sampleRate,
+    },
+  });
+
+  await output.finalize();
+  const buffer = output.target.buffer;
+  if (!buffer) {
+    throw new Error("mediabunny: WavOutputFormat produced no buffer");
+  }
+  return new Uint8Array(buffer);
 }
 
 export interface GoogleSpeechProviderConfig {
@@ -104,7 +163,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
-    audio: string;
+    audio: Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
@@ -164,19 +224,29 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error("No audio data in Gemini TTS response");
     }
 
+    // Gemini returns raw 16-bit mono PCM. Wrap in a WAV container so
+    // the audio is directly playable by any client.
+    const sampleRate =
+      parseSampleRate(part.inlineData.mimeType ?? "") ??
+      DEFAULT_GEMINI_SAMPLE_RATE;
+    const pcm = base64ToBytes(part.inlineData.data);
+    const wav = await pcmToWav(pcm, sampleRate);
+
     return {
-      audio: part.inlineData.data,
-      mediaType: part.inlineData.mimeType ?? "audio/mp3",
+      audio: wav,
+      mediaType: "audio/wav",
     };
   }
 
-  // NOTE: Gemini TTS on the Generative Language API (`streamGenerateContent`)
-  // buffers the full synthesis server-side and flushes in a single burst. This
-  // method returns a valid ReadableStream, but first-byte latency matches
-  // generateSpeech(). True progressive Google TTS is only available via:
-  //   - Live API (`bidiGenerateContent`, WebSocket) on native-audio models
-  //   - Cloud TTS `streamingSynthesize` (gRPC only; no REST binding)
-  // Neither is wired up in this SDK today.
+  // Gemini's `streamGenerateContent` endpoint does not actually stream TTS
+  // audio progressively — the server synthesizes the full clip, then flushes
+  // it in a single burst. Time-to-first-byte matches `generateContent`, and
+  // the user-perceived behavior is identical. Rather than duplicate the
+  // request logic and deal with SSE parsing + chunked WAV assembly, we
+  // delegate to `generate()` and wrap the result in a single-chunk
+  // ReadableStream. True progressive Gemini TTS is only available via the
+  // Live API (`bidiGenerateContent`, WebSocket) on native-audio models,
+  // which is a separate integration not wired up in this SDK.
   async stream(options: {
     modelId: string;
     text: string;
@@ -189,71 +259,14 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
-
-    const voiceName = options.voice ?? "Kore";
-
-    const speechConfig: Record<string, unknown> = {
-      voice_config: {
-        prebuilt_voice_config: { voice_name: voiceName },
-      },
-    };
-
-    const body: Record<string, unknown> = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: options.text }],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ["audio"],
-        speech_config: speechConfig,
-        ...options.providerOptions,
-      },
-    };
-
-    const url = `${this.baseURL}/models/${options.modelId}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-        ...options.headers,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    await handleErrorResponse(response, `google/${options.modelId}`);
-
-    if (!response.body) {
-      throw new Error(`google/${options.modelId}: response has no body`);
-    }
-
-    const { stream } = parseSseBase64Stream(response.body, {
-      extractBase64(eventData) {
-        const json = safeParseJson(eventData) as {
-          candidates?: Array<{
-            content?: {
-              parts?: Array<{
-                inlineData?: { data?: string; mimeType?: string };
-              }>;
-            };
-          }>;
-        } | null;
-        const part = json?.candidates?.[0]?.content?.parts?.find(
-          (p) => p.inlineData?.data
-        );
-        return part?.inlineData?.data ?? null;
+    const { audio, mediaType, providerMetadata } = await this.generate(options);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(audio);
+        controller.close();
       },
     });
-
-    return {
-      stream,
-      mediaType: "audio/L16;rate=24000",
-    };
+    return { stream, mediaType, providerMetadata };
   }
 }
 

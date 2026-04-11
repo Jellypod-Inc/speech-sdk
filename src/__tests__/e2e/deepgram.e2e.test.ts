@@ -44,4 +44,19 @@ describe.skipIf(!hasKey)("Deepgram e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "deepgram/aura-2",
+      text: TEST_TEXT,
+      voice: "thalia-en",
+    });
+
+    expect(result.metadata.provider).toBe("deepgram");
+    expect(result.metadata.model).toBe("aura-2");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

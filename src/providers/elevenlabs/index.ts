@@ -229,6 +229,7 @@ export class ElevenLabsSpeechProvider
     headers?: Record<string, string>;
   }): Promise<{
     audio: Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
@@ -269,9 +270,16 @@ export class ElevenLabsSpeechProvider
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
     const requestId = response.headers.get("request-id");
+    const durationHeader = response.headers.get("audio-duration-seconds");
+    const parsedDuration =
+      durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
+    const audioDurationMs = Number.isFinite(parsedDuration)
+      ? Math.round(parsedDuration * 1000)
+      : undefined;
 
     return {
       audio: new Uint8Array(arrayBuffer),
+      audioDurationMs,
       mediaType,
       providerMetadata: requestId ? { requestId } : undefined,
     };
@@ -285,6 +293,7 @@ export class ElevenLabsSpeechProvider
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
+    audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
@@ -328,8 +337,15 @@ export class ElevenLabsSpeechProvider
     }
 
     const requestId = response.headers.get("request-id");
+    const durationHeader = response.headers.get("audio-duration-seconds");
+    const parsedDuration =
+      durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
+    const audioDurationMs = Number.isFinite(parsedDuration)
+      ? Math.round(parsedDuration * 1000)
+      : undefined;
 
     return {
+      audioDurationMs,
       stream: response.body,
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
       providerMetadata: requestId ? { requestId } : undefined,

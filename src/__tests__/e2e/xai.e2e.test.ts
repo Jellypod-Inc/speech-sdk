@@ -44,4 +44,19 @@ describe.skipIf(!hasKey)("xAI e2e", () => {
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
   });
+
+  it("returns metadata with duration", async () => {
+    const result = await generateSpeech({
+      model: "xai/grok-tts",
+      text: TEST_TEXT,
+      voice: "eve",
+    });
+
+    expect(result.metadata.provider).toBe("xai");
+    expect(result.metadata.model).toBe("grok-tts");
+    expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
+    expect(result.metadata.audioDurationMs).toBeTypeOf("number");
+    expect(result.metadata.ttfbMs).toBeUndefined();
+  });
 });

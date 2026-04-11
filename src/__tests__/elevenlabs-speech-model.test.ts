@@ -294,4 +294,52 @@ describe("ElevenLabsSpeechProvider", () => {
       })
     ).rejects.toThrow("voice");
   });
+
+  it("returns audioDurationMs from response header", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({
+        "content-type": "audio/mpeg",
+        "request-id": "req-abc",
+        "audio-duration-seconds": "3.45",
+      }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_multilingual_v2",
+      text: "Hello world",
+      voice: "voice-id",
+    });
+
+    expect(result.audioDurationMs).toBe(3450);
+  });
+
+  it("omits audioDurationMs when header is absent", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    });
+
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_multilingual_v2",
+      text: "Hello",
+      voice: "voice-id",
+    });
+
+    expect(result.audioDurationMs).toBeUndefined();
+  });
 });
