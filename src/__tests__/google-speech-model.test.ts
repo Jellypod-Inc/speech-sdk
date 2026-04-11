@@ -110,6 +110,44 @@ describe("GoogleSpeechProvider", () => {
     expect(view.getUint32(24, true)).toBe(24_000);
   });
 
+  it("falls back to default sample rate when mimeType rate is invalid", async () => {
+    // Malformed mimeType with rate=0 should not slip through to pcmToWav.
+    // Without the guard, 0 satisfies `??` fallback (nullish only) and
+    // produces an invalid WAV with zero duration.
+    const mockFetch = createMockFetch({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "audio/L16;codec=pcm;rate=0",
+                  data: pcmBase64,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello",
+      voice: "Kore",
+    });
+
+    const wav = result.audio as Uint8Array;
+    const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+    // Should have fallen back to the default 24_000, not written 0.
+    expect(view.getUint32(24, true)).toBe(24_000);
+  });
+
   it("throws on error response", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

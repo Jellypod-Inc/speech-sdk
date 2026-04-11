@@ -14,7 +14,13 @@ const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
 
 function parseSampleRate(mimeType: string): number | undefined {
   const match = mimeType.match(RATE_PARAM);
-  return match ? Number(match[1]) : undefined;
+  if (!match) {
+    return undefined;
+  }
+  const rate = Number(match[1]);
+  // Guard against malformed mime types (e.g. "rate=0") which would
+  // otherwise slip past the `??` fallback and produce an invalid WAV.
+  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
 }
 
 function base64ToBytes(b64: string): Uint8Array {
