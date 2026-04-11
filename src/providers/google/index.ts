@@ -305,6 +305,10 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error(`google/${options.modelId}: response has no body`);
     }
 
+    // Capture the sample rate from the first SSE event's mimeType
+    // (e.g., "audio/L16;codec=pcm;rate=24000") so we don't hardcode it.
+    let detectedSampleRate: number | undefined;
+
     const { stream: pcmStream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
         const json = safeParseJson(eventData) as {
@@ -319,6 +323,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         const part = json?.candidates?.[0]?.content?.parts?.find(
           (p) => p.inlineData?.data
         );
+        if (part?.inlineData?.mimeType && detectedSampleRate == null) {
+          detectedSampleRate = parseSampleRate(part.inlineData.mimeType);
+        }
         return part?.inlineData?.data ?? null;
       },
     });
@@ -346,7 +353,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
             pcm.set(chunk, offset);
             offset += chunk.length;
           }
-          const wav = await pcmToWav(pcm, DEFAULT_GEMINI_SAMPLE_RATE);
+          const sampleRate = detectedSampleRate ?? DEFAULT_GEMINI_SAMPLE_RATE;
+          const wav = await pcmToWav(pcm, sampleRate);
           controller.enqueue(wav);
           controller.close();
         } catch (err) {

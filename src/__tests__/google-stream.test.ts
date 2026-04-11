@@ -84,5 +84,69 @@ describe("GoogleSpeechProvider.stream", () => {
     // PCM payload follows the 44-byte header
     const payload = new TextDecoder().decode(decoded.slice(44));
     expect(payload).toBe("ABCD");
+
+    // Verify sample rate in WAV header matches mime type (24000 Hz)
+    const view = new DataView(
+      decoded.buffer,
+      decoded.byteOffset,
+      decoded.byteLength
+    );
+    expect(view.getUint32(24, true)).toBe(24_000);
+  });
+
+  it("parses non-default sample rate from SSE event mimeType", async () => {
+    const event = (data: string, mime: string) =>
+      `data: ${JSON.stringify({
+        candidates: [
+          {
+            content: {
+              parts: [{ inlineData: { data, mimeType: mime } }],
+            },
+          },
+        ],
+      })}\n\n`;
+    // Gemini could return a different sample rate like 16000 or 48000
+    const sse =
+      event("QUI=", "audio/L16;codec=pcm;rate=48000") +
+      event("Q0Q=", "audio/L16;codec=pcm;rate=48000");
+    const encoder = new TextEncoder();
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(encoder.encode(sse));
+            c.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } }
+      )
+    );
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "gg-test",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.stream?.({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "hi",
+      voice: "Kore",
+    });
+
+    if (!result) {
+      throw new Error("no result");
+    }
+    const decoded = await collect(result.stream);
+
+    // WAV header sample rate field (offset 24, little-endian uint32)
+    // must reflect the 48000 Hz rate parsed from the mime type, not the
+    // hardcoded 24000 default.
+    const view = new DataView(
+      decoded.buffer,
+      decoded.byteOffset,
+      decoded.byteLength
+    );
+    expect(view.getUint32(24, true)).toBe(48_000);
   });
 });
