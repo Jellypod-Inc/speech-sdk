@@ -24,33 +24,35 @@ async function collect(
 }
 
 describe("GoogleSpeechProvider.stream", () => {
-  it("streams base64 inlineData chunks via streamGenerateContent", async () => {
-    const event = (data: string, mime: string) =>
-      `data: ${JSON.stringify({
+  // Gemini's streamGenerateContent endpoint buffers the full synthesis
+  // server-side, so our stream() delegates to generate() and wraps the
+  // resulting WAV in a single-chunk ReadableStream. These tests assert
+  // that behavior.
+
+  it("delegates to generateContent and returns a single-chunk WAV stream", async () => {
+    // 4 bytes of 16-bit PCM (2 samples of silence)
+    const pcmBase64 = "AAAAAA==";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
         candidates: [
           {
             content: {
-              parts: [{ inlineData: { data, mimeType: mime } }],
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "audio/L16;codec=pcm;rate=24000",
+                    data: pcmBase64,
+                  },
+                },
+              ],
             },
           },
         ],
-      })}\n\n`;
-    const sse =
-      event("QUI=", "audio/L16;rate=24000") +
-      event("Q0Q=", "audio/L16;rate=24000");
-    const encoder = new TextEncoder();
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        new ReadableStream({
-          start(c) {
-            c.enqueue(encoder.encode(sse));
-            c.close();
-          },
-        }),
-        { status: 200, headers: { "content-type": "text/event-stream" } }
-      )
-    );
+      }),
+    });
 
     const provider = new GoogleSpeechProvider({
       apiKey: "gg-test",
@@ -63,29 +65,27 @@ describe("GoogleSpeechProvider.stream", () => {
       voice: "Kore",
     });
 
+    // Should hit the non-streaming generateContent endpoint, not
+    // streamGenerateContent.
     const url = fetchMock.mock.calls[0][0] as string;
-    expect(url).toContain(":streamGenerateContent");
-    expect(url).toContain("alt=sse");
+    expect(url).toContain(":generateContent");
+    expect(url).not.toContain(":streamGenerateContent");
 
     if (!result) {
       throw new Error("no result");
     }
-    const decoded = await collect(result.stream);
-
-    // Stream should start with a WAV header (44 bytes) followed by the PCM
     expect(result.mediaType).toBe("audio/wav");
-    expect(decoded.length).toBe(44 + 4);
+
+    const decoded = await collect(result.stream);
+    // 44-byte WAV header + 4 bytes of PCM
+    expect(decoded.length).toBe(48);
 
     const riff = new TextDecoder().decode(decoded.slice(0, 4));
     expect(riff).toBe("RIFF");
     const wave = new TextDecoder().decode(decoded.slice(8, 12));
     expect(wave).toBe("WAVE");
 
-    // PCM payload follows the 44-byte header
-    const payload = new TextDecoder().decode(decoded.slice(44));
-    expect(payload).toBe("ABCD");
-
-    // Verify sample rate in WAV header matches mime type (24000 Hz)
+    // WAV header sample rate field (offset 24, little-endian uint32)
     const view = new DataView(
       decoded.buffer,
       decoded.byteOffset,
@@ -94,34 +94,31 @@ describe("GoogleSpeechProvider.stream", () => {
     expect(view.getUint32(24, true)).toBe(24_000);
   });
 
-  it("parses non-default sample rate from SSE event mimeType", async () => {
-    const event = (data: string, mime: string) =>
-      `data: ${JSON.stringify({
+  it("honors non-default sample rate from the response mimeType", async () => {
+    // generate() parses the rate= parameter from inlineData.mimeType.
+    // Since stream() delegates to generate(), it inherits this behavior.
+    const pcmBase64 = "AAAAAA==";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
         candidates: [
           {
             content: {
-              parts: [{ inlineData: { data, mimeType: mime } }],
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "audio/L16;codec=pcm;rate=48000",
+                    data: pcmBase64,
+                  },
+                },
+              ],
             },
           },
         ],
-      })}\n\n`;
-    // Gemini could return a different sample rate like 16000 or 48000
-    const sse =
-      event("QUI=", "audio/L16;codec=pcm;rate=48000") +
-      event("Q0Q=", "audio/L16;codec=pcm;rate=48000");
-    const encoder = new TextEncoder();
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        new ReadableStream({
-          start(c) {
-            c.enqueue(encoder.encode(sse));
-            c.close();
-          },
-        }),
-        { status: 200, headers: { "content-type": "text/event-stream" } }
-      )
-    );
+      }),
+    });
 
     const provider = new GoogleSpeechProvider({
       apiKey: "gg-test",
@@ -138,10 +135,6 @@ describe("GoogleSpeechProvider.stream", () => {
       throw new Error("no result");
     }
     const decoded = await collect(result.stream);
-
-    // WAV header sample rate field (offset 24, little-endian uint32)
-    // must reflect the 48000 Hz rate parsed from the mime type, not the
-    // hardcoded 24000 default.
     const view = new DataView(
       decoded.buffer,
       decoded.byteOffset,
