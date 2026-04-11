@@ -1,0 +1,29 @@
+src/metadata.ts
+  93a4ec6000aad727 2-10,14-20
+src/providers/elevenlabs/index.ts
+  93a4ec6000aad727 274-278,341-345
+src/audio-duration.ts
+  93a4ec6000aad727 14-19
+src/providers/google/index.ts
+  93a4ec6000aad727 1-7,13-14,24-28,38-63,66-72,236,247-249,326-355,359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "141af261f2a8d639f4e3afd1046bc3a6b7a22a9b",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 126,
+      "total_deletions": 132,
+      "accepted_lines": 114,
+      "overriden_lines": 0
+    }
+  }
+}
