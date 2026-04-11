@@ -1,9 +1,17 @@
+import {
+  BufferTarget,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  Output,
+  WavOutputFormat,
+} from "mediabunny";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
-import { buildWavHeader, parseSampleRate, pcmToWav } from "./pcm-to-wav.js";
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
+// biome-ignore lint/performance/useTopLevelRegex: single-use parser
+const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
 
 function safeParseJson(input: string): unknown {
   try {
@@ -11,6 +19,11 @@ function safeParseJson(input: string): unknown {
   } catch {
     return null;
   }
+}
+
+function parseSampleRate(mimeType: string): number | undefined {
+  const match = mimeType.match(RATE_PARAM);
+  return match ? Number(match[1]) : undefined;
 }
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -22,30 +35,41 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-function prependHeader(
-  source: ReadableStream<Uint8Array>,
-  header: Uint8Array
-): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      controller.enqueue(header);
-      const reader = source.getReader();
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
-          if (value) {
-            controller.enqueue(value);
-          }
-        }
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
+/**
+ * Wrap raw 16-bit mono PCM bytes in a WAV container using mediabunny's
+ * WavOutputFormat. Cross-platform (browser, Node, edge) and doesn't
+ * require Web Codecs global types.
+ */
+async function pcmToWav(
+  pcm: Uint8Array,
+  sampleRate: number
+): Promise<Uint8Array> {
+  const output = new Output({
+    format: new WavOutputFormat(),
+    target: new BufferTarget(),
+  });
+  const source = new EncodedAudioPacketSource("pcm-s16");
+  output.addAudioTrack(source);
+  await output.start();
+
+  // Each 16-bit mono sample is 2 bytes.
+  const numSamples = pcm.length / 2;
+  const durationSeconds = numSamples / sampleRate;
+  const packet = new EncodedPacket(pcm, "key", 0, durationSeconds, 0);
+  await source.add(packet, {
+    decoderConfig: {
+      codec: "pcm-s16",
+      numberOfChannels: 1,
+      sampleRate,
     },
   });
+
+  await output.finalize();
+  const buffer = output.target.buffer;
+  if (!buffer) {
+    throw new Error("mediabunny: WavOutputFormat produced no buffer");
+  }
+  return new Uint8Array(buffer);
 }
 
 export interface GoogleSpeechProviderConfig {
@@ -209,7 +233,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       parseSampleRate(part.inlineData.mimeType ?? "") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
     const pcm = base64ToBytes(part.inlineData.data);
-    const wav = pcmToWav(pcm, sampleRate);
+    const wav = await pcmToWav(pcm, sampleRate);
 
     return {
       audio: wav,
@@ -220,7 +244,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   // NOTE: Gemini TTS on the Generative Language API (`streamGenerateContent`)
   // buffers the full synthesis server-side and flushes in a single burst. This
   // method returns a valid ReadableStream, but first-byte latency matches
-  // generateSpeech(). True progressive Google TTS is only available via:
+  // generateSpeech(). Because we need a valid WAV container (with correct
+  // RIFF chunk size), we collect all PCM chunks and emit a single WAV blob
+  // as one stream chunk. True progressive Google TTS is only available via:
   //   - Live API (`bidiGenerateContent`, WebSocket) on native-audio models
   //   - Cloud TTS `streamingSynthesize` (gRPC only; no REST binding)
   // Neither is wired up in this SDK today.
@@ -297,19 +323,40 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     });
 
-    // Prepend a WAV header so the stream is directly playable.
-    // Use 0xFFFFFFFF (max uint32) as dataSize since we don't know the
-    // final length — most players read until EOF.
-    const wavHeader = buildWavHeader({
-      sampleRate: DEFAULT_GEMINI_SAMPLE_RATE,
-      numChannels: 1,
-      bitsPerSample: 16,
-      dataSize: 0xff_ff_ff_ff,
+    // Collect all PCM chunks, wrap in WAV, emit as a single stream chunk.
+    const wavStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const chunks: Uint8Array[] = [];
+          let total = 0;
+          const reader = pcmStream.getReader();
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
+            if (value) {
+              chunks.push(value);
+              total += value.length;
+            }
+          }
+          const pcm = new Uint8Array(total);
+          let offset = 0;
+          for (const chunk of chunks) {
+            pcm.set(chunk, offset);
+            offset += chunk.length;
+          }
+          const wav = await pcmToWav(pcm, DEFAULT_GEMINI_SAMPLE_RATE);
+          controller.enqueue(wav);
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
     });
-    const stream = prependHeader(pcmStream, wavHeader);
 
     return {
-      stream,
+      stream: wavStream,
       mediaType: "audio/wav",
     };
   }

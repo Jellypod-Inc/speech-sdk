@@ -271,10 +271,11 @@ export class ElevenLabsSpeechProvider
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
-    const audioDurationMs =
-      durationHeader == null
-        ? undefined
-        : Math.round(Number.parseFloat(durationHeader) * 1000);
+    const parsedDuration =
+      durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
+    const audioDurationMs = Number.isFinite(parsedDuration)
+      ? Math.round(parsedDuration * 1000)
+      : undefined;
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -337,10 +338,11 @@ export class ElevenLabsSpeechProvider
 
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
-    const audioDurationMs =
-      durationHeader == null
-        ? undefined
-        : Math.round(Number.parseFloat(durationHeader) * 1000);
+    const parsedDuration =
+      durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
+    const audioDurationMs = Number.isFinite(parsedDuration)
+      ? Math.round(parsedDuration * 1000)
+      : undefined;
 
     return {
       audioDurationMs,

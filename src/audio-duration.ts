@@ -11,7 +11,12 @@ export async function computeAudioDuration(
 ): Promise<number | undefined> {
   try {
     const bytes = data instanceof Uint8Array ? data : base64ToUint8Array(data);
-    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: mediaType });
+    // Copy to a fresh ArrayBuffer so we pass exactly the Uint8Array view's
+    // bytes — not the entire underlying buffer (which may be larger when
+    // bytes is a subarray) and satisfies Blob's BlobPart type.
+    const ab = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(ab).set(bytes);
+    const blob = new Blob([ab], { type: mediaType });
     const input = new Input({
       source: new BlobSource(blob),
       formats: ALL_FORMATS,
