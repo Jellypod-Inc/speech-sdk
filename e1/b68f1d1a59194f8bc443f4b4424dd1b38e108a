@@ -1,0 +1,25 @@
+src/providers/google/index.ts
+  93a4ec6000aad727 17-23
+src/__tests__/google-speech-model.test.ts
+  93a4ec6000aad727 113-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "e1b68f1d1a59194f8bc443f4b4424dd1b38e108a",
+  "prompts": {
+    "93a4ec6000aad727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a3b39b4-718c-4792-bd1a-ae1ba8b32479",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 1,
+      "accepted_lines": 45,
+      "overriden_lines": 0
+    }
+  }
+}
