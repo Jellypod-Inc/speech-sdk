@@ -1,5 +1,10 @@
 # Speech SDK
 
+[![npm version](https://img.shields.io/npm/v/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
+[![npm downloads](https://img.shields.io/npm/dm/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
+[![license](https://img.shields.io/npm/l/@speech-sdk/core)](https://github.com/Jellypod-Inc/speech-sdk/blob/main/LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@speech-sdk/core)](https://bundlephobia.com/package/@speech-sdk/core)
+
 The Speech SDK is a lightweight, provider-agnostic TypeScript toolkit designed to help build text-to-speech powered applications using popular providers like OpenAI, ElevenLabs, Deepgram, Cartesia, Google, and more. Cross-platform (Node.js, Edge, Browser) with minimal dependencies.
 
 To learn more about the Speech SDK, check out [https://speechsdk.dev/](https://speechsdk.dev/).
