@@ -7,6 +7,17 @@ on:
     branches: [main]
 
 jobs:
+  audit:
+    # The npm registry retired the endpoint `pnpm audit` used (410 Gone),
+    # so audit via GitHub's advisory database on PRs instead.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
   unit:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +31,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=high --prod
       - run: pnpm run typecheck
       - run: pnpm test
 

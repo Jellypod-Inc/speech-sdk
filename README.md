@@ -191,6 +191,7 @@ console.log(result.warnings); // undefined — eleven_v3 supports all tags
 |---|---|
 | OpenAI (`gpt-4o-mini-tts`) | Tags mapped to the `instructions` field for expressive delivery control |
 | ElevenLabs (`eleven_v3`) | All `[tag]` passed through natively |
+| Google (`gemini-3.1-flash-tts-preview`) | All `[tag]` passed through natively (e.g. `[whispers]`, `[shouting]`, `[sighs]`, `[laugh]`) |
 | Cartesia (`sonic-3`) | Emotion tags (`[happy]`, `[sad]`, `[angry]`, etc.) converted to SSML; `[laughter]` passed through; unknown tags stripped |
 | All others | Tags stripped and warnings returned |
 
