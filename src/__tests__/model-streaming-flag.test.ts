@@ -6,6 +6,7 @@ import { FalSpeechProvider } from "../providers/fal/index.js";
 import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
+import { InworldSpeechProvider } from "../providers/inworld/index.js";
 import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
@@ -19,6 +20,7 @@ const streamingProviders: SpeechProvider[] = [
   new DeepgramSpeechProvider({}),
   new CartesiaSpeechProvider({}),
   new HumeSpeechProvider({}),
+  new InworldSpeechProvider({}),
   new FishAudioSpeechProvider({}),
   new ResembleSpeechProvider({}),
   new MurfSpeechProvider({}),
