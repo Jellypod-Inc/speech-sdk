@@ -160,4 +160,84 @@ describe("InworldSpeechProvider.stream", () => {
       VOICE_NOT_FOUND_PATTERN
     );
   });
+
+  it("cancels the upstream fetch body when a parse error occurs", async () => {
+    let upstreamCancelled = false;
+    const upstream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          new TextEncoder().encode(
+            `${JSON.stringify({ error: { message: "voice not found" } })}\n`
+          )
+        );
+        // Intentionally do not close — we want the upstream to stay open so
+        // the only way it terminates is via cancel() from the parse error.
+      },
+      cancel() {
+        upstreamCancelled = true;
+      },
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(upstream, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    const provider = new InworldSpeechProvider({
+      apiKey: "iw-test",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.stream({
+      modelId: "inworld-tts-1.5-max",
+      text: "hi",
+      voice: "Ashley",
+    });
+
+    await expect(collect(result.stream)).rejects.toThrow(
+      VOICE_NOT_FOUND_PATTERN
+    );
+    expect(upstreamCancelled).toBe(true);
+  });
+
+  it("cancels the upstream fetch body when the consumer cancels", async () => {
+    let upstreamCancelled = false;
+    const upstream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          new TextEncoder().encode(
+            `${JSON.stringify({ result: { audioContent: base64([1, 2]) } })}\n`
+          )
+        );
+        // Leave open; consumer will cancel.
+      },
+      cancel() {
+        upstreamCancelled = true;
+      },
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(upstream, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    const provider = new InworldSpeechProvider({
+      apiKey: "iw-test",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.stream({
+      modelId: "inworld-tts-1.5-max",
+      text: "hi",
+      voice: "Ashley",
+    });
+
+    const reader = result.stream.getReader();
+    await reader.read(); // consume one chunk
+    await reader.cancel("consumer done");
+
+    expect(upstreamCancelled).toBe(true);
+  });
 });

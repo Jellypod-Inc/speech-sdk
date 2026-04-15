@@ -258,11 +258,10 @@ function drainBuffer(
 }
 
 async function pumpStream(
-  source: ReadableStream<Uint8Array>,
+  reader: ReadableStreamDefaultReader<Uint8Array>,
   controller: ReadableStreamDefaultController<Uint8Array>
 ): Promise<void> {
   const decoder = new TextDecoder();
-  const reader = source.getReader();
   const state = { buffer: "" };
 
   while (true) {
@@ -283,16 +282,27 @@ function parseInworldNdjsonStream(
   source: ReadableStream<Uint8Array>,
   model: string
 ): ReadableStream<Uint8Array> {
+  const reader = source.getReader();
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        await pumpStream(source, controller);
+        await pumpStream(reader, controller);
         controller.close();
       } catch (err) {
-        controller.error(
-          err instanceof Error ? err : new Error(`${model}: ${String(err)}`)
-        );
+        const error =
+          err instanceof Error ? err : new Error(`${model}: ${String(err)}`);
+        // Cancel the upstream reader so the underlying fetch body isn't left
+        // locked / hanging. Swallow cancel errors — we already have `error`.
+        reader.cancel(error).catch(() => {
+          /* noop */
+        });
+        controller.error(error);
       }
+    },
+    cancel(reason) {
+      // Consumer cancelled the parsed stream — propagate to the upstream fetch
+      // body so the HTTP connection can be released.
+      return reader.cancel(reason);
     },
   });
 }
