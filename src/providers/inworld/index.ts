@@ -16,6 +16,10 @@ interface InworldAudioConfig {
 const DEFAULT_AUDIO_ENCODING = "MP3";
 const DEFAULT_SAMPLE_RATE_HERTZ = 48_000;
 
+// Identifies traffic originating from this SDK so Inworld can bucket
+// usage by integration. Callers may override via options.headers.
+const SDK_USER_AGENT = "jellypod-speech-sdk";
+
 function mediaTypeForEncoding(encoding: string | undefined): string {
   switch ((encoding ?? DEFAULT_AUDIO_ENCODING).toUpperCase()) {
     case "LINEAR16":
@@ -130,6 +134,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${resolveApiKey(this.apiKey, "INWORLD_API_KEY", "Inworld")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -177,6 +182,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${resolveApiKey(this.apiKey, "INWORLD_API_KEY", "Inworld")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
