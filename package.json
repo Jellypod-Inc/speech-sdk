@@ -31,6 +31,10 @@
       "types": "./dist/providers/hume/index.d.ts",
       "default": "./dist/providers/hume/index.js"
     },
+    "./inworld": {
+      "types": "./dist/providers/inworld/index.d.ts",
+      "default": "./dist/providers/inworld/index.js"
+    },
     "./google": {
       "types": "./dist/providers/google/index.d.ts",
       "default": "./dist/providers/google/index.js"
@@ -83,6 +87,7 @@
     "speech",
     "openai",
     "elevenlabs",
+    "inworld",
     "ai"
   ],
   "license": "MIT",

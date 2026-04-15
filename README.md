@@ -128,6 +128,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` | [API Reference](https://developers.deepgram.com/docs/tts-models) |
 | [Cartesia](https://docs.cartesia.ai) | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` | [API Reference](https://docs.cartesia.ai/api-reference/tts/bytes) |
 | [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `octave-2` | `HUME_API_KEY` | [API Reference](https://dev.hume.ai/reference/text-to-speech-tts/synthesize-json) |
+| [Inworld](https://docs.inworld.ai/tts) | `inworld` | `inworld-tts-1.5-max` | `INWORLD_API_KEY` | [API Reference](https://docs.inworld.ai/tts/api-reference) |
 | [Google (Gemini TTS)](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` | [API Reference](https://ai.google.dev/gemini-api/docs/text-generation) |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` | [API Reference](https://docs.fish.audio/developer-guide/core-features/text-to-speech) |
 | [Unreal Speech](https://docs.v8.unrealspeech.com) | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` | [API Reference](https://docs.v8.unrealspeech.com) |
@@ -141,6 +142,7 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 generateSpeech({ model: 'openai/tts-1', text: '...', voice: 'alloy' });
 generateSpeech({ model: 'elevenlabs/eleven_v3', text: '...', voice: 'voice-id' });
 generateSpeech({ model: 'deepgram/aura-2', text: '...', voice: 'thalia-en' });
+generateSpeech({ model: 'inworld/inworld-tts-1.5-max', text: '...', voice: 'Ashley' });
 generateSpeech({ model: 'openai', text: '...', voice: 'alloy' });  // uses default model
 ```
 
