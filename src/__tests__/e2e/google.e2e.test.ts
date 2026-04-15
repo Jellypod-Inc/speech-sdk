@@ -10,6 +10,7 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
   const TEST_TEXT = "Hello, this is a test of the speech SDK.";
 
   describe.each([
+    "gemini-3.1-flash-tts-preview",
     "gemini-2.5-flash-preview-tts",
     "gemini-2.5-pro-preview-tts",
   ] as const)("model: %s", (modelId) => {

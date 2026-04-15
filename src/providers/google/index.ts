@@ -5,8 +5,13 @@ import {
   Output,
   WavOutputFormat,
 } from "mediabunny";
+import { stripAudioTags } from "../../audio-tags.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  hasFeature,
+  type ResolvedModel,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 // biome-ignore lint/performance/useTopLevelRegex: single-use parser
@@ -79,67 +84,50 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = "google";
   readonly defaultModel = "gemini-2.5-flash-preview-tts";
 
+  private static readonly GEMINI_LANGUAGES = [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "pt",
+    "zh",
+    "ja",
+    "ko",
+    "hi",
+    "it",
+    "nl",
+    "pl",
+    "ru",
+    "sv",
+    "tr",
+    "id",
+    "ar",
+    "cs",
+    "da",
+    "fi",
+    "el",
+    "hu",
+    "ro",
+    "uk",
+  ] as const;
+
   readonly models = [
+    {
+      id: "gemini-3.1-flash-tts-preview",
+      releaseDate: "2026-04-15",
+      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
+      features: ["streaming", "audio-tags"],
+    },
     {
       id: "gemini-2.5-flash-preview-tts",
       releaseDate: "2025-05-01",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "zh",
-        "ja",
-        "ko",
-        "hi",
-        "it",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "id",
-        "ar",
-        "cs",
-        "da",
-        "fi",
-        "el",
-        "hu",
-        "ro",
-        "uk",
-      ],
+      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
       features: ["streaming"],
     },
     {
       id: "gemini-2.5-pro-preview-tts",
       releaseDate: "2025-05-01",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "zh",
-        "ja",
-        "ko",
-        "hi",
-        "it",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "id",
-        "ar",
-        "cs",
-        "da",
-        "fi",
-        "el",
-        "hu",
-        "ro",
-        "uk",
-      ],
+      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
       features: ["streaming"],
     },
   ] as const;
@@ -153,6 +141,21 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     this.baseURL =
       config.baseURL ?? "https://generativelanguage.googleapis.com/v1beta";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+  }
+
+  // Gemini 3.1 Flash TTS supports inline audio tags (e.g. [whispers],
+  // [shouting], [sighs], [laugh]) natively — pass them through verbatim.
+  // Older Gemini TTS models do not, so strip them with a warning.
+  processAudioTags(
+    text: string,
+    modelId: string
+  ): { text: string; warnings: string[] } {
+    if (
+      this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
+    ) {
+      return { text, warnings: [] };
+    }
+    return stripAudioTags(text, `google/${modelId}`);
   }
 
   async generate(options: {

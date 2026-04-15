@@ -226,4 +226,49 @@ describe("GoogleSpeechProvider", () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.generationConfig.temperature).toBe(0.5);
   });
+
+  describe("processAudioTags", () => {
+    it("passes all tags through for gemini-3.1-flash-tts-preview", () => {
+      const provider = new GoogleSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[whispers] Hello [shouting] world [laugh] now",
+        "gemini-3.1-flash-tts-preview"
+      );
+      expect(result.text).toBe("[whispers] Hello [shouting] world [laugh] now");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("strips tags for gemini-2.5-flash-preview-tts", () => {
+      const provider = new GoogleSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[laugh] Hello world",
+        "gemini-2.5-flash-preview-tts"
+      );
+      expect(result.text).toBe("Hello world");
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain(
+        "google/gemini-2.5-flash-preview-tts"
+      );
+    });
+
+    it("strips tags for gemini-2.5-pro-preview-tts", () => {
+      const provider = new GoogleSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[sigh] Hi",
+        "gemini-2.5-pro-preview-tts"
+      );
+      expect(result.text).toBe("Hi");
+      expect(result.warnings).toHaveLength(1);
+    });
+
+    it("returns text unchanged when no tags present", () => {
+      const provider = new GoogleSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "Hello world",
+        "gemini-3.1-flash-tts-preview"
+      );
+      expect(result.text).toBe("Hello world");
+      expect(result.warnings).toEqual([]);
+    });
+  });
 });
