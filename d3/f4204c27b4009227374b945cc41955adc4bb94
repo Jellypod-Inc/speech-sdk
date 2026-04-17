@@ -1,0 +1,31 @@
+src/providers/hume/index.ts
+  7f755bb23e9231eb 174-228
+src/providers/fish-audio/index.ts
+  7f755bb23e9231eb 156-219
+src/providers/fal/index.ts
+  7f755bb23e9231eb 141-226
+src/providers/elevenlabs/index.ts
+  7f755bb23e9231eb 364-431
+src/providers/google/index.ts
+  7f755bb23e9231eb 9,369-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "d3f4204c27b4009227374b945cc41955adc4bb94",
+  "prompts": {
+    "7f755bb23e9231eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9710aaa9-56fb-4572-877f-d2b6cc447495",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 372,
+      "total_deletions": 0,
+      "accepted_lines": 393,
+      "overriden_lines": 0
+    }
+  }
+}
