@@ -84,7 +84,34 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = "google";
   readonly defaultModel = "gemini-2.5-flash-preview-tts";
 
-  private static readonly GEMINI_LANGUAGES = [
+  private static readonly GEMINI_2_5_LANGUAGES = [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "pt",
+    "zh",
+    "ja",
+    "ko",
+    "hi",
+    "it",
+    "nl",
+    "pl",
+    "ru",
+    "sv",
+    "tr",
+    "id",
+    "ar",
+    "cs",
+    "da",
+    "fi",
+    "el",
+    "hu",
+    "ro",
+    "uk",
+  ] as const;
+
+  private static readonly GEMINI_3_1_LANGUAGES = [
     "af",
     "am",
     "ar",
@@ -169,19 +196,19 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     {
       id: "gemini-3.1-flash-tts-preview",
       releaseDate: "2026-04-15",
-      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
+      languages: GoogleSpeechProvider.GEMINI_3_1_LANGUAGES,
       features: ["streaming", "audio-tags"],
     },
     {
       id: "gemini-2.5-flash-preview-tts",
       releaseDate: "2025-05-01",
-      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
+      languages: GoogleSpeechProvider.GEMINI_2_5_LANGUAGES,
       features: ["streaming"],
     },
     {
       id: "gemini-2.5-pro-preview-tts",
       releaseDate: "2025-05-01",
-      languages: GoogleSpeechProvider.GEMINI_LANGUAGES,
+      languages: GoogleSpeechProvider.GEMINI_2_5_LANGUAGES,
       features: ["streaming"],
     },
   ] as const;
