@@ -1,0 +1,25 @@
+src/conversation/pcm-concat.ts
+  7f755bb23e9231eb 1-232
+src/__tests__/conversation-pcm-concat.test.ts
+  7f755bb23e9231eb 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "b2454f43b5bbb0060ba162cf2abfe2129d77137a",
+  "prompts": {
+    "7f755bb23e9231eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9710aaa9-56fb-4572-877f-d2b6cc447495",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 356,
+      "total_deletions": 0,
+      "accepted_lines": 376,
+      "overriden_lines": 0
+    }
+  }
+}
