@@ -1,0 +1,39 @@
+src/conversation/validate.ts
+  7f755bb23e9231eb 23
+src/__tests__/e2e/conversation-hume.e2e.test.ts
+  7f755bb23e9231eb 14-15
+src/__tests__/generate-conversation.test.ts
+  7f755bb23e9231eb 5-6,79
+src/__tests__/conversation-validate.test.ts
+  7f755bb23e9231eb 5-8,34,43,58,80
+src/conversation/pcm-concat.ts
+  7f755bb23e9231eb 117
+src/__tests__/conversation-exports.test.ts
+  7f755bb23e9231eb 2-7,11,15-17
+scripts/probe-gemini-speakers.mjs
+  7f755bb23e9231eb 15-17,19-21,29,57-59,73-77,104-106
+src/__tests__/e2e/conversation-fish-audio.e2e.test.ts
+  7f755bb23e9231eb 14-15
+src/__tests__/conversation-pcm-concat.test.ts
+  7f755bb23e9231eb 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "95b0b08b549ad3383acc3f3231ab9bdcbba263bb",
+  "prompts": {
+    "7f755bb23e9231eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9710aaa9-56fb-4572-877f-d2b6cc447495",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 26,
+      "accepted_lines": 52,
+      "overriden_lines": 0
+    }
+  }
+}
