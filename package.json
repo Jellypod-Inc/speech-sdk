@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./conversation": {
+      "types": "./dist/generate-conversation.d.ts",
+      "default": "./dist/generate-conversation.js"
+    },
     "./openai": {
       "types": "./dist/providers/openai/index.d.ts",
       "default": "./dist/providers/openai/index.js"
