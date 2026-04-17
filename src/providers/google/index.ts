@@ -6,6 +6,7 @@ import {
   WavOutputFormat,
 } from "mediabunny";
 import { stripAudioTags } from "../../audio-tags.js";
+import { SpeechSDKError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import {
   hasFeature,
@@ -364,6 +365,104 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return undefined;
+  }
+
+  dialogueCapabilities(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Gemini multi-speaker TTS requires exactly 2 unique voices
+      // (empirically verified — API validator: "enabled_voices must equal 2").
+      return { minVoices: 2, maxVoices: 2 };
+    }
+    return undefined;
+  }
+
+  async generateDialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string }[];
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
+
+    // Assign "Speaker1", "Speaker2" to each unique voice in order of appearance.
+    const voiceToLabel = new Map<string, string>();
+    const labelled: string[] = [];
+    for (const turn of options.turns) {
+      let label = voiceToLabel.get(turn.voice);
+      if (!label) {
+        label = `Speaker${voiceToLabel.size + 1}`;
+        voiceToLabel.set(turn.voice, label);
+      }
+      labelled.push(`${label}: ${turn.text}`);
+    }
+    const text = labelled.join("\n");
+
+    const speakerVoiceConfigs = Array.from(voiceToLabel.entries()).map(
+      ([voiceName, speaker]) => ({
+        speaker,
+        voice_config: {
+          prebuilt_voice_config: { voice_name: voiceName },
+        },
+      })
+    );
+
+    const body: Record<string, unknown> = {
+      contents: [{ role: "user", parts: [{ text }] }],
+      generationConfig: {
+        responseModalities: ["audio"],
+        speech_config: {
+          multi_speaker_voice_config: {
+            speaker_voice_configs: speakerVoiceConfigs,
+          },
+        },
+        ...options.providerOptions,
+      },
+    };
+
+    const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `google/${options.modelId}`);
+
+    const json = (await response.json()) as {
+      candidates?: {
+        content?: {
+          parts?: { inlineData?: { data: string; mimeType: string } }[];
+        };
+      }[];
+    };
+    const part = json.candidates?.[0]?.content?.parts?.find(
+      (p) => p.inlineData?.data
+    );
+    if (!part?.inlineData) {
+      throw new SpeechSDKError(
+        `google/${options.modelId}: no inline audio in response`
+      );
+    }
+
+    const pcm = base64ToBytes(part.inlineData.data);
+    const sampleRate =
+      parseSampleRate(part.inlineData.mimeType) ?? DEFAULT_GEMINI_SAMPLE_RATE;
+    const wav = await pcmToWav(pcm, sampleRate);
+
+    return {
+      audio: wav,
+      mediaType: "audio/wav",
+    };
   }
 }
 

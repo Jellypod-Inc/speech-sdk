@@ -153,6 +153,70 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     }
     return undefined;
   }
+
+  dialogueCapabilities(modelId: string) {
+    if (modelId === "s2-pro") {
+      return { minVoices: 1, maxVoices: 4 };
+    }
+    return undefined;
+  }
+
+  async generateDialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string }[];
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    if (options.modelId !== "s2-pro") {
+      throw new Error(
+        `fish-audio/${options.modelId} does not support native dialogue; use s2-pro.`
+      );
+    }
+
+    // Assign speaker indices per unique voice in order of appearance.
+    const voiceToIndex = new Map<string, number>();
+    const tagged: string[] = [];
+    for (const t of options.turns) {
+      let idx = voiceToIndex.get(t.voice);
+      if (idx === undefined) {
+        idx = voiceToIndex.size;
+        voiceToIndex.set(t.voice, idx);
+      }
+      tagged.push(`<|speaker:${idx}|>${t.text}`);
+    }
+    const text = tagged.join("\n");
+    const referenceIds = Array.from(voiceToIndex.keys());
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      text,
+      reference_id: referenceIds,
+    };
+
+    const response = await this.fetchFn(`${this.baseURL}/v1/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        model: options.modelId,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+
+    return {
+      audio: new Uint8Array(await response.arrayBuffer()),
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createFishAudio(config: FishAudioSpeechProviderConfig = {}) {
