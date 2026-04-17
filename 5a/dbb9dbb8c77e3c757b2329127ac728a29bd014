@@ -1,0 +1,25 @@
+src/__tests__/conversation-dispatch.test.ts
+  7f755bb23e9231eb 1-132
+src/conversation/dispatch.ts
+  7f755bb23e9231eb 1,3-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5adbb9dbb8c77e3c757b2329127ac728a29bd014",
+  "prompts": {
+    "7f755bb23e9231eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9710aaa9-56fb-4572-877f-d2b6cc447495",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 225,
+      "total_deletions": 0,
+      "accepted_lines": 242,
+      "overriden_lines": 1
+    }
+  }
+}
