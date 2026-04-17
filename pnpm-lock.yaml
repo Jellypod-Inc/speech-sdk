@@ -11,6 +11,9 @@ importers:
       mediabunny:
         specifier: ^1.40.1
         version: 1.40.1
+      p-limit:
+        specifier: ^6.2.0
+        version: 6.2.0
       p-retry:
         specifier: ^8.0.0
         version: 8.0.0
@@ -553,6 +556,10 @@ packages:
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
+  p-limit@6.2.0:
+    resolution: {integrity: sha512-kuUqqHNUqoIWp/c467RI4X6mmyuojY5jGutNU0wVTmEOOfcuwLqyMVoAi9MKi2Ak+5i9+nhmrK4ufZE8069kHA==}
+    engines: {node: '>=18'}
+
   p-retry@8.0.0:
     resolution: {integrity: sha512-kFVqH1HxOHp8LupNsOys7bSV09VYTRLxarH/mokO4Rqhk6wGi70E0jh4VzvVGXfEVNggHoHLAMWsQqHyU1Ey9A==}
     engines: {node: '>=22'}
@@ -730,6 +737,10 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
+
+  yocto-queue@1.2.2:
+    resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
+    engines: {node: '>=12.20'}
 
 snapshots:
 
@@ -1116,6 +1127,10 @@ snapshots:
 
   obug@2.1.1: {}
 
+  p-limit@6.2.0:
+    dependencies:
+      yocto-queue: 1.2.2
+
   p-retry@8.0.0:
     dependencies:
       is-network-error: 1.3.1
@@ -1258,3 +1273,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  yocto-queue@1.2.2: {}
