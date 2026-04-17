@@ -351,6 +351,16 @@ export class ElevenLabsSpeechProvider
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: { output_format: "pcm_24000" },
+        mediaType: "audio/pcm;rate=24000",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {

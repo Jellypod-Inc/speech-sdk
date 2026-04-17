@@ -130,6 +130,14 @@ export class FalSpeechProvider
       new StreamingNotSupportedError(`fal-ai/${options.modelId}`)
     );
   }
+
+  getStitchOptions(_modelId: string) {
+    // fal-hosted models (Dia, Orpheus, F5-TTS, Kokoro, Index-TTS 2) currently
+    // return MP3, and this provider hard-codes audio/mpeg as the mediaType.
+    // Stitch needs PCM/WAV, so we decline participation — StitchUnsupportedError
+    // surfaces the offending model at dispatch time.
+    return undefined;
+  }
 }
 
 export function createFal(config: FalSpeechProviderConfig = {}) {

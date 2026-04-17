@@ -267,6 +267,16 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createOpenAI(config: OpenAISpeechProviderConfig = {}) {

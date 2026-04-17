@@ -352,6 +352,19 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     });
     return { stream, mediaType, providerMetadata };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Gemini TTS returns raw PCM that this provider wraps into WAV before
+      // returning to callers (see pcmToWav above), so stitch decoding uses
+      // the WAV codepath.
+      return {
+        providerOptions: {},
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createGoogle(config: GoogleSpeechProviderConfig = {}) {

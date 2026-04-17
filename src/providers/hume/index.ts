@@ -161,6 +161,16 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: { format: { type: "pcm", sample_rate: 24_000 } },
+        mediaType: "audio/pcm;rate=24000",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createHume(config: HumeSpeechProviderConfig = {}) {
