@@ -60,8 +60,9 @@ describe("decodeToPcm16", () => {
   });
 
   it("throws on unsupported mediaType", () => {
-    expect(() =>
-      decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
+    expect(
+      () => decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
+      // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     ).toThrow(/unsupported stitch mediaType/);
   });
 });

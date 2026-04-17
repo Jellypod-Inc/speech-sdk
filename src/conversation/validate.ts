@@ -20,7 +20,7 @@ export function voiceKey(voice: ConversationTurn["voice"]): string {
       return `a:${voice.audio}`;
     }
     const a = voice.audio;
-    return `b:${a.length}:${a[0] ?? 0}:${a[a.length - 1] ?? 0}`;
+    return `b:${a.length}:${a[0] ?? 0}:${a.at(-1) ?? 0}`;
   }
   return `x:${JSON.stringify(voice)}`;
 }

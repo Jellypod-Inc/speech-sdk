@@ -11,8 +11,8 @@ describe.skipIf(!(VOICE_A && VOICE_B))(
       const result = await generateConversation({
         model: "hume/octave-2",
         turns: [
-          { voice: VOICE_A!, text: "Hi there, how are you?" },
-          { voice: VOICE_B!, text: "I'm great, thanks!" },
+          { voice: VOICE_A as string, text: "Hi there, how are you?" },
+          { voice: VOICE_B as string, text: "I'm great, thanks!" },
         ],
       });
 

@@ -12,9 +12,13 @@ try {
   const env = readFileSync(new URL("../.env", import.meta.url), "utf8");
   for (const line of env.split("\n")) {
     const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
+    if (m && !process.env[m[1]]) {
+      process.env[m[1]] = m[2].replace(/^"|"$/g, "");
+    }
   }
-} catch {}
+} catch {
+  // .env is optional — env vars can be set directly in the shell.
+}
 
 const API_KEY = process.env.GOOGLE_API_KEY;
 if (!API_KEY) {
@@ -22,10 +26,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const MODELS = [
-  "gemini-2.5-flash-preview-tts",
-  "gemini-3.1-flash-tts-preview",
-];
+const MODELS = ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview"];
 
 const VOICE_POOL = ["Kore", "Puck", "Charon", "Fenrir", "Aoede", "Leda"];
 
@@ -53,7 +54,9 @@ async function tryCall(model, n) {
     generationConfig: {
       responseModalities: ["audio"],
       speech_config: {
-        multi_speaker_voice_config: { speaker_voice_configs: speakerVoiceConfigs },
+        multi_speaker_voice_config: {
+          speaker_voice_configs: speakerVoiceConfigs,
+        },
       },
     },
   };
@@ -67,7 +70,11 @@ async function tryCall(model, n) {
 
   const raw = await res.text();
   let parsed;
-  try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = raw;
+  }
 
   if (!res.ok) {
     const msg = parsed?.error?.message ?? String(parsed).slice(0, 300);
@@ -94,7 +101,9 @@ for (const model of MODELS) {
       if (r.ok) {
         console.log(`OK (${r.audioBytes} b64 chars, mime=${r.mime})`);
       } else {
-        console.log(`FAIL ${r.status}: ${r.msg.replace(/\s+/g, " ").slice(0, 220)}`);
+        console.log(
+          `FAIL ${r.status}: ${r.msg.replace(/\s+/g, " ").slice(0, 220)}`
+        );
       }
     } catch (e) {
       console.log(`ERROR: ${e.message}`);

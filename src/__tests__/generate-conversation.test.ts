@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
+const AT_LEAST_ONE_TURN_RE = /at least one turn/i;
+
 function nativeProvider(): SpeechProvider {
   return {
     id: "native",
@@ -74,7 +76,7 @@ describe("generateConversation", () => {
         model: { provider, modelId: "m" },
         turns: [],
       })
-    ).rejects.toThrow(/at least one turn/i);
+    ).rejects.toThrow(AT_LEAST_ONE_TURN_RE);
     expect(provider.generate).not.toHaveBeenCalled();
   });
 });

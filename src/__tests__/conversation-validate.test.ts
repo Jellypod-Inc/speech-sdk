@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { ConversationInputError } from "../conversation/errors.js";
 import { validateConversationInput } from "../conversation/validate.js";
 
+const TEXT_EMPTY_RE = /text must not be empty/i;
+const VOICE_CAP_RE = /at most 4 unique voices/i;
+const MODEL_REQUIRED_RE = /model must be set/i;
+
 describe("validateConversationInput", () => {
   const base = {
     model: "openai/tts-1",
@@ -27,7 +31,7 @@ describe("validateConversationInput", () => {
         ...base,
         turns: [{ voice: "nova", text: "" }],
       })
-    ).toThrow(/text must not be empty/i);
+    ).toThrow(TEXT_EMPTY_RE);
   });
 
   it("rejects turn with whitespace-only text", () => {
@@ -36,7 +40,7 @@ describe("validateConversationInput", () => {
         ...base,
         turns: [{ voice: "nova", text: "   " }],
       })
-    ).toThrow(/text must not be empty/i);
+    ).toThrow(TEXT_EMPTY_RE);
   });
 
   it("rejects more than 4 unique voices", () => {
@@ -51,7 +55,7 @@ describe("validateConversationInput", () => {
           { voice: "e", text: "5" },
         ],
       })
-    ).toThrow(/at most 4 unique voices/i);
+    ).toThrow(VOICE_CAP_RE);
   });
 
   it("accepts exactly 4 unique voices", () => {
@@ -73,7 +77,7 @@ describe("validateConversationInput", () => {
       validateConversationInput({
         turns: [{ voice: "a", text: "Hi." }],
       })
-    ).toThrow(/model must be set/i);
+    ).toThrow(MODEL_REQUIRED_RE);
   });
 
   it("accepts per-turn model when top-level is missing", () => {

@@ -12,9 +12,7 @@ export interface Pcm16Segment {
   readonly sampleRate: number;
 }
 
-// biome-ignore lint/performance/useTopLevelRegex: single-use parser
 const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
-// biome-ignore lint/performance/useTopLevelRegex: single-use parser
 const CHANNELS_PARAM = /(?:^|;)\s*channels=(\d+)/i;
 
 function parseMediaTypeParam(
@@ -116,7 +114,7 @@ function decodeWav(bytes: Uint8Array): Pcm16Segment {
       dataLen = chunkSize;
       break;
     }
-    offset += 8 + chunkSize + (chunkSize & 1);
+    offset += 8 + chunkSize + (chunkSize % 2);
   }
 
   if (

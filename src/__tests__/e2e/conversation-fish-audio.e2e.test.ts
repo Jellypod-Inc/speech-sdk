@@ -11,8 +11,8 @@ describe.skipIf(!(VOICE_A && VOICE_B))(
       const result = await generateConversation({
         model: "fish-audio/s2-pro",
         turns: [
-          { voice: VOICE_A!, text: "Hi there!" },
-          { voice: VOICE_B!, text: "Hello back!" },
+          { voice: VOICE_A as string, text: "Hi there!" },
+          { voice: VOICE_B as string, text: "Hello back!" },
         ],
       });
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

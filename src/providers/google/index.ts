@@ -15,7 +15,6 @@ import {
 } from "../../speech-provider.js";
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
-// biome-ignore lint/performance/useTopLevelRegex: single-use parser
 const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
 
 function parseSampleRate(mimeType: string): number | undefined {

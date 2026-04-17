@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import * as api from "../index.js";
+import {
+  ConversationInputError,
+  DialogueConstraintError,
+  generateConversation,
+  StitchUnsupportedError,
+} from "../index.js";
 
 describe("public exports", () => {
   it("exports generateConversation", () => {
-    expect(typeof api.generateConversation).toBe("function");
+    expect(typeof generateConversation).toBe("function");
   });
 
   it("exports conversation error classes", () => {
-    expect(typeof api.ConversationInputError).toBe("function");
-    expect(typeof api.DialogueConstraintError).toBe("function");
-    expect(typeof api.StitchUnsupportedError).toBe("function");
+    expect(typeof ConversationInputError).toBe("function");
+    expect(typeof DialogueConstraintError).toBe("function");
+    expect(typeof StitchUnsupportedError).toBe("function");
   });
 });
