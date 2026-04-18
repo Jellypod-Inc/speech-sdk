@@ -3,7 +3,7 @@ import type { ResolvedModel, Voice } from "../speech-provider.js";
 import { concatPcmToWav, decodeToPcm16, normalizeRms } from "./pcm-concat.js";
 import type { ConversationTurn } from "./types.js";
 
-export interface StitchInput<V extends Voice = Voice> {
+interface StitchInput<V extends Voice = Voice> {
   readonly abortSignal?: AbortSignal;
   readonly apiKey?: string;
   readonly gapMs: number;
@@ -20,7 +20,7 @@ export interface StitchInput<V extends Voice = Voice> {
   readonly turns: readonly ConversationTurn<V>[];
 }
 
-export interface StitchOutput {
+interface StitchOutput {
   readonly audio: Uint8Array;
   readonly mediaType: string;
   readonly metadata: {
