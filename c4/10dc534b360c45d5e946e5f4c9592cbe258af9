@@ -1,0 +1,23 @@
+src/conversation/stitch.ts
+  44f143faedc45e55 6,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "c410dc534b360c45d5e946e5f4c9592cbe258af9",
+  "prompts": {
+    "44f143faedc45e55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06adef3-72bc-4a17-8163-69ab1a3e3c2a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
