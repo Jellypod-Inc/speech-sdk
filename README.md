@@ -142,35 +142,6 @@ result.audio.mediaType;   // "audio/wav"
 
 The return type is the standard `SpeechResult`, so it composes with everything else in the SDK.
 
-### Try it — listen to the difference
-
-The same four-provider conversation rendered two ways. The raw version exposes the natural mismatch between providers (Hume Octave is noticeably quieter than ElevenLabs or OpenAI); the normalized version (the default) levels every voice to a fixed −20 dBFS RMS target — the broadcast/podcast voice convention.
-
-| Sample | Audio |
-|---|---|
-| **Cross-provider stitch** (OpenAI + ElevenLabs) | <a href="./assets/audio/conversation/cross-provider-stitch.mp3">▶ Listen</a> |
-| **Four-provider stitch — raw** (`normalizeVolume: false`) | <a href="./assets/audio/conversation/four-providers-raw.mp3">▶ Listen</a> |
-| **Four-provider stitch — normalized** (default) | <a href="./assets/audio/conversation/four-providers-normalized.mp3">▶ Listen</a> |
-
-> The README renders these as inline audio players when viewed on GitHub. If your viewer doesn't support inline playback, click "Listen" to download the MP3.
-
-<details>
-<summary>Inline players</summary>
-
-Cross-provider stitch:
-
-<audio controls src="./assets/audio/conversation/cross-provider-stitch.mp3"></audio>
-
-Four-provider stitch — raw (no normalization):
-
-<audio controls src="./assets/audio/conversation/four-providers-raw.mp3"></audio>
-
-Four-provider stitch — normalized (default):
-
-<audio controls src="./assets/audio/conversation/four-providers-normalized.mp3"></audio>
-
-</details>
-
 ### Conversation options
 
 ```ts
