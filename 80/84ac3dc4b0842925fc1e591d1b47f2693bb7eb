@@ -1,0 +1,31 @@
+src/conversation/pcm-concat.ts
+  44f143faedc45e55 187-190,192-216,218-220,223
+README.md
+  44f143faedc45e55 147,200-205
+src/conversation/stitch.ts
+  44f143faedc45e55 3,108
+src/conversation/types.ts
+  44f143faedc45e55 19-27
+src/__tests__/conversation-pcm-concat.test.ts
+  44f143faedc45e55 5,7,130-149,156-160,163-169,172-180,183-186,189-201,205-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "8084ac3dc4b0842925fc1e591d1b47f2693bb7eb",
+  "prompts": {
+    "44f143faedc45e55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06adef3-72bc-4a17-8163-69ab1a3e3c2a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 7823,
+      "total_deletions": 7685,
+      "accepted_lines": 7745,
+      "overriden_lines": 0
+    }
+  }
+}
