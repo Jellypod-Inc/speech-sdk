@@ -1,5 +1,9 @@
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import {
   hasFeature,
   type ResolvedModel,
@@ -225,6 +229,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         "Content-Type": "application/json",
         "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
         "Cartesia-Version": "2025-04-16",
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -274,6 +279,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         "Content-Type": "application/json",
         "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
         "Cartesia-Version": "2025-04-16",
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

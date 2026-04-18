@@ -1,7 +1,11 @@
 import { stripAudioTags } from "../../audio-tags.js";
 import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import {
   hasFeature,
   type ResolvedModel,
@@ -229,6 +233,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -372,6 +377,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

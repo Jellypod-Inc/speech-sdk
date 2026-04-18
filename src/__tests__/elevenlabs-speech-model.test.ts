@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
 
 describe("ElevenLabsSpeechProvider", () => {
@@ -58,6 +59,7 @@ describe("ElevenLabsSpeechProvider", () => {
 
     const headers = mockFetch.mock.calls[0][1].headers;
     expect(headers["xi-api-key"]).toBe("xi-test-key");
+    expect(headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("passes providerOptions through to request body", async () => {

@@ -1,5 +1,9 @@
 import { stripAudioTags } from "../../audio-tags.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import {
   hasFeature,
   type ResolvedModel,
@@ -198,6 +202,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "OPENAI_API_KEY", "OpenAI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -250,6 +255,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "OPENAI_API_KEY", "OpenAI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

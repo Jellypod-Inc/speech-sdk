@@ -1,5 +1,9 @@
 import { stripAudioTags } from "../../audio-tags.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import {
   hasFeature,
   type ResolvedModel,
@@ -81,6 +85,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
         model: options.modelId,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -126,6 +131,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
         model: options.modelId,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -203,6 +209,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
         model: options.modelId,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
