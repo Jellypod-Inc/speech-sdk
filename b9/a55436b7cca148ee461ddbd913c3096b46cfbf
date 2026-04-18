@@ -1,0 +1,31 @@
+src/generate-conversation.ts
+  44f143faedc45e55 29,32,41,89
+src/providers/google/index.ts
+  44f143faedc45e55 2,259,262,304,401-403
+src/conversation/pcm-concat.ts
+  44f143faedc45e55 1,9-13,15-17,51-52,188
+src/audio-utils.ts
+  44f143faedc45e55 1-67
+src/conversation/dispatch.ts
+  44f143faedc45e55 7,22-25,27,31,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "b9a55436b7cca148ee461ddbd913c3096b46cfbf",
+  "prompts": {
+    "44f143faedc45e55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06adef3-72bc-4a17-8163-69ab1a3e3c2a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 138,
+      "accepted_lines": 98,
+      "overriden_lines": 0
+    }
+  }
+}
