@@ -1,5 +1,11 @@
 import { ApiError } from "./errors.js";
 
+// Identifies traffic originating from this SDK so providers can bucket
+// usage by integration. Sent as `X-User-Agent` because `User-Agent` is
+// a forbidden header name in browser fetch. Callers may override via
+// options.headers.
+export const SDK_USER_AGENT = "jellypod-speech-sdk";
+
 export function resolveApiKey(
   stored: string | undefined,
   envVar: string,

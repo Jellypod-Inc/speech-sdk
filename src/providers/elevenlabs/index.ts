@@ -1,6 +1,10 @@
 import { stripAudioTags } from "../../audio-tags.js";
 import { SpeechSDKError } from "../../errors.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import {
   hasFeature,
   type ResolvedModel,
@@ -259,6 +263,7 @@ export class ElevenLabsSpeechProvider
           "ELEVENLABS_API_KEY",
           "ElevenLabs"
         ),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -324,6 +329,7 @@ export class ElevenLabsSpeechProvider
           "ELEVENLABS_API_KEY",
           "ElevenLabs"
         ),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -411,6 +417,7 @@ export class ElevenLabsSpeechProvider
           "ELEVENLABS_API_KEY",
           "ElevenLabs"
         ),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

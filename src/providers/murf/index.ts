@@ -1,4 +1,8 @@
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface MurfSpeechProviderConfig {
@@ -104,6 +108,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         "api-key": resolveApiKey(this.apiKey, "MURF_API_KEY", "Murf"),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -154,6 +159,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         "api-key": resolveApiKey(this.apiKey, "MURF_API_KEY", "Murf"),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
