@@ -53,6 +53,7 @@ describe("runStitch", () => {
       gapMs: 300,
       maxConcurrency: 2,
       maxRetries: 0,
+      normalizeVolume: false,
     });
 
     expect(result.audio.length).toBeGreaterThan(44);

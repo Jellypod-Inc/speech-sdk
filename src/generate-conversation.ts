@@ -58,6 +58,7 @@ export async function generateConversation<V extends Voice = Voice>(
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+    normalizeVolume: options.normalizeVolume ?? true,
     abortSignal: options.abortSignal,
     headers: options.headers,
   });

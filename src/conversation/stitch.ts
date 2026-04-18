@@ -1,6 +1,10 @@
 import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
-import { concatPcmToWav, decodeToPcm16 } from "./pcm-concat.js";
+import {
+  concatPcmToWav,
+  decodeToPcm16,
+  normalizeRmsToLoudest,
+} from "./pcm-concat.js";
 import type { ConversationTurn } from "./types.js";
 
 export interface StitchInput<V extends Voice = Voice> {
@@ -10,6 +14,7 @@ export interface StitchInput<V extends Voice = Voice> {
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
   readonly maxRetries: number;
+  readonly normalizeVolume: boolean;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -102,10 +107,15 @@ export async function runStitch<V extends Voice>(
     }
   );
 
-  const audio = await concatPcmToWav(
-    perTurn.map((p) => p.segment),
-    { gapMs: input.gapMs, targetSampleRate: TARGET_SAMPLE_RATE }
-  );
+  const segments = perTurn.map((p) => p.segment);
+  const leveledSegments = input.normalizeVolume
+    ? normalizeRmsToLoudest(segments)
+    : segments;
+
+  const audio = await concatPcmToWav(leveledSegments, {
+    gapMs: input.gapMs,
+    targetSampleRate: TARGET_SAMPLE_RATE,
+  });
 
   const totalSamples =
     perTurn.reduce(

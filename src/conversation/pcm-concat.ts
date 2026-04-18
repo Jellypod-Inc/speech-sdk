@@ -149,6 +149,63 @@ export function silencePcm16(ms: number, sampleRate: number): Int16Array {
   return new Int16Array(samples);
 }
 
+/** Root-mean-square amplitude of a PCM segment. */
+function rmsPcm16(pcm: Int16Array): number {
+  if (pcm.length === 0) {
+    return 0;
+  }
+  let sumSq = 0;
+  for (const s of pcm) {
+    sumSq += s * s;
+  }
+  return Math.sqrt(sumSq / pcm.length);
+}
+
+const INT16_MAX = 32_767;
+const INT16_MIN = -32_768;
+
+function clampInt16(value: number): number {
+  if (value > INT16_MAX) {
+    return INT16_MAX;
+  }
+  if (value < INT16_MIN) {
+    return INT16_MIN;
+  }
+  return value;
+}
+
+/** Multiply each sample by `gain`, clamping to int16 range. */
+function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
+  const out = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    out[i] = clampInt16(Math.round(pcm[i] * gain));
+  }
+  return out;
+}
+
+/**
+ * RMS-normalize segments to the loudest segment in the set: every segment
+ * gets scaled up so its RMS matches the maximum RMS across all segments.
+ * No segment is ever attenuated, so the loudest source is preserved at its
+ * original level. Returns new segments; inputs are not mutated.
+ */
+export function normalizeRmsToLoudest(
+  segments: readonly Pcm16Segment[]
+): Pcm16Segment[] {
+  const rmsValues = segments.map((s) => rmsPcm16(s.pcm));
+  const target = Math.max(...rmsValues);
+  if (target === 0) {
+    return segments.map((s) => ({ ...s }));
+  }
+  return segments.map((s, i) => {
+    const segRms = rmsValues[i];
+    if (segRms === 0 || segRms >= target) {
+      return { ...s };
+    }
+    return { ...s, pcm: scaleClamp(s.pcm, target / segRms) };
+  });
+}
+
 /**
  * Resample each segment to `targetSampleRate` mono, interleave with `gapMs`
  * silence, and mux the result as a WAV file via mediabunny.

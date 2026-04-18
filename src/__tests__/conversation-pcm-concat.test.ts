@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   concatPcmToWav,
   decodeToPcm16,
+  normalizeRmsToLoudest,
   resamplePcm16LinearMono,
   silencePcm16,
 } from "../conversation/pcm-concat.js";
@@ -121,5 +122,68 @@ describe("concatPcmToWav", () => {
     const expectedSamples = 2400 + 7200 + 2400;
     const expectedDataLen = expectedSamples * 2;
     expect(dv.getUint32(40, true)).toBe(expectedDataLen);
+  });
+});
+
+describe("normalizeRmsToLoudest", () => {
+  const mkSeg = (pcm: Int16Array) => ({
+    pcm,
+    sampleRate: 24_000,
+    channels: 1,
+  });
+
+  it("leaves the loudest segment unchanged", () => {
+    const loud = new Int16Array(1000).fill(10_000);
+    const quiet = new Int16Array(1000).fill(1000);
+    const [outLoud, outQuiet] = normalizeRmsToLoudest([
+      mkSeg(loud),
+      mkSeg(quiet),
+    ]);
+    expect(outLoud.pcm[0]).toBe(10_000);
+    expect(outQuiet.pcm[0]).toBeGreaterThan(1000);
+  });
+
+  it("scales a 10x-quieter segment up to the loudest RMS", () => {
+    const loud = new Int16Array(1000).fill(10_000);
+    const quiet = new Int16Array(1000).fill(1000);
+    const [, outQuiet] = normalizeRmsToLoudest([mkSeg(loud), mkSeg(quiet)]);
+    // 1000 scaled by 10_000/1000 = 10x → 10_000
+    expect(outQuiet.pcm[0]).toBe(10_000);
+  });
+
+  it("clamps to int16 range on overflow", () => {
+    // Peak values near the max get scaled up but must not overflow.
+    const loud = new Int16Array(1000).fill(30_000);
+    const quiet = new Int16Array(1000).fill(20_000);
+    const [, outQuiet] = normalizeRmsToLoudest([mkSeg(loud), mkSeg(quiet)]);
+    expect(outQuiet.pcm[0]).toBeLessThanOrEqual(32_767);
+    expect(outQuiet.pcm[0]).toBeGreaterThanOrEqual(-32_768);
+  });
+
+  it("handles an all-silent segment without dividing by zero", () => {
+    const loud = new Int16Array(1000).fill(5000);
+    const silent = new Int16Array(1000);
+    const [outLoud, outSilent] = normalizeRmsToLoudest([
+      mkSeg(loud),
+      mkSeg(silent),
+    ]);
+    expect(outLoud.pcm[0]).toBe(5000);
+    expect(outSilent.pcm.every((v) => v === 0)).toBe(true);
+  });
+
+  it("returns a no-op when all segments are silent", () => {
+    const a = new Int16Array(10);
+    const b = new Int16Array(10);
+    const [outA, outB] = normalizeRmsToLoudest([mkSeg(a), mkSeg(b)]);
+    expect(outA.pcm).toEqual(a);
+    expect(outB.pcm).toEqual(b);
+  });
+
+  it("does not mutate input segments", () => {
+    const loud = new Int16Array(1000).fill(10_000);
+    const quiet = new Int16Array(1000).fill(1000);
+    const inputs = [mkSeg(loud), mkSeg(quiet)];
+    normalizeRmsToLoudest(inputs);
+    expect(quiet[0]).toBe(1000);
   });
 });
