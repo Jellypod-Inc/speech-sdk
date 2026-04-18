@@ -111,6 +111,10 @@ export class FalSpeechProvider
     const json = (await response.json()) as { audio: { url: string } };
 
     const audioResponse = await this.fetchFn(json.audio.url, {
+      headers: {
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
       signal: options.abortSignal,
     });
 
@@ -215,6 +219,10 @@ export class FalSpeechProvider
 
     const json = (await response.json()) as { audio: { url: string } };
     const audioResponse = await this.fetchFn(json.audio.url, {
+      headers: {
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
       signal: options.abortSignal,
     });
     if (!audioResponse.ok) {
