@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   concatPcmToWav,
+  DEFAULT_TARGET_RMS_INT16,
+  dbfsToInt16Rms,
   decodeToPcm16,
-  normalizeRmsToLoudest,
+  normalizeRms,
   resamplePcm16LinearMono,
   silencePcm16,
 } from "../conversation/pcm-concat.js";
@@ -125,65 +127,83 @@ describe("concatPcmToWav", () => {
   });
 });
 
-describe("normalizeRmsToLoudest", () => {
+describe("dbfsToInt16Rms", () => {
+  it("maps 0 dBFS to full-scale int16", () => {
+    expect(dbfsToInt16Rms(0)).toBe(32_767);
+  });
+
+  it("maps -20 dBFS to ~3277 (the default target)", () => {
+    expect(dbfsToInt16Rms(-20)).toBe(DEFAULT_TARGET_RMS_INT16);
+    expect(dbfsToInt16Rms(-20)).toBe(3277);
+  });
+
+  it("maps -16 dBFS to ~5193", () => {
+    expect(dbfsToInt16Rms(-16)).toBe(5193);
+  });
+
+  it("maps -6 dBFS to ~half full scale", () => {
+    expect(dbfsToInt16Rms(-6)).toBe(16_422);
+  });
+});
+
+describe("normalizeRms", () => {
   const mkSeg = (pcm: Int16Array) => ({
     pcm,
     sampleRate: 24_000,
     channels: 1,
   });
 
-  it("leaves the loudest segment unchanged", () => {
-    const loud = new Int16Array(1000).fill(10_000);
-    const quiet = new Int16Array(1000).fill(1000);
-    const [outLoud, outQuiet] = normalizeRmsToLoudest([
-      mkSeg(loud),
-      mkSeg(quiet),
-    ]);
-    expect(outLoud.pcm[0]).toBe(10_000);
-    expect(outQuiet.pcm[0]).toBeGreaterThan(1000);
+  it("scales a segment so its RMS matches the target amplitude", () => {
+    // Constant-amplitude segment: every sample = RMS
+    const seg = new Int16Array(1000).fill(1000);
+    const [out] = normalizeRms([mkSeg(seg)], 5000);
+    expect(out.pcm[0]).toBe(5000);
   });
 
-  it("scales a 10x-quieter segment up to the loudest RMS", () => {
-    const loud = new Int16Array(1000).fill(10_000);
-    const quiet = new Int16Array(1000).fill(1000);
-    const [, outQuiet] = normalizeRmsToLoudest([mkSeg(loud), mkSeg(quiet)]);
-    // 1000 scaled by 10_000/1000 = 10x → 10_000
-    expect(outQuiet.pcm[0]).toBe(10_000);
-  });
-
-  it("clamps to int16 range on overflow", () => {
-    // Peak values near the max get scaled up but must not overflow.
-    const loud = new Int16Array(1000).fill(30_000);
-    const quiet = new Int16Array(1000).fill(20_000);
-    const [, outQuiet] = normalizeRmsToLoudest([mkSeg(loud), mkSeg(quiet)]);
-    expect(outQuiet.pcm[0]).toBeLessThanOrEqual(32_767);
-    expect(outQuiet.pcm[0]).toBeGreaterThanOrEqual(-32_768);
-  });
-
-  it("handles an all-silent segment without dividing by zero", () => {
-    const loud = new Int16Array(1000).fill(5000);
-    const silent = new Int16Array(1000);
-    const [outLoud, outSilent] = normalizeRmsToLoudest([
-      mkSeg(loud),
-      mkSeg(silent),
-    ]);
+  it("scales both loud and quiet segments independently to the same target", () => {
+    const quiet = new Int16Array(1000).fill(500);
+    const loud = new Int16Array(1000).fill(20_000);
+    const [outQuiet, outLoud] = normalizeRms([mkSeg(quiet), mkSeg(loud)], 5000);
+    // Both segments end up at the same RMS regardless of their input level.
+    expect(outQuiet.pcm[0]).toBe(5000);
     expect(outLoud.pcm[0]).toBe(5000);
-    expect(outSilent.pcm.every((v) => v === 0)).toBe(true);
   });
 
-  it("returns a no-op when all segments are silent", () => {
-    const a = new Int16Array(10);
-    const b = new Int16Array(10);
-    const [outA, outB] = normalizeRmsToLoudest([mkSeg(a), mkSeg(b)]);
-    expect(outA.pcm).toEqual(a);
-    expect(outB.pcm).toEqual(b);
+  it("produces the same output for a segment across multiple calls (deterministic)", () => {
+    const seg = new Int16Array(1000).fill(1234);
+    const [a] = normalizeRms([mkSeg(seg)]);
+    const [b] = normalizeRms([mkSeg(seg)]);
+    expect(a.pcm).toEqual(b.pcm);
+    // And independent of what else is in the batch:
+    const other = new Int16Array(1000).fill(20_000);
+    const [c] = normalizeRms([mkSeg(seg), mkSeg(other)]);
+    expect(c.pcm).toEqual(a.pcm);
+  });
+
+  it("uses DEFAULT_TARGET_RMS_INT16 (-20 dBFS) when target is omitted", () => {
+    const seg = new Int16Array(1000).fill(10_000);
+    const [out] = normalizeRms([mkSeg(seg)]);
+    expect(out.pcm[0]).toBe(DEFAULT_TARGET_RMS_INT16);
+  });
+
+  it("clamps to int16 range when boosting a quiet segment with loud peaks", () => {
+    const pcm = new Int16Array(1000);
+    for (let i = 0; i < pcm.length; i++) {
+      pcm[i] = i === 0 ? 30_000 : 100;
+    }
+    const [out] = normalizeRms([mkSeg(pcm)], 10_000);
+    expect(out.pcm[0]).toBe(32_767);
+  });
+
+  it("leaves silent segments untouched (no divide-by-zero)", () => {
+    const silent = new Int16Array(1000);
+    const [out] = normalizeRms([mkSeg(silent)]);
+    expect(out.pcm.every((v) => v === 0)).toBe(true);
   });
 
   it("does not mutate input segments", () => {
-    const loud = new Int16Array(1000).fill(10_000);
-    const quiet = new Int16Array(1000).fill(1000);
-    const inputs = [mkSeg(loud), mkSeg(quiet)];
-    normalizeRmsToLoudest(inputs);
-    expect(quiet[0]).toBe(1000);
+    const pcm = new Int16Array(1000).fill(1000);
+    normalizeRms([mkSeg(pcm)], 5000);
+    expect(pcm[0]).toBe(1000);
   });
 });

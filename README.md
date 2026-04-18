@@ -144,7 +144,7 @@ The return type is the standard `SpeechResult`, so it composes with everything e
 
 ### Try it — listen to the difference
 
-The same four-provider conversation rendered two ways. The raw version exposes Hume's quieter level next to ElevenLabs and OpenAI; the normalized version (the default) levels every voice to match the loudest source.
+The same four-provider conversation rendered two ways. The raw version exposes the natural mismatch between providers (Hume Octave is noticeably quieter than ElevenLabs or OpenAI); the normalized version (the default) levels every voice to a fixed −20 dBFS RMS target — the broadcast/podcast voice convention.
 
 | Sample | Audio |
 |---|---|
@@ -197,7 +197,12 @@ interface ConversationTurn {
 
 ### Volume normalization
 
-When the stitch path runs, `normalizeVolume: true` (the default) RMS-normalizes each per-turn segment to match the loudest segment. Quieter providers like Hume Octave get scaled up; the loudest provider is never attenuated. Two O(N) passes over the int16 PCM samples — cheap. Pass `normalizeVolume: false` to skip the step entirely (zero work) when you want raw provider levels.
+When the stitch path runs, `normalizeVolume: true` (the default) RMS-normalizes each per-turn segment to a fixed **−20 dBFS** RMS target — the broadcast/podcast voice convention, with ~20 dB peak headroom so typical TTS speech doesn't clip after gain. The target is absolute, not relative, so:
+
+- Two `generateConversation` calls produce comparable loudness even with completely different content — you can play them back-to-back without adjusting volume.
+- Each segment is normalized independently — no cross-segment dependency, just two O(N) passes over the int16 PCM samples per segment.
+
+Pass `normalizeVolume: false` to skip the step entirely (zero work) when you want raw provider levels.
 
 ### Errors
 

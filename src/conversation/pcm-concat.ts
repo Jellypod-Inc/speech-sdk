@@ -184,25 +184,43 @@ function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
 }
 
 /**
- * RMS-normalize segments to the loudest segment in the set: every segment
- * gets scaled up so its RMS matches the maximum RMS across all segments.
- * No segment is ever attenuated, so the loudest source is preserved at its
- * original level. Returns new segments; inputs are not mutated.
+ * Default RMS target: −20 dBFS for int16 (= round(32767 * 10^(-20/20)) = 3277).
+ * Standard voice/podcast loudness target with ~20 dB peak headroom — loud
+ * enough to listen to comfortably, quiet enough that typical TTS peaks
+ * don't clip after gain.
  */
-export function normalizeRmsToLoudest(
-  segments: readonly Pcm16Segment[]
+export const DEFAULT_TARGET_RMS_INT16 = 3277;
+
+/**
+ * Convert a dBFS value (0 = full scale, negative = quieter) to an int16
+ * RMS amplitude. dbfs of −20 → ~3277; −16 → ~5193; −12 → ~8231.
+ */
+export function dbfsToInt16Rms(dbfs: number): number {
+  return Math.round(32_767 * 10 ** (dbfs / 20));
+}
+
+/**
+ * RMS-normalize each segment to an absolute target amplitude. Each segment
+ * is processed independently — no cross-segment dependency — so:
+ *   - The output level is the same across runs regardless of input mix.
+ *   - Two `generateConversation` calls produce comparable loudness even
+ *     with completely different content.
+ *
+ * Silent segments pass through unchanged. Output is clamped to int16
+ * range, so a quiet segment with rare peaks may clip slightly when
+ * boosted; the default target leaves ~20 dB headroom to make this rare
+ * for typical TTS content.
+ */
+export function normalizeRms(
+  segments: readonly Pcm16Segment[],
+  targetRmsAmplitude = DEFAULT_TARGET_RMS_INT16
 ): Pcm16Segment[] {
-  const rmsValues = segments.map((s) => rmsPcm16(s.pcm));
-  const target = Math.max(...rmsValues);
-  if (target === 0) {
-    return segments.map((s) => ({ ...s }));
-  }
-  return segments.map((s, i) => {
-    const segRms = rmsValues[i];
-    if (segRms === 0 || segRms >= target) {
+  return segments.map((s) => {
+    const segRms = rmsPcm16(s.pcm);
+    if (segRms === 0) {
       return { ...s };
     }
-    return { ...s, pcm: scaleClamp(s.pcm, target / segRms) };
+    return { ...s, pcm: scaleClamp(s.pcm, targetRmsAmplitude / segRms) };
   });
 }
 
