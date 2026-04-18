@@ -1,0 +1,23 @@
+src/__tests__/e2e/conversation-stitch-four-providers.e2e.test.ts
+  44f143faedc45e55 1-15,17-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "76e111a006a8450758470a027d3e9af60b8bcacc",
+  "prompts": {
+    "44f143faedc45e55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06adef3-72bc-4a17-8163-69ab1a3e3c2a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 218,
+      "total_deletions": 140,
+      "accepted_lines": 71,
+      "overriden_lines": 1
+    }
+  }
+}
