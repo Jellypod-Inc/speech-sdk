@@ -123,7 +123,7 @@ function decodeWav(bytes: Uint8Array): Pcm16Segment {
 }
 
 /** Simple linear interpolation resampler for mono Int16 PCM. */
-export function resamplePcm16LinearMono(
+function resamplePcm16LinearMono(
   input: Int16Array,
   fromRate: number,
   toRate: number
@@ -144,7 +144,7 @@ export function resamplePcm16LinearMono(
   return out;
 }
 
-export function silencePcm16(ms: number, sampleRate: number): Int16Array {
+function silencePcm16(ms: number, sampleRate: number): Int16Array {
   const samples = Math.round((ms / 1000) * sampleRate);
   return new Int16Array(samples);
 }
@@ -184,20 +184,11 @@ function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
 }
 
 /**
- * Default RMS target: −20 dBFS for int16 (= round(32767 * 10^(-20/20)) = 3277).
- * Standard voice/podcast loudness target with ~20 dB peak headroom — loud
- * enough to listen to comfortably, quiet enough that typical TTS peaks
- * don't clip after gain.
+ * Default RMS target: −20 dBFS for int16 = round(32767 * 10^(-20/20)) = 3277.
+ * Broadcast/podcast voice loudness convention with ~20 dB peak headroom —
+ * comfortable to listen to, leaves room for typical TTS peaks not to clip.
  */
-export const DEFAULT_TARGET_RMS_INT16 = 3277;
-
-/**
- * Convert a dBFS value (0 = full scale, negative = quieter) to an int16
- * RMS amplitude. dbfs of −20 → ~3277; −16 → ~5193; −12 → ~8231.
- */
-export function dbfsToInt16Rms(dbfs: number): number {
-  return Math.round(32_767 * 10 ** (dbfs / 20));
-}
+const DEFAULT_TARGET_RMS_INT16 = 3277;
 
 /**
  * RMS-normalize each segment to an absolute target amplitude. Each segment

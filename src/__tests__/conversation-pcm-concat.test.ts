@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   concatPcmToWav,
-  DEFAULT_TARGET_RMS_INT16,
-  dbfsToInt16Rms,
   decodeToPcm16,
   normalizeRms,
-  resamplePcm16LinearMono,
-  silencePcm16,
 } from "../conversation/pcm-concat.js";
+
+// Default RMS target the SDK normalizes to (-20 dBFS in int16).
+const DEFAULT_TARGET_RMS = 3277;
 
 function writeWavHeader(
   dataLen: number,
@@ -70,39 +69,6 @@ describe("decodeToPcm16", () => {
   });
 });
 
-describe("resamplePcm16LinearMono", () => {
-  it("is a no-op when rates match", () => {
-    const input = new Int16Array([1, 2, 3, 4]);
-    expect(resamplePcm16LinearMono(input, 24_000, 24_000)).toBe(input);
-  });
-
-  it("upsamples from 12 kHz to 24 kHz", () => {
-    const input = new Int16Array([0, 1000]);
-    const out = resamplePcm16LinearMono(input, 12_000, 24_000);
-    expect(out.length).toBe(4);
-    expect(out[0]).toBe(0);
-    expect(out[1]).toBeGreaterThan(0);
-  });
-
-  it("downsamples roughly preserving signal magnitude", () => {
-    const input = new Int16Array(100);
-    input.fill(500);
-    const out = resamplePcm16LinearMono(input, 48_000, 24_000);
-    expect(out.length).toBe(50);
-    for (const s of out) {
-      expect(s).toBe(500);
-    }
-  });
-});
-
-describe("silencePcm16", () => {
-  it("returns zero-filled Int16Array of correct length", () => {
-    const s = silencePcm16(300, 24_000);
-    expect(s.length).toBe(Math.round(0.3 * 24_000));
-    expect(s.every((v) => v === 0)).toBe(true);
-  });
-});
-
 describe("concatPcmToWav", () => {
   it("concats two 24 kHz mono PCM segments with 300 ms gap and produces a valid WAV", async () => {
     const seg = new Int16Array(2400);
@@ -125,24 +91,24 @@ describe("concatPcmToWav", () => {
     const expectedDataLen = expectedSamples * 2;
     expect(dv.getUint32(40, true)).toBe(expectedDataLen);
   });
-});
 
-describe("dbfsToInt16Rms", () => {
-  it("maps 0 dBFS to full-scale int16", () => {
-    expect(dbfsToInt16Rms(0)).toBe(32_767);
-  });
+  it("resamples segments at different rates to the target rate", async () => {
+    // 0.1 s @ 48k = 4800 samples; 0.1 s @ 12k = 1200 samples.
+    // After resample to 24k: 4800/2 = 2400 and 1200*2 = 2400.
+    // No gap, so total = 2400 + 2400 = 4800 samples → 9600 data bytes.
+    const seg48k = new Int16Array(4800).fill(100);
+    const seg12k = new Int16Array(1200).fill(100);
 
-  it("maps -20 dBFS to ~3277 (the default target)", () => {
-    expect(dbfsToInt16Rms(-20)).toBe(DEFAULT_TARGET_RMS_INT16);
-    expect(dbfsToInt16Rms(-20)).toBe(3277);
-  });
+    const wav = await concatPcmToWav(
+      [
+        { pcm: seg48k, sampleRate: 48_000, channels: 1 },
+        { pcm: seg12k, sampleRate: 12_000, channels: 1 },
+      ],
+      { gapMs: 0, targetSampleRate: 24_000 }
+    );
 
-  it("maps -16 dBFS to ~5193", () => {
-    expect(dbfsToInt16Rms(-16)).toBe(5193);
-  });
-
-  it("maps -6 dBFS to ~half full scale", () => {
-    expect(dbfsToInt16Rms(-6)).toBe(16_422);
+    const dv = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+    expect(dv.getUint32(40, true)).toBe(4800 * 2);
   });
 });
 
@@ -180,10 +146,10 @@ describe("normalizeRms", () => {
     expect(c.pcm).toEqual(a.pcm);
   });
 
-  it("uses DEFAULT_TARGET_RMS_INT16 (-20 dBFS) when target is omitted", () => {
+  it("uses the default -20 dBFS target when target is omitted", () => {
     const seg = new Int16Array(1000).fill(10_000);
     const [out] = normalizeRms([mkSeg(seg)]);
-    expect(out.pcm[0]).toBe(DEFAULT_TARGET_RMS_INT16);
+    expect(out.pcm[0]).toBe(DEFAULT_TARGET_RMS);
   });
 
   it("clamps to int16 range when boosting a quiet segment with loud peaks", () => {
