@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
 
-describe("fal Dia native dialogue e2e", () => {
+const hasKey = !!process.env.FAL_API_KEY;
+
+describe.skipIf(!hasKey)("fal Dia native dialogue e2e", () => {
   it("generates a 2-speaker conversation via dia-tts", {
     timeout: 180_000,
   }, async () => {

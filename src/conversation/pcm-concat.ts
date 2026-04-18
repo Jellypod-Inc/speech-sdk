@@ -43,11 +43,11 @@ export function decodeToPcm16(
 ): Pcm16Segment {
   const lower = mediaType.toLowerCase();
 
-  if (
-    lower.startsWith("audio/pcm") ||
-    lower.startsWith("audio/l16") ||
-    lower.startsWith("audio/x-pcm")
-  ) {
+  if (lower.startsWith("audio/pcm") || lower.startsWith("audio/x-pcm")) {
+    // NOTE: `audio/l16` (RFC 2586) is intentionally NOT handled here. The
+    // standard mandates network byte order (big-endian) but no provider in
+    // this SDK currently emits it. If support is added later, byte-swap on
+    // little-endian hosts before constructing the Int16Array.
     const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
     const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
     const interleaved = pcmBytesToInt16(data);

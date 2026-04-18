@@ -1,8 +1,9 @@
+import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import type { GenerateConversationOptions } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
-import { NoSpeechGeneratedError } from "./errors.js";
+import { ApiError, NoSpeechGeneratedError } from "./errors.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
@@ -37,7 +38,11 @@ export async function generateConversation<V extends Voice = Voice>(
   });
 
   if (path.kind === "native") {
-    return await runNative({ options, resolved: path.resolved });
+    return await runNative({
+      options,
+      resolved: path.resolved,
+      maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+    });
   }
 
   // Lazy-load the stitch pipeline so callers whose dispatch always picks
@@ -90,8 +95,9 @@ export async function generateConversation<V extends Voice = Voice>(
 async function runNative<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
   resolved: ResolvedModel<V>;
+  maxRetries: number;
 }): Promise<SpeechResult> {
-  const { options, resolved } = args;
+  const { options, resolved, maxRetries } = args;
   const start = performance.now();
 
   if (!resolved.provider.generateDialogue) {
@@ -100,13 +106,30 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
-  const result = await resolved.provider.generateDialogue({
-    modelId: resolved.modelId,
-    turns: options.turns.map((t) => ({ voice: t.voice, text: t.text })),
-    providerOptions: options.providerOptions,
-    abortSignal: options.abortSignal,
-    headers: options.headers,
-  });
+  const generateDialogue = resolved.provider.generateDialogue.bind(
+    resolved.provider
+  );
+
+  const result = await pRetry(
+    () =>
+      generateDialogue({
+        modelId: resolved.modelId,
+        turns: options.turns.map((t) => ({ voice: t.voice, text: t.text })),
+        providerOptions: options.providerOptions,
+        abortSignal: options.abortSignal,
+        headers: options.headers,
+      }),
+    {
+      retries: maxRetries,
+      signal: options.abortSignal,
+      shouldRetry: ({ error }) => {
+        if (error instanceof ApiError && error.statusCode < 500) {
+          return false;
+        }
+        return true;
+      },
+    }
+  );
 
   const latencyMs = Math.round(performance.now() - start);
 

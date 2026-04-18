@@ -1,7 +1,7 @@
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import { DialogueConstraintError, StitchUnsupportedError } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
-import { voiceKey } from "./validate.js";
+import { newVoiceKeyContext, voiceKey } from "./validate.js";
 
 export type ConversationPath =
   | { kind: "native"; resolved: ResolvedModel<Voice> }
@@ -60,7 +60,10 @@ function assertNativeConstraints(args: {
 }): void {
   const { provider, modelId, caps, turns } = args;
 
-  const unique = new Set(turns.map((t) => voiceKey(t.voice))).size;
+  const ctx = newVoiceKeyContext();
+  const unique = new Set(
+    turns.map((t) => voiceKey(t.voice, ctx.refIds, ctx.refCounter))
+  ).size;
 
   if (unique < caps.minVoices || unique > caps.maxVoices) {
     const rule =

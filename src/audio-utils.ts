@@ -18,7 +18,9 @@ export function parseMediaTypeParam(
 ): number | undefined {
   let re = PARAM_REGEX_CACHE.get(name);
   if (!re) {
-    re = new RegExp(`(?:^|;)\\s*${name}=(\\d+)`, "i");
+    // End boundary required: digits must be followed by ;, whitespace, or
+    // end-of-string. Rejects values like "rate=24000x".
+    re = new RegExp(`(?:^|;)\\s*${name}=(\\d+)(?=$|;|\\s)`, "i");
     PARAM_REGEX_CACHE.set(name, re);
   }
   const match = mediaType.match(re);

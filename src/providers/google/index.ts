@@ -398,7 +398,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const pcm = base64ToBytes(part.inlineData.data);
     const sampleRate =
-      parseMediaTypeParam(part.inlineData.mimeType, "rate") ??
+      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
