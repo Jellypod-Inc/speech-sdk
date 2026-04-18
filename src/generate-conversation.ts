@@ -1,6 +1,5 @@
 import { computeAudioDuration } from "./audio-duration.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
-import { runStitch } from "./conversation/stitch.js";
 import type { GenerateConversationOptions } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
 import { NoSpeechGeneratedError } from "./errors.js";
@@ -41,6 +40,10 @@ export async function generateConversation<V extends Voice = Voice>(
     return await runNative({ options, resolved: path.resolved });
   }
 
+  // Lazy-load the stitch pipeline so callers whose dispatch always picks
+  // native (e.g. a Jellypod gateway provider that handles concatenation
+  // server-side) never bundle pcm-concat / audio-utils / mediabunny WAV mux.
+  const { runStitch } = await import("./conversation/stitch.js");
   const stitched = await runStitch({
     resolvedPerTurn,
     turns: options.turns,
