@@ -128,7 +128,7 @@ describe("generateSpeech with volumeDbfs", () => {
     expect(callArgs.providerOptions).toEqual({ format: "pcm24k" });
   });
 
-  it("lets caller providerOptions override stitch-mode defaults", async () => {
+  it("stitch-mode providerOptions override caller options that would break decoding", async () => {
     const provider = mockProvider(
       pcmBytes(new Int16Array(1000).fill(1)),
       "audio/pcm;rate=24000"
@@ -138,13 +138,18 @@ describe("generateSpeech with volumeDbfs", () => {
       model: { provider, modelId: "m" },
       text: "hi",
       voice: "v",
-      providerOptions: { format: "custom" },
+      // Caller tries to override the stitch-required format — should be
+      // discarded so volumeDbfs normalization doesn't silently get garbage.
+      providerOptions: { format: "mp3-please", unrelated: "keep-me" },
       volumeDbfs: -20,
     });
 
     const callArgs = (provider.generate as ReturnType<typeof vi.fn>).mock
       .calls[0][0];
-    expect(callArgs.providerOptions).toEqual({ format: "custom" });
+    expect(callArgs.providerOptions).toEqual({
+      format: "pcm24k",
+      unrelated: "keep-me",
+    });
   });
 
   it("throws VolumeAdjustmentUnsupportedError when provider declines stitch", async () => {

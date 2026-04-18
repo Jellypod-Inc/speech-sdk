@@ -128,8 +128,12 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
+  // Stitch-mode options are applied last so they override user-supplied
+  // providerOptions that would otherwise break the decoder (e.g. a caller
+  // requesting `response_format: "mp3"` while normalization is on). Same
+  // precedence as the stitch path's per-turn merge.
   const dialogueProviderOptions = stitchOpts
-    ? { ...stitchOpts.providerOptions, ...options.providerOptions }
+    ? { ...options.providerOptions, ...stitchOpts.providerOptions }
     : options.providerOptions;
 
   const result = await pRetry(

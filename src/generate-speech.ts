@@ -45,11 +45,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     if (!stitchOpts) {
       throw new VolumeAdjustmentUnsupportedError(modelIdentifier);
     }
-    // Provider's stitch-mode options apply first so the user's explicit
-    // providerOptions can still override them when they know better.
+    // Stitch-mode options are applied last so they win over user-supplied
+    // providerOptions — otherwise a caller could silently break the decoder
+    // by e.g. passing `response_format: "mp3"` alongside `volumeDbfs`.
     providerOptions = {
-      ...stitchOpts.providerOptions,
       ...options.providerOptions,
+      ...stitchOpts.providerOptions,
     };
   }
 
