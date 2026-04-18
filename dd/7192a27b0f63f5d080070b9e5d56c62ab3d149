@@ -1,0 +1,27 @@
+src/__tests__/provider-stitch-options.test.ts
+  44f143faedc45e55 54,58-59
+src/providers/hume/index.ts
+  44f143faedc45e55 167-172,174-175
+src/conversation/stitch.ts
+  44f143faedc45e55 92-96,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "dd7192a27b0f63f5d080070b9e5d56c62ab3d149",
+  "prompts": {
+    "44f143faedc45e55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06adef3-72bc-4a17-8163-69ab1a3e3c2a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 161,
+      "total_deletions": 148,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  }
+}
