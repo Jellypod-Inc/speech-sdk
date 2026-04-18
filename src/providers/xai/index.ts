@@ -170,6 +170,18 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
         this.mediaTypeForCodec(this.codecFromBody(body)),
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // xAI Grok TTS accepts output_format.codec and its mediaTypeForCodec
+      // helper maps "wav" → "audio/wav", which the stitch layer can decode.
+      return {
+        providerOptions: { output_format: { codec: "wav" } },
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createXai(config: XaiSpeechProviderConfig = {}) {

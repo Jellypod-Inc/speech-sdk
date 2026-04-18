@@ -145,6 +145,17 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Resemble's /synthesize always returns base64 WAV; no override needed.
+      return {
+        providerOptions: {},
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createResemble(config: ResembleSpeechProviderConfig = {}) {

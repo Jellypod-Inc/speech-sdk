@@ -351,6 +351,84 @@ export class ElevenLabsSpeechProvider
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: { output_format: "pcm_24000" },
+        mediaType: "audio/pcm;rate=24000",
+      };
+    }
+    return undefined;
+  }
+
+  dialogueCapabilities(modelId: string) {
+    if (modelId === "eleven_v3") {
+      return { minVoices: 1, maxVoices: 10, maxTotalChars: 2000 };
+    }
+    return undefined;
+  }
+
+  async generateDialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string }[];
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    if (options.modelId !== "eleven_v3") {
+      throw new SpeechSDKError(
+        `elevenlabs/${options.modelId} does not support native dialogue; use eleven_v3.`
+      );
+    }
+
+    const opts = (options.providerOptions ?? {}) as Record<string, unknown>;
+    const { output_format, ...bodyOpts } = opts;
+
+    const body: Record<string, unknown> = {
+      ...bodyOpts,
+      model_id: options.modelId,
+      inputs: options.turns.map((t) => ({ text: t.text, voice_id: t.voice })),
+    };
+
+    const queryParams = new URLSearchParams();
+    if (output_format != null) {
+      queryParams.set("output_format", String(output_format));
+    }
+    const qs = queryParams.toString();
+    const url = `${this.baseURL}/v1/text-to-dialogue${qs ? `?${qs}` : ""}`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": resolveApiKey(
+          this.apiKey,
+          "ELEVENLABS_API_KEY",
+          "ElevenLabs"
+        ),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const requestId = response.headers.get("request-id");
+
+    return {
+      audio: new Uint8Array(arrayBuffer),
+      mediaType,
+      providerMetadata: requestId ? { requestId } : undefined,
+    };
+  }
 }
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {

@@ -291,6 +291,22 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: {
+          output_format: {
+            container: "wav",
+            encoding: "pcm_s16le",
+            sample_rate: 24_000,
+          },
+        },
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {

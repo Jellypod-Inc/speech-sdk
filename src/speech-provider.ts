@@ -51,6 +51,14 @@ export interface SpeechProvider<
 > {
   defaultModel: TModel;
 
+  dialogueCapabilities?(modelId: string):
+    | {
+        minVoices: number;
+        maxVoices: number;
+        maxTotalChars?: number;
+      }
+    | undefined;
+
   generate(options: {
     modelId: string;
     text: string;
@@ -64,6 +72,26 @@ export interface SpeechProvider<
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }>;
+
+  generateDialogue?(options: {
+    modelId: string;
+    turns: readonly { voice: TVoice; text: string }[];
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: string | Uint8Array;
+    audioDurationMs?: number;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }>;
+
+  getStitchOptions?(modelId: string):
+    | {
+        providerOptions: Record<string, unknown>;
+        mediaType: string;
+      }
+    | undefined;
   id: string;
   models: readonly ModelInfo[];
 

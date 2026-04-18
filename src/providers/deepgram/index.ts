@@ -120,6 +120,20 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: {
+          encoding: "linear16",
+          sample_rate: 24_000,
+          container: "wav",
+        },
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {

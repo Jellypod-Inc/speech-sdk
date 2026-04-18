@@ -171,6 +171,19 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Murf GEN2 returns base64 WAV (PCM s16) by default; FALCON streams WAV.
+      // Both paths already yield audio/wav so no provider-side overrides are
+      // required.
+      return {
+        providerOptions: {},
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 export function createMurf(config: MurfSpeechProviderConfig = {}) {
