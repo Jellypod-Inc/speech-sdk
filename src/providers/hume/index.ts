@@ -161,6 +161,77 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Hume Octave always returns 48 kHz mono s16 PCM. The /v0/tts/file
+      // API only accepts { type: "mp3" | "wav" | "pcm" } — there is no
+      // sample-rate option (verified against the Hume TS SDK's FormatPcm
+      // type and Hume's own 48 kHz "professional audio" claim). The
+      // response content-type omits the rate, so we declare it here for
+      // the stitch decoder.
+      return {
+        providerOptions: { format: { type: "pcm" } },
+        mediaType: "audio/pcm;rate=48000",
+      };
+    }
+    return undefined;
+  }
+
+  dialogueCapabilities(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // Hume does not publish a hard maximum — cap at the SDK-wide unique
+      // voice ceiling (4) to stay conservative.
+      return { minVoices: 1, maxVoices: 4 };
+    }
+    return undefined;
+  }
+
+  async generateDialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string }[];
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const utterances = options.turns.map((t) => ({
+      text: t.text,
+      voice: { name: t.voice, provider: "HUME_AI" },
+    }));
+
+    const version = this.resolveVersion(options.modelId);
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      utterances,
+    };
+    if (version != null) {
+      body.version = version;
+    }
+
+    const url = `${this.baseURL}/tts/file`;
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": resolveApiKey(this.apiKey, "HUME_API_KEY", "Hume"),
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `hume/${options.modelId}`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      audio: new Uint8Array(arrayBuffer),
+      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+    };
+  }
 }
 
 export function createHume(config: HumeSpeechProviderConfig = {}) {

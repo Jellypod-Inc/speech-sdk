@@ -203,6 +203,21 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       mediaType: mediaTypeForEncoding(audioConfig.audio_encoding),
     };
   }
+
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: {
+          audio_config: {
+            audio_encoding: "LINEAR16",
+            sample_rate_hertz: 24_000,
+          },
+        },
+        mediaType: "audio/wav",
+      };
+    }
+    return undefined;
+  }
 }
 
 function base64ToBytes(b64: string): Uint8Array {

@@ -215,6 +215,12 @@ export class MistralSpeechProvider
 
     return { stream, mediaType };
   }
+
+  getStitchOptions(_modelId: string) {
+    // Mistral voxtral's generate() hard-codes mediaType: "audio/mpeg" regardless
+    // of response_format. Until that is decoupled, stitch is not supported.
+    return undefined;
+  }
 }
 
 export function createMistral(config: MistralSpeechProviderConfig = {}) {

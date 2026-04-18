@@ -1,6 +1,6 @@
 {
   "name": "@speech-sdk/core",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
   "type": "module",
   "packageManager": "pnpm@10.11.1",
@@ -10,6 +10,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./conversation": {
+      "types": "./dist/generate-conversation.d.ts",
+      "default": "./dist/generate-conversation.js"
+    },
+    "./conversation/errors": {
+      "types": "./dist/conversation/errors.d.ts",
+      "default": "./dist/conversation/errors.js"
     },
     "./openai": {
       "types": "./dist/providers/openai/index.d.ts",

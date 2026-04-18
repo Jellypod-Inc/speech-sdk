@@ -131,6 +131,14 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/mpeg",
     };
   }
+
+  getStitchOptions(_modelId: string) {
+    // Unreal Speech's generate() currently hard-codes AudioFormat: "mp3" and
+    // always returns audio/mpeg. Stitch needs PCM/WAV with a matching
+    // mediaType. Returning undefined surfaces StitchUnsupportedError at
+    // dispatch time with a clear message to the caller.
+    return undefined;
+  }
 }
 
 export function createUnrealSpeech(config: UnrealSpeechProviderConfig = {}) {
