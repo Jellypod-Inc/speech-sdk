@@ -51,12 +51,12 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("Hume returns pcm 24k for octave models", () => {
+  it("Hume returns pcm 48k for octave models (Hume's fixed output rate)", () => {
     const p = new HumeSpeechProvider({});
     for (const m of ["octave-2", "octave-1"] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
-        providerOptions: { format: { type: "pcm", sample_rate: 24_000 } },
-        mediaType: "audio/pcm;rate=24000",
+        providerOptions: { format: { type: "pcm" } },
+        mediaType: "audio/pcm;rate=48000",
       });
     }
   });

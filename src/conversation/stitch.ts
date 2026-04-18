@@ -89,9 +89,14 @@ export async function runStitch<V extends Voice>(
         abortSignal: input.abortSignal,
         headers: input.headers,
       });
+      // Prefer the mediaType from getStitchOptions over the response
+      // content-type: providers' response headers often omit the sample
+      // rate (e.g. Hume sends `audio/pcm` for what is actually 48 kHz),
+      // and getStitchOptions is the authoritative declaration of what
+      // the provider returns for the requested format.
       const segment = decodeToPcm16(
         result.audio.uint8Array,
-        result.audio.mediaType
+        stitchOpts.mediaType
       );
       return { result, segment };
     }

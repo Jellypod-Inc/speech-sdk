@@ -164,9 +164,15 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
+      // Hume Octave always returns 48 kHz mono s16 PCM. The /v0/tts/file
+      // API only accepts { type: "mp3" | "wav" | "pcm" } — there is no
+      // sample-rate option (verified against the Hume TS SDK's FormatPcm
+      // type and Hume's own 48 kHz "professional audio" claim). The
+      // response content-type omits the rate, so we declare it here for
+      // the stitch decoder.
       return {
-        providerOptions: { format: { type: "pcm", sample_rate: 24_000 } },
-        mediaType: "audio/pcm;rate=24000",
+        providerOptions: { format: { type: "pcm" } },
+        mediaType: "audio/pcm;rate=48000",
       };
     }
     return undefined;
