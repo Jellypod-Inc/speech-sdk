@@ -117,6 +117,110 @@ Calling `streamSpeech()` on a model that doesn't declare the `"streaming"` featu
 
 Retries apply only to the initial request, until response headers arrive. Once bytes start flowing, mid-stream errors propagate to the `ReadableStream` consumer as a stream error and are not retried. Pass `maxRetries` (default `2`) and an `abortSignal` the same way as `generateSpeech()`.
 
+## Conversations
+
+`generateConversation()` produces a single multi-voice audio clip from an ordered array of turns. It picks the best path automatically:
+
+- **Native dialogue** — when every turn shares one model and that provider has a real multi-speaker dialogue endpoint, the SDK makes a single API call and returns the provider's natural mix. Works with **ElevenLabs v3**, **Google Gemini TTS** (exactly 2 voices), **Hume Octave**, **Fish Audio S2-Pro**, and **fal Dia**.
+- **Stitch fallback** — when turns span multiple providers, or the chosen model has no native dialogue endpoint, the SDK calls `generateSpeech()` per turn in parallel, normalizes each result to PCM, RMS-levels them so quieter providers don't get drowned out, inserts a configurable silence between turns, and returns a single WAV.
+
+```ts
+import { generateConversation } from "@speech-sdk/core/conversation";
+
+const result = await generateConversation({
+  turns: [
+    { model: "openai/tts-1", voice: "nova", text: "Hi, I'm hosted by OpenAI." },
+    { model: "elevenlabs/eleven_multilingual_v2", voice: "JBFqnCBsd6RMkjVDRZzb", text: "And I'm hosted by ElevenLabs." },
+    { model: "google/gemini-3.1-flash-tts-preview", voice: "Kore", text: "I'm Gemini three-point-one flash TTS." },
+    { model: "hume/octave-2", voice: "Kora", text: "And I'm Hume Octave. Thanks for listening." },
+  ],
+});
+
+result.audio.uint8Array;  // Uint8Array of one combined WAV
+result.audio.mediaType;   // "audio/wav"
+```
+
+The return type is the standard `SpeechResult`, so it composes with everything else in the SDK.
+
+### Try it — listen to the difference
+
+The same four-provider conversation rendered two ways. The raw version exposes Hume's quieter level next to ElevenLabs and OpenAI; the normalized version (the default) levels every voice to match the loudest source.
+
+| Sample | Audio |
+|---|---|
+| **Cross-provider stitch** (OpenAI + ElevenLabs) | <a href="./assets/audio/conversation/cross-provider-stitch.mp3">▶ Listen</a> |
+| **Four-provider stitch — raw** (`normalizeVolume: false`) | <a href="./assets/audio/conversation/four-providers-raw.mp3">▶ Listen</a> |
+| **Four-provider stitch — normalized** (default) | <a href="./assets/audio/conversation/four-providers-normalized.mp3">▶ Listen</a> |
+
+> The README renders these as inline audio players when viewed on GitHub. If your viewer doesn't support inline playback, click "Listen" to download the MP3.
+
+<details>
+<summary>Inline players</summary>
+
+Cross-provider stitch:
+
+<audio controls src="./assets/audio/conversation/cross-provider-stitch.mp3"></audio>
+
+Four-provider stitch — raw (no normalization):
+
+<audio controls src="./assets/audio/conversation/four-providers-raw.mp3"></audio>
+
+Four-provider stitch — normalized (default):
+
+<audio controls src="./assets/audio/conversation/four-providers-normalized.mp3"></audio>
+
+</details>
+
+### Conversation options
+
+```ts
+generateConversation({
+  model?: string | ResolvedModel,                 // default model for all turns
+  turns: ConversationTurn[],                      // 1..N turns; up to 4 unique voices
+  gapMs?: number,                                 // silence between turns (stitch path), default 300
+  normalizeVolume?: boolean,                      // RMS-level stitched turns, default true
+  maxConcurrency?: number,                        // cap parallel generateSpeech calls, default 6
+  maxRetries?: number,                            // per-turn retries, default 2
+  apiKey?: string,
+  providerOptions?: Record<string, unknown>,      // forwarded to every provider; per-turn override available
+  abortSignal?: AbortSignal,
+  headers?: Record<string, string>,
+});
+
+interface ConversationTurn {
+  voice: Voice;                                   // required
+  text: string;                                   // required, non-empty
+  model?: string | ResolvedModel;                 // per-turn override of the top-level model
+  providerOptions?: Record<string, unknown>;
+}
+```
+
+### Volume normalization
+
+When the stitch path runs, `normalizeVolume: true` (the default) RMS-normalizes each per-turn segment to match the loudest segment. Quieter providers like Hume Octave get scaled up; the loudest provider is never attenuated. Two O(N) passes over the int16 PCM samples — cheap. Pass `normalizeVolume: false` to skip the step entirely (zero work) when you want raw provider levels.
+
+### Errors
+
+Conversation-specific errors (importable from `@speech-sdk/core/conversation/errors`):
+
+| Error | When |
+|---|---|
+| `ConversationInputError` | Validation failure — empty turns, blank text, more than 4 unique voices, or a turn missing a model |
+| `DialogueConstraintError` | A native-dialogue provider was selected but the conversation violates its constraints (e.g. 3 voices on Gemini, which requires exactly 2) |
+| `StitchUnsupportedError` | The stitch path was selected but a chosen provider/model can't emit PCM/WAV (currently `unreal-speech`, `fal-ai`, `mistral`) |
+
+### Native dialogue caps
+
+| Provider | Native dialogue model | Voice constraints |
+|---|---|---|
+| ElevenLabs | `eleven_v3` | 1–10 voices, ≤ 2,000 total chars |
+| Google | `gemini-2.5-flash-preview-tts`, `gemini-2.5-pro-preview-tts`, `gemini-3.1-flash-tts-preview` | **Exactly 2 voices** (API requirement) |
+| Hume | `octave-1`, `octave-2` | 1–4 voices |
+| Fish Audio | `s2-pro` | 1–4 voices |
+| fal | `dia-tts` | 1–2 voices |
+
+Across the SDK, conversations are capped at **4 unique voices** total regardless of provider.
+
 ## Supported Providers
 
 Use `provider/model` strings. Passing just the provider name uses its default model.
