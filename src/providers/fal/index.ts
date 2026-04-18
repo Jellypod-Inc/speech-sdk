@@ -39,12 +39,6 @@ export class FalSpeechProvider
       languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
       features: ["open-source"],
     },
-    {
-      id: "index-tts-2",
-      releaseDate: "2025-09-08",
-      languages: ["en", "zh"],
-      features: ["open-source", "inline-voice-cloning"],
-    },
   ] as const;
 
   private readonly apiKey: string | undefined;
@@ -103,8 +97,16 @@ export class FalSpeechProvider
 
     await handleErrorResponse(response, `fal-ai/${options.modelId}`);
 
-    const json = (await response.json()) as { audio: { url: string } };
+    const json = (await response.json()) as {
+      audio: { url: string; content_type?: string };
+    };
+    return await this.fetchAudio(json, options);
+  }
 
+  private async fetchAudio(
+    json: { audio: { url: string; content_type?: string } },
+    options: { modelId: string; abortSignal?: AbortSignal }
+  ): Promise<{ audio: Uint8Array; mediaType: string }> {
     const audioResponse = await this.fetchFn(json.audio.url, {
       signal: options.abortSignal,
     });
@@ -118,11 +120,15 @@ export class FalSpeechProvider
     }
 
     const arrayBuffer = await audioResponse.arrayBuffer();
+    // fal includes the authoritative content_type in its JSON response.
+    // Fall back to the CDN response header, then to audio/wav (the format
+    // every currently-listed model emits).
+    const mediaType =
+      json.audio.content_type ??
+      audioResponse.headers.get("content-type") ??
+      "audio/wav";
 
-    return {
-      audio: new Uint8Array(arrayBuffer),
-      mediaType: "audio/mpeg",
-    };
+    return { audio: new Uint8Array(arrayBuffer), mediaType };
   }
 
   stream(options: { modelId: string }): Promise<never> {
@@ -131,11 +137,16 @@ export class FalSpeechProvider
     );
   }
 
-  getStitchOptions(_modelId: string) {
-    // fal-hosted models (Dia, Orpheus, F5-TTS, Kokoro, Index-TTS 2) currently
-    // return MP3, and this provider hard-codes audio/mpeg as the mediaType.
-    // Stitch needs PCM/WAV, so we decline participation — StitchUnsupportedError
-    // surfaces the offending model at dispatch time.
+  getStitchOptions(modelId: string) {
+    // All currently-listed fal models (dia-tts, orpheus-tts, f5-tts, kokoro)
+    // return WAV (16-bit mono PCM in a RIFF container) at fal's CDN URL.
+    // Pass through providerOptions empty — fal exposes no format selector.
+    if (this.models.some((m) => m.id === modelId)) {
+      return {
+        providerOptions: {},
+        mediaType: "audio/wav",
+      };
+    }
     return undefined;
   }
 
@@ -207,22 +218,10 @@ export class FalSpeechProvider
 
     await handleErrorResponse(response, `fal-ai/${options.modelId}`);
 
-    const json = (await response.json()) as { audio: { url: string } };
-    const audioResponse = await this.fetchFn(json.audio.url, {
-      signal: options.abortSignal,
-    });
-    if (!audioResponse.ok) {
-      throw new ApiError(`API error: ${audioResponse.status}`, {
-        statusCode: audioResponse.status,
-        model: `fal-ai/${options.modelId}`,
-        responseBody: await audioResponse.text().catch(() => undefined),
-      });
-    }
-
-    return {
-      audio: new Uint8Array(await audioResponse.arrayBuffer()),
-      mediaType: "audio/mpeg",
+    const json = (await response.json()) as {
+      audio: { url: string; content_type?: string };
     };
+    return await this.fetchAudio(json, options);
   }
 }
 

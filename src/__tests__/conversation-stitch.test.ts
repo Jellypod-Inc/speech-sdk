@@ -23,7 +23,48 @@ function mockProvider(audioPayload: Int16Array): SpeechProvider {
   };
 }
 
+function readWavFirstSample(wav: Uint8Array): number {
+  const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+  let offset = 12;
+  while (offset + 8 <= wav.byteLength) {
+    const id = view.getUint32(offset);
+    const size = view.getUint32(offset + 4, true);
+    if (id === 0x64_61_74_61) {
+      return view.getInt16(offset + 8, true);
+    }
+    offset += 8 + size + (size % 2);
+  }
+  throw new Error("no data chunk");
+}
+
 describe("runStitch", () => {
+  it("normalizes to volumeDbfs target instead of the default -20 dBFS", async () => {
+    const seg = new Int16Array(2400);
+    seg.fill(7);
+    const provider = mockProvider(seg);
+    const resolved: ResolvedModel[] = [{ provider, modelId: "m" }];
+
+    // -14 dBFS RMS for int16 = round(32767 * 10^(-14/20)) = 6538
+    const result = await runStitch({
+      resolvedPerTurn: resolved,
+      turns: [{ voice: "a", text: "hi" }],
+      stitchOptionsPerTurn: [
+        {
+          providerOptions: { format: "pcm24k" },
+          mediaType: "audio/pcm;rate=24000",
+        },
+      ],
+      gapMs: 0,
+      maxConcurrency: 1,
+      maxRetries: 0,
+      normalizeVolume: true,
+      volumeDbfs: -14,
+    });
+
+    // Constant-amplitude segment ⇒ every output sample lands at the target RMS.
+    expect(readWavFirstSample(result.audio)).toBe(6538);
+  });
+
   it("calls provider.generate per turn with merged providerOptions and concats to WAV", async () => {
     const seg = new Int16Array(2400);
     seg.fill(7);

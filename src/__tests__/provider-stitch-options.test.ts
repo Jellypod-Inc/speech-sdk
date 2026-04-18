@@ -106,9 +106,12 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Unreal Speech returns undefined (stitch unsupported)", () => {
+  it("Unreal Speech returns pcm_s16le 22.05 kHz", () => {
     const p = new UnrealSpeechProvider({});
-    expect(p.getStitchOptions?.("default")).toBeUndefined();
+    expect(p.getStitchOptions?.("default")).toEqual({
+      providerOptions: { AudioFormat: "pcm_s16le" },
+      mediaType: "audio/pcm;rate=22050",
+    });
   });
 
   it("Murf returns wav for GEN2 and FALCON", () => {
@@ -121,23 +124,30 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("Resemble returns wav", () => {
+  it("Resemble returns wav with PCM_16 precision (default is PCM_32, not decodable)", () => {
     const p = new ResembleSpeechProvider({});
     expect(p.getStitchOptions?.("default")).toEqual({
-      providerOptions: {},
+      providerOptions: { precision: "PCM_16" },
       mediaType: "audio/wav",
     });
   });
 
-  it("fal-ai returns undefined (stitch unsupported)", () => {
+  it("fal-ai returns wav for every listed model", () => {
     const p = new FalSpeechProvider({});
-    expect(p.getStitchOptions?.("dia-tts")).toBeUndefined();
-    expect(p.getStitchOptions?.("f5-tts")).toBeUndefined();
+    for (const m of ["dia-tts", "f5-tts", "kokoro", "orpheus-tts"] as const) {
+      expect(p.getStitchOptions?.(m)).toEqual({
+        providerOptions: {},
+        mediaType: "audio/wav",
+      });
+    }
   });
 
-  it("Mistral returns undefined (stitch unsupported)", () => {
+  it("Mistral returns pcm float32 24 kHz for voxtral", () => {
     const p = new MistralSpeechProvider({});
-    expect(p.getStitchOptions?.("voxtral-mini-tts-2603")).toBeUndefined();
+    expect(p.getStitchOptions?.("voxtral-mini-tts-2603")).toEqual({
+      providerOptions: { response_format: "pcm" },
+      mediaType: "audio/pcm;rate=24000;encoding=float32",
+    });
   });
 
   it("xAI returns wav via output_format.codec", () => {
@@ -161,6 +171,9 @@ describe("getStitchOptions per provider", () => {
       new MurfSpeechProvider({}),
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
+      new FalSpeechProvider({}),
+      new MistralSpeechProvider({}),
+      new UnrealSpeechProvider({}),
     ];
     for (const p of providers) {
       expect(p.getStitchOptions?.("totally-fake-model-id")).toBeUndefined();

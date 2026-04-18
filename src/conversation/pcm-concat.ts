@@ -36,6 +36,46 @@ function downmixToMono(interleaved: Int16Array, channels: number): Int16Array {
   return out;
 }
 
+/**
+ * View 32-bit little-endian float PCM bytes as a Float32Array. Reuses the
+ * existing buffer when 4-aligned; otherwise copies into a fresh, aligned
+ * buffer (Float32Array's view requires 4-byte alignment).
+ */
+function pcmBytesToFloat32(bytes: Uint8Array): Float32Array {
+  if (bytes.byteOffset % 4 === 0 && bytes.byteLength % 4 === 0) {
+    return new Float32Array(
+      bytes.buffer,
+      bytes.byteOffset,
+      bytes.byteLength / 4
+    );
+  }
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Float32Array(copy.buffer);
+}
+
+const INT16_MAX = 32_767;
+const INT16_MIN = -32_768;
+
+/** Convert normalized [-1,1] float32 samples to int16 with clamping. */
+function float32ToInt16(f32: Float32Array): Int16Array {
+  const out = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const s = f32[i];
+    if (s >= 1) {
+      out[i] = INT16_MAX;
+    } else if (s <= -1) {
+      out[i] = INT16_MIN;
+    } else {
+      out[i] = Math.round(s * INT16_MAX);
+    }
+  }
+  return out;
+}
+
+/** Match `encoding=<value>` (string) in a mediaType param list. */
+const ENCODING_PARAM_RE = /(?:^|;)\s*encoding=([a-z0-9_-]+)(?=$|;|\s)/i;
+
 /** Decode a provider response to mono 16-bit PCM + its native sample rate. */
 export function decodeToPcm16(
   data: Uint8Array,
@@ -50,6 +90,17 @@ export function decodeToPcm16(
     // little-endian hosts before constructing the Int16Array.
     const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
     const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
+    const encoding = lower.match(ENCODING_PARAM_RE)?.[1];
+
+    if (encoding === "float32") {
+      const interleaved = float32ToInt16(pcmBytesToFloat32(data));
+      return {
+        pcm: downmixToMono(interleaved, channels),
+        sampleRate,
+        channels: 1,
+      };
+    }
+
     const interleaved = pcmBytesToInt16(data);
     return {
       pcm: downmixToMono(interleaved, channels),
@@ -64,7 +115,7 @@ export function decodeToPcm16(
 
   throw new Error(
     `conversation.pcm-concat: unsupported stitch mediaType "${mediaType}". ` +
-      'getStitchOptions must return "audio/wav" or "audio/pcm;rate=..." so the stitch layer can concatenate without a compressed-audio decoder.'
+      'getStitchOptions must return "audio/wav" or "audio/pcm;rate=...[;encoding=float32]" so the stitch layer can concatenate without a compressed-audio decoder.'
   );
 }
 
@@ -161,9 +212,6 @@ function rmsPcm16(pcm: Int16Array): number {
   return Math.sqrt(sumSq / pcm.length);
 }
 
-const INT16_MAX = 32_767;
-const INT16_MIN = -32_768;
-
 function clampInt16(value: number): number {
   if (value > INT16_MAX) {
     return INT16_MAX;
@@ -184,11 +232,18 @@ function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
 }
 
 /**
- * Default RMS target: −20 dBFS for int16 = round(32767 * 10^(-20/20)) = 3277.
- * Broadcast/podcast voice loudness convention with ~20 dB peak headroom —
- * comfortable to listen to, leaves room for typical TTS peaks not to clip.
+ * Default RMS target: −20 dBFS — broadcast/podcast voice loudness convention
+ * with ~20 dB peak headroom. Comfortable to listen to and leaves room for
+ * typical TTS peaks not to clip.
  */
-const DEFAULT_TARGET_RMS_INT16 = 3277;
+export const DEFAULT_VOLUME_DBFS = -20;
+
+/** Convert a dBFS level (≤ 0) to the equivalent int16 RMS amplitude. */
+export function dbfsToInt16Rms(dbfs: number): number {
+  return Math.round(INT16_MAX * 10 ** (dbfs / 20));
+}
+
+const DEFAULT_TARGET_RMS_INT16 = dbfsToInt16Rms(DEFAULT_VOLUME_DBFS);
 
 /**
  * RMS-normalize each segment to an absolute target amplitude. Each segment

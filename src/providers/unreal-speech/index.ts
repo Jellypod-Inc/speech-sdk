@@ -45,9 +45,12 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
   }> {
     const url = `${this.baseURL}/speech`;
 
+    // Defaults are applied first so providerOptions (including AudioFormat)
+    // override them; output bytes' mediaType is then derived from whatever
+    // AudioFormat ended up in the request.
     const body: Record<string, unknown> = {
-      ...options.providerOptions,
       AudioFormat: "mp3",
+      ...options.providerOptions,
       OutputFormat: "uri",
       VoiceId: options.voice,
       Text: options.text,
@@ -84,7 +87,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       audio: new Uint8Array(arrayBuffer),
-      mediaType: "audio/mpeg",
+      mediaType: mediaTypeForAudioFormat(body.AudioFormat),
     };
   }
 
@@ -103,8 +106,8 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
     const url = `${this.baseURL}/stream`;
 
     const body: Record<string, unknown> = {
-      ...options.providerOptions,
       AudioFormat: "mp3",
+      ...options.providerOptions,
       VoiceId: options.voice,
       Text: options.text,
     };
@@ -128,16 +131,35 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType:
+        response.headers.get("content-type") ??
+        mediaTypeForAudioFormat(body.AudioFormat),
     };
   }
 
-  getStitchOptions(_modelId: string) {
-    // Unreal Speech's generate() currently hard-codes AudioFormat: "mp3" and
-    // always returns audio/mpeg. Stitch needs PCM/WAV with a matching
-    // mediaType. Returning undefined surfaces StitchUnsupportedError at
-    // dispatch time with a clear message to the caller.
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // v8 docs list pcm_s16le as a valid AudioFormat that emits 22050 Hz
+      // raw 16-bit signed LE PCM. Routing the stitch path through the same
+      // /speech endpoint as generate() keeps the two-step JSON-then-CDN
+      // fetch flow intact.
+      return {
+        providerOptions: { AudioFormat: "pcm_s16le" },
+        mediaType: "audio/pcm;rate=22050",
+      };
+    }
     return undefined;
+  }
+}
+
+function mediaTypeForAudioFormat(format: unknown): string {
+  switch (format) {
+    case "pcm_s16le":
+      return "audio/pcm;rate=22050";
+    case "pcm_mulaw":
+      return "audio/basic";
+    default:
+      return "audio/mpeg";
   }
 }
 

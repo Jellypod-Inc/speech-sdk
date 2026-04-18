@@ -114,7 +114,7 @@ export class MistralSpeechProvider
     return {
       audio: json.audio_data,
       audioDurationMs,
-      mediaType: "audio/mpeg",
+      mediaType: mediaTypeForResponseFormat(body.response_format),
     };
   }
 
@@ -130,9 +130,6 @@ export class MistralSpeechProvider
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const responseFormat =
-      (options.providerOptions?.response_format as string | undefined) ?? "mp3";
-
     const body: Record<string, unknown> = {
       response_format: "mp3",
       ...options.providerOptions,
@@ -204,22 +201,39 @@ export class MistralSpeechProvider
       },
     });
 
-    let mediaType: string;
-    if (responseFormat === "opus") {
-      mediaType = "audio/opus";
-    } else if (responseFormat === "wav") {
-      mediaType = "audio/wav";
-    } else {
-      mediaType = "audio/mpeg";
-    }
-
-    return { stream, mediaType };
+    return {
+      stream,
+      mediaType: mediaTypeForResponseFormat(body.response_format),
+    };
   }
 
-  getStitchOptions(_modelId: string) {
-    // Mistral voxtral's generate() hard-codes mediaType: "audio/mpeg" regardless
-    // of response_format. Until that is decoupled, stitch is not supported.
+  getStitchOptions(modelId: string) {
+    if (this.models.some((m) => m.id === modelId)) {
+      // voxtral's `pcm` format is headerless float32 little-endian, mono,
+      // 24 kHz — declared via the `encoding=float32` mediaType param so the
+      // stitch decoder converts to int16 before concatenation.
+      return {
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000;encoding=float32",
+      };
+    }
     return undefined;
+  }
+}
+
+function mediaTypeForResponseFormat(format: unknown): string {
+  switch (format) {
+    case "wav":
+      return "audio/wav";
+    case "pcm":
+      // voxtral's `pcm` is headerless float32 LE @ 24 kHz mono.
+      return "audio/pcm;rate=24000;encoding=float32";
+    case "flac":
+      return "audio/flac";
+    case "opus":
+      return "audio/opus";
+    default:
+      return "audio/mpeg";
   }
 }
 

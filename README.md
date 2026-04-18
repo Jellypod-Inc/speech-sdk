@@ -42,6 +42,23 @@ result.audio.base64;      // string (lazy-computed)
 result.audio.mediaType;   // "audio/mpeg"
 ```
 
+### Volume normalization
+
+Pass `volumeDbfs` to RMS-normalize the output to an absolute target loudness (must be ≤ 0; lower is quieter; -20 is the broadcast/podcast voice convention with ~20 dB of peak headroom):
+
+```ts
+const result = await generateSpeech({
+  model: 'openai/gpt-4o-mini-tts',
+  text: 'Hello from speech-sdk!',
+  voice: 'alloy',
+  volumeDbfs: -20,
+});
+
+result.audio.mediaType;   // "audio/wav" — re-encoded after normalization
+```
+
+When `volumeDbfs` is set the SDK transparently asks the provider for its decodable PCM/WAV mode, normalizes the samples, and returns 16-bit mono WAV — so the response `mediaType` switches to `audio/wav` regardless of the provider's native default. Throws `VolumeAdjustmentUnsupportedError` if the provider has no decodable output mode.
+
 ## Streaming
 
 Use `streamSpeech()` instead of `generateSpeech()` to receive audio bytes incrementally as the provider produces them. The result's `audio` field is a standard `ReadableStream<Uint8Array>` that works in Node, Edge runtimes, and browsers.
@@ -149,7 +166,8 @@ generateConversation({
   model?: string | ResolvedModel,                 // default model for all turns
   turns: ConversationTurn[],                      // 1..N turns; up to 4 unique voices
   gapMs?: number,                                 // silence between turns (stitch path), default 300
-  normalizeVolume?: boolean,                      // RMS-level stitched turns, default true
+  normalizeVolume?: boolean,                      // RMS-level the output, default true
+  volumeDbfs?: number,                            // RMS target loudness in dBFS (≤0), default -20
   maxConcurrency?: number,                        // cap parallel generateSpeech calls, default 6
   maxRetries?: number,                            // per-turn retries, default 2
   apiKey?: string,
@@ -162,18 +180,24 @@ interface ConversationTurn {
   voice: Voice;                                   // required
   text: string;                                   // required, non-empty
   model?: string | ResolvedModel;                 // per-turn override of the top-level model
-  providerOptions?: Record<string, unknown>;
+  providerOptions?: Record<string, unknown>,
 }
 ```
 
 ### Volume normalization
 
-When the stitch path runs, `normalizeVolume: true` (the default) RMS-normalizes each per-turn segment to a fixed **−20 dBFS** RMS target — the broadcast/podcast voice convention, with ~20 dB peak headroom so typical TTS speech doesn't clip after gain. The target is absolute, not relative, so:
+`normalizeVolume: true` (the default) RMS-normalizes the output to an absolute target loudness — broadcast/podcast voice convention — so two `generateConversation` calls produce comparable levels regardless of provider mix or content. The target defaults to **−20 dBFS** (~20 dB of peak headroom), and is configurable via `volumeDbfs` (must be ≤ 0; lower is quieter).
 
-- Two `generateConversation` calls produce comparable loudness even with completely different content — you can play them back-to-back without adjusting volume.
-- Each segment is normalized independently — no cross-segment dependency, just two O(N) passes over the int16 PCM samples per segment.
+```ts
+await generateConversation({
+  turns: [...],
+  volumeDbfs: -16,           // a touch louder than the default
+});
+```
 
-Pass `normalizeVolume: false` to skip the step entirely (zero work) when you want raw provider levels.
+Normalization runs on **both paths** — stitched multi-provider conversations and single-provider native dialogue. On the native path the SDK transparently asks the provider for its decodable PCM/WAV mode (via `getStitchOptions`), levels the result, and re-encodes as 16-bit mono WAV — so the response `mediaType` becomes `audio/wav` whenever normalization runs. If a native dialogue provider can't emit decodable audio, the request still succeeds but a `warning` is appended explaining that volume normalization was skipped.
+
+Pass `normalizeVolume: false` to skip normalization entirely (zero work) and keep the raw provider audio bytes and `mediaType` untouched.
 
 ### Errors
 
@@ -183,7 +207,7 @@ Conversation-specific errors (importable from `@speech-sdk/core/conversation/err
 |---|---|
 | `ConversationInputError` | Validation failure — empty turns, blank text, more than 4 unique voices, or a turn missing a model |
 | `DialogueConstraintError` | A native-dialogue provider was selected but the conversation violates its constraints (e.g. 3 voices on Gemini, which requires exactly 2) |
-| `StitchUnsupportedError` | The stitch path was selected but a chosen provider/model can't emit PCM/WAV (currently `unreal-speech`, `fal-ai`, `mistral`) |
+| `StitchUnsupportedError` | The stitch path was selected but a chosen provider/model can't emit PCM/WAV |
 
 ### Native dialogue caps
 

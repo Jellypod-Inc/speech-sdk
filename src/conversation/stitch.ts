@@ -1,6 +1,11 @@
 import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
-import { concatPcmToWav, decodeToPcm16, normalizeRms } from "./pcm-concat.js";
+import {
+  concatPcmToWav,
+  dbfsToInt16Rms,
+  decodeToPcm16,
+  normalizeRms,
+} from "./pcm-concat.js";
 import type { ConversationTurn } from "./types.js";
 
 interface StitchInput<V extends Voice = Voice> {
@@ -18,6 +23,7 @@ interface StitchInput<V extends Voice = Voice> {
   }[];
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
+  readonly volumeDbfs?: number;
 }
 
 interface StitchOutput {
@@ -105,7 +111,10 @@ export async function runStitch<V extends Voice>(
 
   const segments = perTurn.map((p) => p.segment);
   const leveledSegments = input.normalizeVolume
-    ? normalizeRms(segments)
+    ? normalizeRms(
+        segments,
+        input.volumeDbfs == null ? undefined : dbfsToInt16Rms(input.volumeDbfs)
+      )
     : segments;
 
   const audio = await concatPcmToWav(leveledSegments, {
