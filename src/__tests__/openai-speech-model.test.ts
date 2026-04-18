@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 
 describe("OpenAISpeechProvider", () => {
@@ -49,6 +50,7 @@ describe("OpenAISpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Bearer sk-test-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("maps providerOptions to request body", async () => {

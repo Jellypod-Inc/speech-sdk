@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
 
 describe("ResembleSpeechProvider", () => {
@@ -42,6 +43,7 @@ describe("ResembleSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("resemble-key-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("sends correct body with voice_uuid and data", async () => {

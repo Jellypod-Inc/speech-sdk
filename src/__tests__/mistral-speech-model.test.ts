@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { MistralSpeechProvider } from "../providers/mistral/index.js";
 
 describe("MistralSpeechProvider", () => {
@@ -46,6 +47,7 @@ describe("MistralSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Bearer sk-test");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("maps { audio: string } voice to ref_audio", async () => {

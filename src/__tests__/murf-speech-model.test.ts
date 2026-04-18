@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 
 describe("MurfSpeechProvider", () => {
@@ -42,6 +43,7 @@ describe("MurfSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers["api-key"]).toBe("murf-key-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
     // Should NOT have Authorization header
     expect(init.headers.Authorization).toBeUndefined();
   });

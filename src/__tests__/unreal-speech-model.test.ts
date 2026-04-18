@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { UnrealSpeechProvider } from "../providers/unreal-speech/index.js";
 
 describe("UnrealSpeechProvider", () => {
@@ -102,6 +103,7 @@ describe("UnrealSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Bearer unreal-key-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("throws on first fetch error", async () => {

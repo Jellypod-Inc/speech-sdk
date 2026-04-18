@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
 describe("GoogleSpeechProvider", () => {
@@ -49,6 +50,7 @@ describe("GoogleSpeechProvider", () => {
     );
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBeUndefined();
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("sends correct body with contents and speech_config", async () => {

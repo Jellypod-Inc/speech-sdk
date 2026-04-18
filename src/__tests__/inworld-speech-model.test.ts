@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
 
 const MISSING_API_KEY_PATTERN = /Inworld API key is required/;
@@ -61,6 +62,7 @@ describe("InworldSpeechProvider", () => {
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Basic inworld-key-abc");
     expect(init.headers["Content-Type"]).toBe("application/json");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("sends body with text, voice_id, model_id, and default audio_config", async () => {
