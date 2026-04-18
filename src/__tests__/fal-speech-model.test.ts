@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { FalSpeechProvider } from "../providers/fal/index.js";
 
 describe("FalSpeechProvider", () => {
@@ -58,6 +59,7 @@ describe("FalSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Key fal-key-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("maps string voice to voice field in body", async () => {

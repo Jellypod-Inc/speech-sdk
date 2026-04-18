@@ -1,4 +1,8 @@
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface DeepgramSpeechProviderConfig {
@@ -58,6 +62,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Token ${resolveApiKey(this.apiKey, "DEEPGRAM_API_KEY", "Deepgram")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -103,6 +108,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Token ${resolveApiKey(this.apiKey, "DEEPGRAM_API_KEY", "Deepgram")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

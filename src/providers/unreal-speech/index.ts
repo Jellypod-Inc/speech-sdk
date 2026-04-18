@@ -1,5 +1,9 @@
 import { ApiError } from "../../errors.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface UnrealSpeechProviderConfig {
@@ -61,6 +65,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "UNREAL_SPEECH_API_KEY", "Unreal Speech")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -117,6 +122,7 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "UNREAL_SPEECH_API_KEY", "Unreal Speech")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

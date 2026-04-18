@@ -1,4 +1,8 @@
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
 
@@ -93,6 +97,7 @@ export class MistralSpeechProvider
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -163,6 +168,7 @@ export class MistralSpeechProvider
         "Content-Type": "application/json",
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
         Accept: "text/event-stream",
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

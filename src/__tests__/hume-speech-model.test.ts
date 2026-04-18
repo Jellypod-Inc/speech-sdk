@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 
 describe("HumeSpeechProvider", () => {
@@ -45,6 +46,7 @@ describe("HumeSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers["X-Hume-Api-Key"]).toBe("hume-test-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("wraps text and voice in utterances array", async () => {

@@ -1,4 +1,8 @@
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface InworldSpeechProviderConfig {
@@ -15,10 +19,6 @@ interface InworldAudioConfig {
 
 const DEFAULT_AUDIO_ENCODING = "MP3";
 const DEFAULT_SAMPLE_RATE_HERTZ = 48_000;
-
-// Identifies traffic originating from this SDK so Inworld can bucket
-// usage by integration. Callers may override via options.headers.
-const SDK_USER_AGENT = "jellypod-speech-sdk";
 
 function mediaTypeForEncoding(encoding: string | undefined): string {
   switch ((encoding ?? DEFAULT_AUDIO_ENCODING).toUpperCase()) {

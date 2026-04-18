@@ -1,5 +1,9 @@
 import { ApiError, StreamingNotSupportedError } from "../../errors.js";
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface FalSpeechProviderConfig {
@@ -89,6 +93,7 @@ export class FalSpeechProvider
       headers: {
         "Content-Type": "application/json",
         Authorization: `Key ${resolveApiKey(this.apiKey, "FAL_API_KEY", "fal")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -210,6 +215,7 @@ export class FalSpeechProvider
       headers: {
         "Content-Type": "application/json",
         Authorization: `Key ${resolveApiKey(this.apiKey, "FAL_API_KEY", "fal")}`,
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),

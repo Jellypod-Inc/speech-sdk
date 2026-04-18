@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { SDK_USER_AGENT } from "../provider-utils.js";
 import { DeepgramSpeechProvider } from "../providers/deepgram/index.js";
 
 describe("DeepgramSpeechProvider", () => {
@@ -68,6 +69,7 @@ describe("DeepgramSpeechProvider", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Token dg-test-123");
+    expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
   it("returns audio data and mediaType", async () => {

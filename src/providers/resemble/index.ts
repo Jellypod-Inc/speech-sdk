@@ -1,4 +1,8 @@
-import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
+import {
+  handleErrorResponse,
+  resolveApiKey,
+  SDK_USER_AGENT,
+} from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
 export interface ResembleSpeechProviderConfig {
@@ -83,6 +87,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
           "RESEMBLE_API_KEY",
           "Resemble"
         ),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
@@ -128,6 +133,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
           "RESEMBLE_API_KEY",
           "Resemble"
         ),
+        "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
       body: JSON.stringify(body),
