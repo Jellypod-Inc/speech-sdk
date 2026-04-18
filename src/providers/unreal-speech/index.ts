@@ -74,10 +74,6 @@ export class UnrealSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as { OutputUri: string };
 
     const audioResponse = await this.fetchFn(json.OutputUri, {
-      headers: {
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
-      },
       signal: options.abortSignal,
     });
 
