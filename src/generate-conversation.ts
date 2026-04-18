@@ -59,6 +59,7 @@ export async function generateConversation<V extends Voice = Voice>(
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     normalizeVolume: options.normalizeVolume ?? true,
+    volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
   });
@@ -111,12 +112,36 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
+  // When normalization is requested and the provider exposes a decodable
+  // PCM/WAV mode via getStitchOptions, force the dialogue request into that
+  // mode so we can re-RMS-level the output. Otherwise the dialogue runs
+  // unchanged and emerges in whatever format the provider mixes natively
+  // (often MP3) — we surface that via a warning.
+  const normalize = options.normalizeVolume ?? true;
+  const stitchOpts = normalize
+    ? resolved.provider.getStitchOptions?.(resolved.modelId)
+    : undefined;
+  const warnings: string[] = [];
+  if (normalize && !stitchOpts) {
+    warnings.push(
+      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization. Pass normalizeVolume:false to silence this warning.`
+    );
+  }
+
+  // Stitch-mode options are applied last so they override user-supplied
+  // providerOptions that would otherwise break the decoder (e.g. a caller
+  // requesting `response_format: "mp3"` while normalization is on). Same
+  // precedence as the stitch path's per-turn merge.
+  const dialogueProviderOptions = stitchOpts
+    ? { ...options.providerOptions, ...stitchOpts.providerOptions }
+    : options.providerOptions;
+
   const result = await pRetry(
     () =>
       generateDialogue({
         modelId: resolved.modelId,
         turns: options.turns.map((t) => ({ voice: t.voice, text: t.text })),
-        providerOptions: options.providerOptions,
+        providerOptions: dialogueProviderOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
       }),
@@ -138,14 +163,29 @@ async function runNative<V extends Voice>(args: {
     throw new NoSpeechGeneratedError();
   }
 
+  let audioBytes: string | Uint8Array = result.audio;
+  // Prefer the stitch-mode mediaType over the provider's response header;
+  // some providers (e.g. Hume) omit the sample rate from content-type.
+  let outputMediaType = stitchOpts?.mediaType ?? result.mediaType;
+
+  if (stitchOpts) {
+    const { adjustVolume } = await import("./volume-adjust.js");
+    audioBytes = await adjustVolume({
+      audio: result.audio,
+      mediaType: stitchOpts.mediaType,
+      volumeDbfs: options.volumeDbfs ?? -20,
+    });
+    outputMediaType = "audio/wav";
+  }
+
   const audio = new DefaultGeneratedAudioFile({
-    data: result.audio,
-    mediaType: result.mediaType,
+    data: audioBytes,
+    mediaType: outputMediaType,
   });
 
   const computedDuration = await computeAudioDuration(
-    result.audio,
-    result.mediaType
+    audio.uint8Array,
+    outputMediaType
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
@@ -163,5 +203,6 @@ async function runNative<V extends Voice>(args: {
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

@@ -154,9 +154,11 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Resemble's /synthesize always returns base64 WAV; no override needed.
+      // Resemble's /synthesize defaults to PCM_32 (32-bit float WAV) which
+      // the stitch decoder doesn't accept; pin precision to PCM_16 so the
+      // returned WAV is 16-bit signed PCM.
       return {
-        providerOptions: {},
+        providerOptions: { precision: "PCM_16" },
         mediaType: "audio/wav",
       };
     }

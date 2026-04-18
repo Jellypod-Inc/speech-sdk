@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   concatPcmToWav,
+  DEFAULT_VOLUME_DBFS,
+  dbfsToInt16Rms,
   decodeToPcm16,
   normalizeRms,
 } from "../conversation/pcm-concat.js";
@@ -66,6 +68,57 @@ describe("decodeToPcm16", () => {
       () => decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
       // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     ).toThrow(/unsupported stitch mediaType/);
+  });
+
+  it("decodes float32 PCM via the encoding=float32 mediaType param", () => {
+    const samples = new Float32Array([0, 0.5, -0.5, 1, -1, 1.5, -1.5]);
+    const bytes = new Uint8Array(samples.buffer);
+    const out = decodeToPcm16(bytes, "audio/pcm;rate=24000;encoding=float32");
+    expect(out.sampleRate).toBe(24_000);
+    expect(out.channels).toBe(1);
+    // 0, 0.5*32767, -0.5*32767 (rounded), clamped extremes.
+    expect(Array.from(out.pcm)).toEqual([
+      0,
+      Math.round(0.5 * 32_767),
+      Math.round(-0.5 * 32_767),
+      32_767,
+      -32_768,
+      32_767,
+      -32_768,
+    ]);
+  });
+
+  it("downmixes 2-channel float32 PCM to mono", () => {
+    const samples = new Float32Array([0.25, 0.75, -0.5, 0.5]);
+    const bytes = new Uint8Array(samples.buffer);
+    const out = decodeToPcm16(
+      bytes,
+      "audio/pcm;rate=24000;channels=2;encoding=float32"
+    );
+    expect(out.channels).toBe(1);
+    // Per-sample float32→int16 first, then average pairs.
+    const a = Math.round(0.25 * 32_767);
+    const b = Math.round(0.75 * 32_767);
+    const c = Math.round(-0.5 * 32_767);
+    const d = Math.round(0.5 * 32_767);
+    expect(Array.from(out.pcm)).toEqual([
+      Math.round((a + b) / 2),
+      Math.round((c + d) / 2),
+    ]);
+  });
+});
+
+describe("dbfsToInt16Rms", () => {
+  it("returns 3277 for the default -20 dBFS target", () => {
+    expect(dbfsToInt16Rms(DEFAULT_VOLUME_DBFS)).toBe(3277);
+  });
+
+  it("returns int16 max (32767) at 0 dBFS", () => {
+    expect(dbfsToInt16Rms(0)).toBe(32_767);
+  });
+
+  it("halves amplitude (-6 dBFS ≈ 16384) for every -6 dB", () => {
+    expect(dbfsToInt16Rms(-6)).toBeCloseTo(32_767 * 10 ** (-6 / 20), 0);
   });
 });
 

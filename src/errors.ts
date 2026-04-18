@@ -42,3 +42,12 @@ export class StreamingNotSupportedError extends SpeechSDKError {
     this.name = "StreamingNotSupportedError";
   }
 }
+
+export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
+  constructor(model: string) {
+    super(
+      `volumeDbfs is not supported by ${model}: the provider doesn't expose a decodable PCM/WAV output mode.`
+    );
+    this.name = "VolumeAdjustmentUnsupportedError";
+  }
+}
