@@ -1,4 +1,3 @@
-import pLimit from "p-limit";
 import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import { concatPcmToWav, decodeToPcm16 } from "./pcm-concat.js";
@@ -37,14 +36,42 @@ export interface StitchOutput {
 
 const TARGET_SAMPLE_RATE = 24_000;
 
+/**
+ * Run `worker(items[i], i)` for each item, capping in-flight executions at
+ * `concurrency`. Preserves input ordering in the returned array.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const runners = Array.from(
+    { length: Math.min(Math.max(concurrency, 1), items.length) },
+    async () => {
+      while (true) {
+        const i = next++;
+        if (i >= items.length) {
+          return;
+        }
+        results[i] = await worker(items[i], i);
+      }
+    }
+  );
+  await Promise.all(runners);
+  return results;
+}
+
 export async function runStitch<V extends Voice>(
   input: StitchInput<V>
 ): Promise<StitchOutput> {
   const start = performance.now();
-  const limit = pLimit(input.maxConcurrency);
 
-  const tasks = input.turns.map((turn, i) =>
-    limit(async () => {
+  const perTurn = await mapWithConcurrency(
+    input.turns,
+    input.maxConcurrency,
+    async (turn, i) => {
       const resolved = input.resolvedPerTurn[i];
       const stitchOpts = input.stitchOptionsPerTurn[i];
       const mergedProviderOptions = {
@@ -67,10 +94,8 @@ export async function runStitch<V extends Voice>(
         result.audio.mediaType
       );
       return { result, segment };
-    })
+    }
   );
-
-  const perTurn = await Promise.all(tasks);
 
   const audio = await concatPcmToWav(
     perTurn.map((p) => p.segment),

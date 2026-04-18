@@ -1,21 +1,11 @@
 // biome-ignore lint/performance/noBarrelFile: intentional public API barrel
 export { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 export {
-  ConversationInputError,
-  DialogueConstraintError,
-  StitchUnsupportedError,
-} from "./conversation/errors.js";
-export type {
-  ConversationTurn,
-  GenerateConversationOptions,
-} from "./conversation/types.js";
-export {
   ApiError,
   NoSpeechGeneratedError,
   SpeechSDKError,
   StreamingNotSupportedError,
 } from "./errors.js";
-export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
 export type { SpeechMetadata } from "./metadata.js";
 export type {
