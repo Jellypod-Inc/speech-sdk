@@ -178,7 +178,6 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    // Assign speaker indices per unique voice in order of appearance.
     const voiceToIndex = new Map<string, number>();
     const tagged: string[] = [];
     for (const t of options.turns) {

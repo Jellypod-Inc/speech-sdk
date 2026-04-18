@@ -4,11 +4,7 @@ import type { ConversationTurn } from "./types.js";
 import { voiceKey } from "./validate.js";
 
 export type ConversationPath =
-  | {
-      kind: "native";
-      provider: ResolvedModel["provider"];
-      modelId: string;
-    }
+  | { kind: "native"; resolved: ResolvedModel<Voice> }
   | {
       kind: "stitch";
       stitchOptionsPerTurn: readonly {
@@ -23,18 +19,21 @@ export function chooseConversationPath(input: {
 }): ConversationPath {
   const { resolvedPerTurn, turns } = input;
 
-  const firstKey = `${resolvedPerTurn[0].provider.id}/${resolvedPerTurn[0].modelId}`;
+  // Compare by provider instance reference, not just provider id, so two
+  // factories of the same provider with different apiKey/baseURL/fetch
+  // configs are not silently merged into one.
+  const first = resolvedPerTurn[0];
   const allSame = resolvedPerTurn.every(
-    (r) => `${r.provider.id}/${r.modelId}` === firstKey
+    (r) => r.provider === first.provider && r.modelId === first.modelId
   );
 
   if (allSame) {
-    const { provider, modelId } = resolvedPerTurn[0];
+    const { provider, modelId } = first;
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);
       if (caps) {
         assertNativeConstraints({ provider, modelId, caps, turns });
-        return { kind: "native", provider, modelId };
+        return { kind: "native", resolved: first };
       }
     }
   }

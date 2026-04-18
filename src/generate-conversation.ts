@@ -26,13 +26,10 @@ export async function generateConversation<V extends Voice = Voice>(
 
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
     const model = turn.model ?? options.model;
-    if (model == null) {
-      // Unreachable — validate guarantees at least one of the two is set.
+    if (!model) {
       throw new Error("generateConversation: model is required");
     }
-    return resolveModel(model as string | ResolvedModel<V>, {
-      apiKey: options.apiKey,
-    }) as ResolvedModel<V>;
+    return resolveModel(model, { apiKey: options.apiKey }) as ResolvedModel<V>;
   });
 
   const path = chooseConversationPath({
@@ -41,10 +38,7 @@ export async function generateConversation<V extends Voice = Voice>(
   });
 
   if (path.kind === "native") {
-    return await runNative({
-      options,
-      resolved: { provider: path.provider, modelId: path.modelId },
-    });
+    return await runNative({ options, resolved: path.resolved });
   }
 
   const stitched = await runStitch({
@@ -92,12 +86,11 @@ export async function generateConversation<V extends Voice = Voice>(
 
 async function runNative<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
-  resolved: { provider: ResolvedModel<V>["provider"]; modelId: string };
+  resolved: ResolvedModel<V>;
 }): Promise<SpeechResult> {
   const { options, resolved } = args;
   const start = performance.now();
 
-  // generateDialogue guaranteed present by dispatch.
   if (!resolved.provider.generateDialogue) {
     throw new Error(
       `generateConversation: ${resolved.provider.id}/${resolved.modelId} dispatched to native but generateDialogue missing`

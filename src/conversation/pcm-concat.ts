@@ -1,10 +1,4 @@
-import {
-  BufferTarget,
-  EncodedAudioPacketSource,
-  EncodedPacket,
-  Output,
-  WavOutputFormat,
-} from "mediabunny";
+import { parseMediaTypeParam, wrapPcm16Mono } from "../audio-utils.js";
 
 export interface Pcm16Segment {
   readonly channels: number;
@@ -12,24 +6,15 @@ export interface Pcm16Segment {
   readonly sampleRate: number;
 }
 
-const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
-const CHANNELS_PARAM = /(?:^|;)\s*channels=(\d+)/i;
-
-function parseMediaTypeParam(
-  mediaType: string,
-  re: RegExp
-): number | undefined {
-  const m = mediaType.match(re);
-  if (!m) {
-    return undefined;
-  }
-  const n = Number(m[1]);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}
-
-/** Parse 16-bit little-endian PCM bytes (optionally multi-channel) into Int16Array. */
+/**
+ * View 16-bit little-endian PCM bytes as an Int16Array. Reuses the existing
+ * buffer when `byteOffset` is 2-aligned; otherwise copies into a fresh,
+ * aligned buffer (Int16Array's buffer view requires 2-byte alignment).
+ */
 function pcmBytesToInt16(bytes: Uint8Array): Int16Array {
-  // Copy into a fresh ArrayBuffer; byteOffset may not be 2-aligned.
+  if (bytes.byteOffset % 2 === 0 && bytes.byteLength % 2 === 0) {
+    return new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+  }
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
   return new Int16Array(copy.buffer);
@@ -63,8 +48,8 @@ export function decodeToPcm16(
     lower.startsWith("audio/l16") ||
     lower.startsWith("audio/x-pcm")
   ) {
-    const sampleRate = parseMediaTypeParam(mediaType, RATE_PARAM) ?? 24_000;
-    const channels = parseMediaTypeParam(mediaType, CHANNELS_PARAM) ?? 1;
+    const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
+    const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
     const interleaved = pcmBytesToInt16(data);
     return {
       pcm: downmixToMono(interleaved, channels),
@@ -200,31 +185,5 @@ export async function concatPcmToWav(
     merged.byteOffset,
     merged.byteLength
   );
-
-  const output = new Output({
-    format: new WavOutputFormat(),
-    target: new BufferTarget(),
-  });
-  const source = new EncodedAudioPacketSource("pcm-s16");
-  output.addAudioTrack(source);
-  await output.start();
-
-  const durationSeconds = merged.length / targetSampleRate;
-  const packet = new EncodedPacket(mergedBytes, "key", 0, durationSeconds, 0);
-  await source.add(packet, {
-    decoderConfig: {
-      codec: "pcm-s16",
-      numberOfChannels: 1,
-      sampleRate: targetSampleRate,
-    },
-  });
-
-  await output.finalize();
-  const buffer = output.target.buffer;
-  if (!buffer) {
-    throw new Error(
-      "conversation.pcm-concat: WavOutputFormat produced no buffer"
-    );
-  }
-  return new Uint8Array(buffer);
+  return await wrapPcm16Mono(mergedBytes, targetSampleRate);
 }

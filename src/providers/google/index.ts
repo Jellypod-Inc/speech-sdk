@@ -1,11 +1,5 @@
-import {
-  BufferTarget,
-  EncodedAudioPacketSource,
-  EncodedPacket,
-  Output,
-  WavOutputFormat,
-} from "mediabunny";
 import { stripAudioTags } from "../../audio-tags.js";
+import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import {
@@ -15,18 +9,6 @@ import {
 } from "../../speech-provider.js";
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
-const RATE_PARAM = /(?:^|;)\s*rate=(\d+)/i;
-
-function parseSampleRate(mimeType: string): number | undefined {
-  const match = mimeType.match(RATE_PARAM);
-  if (!match) {
-    return undefined;
-  }
-  const rate = Number(match[1]);
-  // Guard against malformed mime types (e.g. "rate=0") which would
-  // otherwise slip past the `??` fallback and produce an invalid WAV.
-  return Number.isFinite(rate) && rate > 0 ? rate : undefined;
-}
 
 function base64ToBytes(b64: string): Uint8Array {
   const binaryString = atob(b64);
@@ -35,43 +17,6 @@ function base64ToBytes(b64: string): Uint8Array {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
-}
-
-/**
- * Wrap raw 16-bit mono PCM bytes in a WAV container using mediabunny's
- * WavOutputFormat. Cross-platform (browser, Node, edge) and doesn't
- * require Web Codecs global types.
- */
-async function pcmToWav(
-  pcm: Uint8Array,
-  sampleRate: number
-): Promise<Uint8Array> {
-  const output = new Output({
-    format: new WavOutputFormat(),
-    target: new BufferTarget(),
-  });
-  const source = new EncodedAudioPacketSource("pcm-s16");
-  output.addAudioTrack(source);
-  await output.start();
-
-  // Each 16-bit mono sample is 2 bytes.
-  const numSamples = pcm.length / 2;
-  const durationSeconds = numSamples / sampleRate;
-  const packet = new EncodedPacket(pcm, "key", 0, durationSeconds, 0);
-  await source.add(packet, {
-    decoderConfig: {
-      codec: "pcm-s16",
-      numberOfChannels: 1,
-      sampleRate,
-    },
-  });
-
-  await output.finalize();
-  const buffer = output.target.buffer;
-  if (!buffer) {
-    throw new Error("mediabunny: WavOutputFormat produced no buffer");
-  }
-  return new Uint8Array(buffer);
 }
 
 export interface GoogleSpeechProviderConfig {
@@ -311,10 +256,10 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     // Gemini returns raw 16-bit mono PCM. Wrap in a WAV container so
     // the audio is directly playable by any client.
     const sampleRate =
-      parseSampleRate(part.inlineData.mimeType ?? "") ??
+      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
     const pcm = base64ToBytes(part.inlineData.data);
-    const wav = await pcmToWav(pcm, sampleRate);
+    const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
       audio: wav,
@@ -356,8 +301,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
       // Gemini TTS returns raw PCM that this provider wraps into WAV before
-      // returning to callers (see pcmToWav above), so stitch decoding uses
-      // the WAV codepath.
+      // returning to callers, so stitch decoding uses the WAV codepath.
       return {
         providerOptions: {},
         mediaType: "audio/wav",
@@ -388,7 +332,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
 
-    // Assign "Speaker1", "Speaker2" to each unique voice in order of appearance.
     const voiceToLabel = new Map<string, string>();
     const labelled: string[] = [];
     for (const turn of options.turns) {
@@ -455,8 +398,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const pcm = base64ToBytes(part.inlineData.data);
     const sampleRate =
-      parseSampleRate(part.inlineData.mimeType) ?? DEFAULT_GEMINI_SAMPLE_RATE;
-    const wav = await pcmToWav(pcm, sampleRate);
+      parseMediaTypeParam(part.inlineData.mimeType, "rate") ??
+      DEFAULT_GEMINI_SAMPLE_RATE;
+    const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
       audio: wav,
