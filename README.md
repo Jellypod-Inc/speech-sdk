@@ -164,7 +164,7 @@ The return type is the standard `SpeechResult`, so it composes with everything e
 ```ts
 generateConversation({
   model?: string | ResolvedModel,                 // default model for all turns
-  turns: ConversationTurn[],                      // 1..N turns; up to 4 unique voices
+  turns: ConversationTurn[],                      // 1..N turns; any number of unique voices
   gapMs?: number,                                 // silence between turns (stitch path), default 300
   normalizeVolume?: boolean,                      // RMS-level the output, default true
   volumeDbfs?: number,                            // RMS target loudness in dBFS (≤0), default -20
@@ -205,7 +205,7 @@ Conversation-specific errors (importable from `@speech-sdk/core/conversation/err
 
 | Error | When |
 |---|---|
-| `ConversationInputError` | Validation failure — empty turns, blank text, more than 4 unique voices, or a turn missing a model |
+| `ConversationInputError` | Validation failure — empty turns, blank text, or a turn missing a model |
 | `DialogueConstraintError` | A native-dialogue provider was selected but the conversation violates its constraints (e.g. 3 voices on Gemini, which requires exactly 2) |
 | `StitchUnsupportedError` | The stitch path was selected but a chosen provider/model can't emit PCM/WAV |
 
@@ -218,8 +218,6 @@ Conversation-specific errors (importable from `@speech-sdk/core/conversation/err
 | Hume | `octave-1`, `octave-2` | 1–4 voices |
 | Fish Audio | `s2-pro` | 1–4 voices |
 | fal | `dia-tts` | 1–2 voices |
-
-Across the SDK, conversations are capped at **4 unique voices** total regardless of provider.
 
 ## Supported Providers
 
