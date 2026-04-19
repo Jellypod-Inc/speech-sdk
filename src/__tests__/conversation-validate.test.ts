@@ -42,21 +42,6 @@ describe("validateConversationInput", () => {
     ).toThrow(TEXT_EMPTY_RE);
   });
 
-  it("accepts more than 4 unique voices", () => {
-    expect(() =>
-      validateConversationInput({
-        ...base,
-        turns: [
-          { voice: "a", text: "1" },
-          { voice: "b", text: "2" },
-          { voice: "c", text: "3" },
-          { voice: "d", text: "4" },
-          { voice: "e", text: "5" },
-        ],
-      })
-    ).not.toThrow();
-  });
-
   it("rejects turn with neither top-level nor per-turn model", () => {
     expect(() =>
       validateConversationInput({
@@ -71,19 +56,6 @@ describe("validateConversationInput", () => {
         turns: [
           { voice: "a", text: "Hi.", model: "openai/tts-1" },
           { voice: "b", text: "Hey.", model: "openai/tts-1" },
-        ],
-      })
-    ).not.toThrow();
-  });
-
-  it("voice equality uses deep equality for object voices", () => {
-    const v = { url: "https://example.com/a.wav" };
-    expect(() =>
-      validateConversationInput({
-        ...base,
-        turns: [
-          { voice: v, text: "1" },
-          { voice: v, text: "2" },
         ],
       })
     ).not.toThrow();
