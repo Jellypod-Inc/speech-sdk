@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateConversation } from "../../generate-conversation.js";
-import { maybeSaveAudio } from "./_save-audio.js";
+import { generateConversation } from "./_save-audio.js";
 
 const VOICE_A = process.env.ELEVENLABS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 const VOICE_B = process.env.ELEVENLABS_VOICE_ID_B ?? "EXAVITQu4vr4xnSDxMaL";
@@ -20,7 +19,5 @@ describe("ElevenLabs v3 native dialogue e2e", () => {
     expect(result.audio.mediaType).toMatch(/^audio\//);
     expect(result.metadata.provider).toBe("elevenlabs");
     expect(result.metadata.model).toBe("eleven_v3");
-
-    await maybeSaveAudio("conversation-elevenlabs-v3", result.audio);
   });
 });

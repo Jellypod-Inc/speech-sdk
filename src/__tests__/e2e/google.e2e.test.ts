@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { generateSpeech } from "../../generate-speech.js";
 import { createGoogle } from "../../providers/google/index.js";
 import { streamSpeech } from "../../stream-speech.js";
-import { collectStream } from "./_collect-stream.js";
+import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const hasKey = !!process.env.GOOGLE_API_KEY;
 
@@ -45,7 +44,7 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
       text: TEST_TEXT,
       voice: "Kore",
     });
-    const bytes = await collectStream(result.audio);
+    const bytes = await collectStreamAndSave(result);
     expect(bytes.byteLength).toBeGreaterThan(0);
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);

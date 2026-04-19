@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { StreamingNotSupportedError } from "../../errors.js";
-import { generateSpeech } from "../../generate-speech.js";
 import { createFal } from "../../providers/fal/index.js";
 import { streamSpeech } from "../../stream-speech.js";
+import { generateSpeech } from "./_save-audio.js";
 
 const hasKey = !!process.env.FAL_API_KEY;
 
