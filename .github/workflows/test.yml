@@ -53,3 +53,14 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+          HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          FISH_AUDIO_API_KEY: ${{ secrets.FISH_AUDIO_API_KEY }}
+          INWORLD_API_KEY: ${{ secrets.INWORLD_API_KEY }}
+          MURF_API_KEY: ${{ secrets.MURF_API_KEY }}
+          RESEMBLE_API_KEY: ${{ secrets.RESEMBLE_API_KEY }}
+          FAL_API_KEY: ${{ secrets.FAL_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
