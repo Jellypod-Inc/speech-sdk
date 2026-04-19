@@ -111,7 +111,7 @@ generateSpeech({
 })
 ```
 
-`providerOptions` are forwarded using the provider API's own field names — see each provider reference for the exact shape.
+`providerOptions` use each provider's own field names. Most values are passed straight through to the request body, but some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
 
 ## Source of Truth
 

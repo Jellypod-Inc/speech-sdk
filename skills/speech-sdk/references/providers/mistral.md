@@ -11,17 +11,25 @@
 
 | Model                   | Streaming | Voice Cloning | Open Source | Notes       |
 | ----------------------- | --------- | ------------- | ----------- | ----------- |
-| `voxtral-mini-tts-2603` | No        | Yes           | Yes         | Voxtral TTS |
+| `voxtral-mini-tts-2603` | Yes       | Yes           | Yes         | Voxtral TTS |
 
 ## Usage
 
-Voxtral is voice-cloning first — no built-in voice IDs. Every request passes reference audio:
+Pass a reference audio clip to clone, or a string `voice` (sent as `voice_id`) for a built-in or pre-registered voice:
 
 ```ts
+// clone from reference audio
 await generateSpeech({
   model: "mistral/voxtral-mini-tts-2603",
   text: "Hello!",
   voice: { audio: "base64-encoded-audio..." },
+})
+
+// named voice
+await generateSpeech({
+  model: "mistral/voxtral-mini-tts-2603",
+  text: "Hello!",
+  voice: "jessica",
 })
 ```
 

@@ -12,7 +12,7 @@ import {
 | Error                    | When                                    |
 | ------------------------ | --------------------------------------- |
 | `ApiError`               | Provider returned non-2xx               |
-| `NoSpeechGeneratedError` | Provider returned empty audio           |
+| `NoSpeechGeneratedError` | No audio produced — either the input was empty after preprocessing or the provider returned empty audio |
 | `SpeechSDKError`         | Base class for all SDK errors           |
 
 ## Catching
@@ -45,7 +45,7 @@ Common codes: `401` bad key · `403` insufficient perms · `429` rate-limited ·
 
 ## NoSpeechGeneratedError
 
-Thrown when the provider returns a 2xx with empty audio.
+Thrown when no audio can be produced — either the input text was empty (or became empty after tag stripping / preprocessing) or the provider returned a 2xx with empty audio.
 
 ## Retries
 

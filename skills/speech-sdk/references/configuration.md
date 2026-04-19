@@ -69,15 +69,15 @@ const openai = createOpenAI({
 ## Request Options
 
 ```ts
-generateSpeech({
-  model: string | ResolvedModel,
-  text: string,
-  voice: Voice,
-  providerOptions?: object,         // provider-specific, passed through
-  maxRetries?: number,              // default 2
-  abortSignal?: AbortSignal,
-  headers?: Record<string, string>,
-})
+interface GenerateSpeechOptions {
+  model: string | ResolvedModel
+  text: string
+  voice: Voice
+  providerOptions?: object          // provider-specific, passed through
+  maxRetries?: number               // default 2
+  abortSignal?: AbortSignal
+  headers?: Record<string, string>
+}
 ```
 
 ### Abort

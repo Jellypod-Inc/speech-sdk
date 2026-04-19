@@ -26,6 +26,7 @@ for await (const chunk of result.audio) {
 interface StreamSpeechResult {
   readonly audio: ReadableStream<Uint8Array>
   readonly mediaType: string
+  readonly metadata: SpeechMetadata                   // latencyMs, inputChars, provider, model, ...
   readonly providerMetadata?: Record<string, unknown>
   readonly warnings?: string[]
 }
@@ -84,6 +85,9 @@ Not every model streams. Check at runtime:
 
 ```ts
 import { FEATURES, hasFeature } from "@speech-sdk/core"
+import { createOpenAI } from "@speech-sdk/core/openai"
+
+const model = createOpenAI()("gpt-4o-mini-tts")
 
 if (hasFeature(model, FEATURES.STREAMING)) {
   // safe to call streamSpeech

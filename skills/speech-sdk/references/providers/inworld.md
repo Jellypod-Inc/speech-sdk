@@ -14,7 +14,7 @@
 | `inworld-tts-1.5-max`   | Yes       | No         | No            | Flagship; best quality/speed balance                |
 | `inworld-tts-1.5-mini`  | Yes       | No         | No            | Ultra-fast, cost-efficient                          |
 
-Both support 15 languages (en, zh, ja, ko, ru, it, es, pt, fr, de, pl, nl, hi, he, ar) with enhanced timestamps.
+Both support 11 languages: `en`, `es`, `fr`, `de`, `it`, `pt`, `ja`, `ko`, `nl`, `pl`, `zh`.
 
 ## Usage
 

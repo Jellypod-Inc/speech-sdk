@@ -17,10 +17,14 @@ await generateSpeech({
 })
 ```
 
-Also accepts `Uint8Array`:
+Also accepts `Uint8Array` (assumes the same `mistral` factory from the snippet above):
 
 ```ts
 import { readFileSync } from "fs"
+import { generateSpeech } from "@speech-sdk/core"
+import { createMistral } from "@speech-sdk/core/mistral"
+
+const mistral = createMistral()
 
 await generateSpeech({
   model: mistral(),

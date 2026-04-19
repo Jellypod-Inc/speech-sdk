@@ -5,7 +5,7 @@
 | Prefix | `google` |
 | Default model | `gemini-2.5-flash-preview-tts` |
 | Env var | `GOOGLE_API_KEY` |
-| Official docs | https://ai.google.dev/gemini-api/docs/text-generation |
+| Official docs | https://ai.google.dev/gemini-api/docs/speech-generation |
 
 ## Models
 

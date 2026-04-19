@@ -1,6 +1,6 @@
 # All Providers
 
-SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the provider name to use its default model.
+SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the provider name to use its default model. (fal has no default model — you must always pass a specific `fal-ai/<model>` path.)
 
 ## Provider Table
 

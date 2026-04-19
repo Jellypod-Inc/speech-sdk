@@ -120,9 +120,11 @@ From `@speech-sdk/core/conversation/errors`:
 | `ConversationInputError`    | Invalid input (no turns, empty text, etc.)                                                   |
 | `DialogueConstraintError`   | Native path selected but provider can't satisfy turns (e.g. too many voices)                 |
 | `StitchUnsupportedError`    | Stitch path selected but a provider/model doesn't expose PCM/WAV — can't be locally mixed    |
-| `NoSpeechGeneratedError`    | Final concatenated audio is empty                                                            |
 
-Each per-turn 4xx throws `ApiError` as in `generateSpeech`. 5xx/network get retried up to `maxRetries`.
+Also thrown (imported from `@speech-sdk/core`):
+
+- `NoSpeechGeneratedError` — final concatenated audio is empty
+- `ApiError` — per-turn 4xx. 5xx/network get retried up to `maxRetries`.
 
 ## When to Use Which
 
