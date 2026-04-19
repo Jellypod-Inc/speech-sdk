@@ -1,4 +1,38 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite/biome/core", "ultracite/biome/vitest"]
+  "extends": ["ultracite/biome/core", "ultracite/biome/vitest"],
+  "overrides": [
+    {
+      "includes": ["src/__tests__/e2e/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "../../generate-speech.js": "Import generateSpeech from './_save-audio.js' in e2e tests so audio is autosaved when SPEECH_SDK_E2E_OUTPUT_DIR is set.",
+                  "../../generate-conversation.js": "Import generateConversation from './_save-audio.js' in e2e tests so audio is autosaved when SPEECH_SDK_E2E_OUTPUT_DIR is set.",
+                  "./_collect-stream.js": "Use collectStreamAndSave from './_save-audio.js' in e2e tests so streamed audio is autosaved when SPEECH_SDK_E2E_OUTPUT_DIR is set."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/__tests__/e2e/_save-audio.ts",
+        "src/__tests__/e2e/_collect-stream.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { generateSpeech } from "../../generate-speech.js";
 import { createOpenAI } from "../../providers/openai/index.js";
 import { streamSpeech } from "../../stream-speech.js";
-import { collectStream } from "./_collect-stream.js";
+import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
 const VOICE = "alloy";
@@ -83,7 +82,7 @@ describe("OpenAI e2e", () => {
       text: TEST_TEXT,
       voice: VOICE,
     });
-    const bytes = await collectStream(result.audio);
+    const bytes = await collectStreamAndSave(result);
     expect(bytes.byteLength).toBeGreaterThan(0);
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
@@ -121,7 +120,7 @@ describe("OpenAI e2e", () => {
       text: TEST_TEXT,
       voice: VOICE,
     });
-    await collectStream(result.audio);
+    await collectStreamAndSave(result);
 
     expect(result.metadata.provider).toBe("openai");
     expect(result.metadata.model).toBe("tts-1");

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { generateSpeech } from "../../generate-speech.js";
 import { createDeepgram } from "../../providers/deepgram/index.js";
 import { streamSpeech } from "../../stream-speech.js";
-import { collectStream } from "./_collect-stream.js";
+import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const hasKey = !!process.env.DEEPGRAM_API_KEY;
 
@@ -39,7 +38,7 @@ describe.skipIf(!hasKey)("Deepgram e2e", () => {
       text: TEST_TEXT,
       voice: "thalia-en",
     });
-    const bytes = await collectStream(result.audio);
+    const bytes = await collectStreamAndSave(result);
     expect(bytes.byteLength).toBeGreaterThan(0);
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.mediaType).toMatch(/^audio\//);
