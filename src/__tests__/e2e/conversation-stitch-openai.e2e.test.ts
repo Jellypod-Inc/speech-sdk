@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 describe("Conversation stitch e2e — OpenAI (no native dialogue)", () => {
   it("stitches 3 OpenAI turns with 2 distinct voices", async () => {
@@ -23,5 +24,7 @@ describe("Conversation stitch e2e — OpenAI (no native dialogue)", () => {
     );
     expect(result.metadata.provider).toBe("openai");
     expect(result.metadata.model).toBe("tts-1");
+
+    await maybeSaveAudio("conversation-stitch-openai", result.audio);
   });
 });

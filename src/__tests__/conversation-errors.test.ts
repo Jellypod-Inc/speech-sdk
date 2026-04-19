@@ -32,11 +32,11 @@ describe("conversation errors", () => {
 
   it("StitchUnsupportedError names offending provider/model", () => {
     const e = new StitchUnsupportedError({
-      provider: "unreal-speech",
-      model: "Scarlett",
+      provider: "some-provider",
+      model: "some-model",
     });
     expect(e).toBeInstanceOf(SpeechSDKError);
     expect(e.name).toBe("StitchUnsupportedError");
-    expect(e.message).toContain("unreal-speech/Scarlett");
+    expect(e.message).toContain("some-provider/some-model");
   });
 });

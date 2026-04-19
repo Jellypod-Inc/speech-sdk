@@ -11,7 +11,6 @@ import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
-import { UnrealSpeechProvider } from "../providers/unreal-speech/index.js";
 import { hasFeature, type SpeechProvider } from "../speech-provider.js";
 
 const streamingProviders: SpeechProvider[] = [
@@ -24,7 +23,6 @@ const streamingProviders: SpeechProvider[] = [
   new FishAudioSpeechProvider({}),
   new ResembleSpeechProvider({}),
   new MurfSpeechProvider({}),
-  new UnrealSpeechProvider({}),
   new MistralSpeechProvider({}),
   new GoogleSpeechProvider({}),
 ];

@@ -133,7 +133,7 @@ describe("DeepgramSpeechProvider", () => {
     expect(url).toBe("https://my-proxy.com/v1/speak?model=aura-2");
   });
 
-  it("spreads providerOptions into body", async () => {
+  it("sends providerOptions as query-string params (not body)", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -149,10 +149,21 @@ describe("DeepgramSpeechProvider", () => {
     await provider.generate({
       modelId: "aura-2",
       text: "Hello",
-      providerOptions: { sample_rate: 24_000 },
+      providerOptions: {
+        encoding: "linear16",
+        sample_rate: 24_000,
+        container: "wav",
+      },
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.sample_rate).toBe(24_000);
+    const [url, init] = mockFetch.mock.calls[0];
+    const parsed = new URL(url);
+    expect(parsed.searchParams.get("model")).toBe("aura-2");
+    expect(parsed.searchParams.get("encoding")).toBe("linear16");
+    expect(parsed.searchParams.get("sample_rate")).toBe("24000");
+    expect(parsed.searchParams.get("container")).toBe("wav");
+
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({ text: "Hello" });
   });
 });

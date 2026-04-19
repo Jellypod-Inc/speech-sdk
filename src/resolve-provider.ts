@@ -11,7 +11,6 @@ import { MistralSpeechProvider } from "./providers/mistral/index.js";
 import { MurfSpeechProvider } from "./providers/murf/index.js";
 import { OpenAISpeechProvider } from "./providers/openai/index.js";
 import { ResembleSpeechProvider } from "./providers/resemble/index.js";
-import { UnrealSpeechProvider } from "./providers/unreal-speech/index.js";
 import { XaiSpeechProvider } from "./providers/xai/index.js";
 import type { ResolvedModel, SpeechProvider } from "./speech-provider.js";
 
@@ -46,8 +45,6 @@ function createBuiltinProvider(
       return new GoogleSpeechProvider(config);
     case "fish-audio":
       return new FishAudioSpeechProvider(config);
-    case "unreal-speech":
-      return new UnrealSpeechProvider(config);
     case "murf":
       return new MurfSpeechProvider(config);
     case "resemble":

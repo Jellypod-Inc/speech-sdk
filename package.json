@@ -51,10 +51,6 @@
       "types": "./dist/providers/fish-audio/index.d.ts",
       "default": "./dist/providers/fish-audio/index.js"
     },
-    "./unreal-speech": {
-      "types": "./dist/providers/unreal-speech/index.d.ts",
-      "default": "./dist/providers/unreal-speech/index.js"
-    },
     "./murf": {
       "types": "./dist/providers/murf/index.d.ts",
       "default": "./dist/providers/murf/index.js"
