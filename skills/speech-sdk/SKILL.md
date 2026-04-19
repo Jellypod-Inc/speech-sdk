@@ -7,7 +7,7 @@ description: "How to use @speech-sdk/core for text-to-speech and multi-speaker c
 
 Universal TypeScript TTS SDK. One API, 13 providers, zero lock-in. Runs in Node, Edge, and Browser.
 
-**Three top-level functions** — `generateSpeech` (single utterance), `streamSpeech` (chunked audio), `generateConversation` (multi-speaker dialogue). **Do not** build a multi-speaker/podcast flow with a `for` loop over `generateSpeech` — `generateConversation` handles dispatch, concatenation, gaps, and volume normalization, and some providers have native multi-speaker endpoints it will route to.
+**Three top-level functions** — `generateSpeech` (single utterance), `streamSpeech` (chunked audio), `generateConversation` (multi-speaker dialogue).
 
 ## Install
 
@@ -49,7 +49,7 @@ for await (const chunk of result.audio) process.stdout.write(chunk)
 
 ## Multi-Speaker Conversations
 
-Use `generateConversation` for podcasts, dialogues, or any output with multiple voices. It returns a single stitched `SpeechResult` — don't loop over `generateSpeech` yourself.
+If you're trying to create speech with multiple speakers (podcasts, dialogues, or any output with multiple voices), this is how you should do it. Use `generateConversation` — it returns a single stitched `SpeechResult` and handles dispatch, concatenation, gaps, and volume normalization. Some providers have native multi-speaker endpoints it will route to.
 
 ```ts
 import { generateConversation } from "@speech-sdk/core/conversation"
@@ -112,7 +112,3 @@ generateSpeech({
 ```
 
 `providerOptions` use each provider's own field names. Most values are passed straight through to the request body, but some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
-
-## Source of Truth
-
-These reference files are synced from the public docs (`apps/sdk-site/content/docs/**` in the speech-gateway repo). When the public docs change, update the matching `references/*.md` file and keep this SKILL.md index pointing at the right sections — don't duplicate content into SKILL.md itself.
