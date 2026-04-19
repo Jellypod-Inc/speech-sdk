@@ -3,7 +3,6 @@ import { ConversationInputError } from "../conversation/errors.js";
 import { validateConversationInput } from "../conversation/validate.js";
 
 const TEXT_EMPTY_RE = /text must not be empty/i;
-const VOICE_CAP_RE = /at most 4 unique voices/i;
 const MODEL_REQUIRED_RE = /model must be set/i;
 
 describe("validateConversationInput", () => {
@@ -43,7 +42,7 @@ describe("validateConversationInput", () => {
     ).toThrow(TEXT_EMPTY_RE);
   });
 
-  it("rejects more than 4 unique voices", () => {
+  it("accepts more than 4 unique voices", () => {
     expect(() =>
       validateConversationInput({
         ...base,
@@ -53,20 +52,6 @@ describe("validateConversationInput", () => {
           { voice: "c", text: "3" },
           { voice: "d", text: "4" },
           { voice: "e", text: "5" },
-        ],
-      })
-    ).toThrow(VOICE_CAP_RE);
-  });
-
-  it("accepts exactly 4 unique voices", () => {
-    expect(() =>
-      validateConversationInput({
-        ...base,
-        turns: [
-          { voice: "a", text: "1" },
-          { voice: "b", text: "2" },
-          { voice: "c", text: "3" },
-          { voice: "d", text: "4" },
         ],
       })
     ).not.toThrow();

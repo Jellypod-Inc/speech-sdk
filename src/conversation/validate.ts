@@ -1,8 +1,6 @@
 import { ConversationInputError } from "./errors.js";
 import type { ConversationTurn, GenerateConversationOptions } from "./types.js";
 
-const MAX_UNIQUE_VOICES = 4;
-
 /**
  * Stable key for a voice so we can count unique voices across turns within
  * one call. String voices and URL voices use their value; binary
@@ -59,15 +57,5 @@ export function validateConversationInput(
         `turns[${i}]: model must be set, either at top-level or on the turn.`
       );
     }
-  }
-
-  const ctx = newVoiceKeyContext();
-  const uniqueVoices = new Set(
-    options.turns.map((t) => voiceKey(t.voice, ctx.refIds, ctx.refCounter))
-  );
-  if (uniqueVoices.size > MAX_UNIQUE_VOICES) {
-    throw new ConversationInputError(
-      `generateConversation accepts at most 4 unique voices; got ${uniqueVoices.size}.`
-    );
   }
 }
