@@ -1,0 +1,67 @@
+src/__tests__/e2e/cartesia.e2e.test.ts
+  5b46cbd2a053c28d 4,45
+src/__tests__/e2e/_save-audio.ts
+  5b46cbd2a053c28d 2-6,30-86,90-96,102,106-111,115-159
+src/__tests__/e2e/deepgram.e2e.test.ts
+  5b46cbd2a053c28d 4,41
+src/__tests__/e2e/google.e2e.test.ts
+  5b46cbd2a053c28d 4,47
+src/__tests__/e2e/fish-audio.e2e.test.ts
+  5b46cbd2a053c28d 4,44
+src/__tests__/e2e/conversation-elevenlabs.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/conversation-hume.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/conversation-stitch-four-providers.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/conversation-stitch-openai.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  5b46cbd2a053c28d 4,87
+src/__tests__/e2e/hume.e2e.test.ts
+  5b46cbd2a053c28d 4,43
+src/__tests__/e2e/conversation-stitch-cross-provider.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/resemble.e2e.test.ts
+  5b46cbd2a053c28d 4,42
+src/__tests__/e2e/xai.e2e.test.ts
+  5b46cbd2a053c28d 4,41
+src/__tests__/e2e/conversation-fish-audio.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/mistral.e2e.test.ts
+  5b46cbd2a053c28d 4,41
+src/__tests__/e2e/murf.e2e.test.ts
+  5b46cbd2a053c28d 4,43
+biome.jsonc
+  5b46cbd2a053c28d 3-37
+src/__tests__/e2e/conversation-google.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/fal.e2e.test.ts
+  5b46cbd2a053c28d 5
+src/__tests__/e2e/inworld.e2e.test.ts
+  5b46cbd2a053c28d 4,47
+src/__tests__/e2e/conversation-fal-dia.e2e.test.ts
+  5b46cbd2a053c28d 2
+src/__tests__/e2e/openai.e2e.test.ts
+  5b46cbd2a053c28d 4,85,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "e0d6a68343c7926d4e7713bfef913d8487bd2c47",
+  "prompts": {
+    "5b46cbd2a053c28d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f89936d8-4d78-4d99-9791-cc78f00b50e9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2301,
+      "total_deletions": 1553,
+      "accepted_lines": 938,
+      "overriden_lines": 0
+    }
+  }
+}
