@@ -1,0 +1,47 @@
+src/__tests__/e2e/conversation-fal-dia.e2e.test.ts
+  7a75698e7f4bcf2a 3,21-22
+src/__tests__/e2e/conversation-fish-audio.e2e.test.ts
+  7a75698e7f4bcf2a 3,25-26
+src/__tests__/e2e/conversation-stitch-openai.e2e.test.ts
+  7a75698e7f4bcf2a 3,27-28
+src/__tests__/deepgram-speech-model.test.ts
+  7a75698e7f4bcf2a 136,152-156,159-167
+README.md
+  7a75698e7f4bcf2a 410-415
+src/providers/deepgram/index.ts
+  7a75698e7f4bcf2a 8-34,76,86,113,123
+src/__tests__/e2e/conversation-hume.e2e.test.ts
+  7a75698e7f4bcf2a 3,25-26
+src/__tests__/e2e/conversation-stitch-four-providers.e2e.test.ts
+  7a75698e7f4bcf2a 3,71-75
+src/__tests__/conversation-errors.test.ts
+  7a75698e7f4bcf2a 35-36,40
+src/__tests__/e2e/conversation-stitch-cross-provider.e2e.test.ts
+  7a75698e7f4bcf2a 3,30-31
+src/__tests__/e2e/_save-audio.ts
+  7a75698e7f4bcf2a 1-47
+src/__tests__/e2e/conversation-elevenlabs.e2e.test.ts
+  7a75698e7f4bcf2a 3,23-24
+src/__tests__/e2e/conversation-google.e2e.test.ts
+  7a75698e7f4bcf2a 3,19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "0e240a02779f5ee9b10a570b0b809d52c8b23488",
+  "prompts": {
+    "7a75698e7f4bcf2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77387887-5c3d-46d4-9561-5b6bd961e016",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 418,
+      "total_deletions": 521,
+      "accepted_lines": 129,
+      "overriden_lines": 0
+    }
+  }
+}
