@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 const hasAllKeys =
   !!process.env.OPENAI_API_KEY &&
@@ -67,6 +68,11 @@ describe.skipIf(!hasAllKeys)(
 
       expect(result.metadata.inputChars).toBeGreaterThan(0);
       expect(result.metadata.audioDurationMs ?? 0).toBeGreaterThan(10_000);
+
+      await maybeSaveAudio(
+        "conversation-stitch-openai+elevenlabs+google+hume",
+        result.audio
+      );
     });
   }
 );

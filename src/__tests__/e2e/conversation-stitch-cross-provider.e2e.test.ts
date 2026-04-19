@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 const ELEVEN_VOICE = process.env.ELEVENLABS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 
@@ -26,5 +27,7 @@ describe("Conversation stitch e2e — cross-provider", () => {
     // Mixed-provider metadata is comma-joined.
     expect(result.metadata.provider).toContain("openai");
     expect(result.metadata.provider).toContain("elevenlabs");
+
+    await maybeSaveAudio("conversation-stitch-openai+elevenlabs", result.audio);
   });
 });

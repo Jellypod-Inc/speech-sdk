@@ -11,7 +11,6 @@ import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
-import { UnrealSpeechProvider } from "../providers/unreal-speech/index.js";
 import { XaiSpeechProvider } from "../providers/xai/index.js";
 
 describe("getStitchOptions per provider", () => {
@@ -106,14 +105,6 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Unreal Speech returns pcm_s16le 22.05 kHz", () => {
-    const p = new UnrealSpeechProvider({});
-    expect(p.getStitchOptions?.("default")).toEqual({
-      providerOptions: { AudioFormat: "pcm_s16le" },
-      mediaType: "audio/pcm;rate=22050",
-    });
-  });
-
   it("Murf returns wav for GEN2 and FALCON", () => {
     const p = new MurfSpeechProvider({});
     for (const m of ["GEN2", "FALCON"] as const) {
@@ -173,7 +164,6 @@ describe("getStitchOptions per provider", () => {
       new XaiSpeechProvider({}),
       new FalSpeechProvider({}),
       new MistralSpeechProvider({}),
-      new UnrealSpeechProvider({}),
     ];
     for (const p of providers) {
       expect(p.getStitchOptions?.("totally-fake-model-id")).toBeUndefined();

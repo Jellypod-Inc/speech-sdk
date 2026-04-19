@@ -5,6 +5,33 @@ import {
 } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
 
+/**
+ * Deepgram's /v1/speak endpoint takes audio-shaping parameters (model,
+ * encoding, sample_rate, container, bit_rate, ...) as query-string params.
+ * Only `text` (or `url`) belongs in the JSON body — putting anything else
+ * there causes a PAYLOAD_ERROR.
+ */
+function buildSpeakUrl(
+  baseURL: string,
+  options: {
+    modelId: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+  }
+): string {
+  const modelParam = options.voice
+    ? `${options.modelId}-${options.voice}`
+    : options.modelId;
+  const qs = new URLSearchParams({ model: modelParam });
+  for (const [k, v] of Object.entries(options.providerOptions ?? {})) {
+    if (v == null) {
+      continue;
+    }
+    qs.set(k, typeof v === "string" ? v : String(v));
+  }
+  return `${baseURL}/speak?${qs.toString()}`;
+}
+
 export interface DeepgramSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
@@ -46,16 +73,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const modelParam = options.voice
-      ? `${options.modelId}-${options.voice}`
-      : options.modelId;
-
-    const url = `${this.baseURL}/speak?model=${encodeURIComponent(modelParam)}`;
-
-    const body: Record<string, unknown> = {
-      ...options.providerOptions,
-      text: options.text,
-    };
+    const url = buildSpeakUrl(this.baseURL, options);
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -65,7 +83,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ text: options.text }),
       signal: options.abortSignal,
     });
 
@@ -92,16 +110,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const modelParam = options.voice
-      ? `${options.modelId}-${options.voice}`
-      : options.modelId;
-
-    const url = `${this.baseURL}/speak?model=${encodeURIComponent(modelParam)}`;
-
-    const body: Record<string, unknown> = {
-      ...options.providerOptions,
-      text: options.text,
-    };
+    const url = buildSpeakUrl(this.baseURL, options);
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -111,7 +120,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ text: options.text }),
       signal: options.abortSignal,
     });
 

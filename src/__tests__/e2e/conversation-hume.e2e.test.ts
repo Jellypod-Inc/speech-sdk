@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 const hasKey = !!process.env.HUME_API_KEY;
 
@@ -21,5 +22,7 @@ describe.skipIf(!hasKey)("Hume Octave native dialogue e2e", () => {
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     expect(result.metadata.provider).toBe("hume");
     expect(result.metadata.model).toBe("octave-2");
+
+    await maybeSaveAudio("conversation-hume-octave", result.audio);
   });
 });

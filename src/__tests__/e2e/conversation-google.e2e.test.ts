@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 describe("Google Gemini native dialogue e2e", () => {
   it("generates a 2-voice dialogue via gemini-3.1-flash-tts-preview", async () => {
@@ -15,5 +16,7 @@ describe("Google Gemini native dialogue e2e", () => {
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.metadata.provider).toBe("google");
     expect(result.metadata.model).toBe("gemini-3.1-flash-tts-preview");
+
+    await maybeSaveAudio("conversation-google-gemini", result.audio);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateConversation } from "../../generate-conversation.js";
+import { maybeSaveAudio } from "./_save-audio.js";
 
 const hasKey = !!process.env.FAL_API_KEY;
 
@@ -17,5 +18,7 @@ describe.skipIf(!hasKey)("fal Dia native dialogue e2e", () => {
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     expect(result.metadata.provider).toBe("fal-ai");
     expect(result.metadata.model).toBe("dia-tts");
+
+    await maybeSaveAudio("conversation-fal-dia", result.audio);
   });
 });

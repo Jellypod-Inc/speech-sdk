@@ -44,7 +44,6 @@ Use `provider/model-id` format. Passing just the provider name uses its default 
 | Hume | `hume` | `octave-2` | `HUME_API_KEY` |
 | Google (Gemini TTS) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` |
 | Fish Audio | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
-| Unreal Speech | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` |
 | Murf | `murf` | `GEN2` | `MURF_API_KEY` |
 | Resemble | `resemble` | `default` | `RESEMBLE_API_KEY` |
 | fal | `fal-ai` | *(user-specified)* | `FAL_API_KEY` |
@@ -208,7 +207,6 @@ Each provider has a factory function available via subpath import:
 | `@speech-sdk/core/hume` | `createHume` |
 | `@speech-sdk/core/google` | `createGoogle` |
 | `@speech-sdk/core/fish-audio` | `createFishAudio` |
-| `@speech-sdk/core/unreal-speech` | `createUnrealSpeech` |
 | `@speech-sdk/core/murf` | `createMurf` |
 | `@speech-sdk/core/resemble` | `createResemble` |
 | `@speech-sdk/core/fal-ai` | `createFal` |

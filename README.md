@@ -235,7 +235,6 @@ Use `provider/model` strings. Passing just the provider name uses its default mo
 | [Inworld](https://docs.inworld.ai/tts) | `inworld` | `inworld-tts-1.5-max` | `INWORLD_API_KEY` | [API Reference](https://docs.inworld.ai/tts/api-reference) |
 | [Google (Gemini TTS)](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` | [API Reference](https://ai.google.dev/gemini-api/docs/text-generation) |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` | [API Reference](https://docs.fish.audio/developer-guide/core-features/text-to-speech) |
-| [Unreal Speech](https://docs.v8.unrealspeech.com) | `unreal-speech` | `default` | `UNREAL_SPEECH_API_KEY` | [API Reference](https://docs.v8.unrealspeech.com) |
 | [Murf](https://murf.ai/api/docs) | `murf` | `GEN2` | `MURF_API_KEY` | [API Reference](https://murf.ai/api/docs/api-reference/text-to-speech/generate) |
 | [Resemble](https://docs.resemble.ai) | `resemble` | `default` | `RESEMBLE_API_KEY` | [API Reference](https://docs.resemble.ai/api-reference/text-to-speech/synthesize) |
 | [fal](https://fal.ai/models) | `fal-ai` | *(user-specified)* | `FAL_API_KEY` | [API Reference](https://fal.ai/models) |
@@ -407,6 +406,12 @@ pnpm run typecheck              # type-check without emitting
 ```
 
 E2E tests hit real provider APIs. Set the relevant API key environment variables in a `.env` file or export them in your shell.
+
+Set `SPEECH_SDK_E2E_OUTPUT_DIR` to have the conversation e2e tests write their generated audio to disk (useful for sampling/comparing provider output):
+
+```bash
+SPEECH_SDK_E2E_OUTPUT_DIR=~/Downloads/convos pnpm run test:e2e
+```
 
 ## License
 
