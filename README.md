@@ -414,4 +414,4 @@ SPEECH_SDK_E2E_OUTPUT_DIR=~/Downloads/convos pnpm run test:e2e
 
 ## License
 
-MIT
+Apache-2.0
