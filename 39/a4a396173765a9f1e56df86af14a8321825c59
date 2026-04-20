@@ -1,0 +1,27 @@
+LICENSE
+  74b939a8df8d1ec3 2-140,142-165,167-174,176-202
+README.md
+  74b939a8df8d1ec3 417
+package.json
+  74b939a8df8d1ec3 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "39a4a396173765a9f1e56df86af14a8321825c59",
+  "prompts": {
+    "74b939a8df8d1ec3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad3057a1-e34f-40f8-8c37-ea2c017c196d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 405,
+      "total_deletions": 23,
+      "accepted_lines": 402,
+      "overriden_lines": 3
+    }
+  }
+}
