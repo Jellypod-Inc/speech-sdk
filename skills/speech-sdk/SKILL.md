@@ -68,7 +68,7 @@ result.audio.mediaType  // e.g. "audio/wav"
 ```
 
 - **Per-turn overrides**: `{ voice, text, model?, providerOptions? }` — mix providers across turns (e.g. `openai/gpt-4o-mini-tts` for host + `elevenlabs/eleven_v3` for guest).
-- **Dispatch**: providers with a native multi-speaker endpoint (e.g. ElevenLabs stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, fal dia-tts) take the "native" path; everything else is stitched locally (parallel single-turn calls → PCM concat with inter-turn gap).
+- **Dispatch**: providers with a native multi-speaker endpoint (e.g. ElevenLabs stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker) take the "native" path; everything else is stitched locally (parallel single-turn calls → PCM concat with inter-turn gap).
 - **Volume normalization**: on by default — every conversation is RMS-leveled to ~-20 dBFS so separate outputs play back at the same loudness. Pass `normalizeVolume: false` to skip, or `volumeDbfs: -18` to retarget.
 - **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn).
 - **Errors**: `ConversationInputError` (bad input), `DialogueConstraintError` (native path can't satisfy turns), `StitchUnsupportedError` (provider can't emit PCM for stitching). Import from `@speech-sdk/core/conversation/errors`.

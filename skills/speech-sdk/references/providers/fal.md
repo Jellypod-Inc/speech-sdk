@@ -7,16 +7,14 @@
 | Env var | `FAL_API_KEY` |
 | Official docs | https://fal.ai/models |
 
-fal.ai is a marketplace — no default TTS model. Common choices: `fal-ai/f5-tts`, `fal-ai/dia-tts`, `fal-ai/index-tts-2`, `fal-ai/chatterbox`.
+fal.ai is a marketplace — no default TTS model. Common choices: `fal-ai/f5-tts`, `fal-ai/index-tts-2`.
 
 ## Models
 
 | Model                | Streaming | Voice Cloning | Open Source | Notes                   |
 | -------------------- | --------- | ------------- | ----------- | ----------------------- |
 | `fal-ai/f5-tts`      | No        | Yes           | Yes         | Zero-shot voice cloning |
-| `fal-ai/dia-tts`     | No        | Yes           | Yes         | Dialogue-focused        |
 | `fal-ai/index-tts-2` | No        | Yes           | Yes         | Multi-speaker           |
-| `fal-ai/chatterbox`  | No        | No            | Yes         | Conversational          |
 
 Streaming is not supported — `streamSpeech` throws `StreamingNotSupportedError`.
 

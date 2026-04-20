@@ -49,20 +49,6 @@ describe.skipIf(!hasKey)("fal e2e", () => {
   });
 
   // Voice cloning models — require audio_url reference, tested with providerOptions
-  describe("chatterbox/text-to-speech", () => {
-    it("generates audio with reference voice URL", async () => {
-      const result = await generateSpeech({
-        model: fal("chatterbox/text-to-speech"),
-        text: TEST_TEXT,
-        voice: {
-          url: "https://storage.googleapis.com/falserverless/example_inputs/reference_audio.wav",
-        },
-      });
-
-      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    });
-  });
-
   describe("lux-tts", () => {
     it("generates audio with reference voice URL", async () => {
       const result = await generateSpeech({
