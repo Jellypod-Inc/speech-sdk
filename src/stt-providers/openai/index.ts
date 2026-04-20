@@ -198,14 +198,17 @@ export function createOpenAISTT(config: OpenAISpeechToTextProviderConfig = {}) {
 }
 
 // OpenAI transcription accepts mp3/mp4/mpeg/mpga/m4a/wav/webm/flac/ogg/opus
-// but rejects raw PCM. When a TTS provider hands us raw PCM (e.g., stitch
-// mode), we wrap it with a WAV header so the STT endpoint will parse it.
+// but rejects raw PCM. When a TTS provider hands us raw little-endian PCM
+// (stitch mode), we wrap it with a WAV header so the STT endpoint will
+// parse it. `audio/l16` is intentionally NOT handled: RFC 2586 defines it
+// as big-endian and `wrapPcm16Mono` writes little-endian — silently mis-
+// wrapping would corrupt audio. No current provider emits L16; add an
+// explicit byte-swap branch here if one does.
 async function normalizeAudioForOpenAI(
   audio: Uint8Array,
   mediaType: string
 ): Promise<{ audio: Uint8Array; mediaType: string }> {
-  const base = mediaTypeBase(mediaType);
-  if (base === "audio/pcm" || base === "audio/l16") {
+  if (mediaTypeBase(mediaType) === "audio/pcm") {
     const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
     return {
       audio: await wrapPcm16Mono(audio, sampleRate),

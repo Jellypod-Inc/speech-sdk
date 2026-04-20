@@ -190,7 +190,11 @@ export class ElevenLabsSpeechProvider
     text: string,
     modelId: string,
     providerOptions: Record<string, unknown> | undefined
-  ): { body: Record<string, unknown>; queryString: string } {
+  ): {
+    body: Record<string, unknown>;
+    queryString: string;
+    outputFormat: string | undefined;
+  } {
     const opts = providerOptions ?? {};
     const {
       output_format,
@@ -206,8 +210,10 @@ export class ElevenLabsSpeechProvider
     };
 
     const queryParams = new URLSearchParams();
-    if (output_format != null) {
-      queryParams.set("output_format", String(output_format));
+    const outputFormat =
+      output_format == null ? undefined : String(output_format);
+    if (outputFormat != null) {
+      queryParams.set("output_format", outputFormat);
     }
     if (enable_logging != null) {
       queryParams.set("enable_logging", String(enable_logging));
@@ -219,7 +225,7 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    return { body, queryString: queryParams.toString() };
+    return { body, queryString: queryParams.toString(), outputFormat };
   }
 
   processAudioTags(
@@ -255,7 +261,7 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const { body, queryString } = this.buildRequest(
+    const { body, queryString, outputFormat } = this.buildRequest(
       options.text,
       options.modelId,
       options.providerOptions
@@ -325,9 +331,10 @@ export class ElevenLabsSpeechProvider
       return {
         audio,
         audioDurationMs: headerDurationMs,
-        // The /with-timestamps endpoint always returns mp3 audio in the
-        // base64 payload regardless of requested output_format.
-        mediaType: "audio/mpeg",
+        // /with-timestamps returns the audio as base64 inside a JSON body,
+        // so there's no Content-Type hint for the audio bytes themselves —
+        // we derive it from the requested output_format.
+        mediaType: elevenLabsFormatToMediaType(outputFormat),
         providerMetadata: requestId ? { requestId } : undefined,
         timestamps,
       };
@@ -501,4 +508,37 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
       modelId: modelId ?? provider.defaultModel,
     };
   };
+}
+
+/**
+ * Map an ElevenLabs `output_format` identifier (e.g. `"pcm_24000"`,
+ * `"mp3_44100_128"`, `"ulaw_8000"`, `"opus_48000_32"`) to a standard media
+ * type. Used when decoding base64 audio from `/with-timestamps`, which
+ * delivers the bytes inside a JSON body with no Content-Type hint for the
+ * audio itself. Unknown or missing formats fall back to the endpoint's
+ * default, which is mp3.
+ */
+function elevenLabsFormatToMediaType(format: string | undefined): string {
+  if (!format) {
+    return "audio/mpeg";
+  }
+  if (format.startsWith("mp3_")) {
+    return "audio/mpeg";
+  }
+  if (format.startsWith("pcm_")) {
+    const rate = Number.parseInt(format.slice(4), 10);
+    return Number.isFinite(rate) && rate > 0
+      ? `audio/pcm;rate=${rate}`
+      : "audio/pcm";
+  }
+  if (format.startsWith("ulaw_")) {
+    const rate = Number.parseInt(format.slice(5), 10);
+    return Number.isFinite(rate) && rate > 0
+      ? `audio/basic;rate=${rate}`
+      : "audio/basic";
+  }
+  if (format.startsWith("opus_")) {
+    return "audio/opus";
+  }
+  return "audio/mpeg";
 }
