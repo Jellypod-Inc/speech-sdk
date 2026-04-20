@@ -5,14 +5,17 @@ export {
   NoSpeechGeneratedError,
   SpeechSDKError,
   StreamingNotSupportedError,
+  TimestampKeyMissingError,
 } from "./errors.js";
 export { generateSpeech } from "./generate-speech.js";
 export type { SpeechMetadata } from "./metadata.js";
+export { resolveSTTModel } from "./resolve-stt-provider.js";
 export type {
   Feature,
   ModelInfo,
   ResolvedModel,
   SpeechProvider,
+  TimestampsFeature,
   Voice,
 } from "./speech-provider.js";
 export {
@@ -21,6 +24,12 @@ export {
   hasFeature,
 } from "./speech-provider.js";
 export type { GeneratedAudioFile, SpeechResult } from "./speech-result.js";
+export type {
+  ResolvedSTTModel,
+  SpeechToTextProvider,
+  STTModelInfo,
+} from "./speech-to-text-provider.js";
 export { streamSpeech } from "./stream-speech.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
+export type { TimestampMode, WordTimestamp } from "./timestamps.js";
 export type { GenerateSpeechOptions } from "./types.js";

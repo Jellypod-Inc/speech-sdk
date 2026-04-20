@@ -51,3 +51,42 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
     this.name = "VolumeAdjustmentUnsupportedError";
   }
 }
+
+/**
+ * Thrown by `resolveApiKey` when neither the `apiKey` option nor the provider's
+ * env var is set. Carries the provider name + env var so callers can build
+ * their own actionable error (see `TimestampKeyMissingError`).
+ */
+export class MissingApiKeyError extends SpeechSDKError {
+  readonly providerName: string;
+  readonly envVar: string;
+
+  constructor(options: { providerName: string; envVar: string }) {
+    super(
+      `${options.providerName} API key is required. Pass it via apiKey option or set the ${options.envVar} environment variable.`
+    );
+    this.name = "MissingApiKeyError";
+    this.providerName = options.providerName;
+    this.envVar = options.envVar;
+  }
+}
+
+/**
+ * Thrown when `timestamps: "on"` is requested but the SDK can't obtain word
+ * timestamps because the required API key for the fallback STT provider is
+ * missing. Message names the env vars that would unblock the request.
+ */
+export class TimestampKeyMissingError extends SpeechSDKError {
+  constructor(options: {
+    ttsModel: string;
+    sttProvider: string;
+    envVar: string;
+  }) {
+    super(
+      `${options.ttsModel} does not return word timestamps natively. ` +
+        `Set ${options.envVar} (or pass timestampApiKey) to enable ` +
+        `${options.sttProvider} fallback, or use timestamps: 'auto' | 'off'.`
+    );
+    this.name = "TimestampKeyMissingError";
+  }
+}

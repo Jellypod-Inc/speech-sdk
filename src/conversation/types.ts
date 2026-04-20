@@ -1,4 +1,6 @@
 import type { ResolvedModel, Voice } from "../speech-provider.js";
+import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
+import type { TimestampMode } from "../timestamps.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
   readonly model?: string | ResolvedModel<V>;
@@ -29,6 +31,21 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
    */
   readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
+  /** API key for the derived-timestamps STT provider. */
+  readonly timestampApiKey?: string;
+  /**
+   * Override the STT provider used for the derived-timestamps path. Accepts
+   * a `"provider/model"` string or `ResolvedSTTModel`. Only consulted when
+   * the TTS provider can't supply timestamps natively.
+   */
+  readonly timestampProvider?: string | ResolvedSTTModel;
+  /**
+   * Controls whether the returned `SpeechResult` includes word-level
+   * timestamps. Default `"auto"`. On the stitch path each turn's timestamps
+   * are offset by cumulative duration + gap and concatenated flat; on the
+   * native path the mixed audio yields a flat list without speaker labels.
+   */
+  readonly timestamps?: TimestampMode;
   readonly turns: readonly ConversationTurn<V>[];
   /**
    * Target loudness in dBFS for `normalizeVolume`. Must be ≤ 0 (0 dBFS is

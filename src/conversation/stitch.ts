@@ -1,5 +1,7 @@
 import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
+import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
+import type { TimestampMode, WordTimestamp } from "../timestamps.js";
 import {
   concatPcmToWav,
   dbfsToInt16Rms,
@@ -21,6 +23,9 @@ interface StitchInput<V extends Voice = Voice> {
     providerOptions: Record<string, unknown>;
     mediaType: string;
   }[];
+  readonly timestampApiKey?: string;
+  readonly timestampProvider?: string | ResolvedSTTModel;
+  readonly timestamps: TimestampMode;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
   readonly volumeDbfs?: number;
@@ -38,6 +43,7 @@ interface StitchOutput {
     | Record<string, unknown>
     | undefined
   )[];
+  readonly timestamps?: readonly WordTimestamp[];
   readonly warnings: readonly string[];
 }
 
@@ -95,6 +101,9 @@ export async function runStitch<V extends Voice>(
         maxRetries: input.maxRetries,
         abortSignal: input.abortSignal,
         headers: input.headers,
+        timestamps: input.timestamps,
+        timestampProvider: input.timestampProvider,
+        timestampApiKey: input.timestampApiKey,
       });
       // Prefer the mediaType from getStitchOptions over the response
       // content-type: providers' response headers often omit the sample
@@ -140,6 +149,37 @@ export async function runStitch<V extends Voice>(
   const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
   const providerMetadataPerTurn = perTurn.map((p) => p.result.providerMetadata);
 
+  // Compose per-turn word timestamps into a single flat list, offset by the
+  // cumulative duration of prior turns + (gapMs * number of preceding gaps).
+  // Uses each segment's *source* duration (pcm.length / sampleRate) rather
+  // than the resampled target, because the offsets must match the audio the
+  // per-turn STT/native path actually saw — resampling is a constant-duration
+  // transform but rounding differences can drift by a sample or two.
+  const gapSeconds = input.gapMs / 1000;
+  const turnDurations = perTurn.map(
+    (p) => p.segment.pcm.length / p.segment.sampleRate
+  );
+  const allTurnsHaveTimestamps =
+    input.timestamps !== "off" &&
+    perTurn.every((p) => p.result.timestamps !== undefined);
+
+  let timestamps: WordTimestamp[] | undefined;
+  if (allTurnsHaveTimestamps) {
+    timestamps = [];
+    let offsetSec = 0;
+    for (let i = 0; i < perTurn.length; i++) {
+      const turnTimestamps = perTurn[i]?.result.timestamps ?? [];
+      for (const w of turnTimestamps) {
+        timestamps.push({
+          text: w.text,
+          start: w.start + offsetSec,
+          end: w.end + offsetSec,
+        });
+      }
+      offsetSec += (turnDurations[i] ?? 0) + gapSeconds;
+    }
+  }
+
   return {
     audio,
     mediaType: "audio/wav",
@@ -149,6 +189,7 @@ export async function runStitch<V extends Voice>(
       audioDurationMs,
     },
     providerMetadataPerTurn,
+    timestamps,
     warnings,
   };
 }
