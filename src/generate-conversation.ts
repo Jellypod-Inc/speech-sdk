@@ -11,6 +11,12 @@ import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 
+// biome-ignore lint/performance/noBarrelFile: public entry point — re-export error classes so callers get fn + types + errors from one import
+export {
+  ConversationInputError,
+  DialogueConstraintError,
+  StitchUnsupportedError,
+} from "./conversation/errors.js";
 export type {
   ConversationTurn,
   GenerateConversationOptions,

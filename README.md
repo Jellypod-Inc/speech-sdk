@@ -203,7 +203,7 @@ Pass `normalizeVolume: false` to skip normalization entirely (zero work) and kee
 
 ### Errors
 
-Conversation-specific errors (importable from `@speech-sdk/core/conversation/errors`):
+Conversation-specific errors (re-exported from `@speech-sdk/core/conversation` alongside `generateConversation`, or importable on their own from `@speech-sdk/core/conversation/errors`):
 
 | Error | When |
 |---|---|
