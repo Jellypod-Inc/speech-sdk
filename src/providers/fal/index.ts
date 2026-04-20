@@ -32,12 +32,6 @@ export class FalSpeechProvider
       features: ["open-source"],
     },
     {
-      id: "dia-tts",
-      releaseDate: "2025-04-21",
-      languages: ["en"],
-      features: ["open-source", "inline-voice-cloning"],
-    },
-    {
       id: "orpheus-tts",
       releaseDate: "2025-03-18",
       languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
@@ -143,9 +137,9 @@ export class FalSpeechProvider
   }
 
   getStitchOptions(modelId: string) {
-    // All currently-listed fal models (dia-tts, orpheus-tts, f5-tts, kokoro)
-    // return WAV (16-bit mono PCM in a RIFF container) at fal's CDN URL.
-    // Pass through providerOptions empty — fal exposes no format selector.
+    // All currently-listed fal models (orpheus-tts, f5-tts, kokoro) return
+    // WAV (16-bit mono PCM in a RIFF container) at fal's CDN URL. Pass
+    // through providerOptions empty — fal exposes no format selector.
     if (this.models.some((m) => m.id === modelId)) {
       return {
         providerOptions: {},
@@ -153,81 +147,6 @@ export class FalSpeechProvider
       };
     }
     return undefined;
-  }
-
-  dialogueCapabilities(modelId: string) {
-    if (modelId === "dia-tts") {
-      return { minVoices: 1, maxVoices: 2 };
-    }
-    return undefined;
-  }
-
-  async generateDialogue(options: {
-    modelId: string;
-    turns: readonly { voice: string | { url: string }; text: string }[];
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    audio: Uint8Array;
-    mediaType: string;
-    providerMetadata?: Record<string, unknown>;
-  }> {
-    if (options.modelId !== "dia-tts") {
-      throw new Error(
-        `fal-ai/${options.modelId} does not support native dialogue; use dia-tts.`
-      );
-    }
-
-    const voiceKeyOf = (v: { url: string } | string) =>
-      typeof v === "string" ? `s:${v}` : `u:${v.url}`;
-
-    const voiceToTag = new Map<string, string>();
-    const tagged: string[] = [];
-    for (const t of options.turns) {
-      const k = voiceKeyOf(t.voice);
-      let tag = voiceToTag.get(k);
-      if (!tag) {
-        tag = `[S${voiceToTag.size + 1}]`;
-        voiceToTag.set(k, tag);
-      }
-      tagged.push(`${tag} ${t.text}`);
-    }
-    const text = tagged.join(" ");
-
-    const body: Record<string, unknown> = {
-      ...options.providerOptions,
-      text,
-    };
-
-    // If any turn carries a URL voice reference, forward the first one as
-    // audio_url (Dia supports one reference clip per request).
-    const firstUrlVoice = options.turns.find(
-      (t) => typeof t.voice !== "string" && "url" in t.voice
-    )?.voice as { url: string } | undefined;
-    if (firstUrlVoice) {
-      body.audio_url = firstUrlVoice.url;
-    }
-
-    const url = `${this.baseURL}/fal-ai/${options.modelId}`;
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Key ${resolveApiKey(this.apiKey, "FAL_API_KEY", "fal")}`,
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    await handleErrorResponse(response, `fal-ai/${options.modelId}`);
-
-    const json = (await response.json()) as {
-      audio: { url: string; content_type?: string };
-    };
-    return await this.fetchAudio(json, options);
   }
 }
 
