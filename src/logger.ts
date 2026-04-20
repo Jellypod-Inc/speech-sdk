@@ -1,23 +1,19 @@
 /**
  * Minimal debug-level logger. Emits a namespaced message only when the
- * environment opts in via `DEBUG` (same convention as the `debug` npm
+ * `DEBUG` env var opts in (convention borrowed from the `debug` npm
  * package, without the dependency). Matches any of:
  *   DEBUG=*              enables everything
  *   DEBUG=speech-sdk     enables the SDK
  *   DEBUG=speech-sdk:*   same (wildcard namespace)
  *   DEBUG=foo,speech-sdk comma list
- *
- * Browser environments: the `DEBUG` localStorage key (e.g.,
- * `localStorage.setItem("DEBUG", "speech-sdk")`) is also honored for
- * symmetry with the `debug` package. Safe no-op when neither is present.
  */
 const NAMESPACE = "speech-sdk";
 
 function debugEnabled(): boolean {
-  const raw = readDebugEnv();
-  if (!raw) {
+  if (typeof process === "undefined" || !process.env?.DEBUG) {
     return false;
   }
+  const raw = process.env.DEBUG;
   if (raw === "*") {
     return true;
   }
@@ -32,27 +28,6 @@ function debugEnabled(): boolean {
     }
   }
   return false;
-}
-
-function readDebugEnv(): string | undefined {
-  if (typeof process !== "undefined" && process.env?.DEBUG) {
-    return process.env.DEBUG;
-  }
-  // `localStorage` property access itself can throw `SecurityError` in
-  // restricted browser environments (cross-origin iframes, storage blocked
-  // by CSP, Chrome policy, etc.) — not just calls to its methods. Wrap the
-  // whole access in try/catch so importing this module can't crash.
-  try {
-    const ls = (
-      globalThis as {
-        localStorage?: { getItem?(k: string): string | null };
-      }
-    ).localStorage;
-    const value = ls?.getItem?.("DEBUG");
-    return value ?? undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 // Evaluated once at module load; avoids reading env on every call in hot
