@@ -41,7 +41,7 @@ import { createFal } from "@speech-sdk/core/fal-ai"
 const fal = createFal()
 
 await generateSpeech({
-  model: fal("fal-ai/chatterbox"),
+  model: fal("fal-ai/f5-tts"),
   text: "Hello!",
   voice: { url: "https://example.com/reference.wav" },
 })

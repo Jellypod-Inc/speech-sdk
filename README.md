@@ -219,7 +219,6 @@ Conversation-specific errors (re-exported from `@speech-sdk/core/conversation` a
 | Google | `gemini-2.5-flash-preview-tts`, `gemini-2.5-pro-preview-tts`, `gemini-3.1-flash-tts-preview` | **Exactly 2 voices** (API requirement) |
 | Hume | `octave-1`, `octave-2` | 1–4 voices |
 | Fish Audio | `s2-pro` | 1–4 voices |
-| fal | `dia-tts` | 1–2 voices |
 
 ## Supported Providers
 
@@ -337,7 +336,7 @@ import { createFal } from '@speech-sdk/core/fal-ai';
 
 const fal = createFal();
 const result = await generateSpeech({
-  model: fal('fal-ai/chatterbox'),
+  model: fal('fal-ai/f5-tts'),
   text: 'Hello!',
   voice: { url: 'https://example.com/reference.wav' },
 });
@@ -415,4 +414,4 @@ SPEECH_SDK_E2E_OUTPUT_DIR=~/Downloads/convos pnpm run test:e2e
 
 ## License
 
-MIT
+Apache-2.0

@@ -125,7 +125,7 @@ describe("getStitchOptions per provider", () => {
 
   it("fal-ai returns wav for every listed model", () => {
     const p = new FalSpeechProvider({});
-    for (const m of ["dia-tts", "f5-tts", "kokoro", "orpheus-tts"] as const) {
+    for (const m of ["f5-tts", "kokoro", "orpheus-tts"] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
         providerOptions: {},
         mediaType: "audio/wav",

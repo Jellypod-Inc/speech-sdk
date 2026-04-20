@@ -4,7 +4,7 @@
 
 **Don't** loop over `generateSpeech` yourself. `generateConversation`:
 
-- Routes to a provider's **native multi-speaker endpoint** when one exists (ElevenLabs request-stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, fal `dia-tts`, etc.).
+- Routes to a provider's **native multi-speaker endpoint** when one exists (ElevenLabs request-stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, etc.).
 - Otherwise runs turns in parallel and concatenates the decoded PCM locally with a configurable gap.
 - **RMS-normalizes the output** so every conversation plays back at the same loudness.
 - Returns a single `SpeechResult` identical in shape to `generateSpeech`'s.
