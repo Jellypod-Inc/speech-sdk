@@ -1,6 +1,7 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
+import { ConversationInputError } from "./conversation/errors.js";
 import type { GenerateConversationOptions } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
@@ -38,6 +39,20 @@ export async function generateConversation<V extends Voice = Voice>(
   });
 
   if (path.kind === "native") {
+    // The native-dialogue path renders the entire script in a single provider
+    // API call, so per-turn providerOptions have no well-defined meaning —
+    // silently collapsing them to a single blob would lie to the caller. Fail
+    // loudly and let them move providerOptions to the top level (where it's
+    // forwarded once to the dialogue call) or pick a model that routes
+    // through the stitch path.
+    const turnWithOpts = options.turns.findIndex(
+      (t) => t.providerOptions !== undefined
+    );
+    if (turnWithOpts !== -1) {
+      throw new ConversationInputError(
+        `turns[${turnWithOpts}].providerOptions is set, but ${path.resolved.provider.id}/${path.resolved.modelId} dispatched to the native dialogue path, which renders all turns in one API call. Per-turn providerOptions are not supported on this path; move them to the top-level providerOptions instead.`
+      );
+    }
     return await runNative({
       options,
       resolved: path.resolved,

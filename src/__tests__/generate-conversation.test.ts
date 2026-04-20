@@ -3,6 +3,8 @@ import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 const AT_LEAST_ONE_TURN_RE = /at least one turn/i;
+const NATIVE_PROVIDER_OPTIONS_RE =
+  /turns\[1\]\.providerOptions.*native dialogue path/;
 
 function nativeProvider(): SpeechProvider {
   return {
@@ -141,5 +143,50 @@ describe("generateConversation", () => {
       })
     ).rejects.toThrow(AT_LEAST_ONE_TURN_RE);
     expect(provider.generate).not.toHaveBeenCalled();
+  });
+
+  it("forwards per-turn providerOptions to each generateSpeech call on the stitch path", async () => {
+    const provider = stitchProvider();
+    await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [
+        { voice: "a", text: "hi", providerOptions: { speed: 0.9 } },
+        {
+          voice: "b",
+          text: "hello",
+          providerOptions: { speed: 1.1, seed: 42 },
+        },
+      ],
+      gapMs: 0,
+      normalizeVolume: false,
+    });
+
+    const calls = (provider.generate as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+    // stitchProvider().getStitchOptions declares { response_format: "pcm" },
+    // which is merged last so it always wins over caller-supplied keys.
+    expect(calls[0][0].providerOptions).toEqual({
+      speed: 0.9,
+      response_format: "pcm",
+    });
+    expect(calls[1][0].providerOptions).toEqual({
+      speed: 1.1,
+      seed: 42,
+      response_format: "pcm",
+    });
+  });
+
+  it("rejects per-turn providerOptions on the native-dialogue path", async () => {
+    const provider = nativeProvider();
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello.", providerOptions: { style: "casual" } },
+        ],
+      })
+    ).rejects.toThrow(NATIVE_PROVIDER_OPTIONS_RE);
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
   });
 });

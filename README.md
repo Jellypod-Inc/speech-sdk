@@ -180,9 +180,11 @@ interface ConversationTurn {
   voice: Voice;                                   // required
   text: string;                                   // required, non-empty
   model?: string | ResolvedModel;                 // per-turn override of the top-level model
-  providerOptions?: Record<string, unknown>,
+  providerOptions?: Record<string, unknown>,      // stitch path only; see note below
 }
 ```
+
+Per-turn `providerOptions` are merged with the top-level `providerOptions` on the stitch path — each turn's underlying `generateSpeech()` call receives `{ ...topLevel, ...turn, ...stitchDefaults }`. On the native-dialogue path the provider renders the whole script in one API call, so per-turn overrides have no well-defined meaning; setting `providerOptions` on any turn throws `ConversationInputError`. Move the options to the top-level `providerOptions` (forwarded once to the dialogue call) instead.
 
 ### Volume normalization
 
