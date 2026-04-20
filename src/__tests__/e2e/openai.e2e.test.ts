@@ -164,13 +164,13 @@ describe("OpenAI e2e", () => {
       }
     });
 
-    it("honors timestampProvider override (gpt-4o-transcribe instead of whisper-1)", async () => {
+    it("honors timestampProvider override (explicit openai/whisper-1)", async () => {
       const result = await generateSpeech({
         model: "openai/tts-1",
         text: TEST_TEXT,
         voice: VOICE,
         timestamps: "on",
-        timestampProvider: "openai/gpt-4o-transcribe",
+        timestampProvider: "openai/whisper-1",
       });
 
       expect(result.timestamps).toBeDefined();

@@ -6,6 +6,7 @@ import type { GenerateConversationOptions } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
@@ -173,6 +174,23 @@ async function runNative<V extends Voice>(args: {
   const shouldRequestNative =
     (timestampMode === "on" || timestampMode === "auto") &&
     hasNativeDialogueTimestamps;
+
+  const dialogueId = `${resolved.provider.id}/${resolved.modelId}`;
+  if (timestampMode === "off") {
+    debug(`${dialogueId} (dialogue): timestamps: "off" — skipping alignment.`);
+  } else if (shouldRequestNative) {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "${timestampMode}" — requesting native dialogue alignment.`
+    );
+  } else if (timestampMode === "auto") {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "auto" — dialogue endpoint has no native alignment; skipping. Pass timestamps: "on" to derive from the mixed audio via STT (flat list, no speaker labels).`
+    );
+  } else {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "on" but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
+    );
+  }
 
   const result = await pRetry(
     () =>

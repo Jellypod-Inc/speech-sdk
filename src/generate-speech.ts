@@ -7,6 +7,7 @@ import {
   NoSpeechGeneratedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
+import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
@@ -111,6 +112,14 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const shouldRequestNative =
     (timestampMode === "on" || timestampMode === "auto") && hasNativeTimestamps;
 
+  logTimestampDecision({
+    modelIdentifier,
+    mode: timestampMode,
+    hasNative: hasNativeTimestamps,
+    willRequestNative: shouldRequestNative,
+    timestampProvider,
+  });
+
   const startTime = performance.now();
 
   const result = await pRetry(
@@ -169,6 +178,9 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   let timestamps: readonly WordTimestamp[] | undefined;
   if (timestampMode !== "off") {
     if (result.timestamps && result.timestamps.length > 0) {
+      debug(
+        `${modelIdentifier}: returned ${result.timestamps.length} native word timestamps.`
+      );
       timestamps = result.timestamps;
     } else if (timestampMode === "on") {
       timestamps = await deriveTimestampsViaSTT({
@@ -179,6 +191,9 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
         timestampApiKey,
         abortSignal,
       });
+      debug(
+        `${modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
+      );
     }
   }
 
@@ -212,4 +227,51 @@ function preprocessText(
     return stripAudioTags(rawText, modelIdentifier);
   }
   return { text: rawText, warnings: [] };
+}
+
+/**
+ * Logs the timestamp routing decision at debug level so developers can see
+ * why they are / aren't getting alignment data. Silent unless `DEBUG`
+ * includes `speech-sdk` (or `*`).
+ */
+function logTimestampDecision(args: {
+  modelIdentifier: string;
+  mode: TimestampMode;
+  hasNative: boolean;
+  willRequestNative: boolean;
+  timestampProvider: string | ResolvedSTTModel | undefined;
+}): void {
+  const { modelIdentifier, mode, willRequestNative } = args;
+  if (mode === "off") {
+    debug(`${modelIdentifier}: timestamps: "off" — skipping alignment.`);
+    return;
+  }
+  if (willRequestNative) {
+    debug(
+      `${modelIdentifier}: timestamps: "${mode}" — requesting native alignment from the provider.`
+    );
+    return;
+  }
+  if (mode === "auto") {
+    debug(
+      `${modelIdentifier}: timestamps: "auto" — model has no native alignment; skipping. Pass timestamps: "on" to derive via STT (adds a round-trip of the synthesized audio through Whisper by default).`
+    );
+    return;
+  }
+  // mode === "on" and no native support → will fall back to STT
+  debug(
+    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampProvider)} for word timestamps (adds a round-trip).`
+  );
+}
+
+function describeSTTTarget(
+  provider: string | ResolvedSTTModel | undefined
+): string {
+  if (typeof provider === "string") {
+    return provider;
+  }
+  if (provider) {
+    return `${provider.provider.id}/${provider.modelId}`;
+  }
+  return "openai/whisper-1 (default)";
 }

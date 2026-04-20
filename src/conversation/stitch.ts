@@ -1,4 +1,5 @@
 import { generateSpeech } from "../generate-speech.js";
+import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
 import type { TimestampMode, WordTimestamp } from "../timestamps.js";
@@ -178,6 +179,16 @@ export async function runStitch<V extends Voice>(
       }
       offsetSec += (turnDurations[i] ?? 0) + gapSeconds;
     }
+    debug(
+      `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s).`
+    );
+  } else if (input.timestamps !== "off") {
+    const missing = perTurn
+      .map((p, i) => (p.result.timestamps === undefined ? i : -1))
+      .filter((i) => i !== -1);
+    debug(
+      `stitch: returning no timestamps — ${missing.length}/${perTurn.length} turn(s) had no alignment data (turns: ${missing.join(", ")}). Use timestamps: "on" and/or mark provider models as native/derived to get full coverage.`
+    );
   }
 
   return {

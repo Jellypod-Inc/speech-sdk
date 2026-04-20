@@ -91,20 +91,14 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
   readonly id = "openai";
   readonly defaultModel = "whisper-1";
 
+  // Only whisper-1 supports word-level timestamps. The newer
+  // gpt-4o-transcribe / gpt-4o-mini-transcribe models accept `json` /
+  // `text` response formats only and don't expose `timestamp_granularities`,
+  // so they can't satisfy this provider's contract.
   readonly models = [
     {
       id: "whisper-1",
       releaseDate: "2023-03-01",
-      languages: OPENAI_STT_LANGUAGES,
-    },
-    {
-      id: "gpt-4o-transcribe",
-      releaseDate: "2025-03-20",
-      languages: OPENAI_STT_LANGUAGES,
-    },
-    {
-      id: "gpt-4o-mini-transcribe",
-      releaseDate: "2025-03-20",
       languages: OPENAI_STT_LANGUAGES,
     },
   ] as const;
