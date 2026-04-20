@@ -1,0 +1,23 @@
+.github/workflows/discord-release-notify.yml
+  01de937dd9d10d0e 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "7968b1365e3d69b7d01052fc7820870ff3fe5138",
+  "prompts": {
+    "01de937dd9d10d0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "674042b2-608f-42b1-b33d-d81426745e79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 0,
+      "accepted_lines": 56,
+      "overriden_lines": 0
+    }
+  }
+}
