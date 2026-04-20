@@ -1,0 +1,23 @@
+src/logger.ts
+  3d37cb7b1d1c141b 3,13,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "103a1cf1c4f272928325c9bcf8703d3de7b725ee",
+  "prompts": {
+    "3d37cb7b1d1c141b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "365f88b2-39b3-41a9-8eef-275d56677841",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 28,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
