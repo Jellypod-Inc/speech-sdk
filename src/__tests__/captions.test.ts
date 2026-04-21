@@ -139,6 +139,45 @@ describe("groupIntoSentences", () => {
     const b = w("World", 0.5, 0.9);
     expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
   });
+
+  it("splits on Japanese/Chinese ideographic full stop \u3002", () => {
+    const a = w("\u3053\u3093\u306B\u3061\u306F\u3002", 0, 0.5);
+    const b = w("\u3055\u3088\u3046\u306A\u3089", 0.6, 1.0);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("splits on CJK fullwidth question and exclamation", () => {
+    const a = w("\u8ab0\uFF1F", 0, 0.4);
+    const b = w("\u3088\u3057\uFF01", 0.5, 0.9);
+    const c = w("\u305D\u3046", 1.0, 1.3);
+    expect(groupIntoSentences([a, b, c])).toEqual([[a], [b], [c]]);
+  });
+
+  it("splits on CJK terminator followed by closing corner bracket", () => {
+    // "\u300C\u8d70\u308c\u3002\u300D" = 「走れ。」 — Japanese quoted dialog.
+    const a = w("\u300C\u8d70\u308c\u3002\u300D", 0, 0.4);
+    const b = w("\u305D\u3057\u3066", 0.5, 0.8);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("splits on Devanagari danda \u0964", () => {
+    const a = w("\u0928\u092E\u0938\u094D\u0924\u0947\u0964", 0, 0.5);
+    const b = w("\u0915\u0948\u0938\u0947", 0.6, 1.0);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("splits on Devanagari double danda \u0965", () => {
+    const a = w("\u0936\u094D\u0932\u094B\u0915\u0965", 0, 0.5);
+    const b = w("\u0905\u0917\u0932\u093E", 0.6, 1.0);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("splits on Arabic question mark \u061F and full stop \u06D4", () => {
+    const a = w("\u0643\u064A\u0641\u061F", 0, 0.4);
+    const b = w("\u0623\u0647\u0644\u0627\u064B\u06D4", 0.5, 1.0);
+    const c = w("\u0634\u0643\u0631\u0627", 1.1, 1.5);
+    expect(groupIntoSentences([a, b, c])).toEqual([[a], [b], [c]]);
+  });
 });
 
 describe("splitSentenceIntoCues", () => {

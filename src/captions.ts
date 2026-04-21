@@ -78,16 +78,31 @@ export function formatVttTime(seconds: number): string {
   return formatTimestamp(seconds, ".");
 }
 
-// Matches a word ending in .!? optionally followed by a straight or curly quote.
-const SENTENCE_TERMINATOR = /[.!?]["'\u2018\u2019\u201C\u201D]?$/;
+// Sentence-ending punctuation across major writing systems:
+//   ASCII:       . ! ?
+//   CJK:         。 ！ ？    (U+3002, U+FF01, U+FF1F)
+//   Devanagari:  । ॥        (U+0964 danda, U+0965 double danda)
+//   Arabic:      ؟ ۔        (U+061F question, U+06D4 full stop)
+// Optionally followed by a closing quote: ASCII, curly, or CJK corner bracket.
+const SENTENCE_TERMINATOR =
+  /[.!?\u3002\uFF01\uFF1F\u0964\u0965\u061F\u06D4]["'\u2018\u2019\u201C\u201D\u300D\u300F]?$/;
 
 /**
- * Groups a flat list of word timestamps into sentences using
- * terminator punctuation (`.`, `!`, `?`, optionally followed by a
- * closing quote) attached to the trailing word.
+ * Groups a flat list of word timestamps into sentences using terminator
+ * punctuation attached to the trailing word. Supported terminators:
  *
- * Known limitation: abbreviations like "Dr." or "e.g." are treated as
- * sentence ends. Acceptable for v1 captioning.
+ * - ASCII: `.`, `!`, `?`
+ * - CJK: `。`, `！`, `？`
+ * - Devanagari (Hindi, Sanskrit, Marathi): `।`, `॥`
+ * - Arabic: `؟`, `۔`
+ *
+ * A trailing closing quote (`"`, `'`, curly variants, or CJK corner
+ * bracket `」` / `』`) attached to the terminator is tolerated.
+ *
+ * Known limitations:
+ * - Abbreviations like "Dr." or "e.g." are treated as sentence ends.
+ * - Thai and other scripts without word-level whitespace or inline
+ *   terminators fall through to char/duration-based hard breaks.
  *
  * Exported for testing; not part of the public API.
  */
@@ -109,7 +124,10 @@ export function groupIntoSentences(
   return sentences;
 }
 
-const COMMA_TERMINATOR = /,["']?$/;
+// Comma-equivalent soft-break punctuation: ASCII, CJK ideographic (`、`) and
+// fullwidth (`，`), and Arabic (`،`).
+const COMMA_TERMINATOR =
+  /[,\u3001\uFF0C\u060C]["'\u2018\u2019\u201C\u201D\u300D\u300F]?$/;
 
 interface CueSplitOptions {
   readonly longPhraseCommaBreakChars: number;
@@ -252,7 +270,15 @@ export interface CaptionsOptions {
   readonly maxCharsPerCue?: number;
   /** Max cue duration in milliseconds. Default `7000`. */
   readonly maxCueDurationMs?: number;
-  /** Max chars per line (word-boundary wrap). Default `42`. */
+  /**
+   * Max chars per line (word-boundary wrap). Default `42` — the common
+   * broadcast convention for Latin-alphabet subtitles.
+   *
+   * Character counts use JavaScript `string.length` (UTF-16 code units).
+   * For CJK (Japanese, Chinese, Korean) content, each character is roughly
+   * twice the visual width of an ASCII character in monospaced players;
+   * pass a smaller value (e.g. `16`) to match Japanese broadcast norms.
+   */
   readonly maxLineLength?: number;
   /** Max lines per cue. Default `2`. */
   readonly maxLinesPerCue?: number;
