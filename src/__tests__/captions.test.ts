@@ -355,8 +355,10 @@ describe("timestampsToCaptions — SRT (default)", () => {
 });
 
 describe("timestampsToCaptions — VTT", () => {
-  it("returns empty string for empty input (no header)", () => {
-    expect(timestampsToCaptions([], { format: "vtt" })).toBe("");
+  it("emits a minimal valid WEBVTT file for empty input", () => {
+    // SRT returns "" for empty input, but WebVTT requires the WEBVTT signature
+    // per W3C §3.1 — even a zero-cue file must start with the header.
+    expect(timestampsToCaptions([], { format: "vtt" })).toBe("WEBVTT\n\n");
   });
 
   it("renders a single short sentence with WEBVTT header and period decimals", () => {

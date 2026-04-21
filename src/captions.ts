@@ -317,11 +317,15 @@ export function timestampsToCaptions(
   timestamps: readonly WordTimestamp[],
   options: CaptionsOptions = {}
 ): string {
+  const format: CaptionFormat = options.format ?? "srt";
+
   if (timestamps.length === 0) {
-    return "";
+    // SRT has no required signature — `""` is a valid empty track. WebVTT
+    // requires the `WEBVTT` header per W3C §3.1; emit the minimal valid
+    // zero-cue file so callers can still write the output as `.vtt`.
+    return format === "vtt" ? "WEBVTT\n\n" : "";
   }
 
-  const format: CaptionFormat = options.format ?? "srt";
   const maxLineLength = options.maxLineLength ?? DEFAULT_MAX_LINE_LENGTH;
   const maxLinesPerCue = options.maxLinesPerCue ?? DEFAULT_MAX_LINES_PER_CUE;
   const maxCharsPerCue =
