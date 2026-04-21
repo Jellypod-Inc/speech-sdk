@@ -31,8 +31,14 @@ jobs:
             body="${body:0:4000}…"
           fi
 
+          # Discord embed titles cap at 256 chars.
+          title="$REPO_NAME — $RELEASE_NAME"
+          if [ ${#title} -gt 256 ]; then
+            title="${title:0:255}…"
+          fi
+
           payload=$(jq -n \
-            --arg title "$REPO_NAME — $RELEASE_NAME" \
+            --arg title "$title" \
             --arg url "$RELEASE_URL" \
             --arg desc "$body" \
             --arg tag "$RELEASE_TAG" \
@@ -76,7 +82,11 @@ jobs:
             body="${body:0:2900}…"
           fi
 
+          # Slack header block plain_text caps at 150 chars.
           header="$REPO_NAME — $RELEASE_NAME"
+          if [ ${#header} -gt 150 ]; then
+            header="${header:0:149}…"
+          fi
 
           payload=$(jq -n \
             --arg header "$header" \
