@@ -36,7 +36,7 @@ type TimestampMode = "on" | "auto" | "off"
 
 ## Cascade
 
-When `timestamps` is `"on"` or `"auto"` (and the provider is native-capable), the SDK resolves timestamps in this order:
+When `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"` returns native timestamps only — it never triggers STT; if the provider has no native alignment, `timestamps` is `undefined` on the result.)
 
 1. **Native** — provider returns alignment directly in its TTS response (e.g. ElevenLabs `/with-timestamps`).
 2. **User override `timestampProvider`** — custom STT model (`"provider/model"` string or `ResolvedSTTModel`). Use this to route to a cheaper in-house Whisper or a gateway.
