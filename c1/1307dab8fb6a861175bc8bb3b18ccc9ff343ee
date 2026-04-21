@@ -1,0 +1,23 @@
+skills/speech-sdk/references/providers.md
+  d5a5f3e13a7b090b 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "c11307dab8fb6a861175bc8bb3b18ccc9ff343ee",
+  "prompts": {
+    "d5a5f3e13a7b090b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ba0cea3-649f-40b5-a887-fbcc99d46790",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 461,
+      "overriden_lines": 1
+    }
+  }
+}
