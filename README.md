@@ -151,6 +151,14 @@ result.timestamps;
 
 On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override with `timestampProvider` (`"provider/model"` string or `ResolvedSTTModel`) and `timestampApiKey`.
 
+**Per-provider support:**
+
+| Provider | Timestamps |
+|---|---|
+| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, free on `"auto"` |
+| OpenAI (`gpt-4o-mini-tts`, `tts-1`, `tts-1-hd`) | Derived — transcribed via Whisper on `"on"` |
+| All others (Deepgram, Cartesia, Hume, Google, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI) | No native alignment; `"on"` routes through the STT fallback, `"auto"` returns `undefined` |
+
 `generateConversation` accepts the same options and returns a flat `WordTimestamp[]` across all turns — stitch-path timings are offset by cumulative turn duration + gap.
 
 ## Volume normalization

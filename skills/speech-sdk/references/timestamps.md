@@ -55,7 +55,12 @@ const feat = getFeature<TimestampsFeature>(modelInfo, "timestamps")
 // undefined                              → no declared capability; STT fallback handles "on"
 ```
 
-As of v0.7: ElevenLabs declares `native` (via `/with-timestamps`); OpenAI declares `derived`. Other providers work on the `"on"` path via the default Whisper fallback even without an explicit declaration.
+As of v0.7, only two providers declare a `timestamps` feature:
+
+- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` declare `{ mode: "native" }` and return alignment via `/with-timestamps`.
+- **OpenAI** — `gpt-4o-mini-tts`, `tts-1`, `tts-1-hd` declare `{ mode: "derived" }`; the SDK transcribes their output via Whisper on `timestamps: "on"`.
+
+Every other provider has **no declared timestamps capability**. `timestamps: "auto"` on those providers returns `undefined`; `timestamps: "on"` still works, routing through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override.
 
 ## Custom STT Provider
 

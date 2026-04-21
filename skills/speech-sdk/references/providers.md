@@ -24,21 +24,29 @@ SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the 
 
 | Provider    | Streaming | Audio Tags              | Voice Cloning       | Timestamps           | Open Source |
 | ----------- | --------- | ----------------------- | ------------------- | -------------------- | ----------- |
-| OpenAI      | Yes       | Yes (as instructions)   | No                  | Derived (Whisper)    | No          |
-| ElevenLabs  | Yes       | Yes (`eleven_v3`)       | No                  | Native               | No          |
-| Deepgram    | Yes       | No                      | No                  | Derived              | No          |
-| Cartesia    | Yes       | Yes (`sonic-3`)         | Yes (`sonic-3`)     | Derived              | No          |
-| Hume        | Yes       | No                      | Yes (`octave-2`)    | Derived              | No          |
-| Google      | Yes       | No                      | No                  | Derived              | No          |
-| Fish Audio  | Yes       | Yes                     | Yes                 | Derived              | Yes         |
-| Inworld     | Yes       | No                      | No                  | Derived              | No          |
-| Murf        | No        | No                      | No                  | Derived              | No          |
-| Resemble    | Yes       | No                      | Yes                 | Derived              | Yes         |
-| fal         | No        | No                      | Yes (select models) | Derived              | Varies      |
-| Mistral     | No        | No                      | Yes                 | Derived              | Yes         |
-| xAI         | Yes       | Yes (`grok-tts`)        | No                  | Derived              | No          |
+| OpenAI      | Yes       | Yes (as instructions)   | No                  | Derived (declared)   | No          |
+| ElevenLabs  | Yes       | Yes (`eleven_v3`)       | No                  | **Native**           | No          |
+| Deepgram    | Yes       | No                      | No                  | STT fallback only    | No          |
+| Cartesia    | Yes       | Yes (`sonic-3`)         | Yes (`sonic-3`)     | STT fallback only    | No          |
+| Hume        | Yes       | No                      | Yes (`octave-2`)    | STT fallback only    | No          |
+| Google      | Yes       | No                      | No                  | STT fallback only    | No          |
+| Fish Audio  | Yes       | Yes                     | Yes                 | STT fallback only    | Yes         |
+| Inworld     | Yes       | No                      | No                  | STT fallback only    | No          |
+| Murf        | No        | No                      | No                  | STT fallback only    | No          |
+| Resemble    | Yes       | No                      | Yes                 | STT fallback only    | Yes         |
+| fal         | No        | No                      | Yes (select models) | STT fallback only    | Varies      |
+| Mistral     | No        | No                      | Yes                 | STT fallback only    | Yes         |
+| xAI         | Yes       | Yes (`grok-tts`)        | No                  | STT fallback only    | No          |
 
-Support is per-model — see each provider file in `providers/<name>.md`. "Native" timestamps come back in the TTS response (free); "Derived" means the SDK pipes the audio through STT on `timestamps: "on"` (extra cost + latency). See `timestamps.md`.
+Support is per-model — see each provider file in `providers/<name>.md`.
+
+**Timestamps column legend:**
+
+- **Native** — the TTS endpoint itself returns word alignment. Free on `timestamps: "auto"`. Currently: ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`).
+- **Derived (declared)** — the model declares `{ id: "timestamps", mode: "derived" }`. The SDK transcribes the synthesized audio via STT on `timestamps: "on"`. Currently: OpenAI (`gpt-4o-mini-tts`, `tts-1`, `tts-1-hd`).
+- **STT fallback only** — no declared capability. `timestamps: "on"` still works, routing through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override. `timestamps: "auto"` returns `undefined`.
+
+See `timestamps.md` for the full cascade and overrides.
 
 ## Usage
 
