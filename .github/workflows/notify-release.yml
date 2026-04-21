@@ -1,13 +1,63 @@
-name: Notify Slack on Release
+name: Notify on Release
 
-# Fires the moment a GitHub Release is published.
+# Fires the moment a GitHub Release is published. Fans out to each consumer
+# channel as its own job so a failure in one doesn't block the others, and so
+# each channel keeps its own filter (e.g. Discord skips pre-releases, Slack
+# does not) and payload format.
 on:
   release:
     types: [published]
 
 jobs:
-  notify-slack:
+  discord:
     runs-on: ubuntu-latest
+    # Discord is customer-facing — only notify on stable releases.
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Post release to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name || github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_PUBLISHED_AT: ${{ github.event.release.published_at }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          # Truncate release notes to Discord embed description limit (4096 chars)
+          # and fall back to a short placeholder if the body is empty.
+          body="${RELEASE_BODY:-_No release notes provided._}"
+          if [ ${#body} -gt 4000 ]; then
+            body="${body:0:4000}…"
+          fi
+
+          payload=$(jq -n \
+            --arg title "$REPO_NAME — $RELEASE_NAME" \
+            --arg url "$RELEASE_URL" \
+            --arg desc "$body" \
+            --arg tag "$RELEASE_TAG" \
+            --arg published "$RELEASE_PUBLISHED_AT" \
+            '{
+              username: "Release Bot",
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $desc,
+                color: 3066993,
+                fields: [
+                  { name: "Version", value: $tag, inline: true },
+                  { name: "Published", value: $published, inline: true }
+                ]
+              }]
+            }')
+
+          curl -fsS -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK_URL"
+
+  slack:
+    runs-on: ubuntu-latest
+    # Slack is the internal channel — include pre-releases.
     steps:
       - name: Post release to Slack
         env:
