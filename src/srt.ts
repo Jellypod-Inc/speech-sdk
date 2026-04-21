@@ -2,6 +2,30 @@ const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_MINUTE = 60;
 const MS_PER_SECOND = 1000;
 
+const TYPOGRAPHY_MAP: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\u2019/g, "'"],
+  [/\u2018/g, "'"],
+  [/\u201C/g, '"'],
+  [/\u201D/g, '"'],
+  [/\u2013/g, "-"],
+  [/\u2014/g, "-"],
+  [/\u2026/g, "..."],
+];
+
+const WHITESPACE_RUN = /\s+/g;
+
+/**
+ * Sanitizes non-ASCII typography characters to ASCII equivalents and
+ * collapses whitespace runs. Exported for testing.
+ */
+export function normalizeTypography(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of TYPOGRAPHY_MAP) {
+    out = out.replace(pattern, replacement);
+  }
+  return out.replace(WHITESPACE_RUN, " ");
+}
+
 /**
  * Formats a number of seconds as an SRT timestamp: `HH:MM:SS,mmm`.
  * Negative inputs are clamped to zero. Milliseconds are rounded.

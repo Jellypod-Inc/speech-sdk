@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSrtTime } from "../srt.js";
+import { formatSrtTime, normalizeTypography } from "../srt.js";
 
 describe("formatSrtTime", () => {
   it("formats zero as 00:00:00,000", () => {
@@ -20,5 +20,32 @@ describe("formatSrtTime", () => {
 
   it("clamps negatives to 00:00:00,000", () => {
     expect(formatSrtTime(-1)).toBe("00:00:00,000");
+  });
+});
+
+describe("normalizeTypography", () => {
+  it("replaces curly single quotes with ASCII apostrophe", () => {
+    expect(normalizeTypography("it\u2019s")).toBe("it's");
+    expect(normalizeTypography("\u2018hi\u2019")).toBe("'hi'");
+  });
+
+  it("replaces curly double quotes with ASCII double quote", () => {
+    expect(normalizeTypography("\u201Chello\u201D")).toBe('"hello"');
+  });
+
+  it("replaces en/em dashes with hyphen", () => {
+    expect(normalizeTypography("a\u2013b\u2014c")).toBe("a-b-c");
+  });
+
+  it("replaces ellipsis with three dots", () => {
+    expect(normalizeTypography("wait\u2026")).toBe("wait...");
+  });
+
+  it("collapses internal whitespace runs", () => {
+    expect(normalizeTypography("a   b\t\tc")).toBe("a b c");
+  });
+
+  it("leaves plain ASCII unchanged", () => {
+    expect(normalizeTypography("hello world")).toBe("hello world");
   });
 });
