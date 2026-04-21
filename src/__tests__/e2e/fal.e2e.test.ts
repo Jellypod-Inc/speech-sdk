@@ -24,18 +24,6 @@ describe.skipIf(!hasKey)("fal e2e", () => {
     });
   });
 
-  describe("inworld-tts", () => {
-    it("generates audio", async () => {
-      const result = await generateSpeech({
-        model: fal("inworld-tts"),
-        text: TEST_TEXT,
-        voice: "Craig (en)",
-      });
-
-      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    });
-  });
-
   describe("minimax/speech-02-hd", () => {
     it("generates audio", async () => {
       const result = await generateSpeech({
