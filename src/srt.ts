@@ -156,3 +156,42 @@ export function splitSentenceIntoCues(
 
   return cues;
 }
+
+interface WrapOptions {
+  readonly maxLineLength: number;
+  readonly maxLines: number;
+}
+
+/**
+ * Wraps a sequence of words into up to `maxLines` lines, trying to keep
+ * each line at or below `maxLineLength` characters. A word longer than
+ * `maxLineLength` is placed on its own line rather than split. If words
+ * remain after the final line is full, they are appended to that final
+ * line (accept overflow; cue splitter is expected to have prevented this
+ * in normal flow).
+ *
+ * Exported for testing; not part of the public API.
+ */
+export function wrapCueText(
+  words: readonly string[],
+  options: WrapOptions
+): string {
+  if (words.length === 0) {
+    return "";
+  }
+  const lines: string[] = [""];
+  for (const word of words) {
+    const last = lines.at(-1) ?? "";
+    const candidate = last.length === 0 ? word : `${last} ${word}`;
+    if (
+      candidate.length <= options.maxLineLength ||
+      last.length === 0 ||
+      lines.length >= options.maxLines
+    ) {
+      lines[lines.length - 1] = candidate;
+    } else {
+      lines.push(word);
+    }
+  }
+  return lines.join("\n");
+}

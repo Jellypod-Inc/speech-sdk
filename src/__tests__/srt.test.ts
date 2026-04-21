@@ -4,6 +4,7 @@ import {
   groupIntoSentences,
   normalizeTypography,
   splitSentenceIntoCues,
+  wrapCueText,
 } from "../srt.js";
 import type { WordTimestamp } from "../timestamps.js";
 
@@ -12,6 +13,8 @@ const w = (text: string, start: number, end: number): WordTimestamp => ({
   start,
   end,
 });
+
+const WHITESPACE = /\s+/;
 
 describe("formatSrtTime", () => {
   it("formats zero as 00:00:00,000", () => {
@@ -142,5 +145,39 @@ describe("splitSentenceIntoCues", () => {
     const s = [w("slow", 0, 3), w("talker.", 3, 6)];
     const cues = splitSentenceIntoCues(s, { ...opts, maxCharsPerCue: 100 });
     expect(cues).toEqual([[s[0]], [s[1]]]);
+  });
+});
+
+describe("wrapCueText", () => {
+  it("returns a single line when under the limit", () => {
+    expect(
+      wrapCueText(["hello", "world"], { maxLineLength: 42, maxLines: 2 })
+    ).toBe("hello world");
+  });
+
+  it("wraps to two lines greedily", () => {
+    const words = ["this", "is", "a", "somewhat", "longer", "caption", "line"];
+    const out = wrapCueText(words, { maxLineLength: 19, maxLines: 2 });
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].length).toBeLessThanOrEqual(19);
+    expect(lines[1].length).toBeLessThanOrEqual(19);
+    expect(lines.join(" ")).toBe(words.join(" "));
+  });
+
+  it("allows overflow rather than truncating when a single word exceeds the limit", () => {
+    const out = wrapCueText(["supercalifragilistic"], {
+      maxLineLength: 5,
+      maxLines: 2,
+    });
+    expect(out).toBe("supercalifragilistic");
+  });
+
+  it("joins overflow words onto the final line when exceeding maxLines", () => {
+    const words = ["a", "b", "c", "d", "e", "f"];
+    const out = wrapCueText(words, { maxLineLength: 3, maxLines: 2 });
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines.join(" ").split(WHITESPACE)).toEqual(words);
   });
 });
