@@ -1,6 +1,6 @@
 ---
 name: speech-sdk
-description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across 13 providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI). Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
+description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across 13 providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI). Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, get word-level timestamps / alignment for TTS, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
 ---
 
 # @speech-sdk/core
@@ -75,6 +75,23 @@ result.audio.mediaType  // e.g. "audio/wav"
 
 See `references/conversation.md` for the full API, cross-provider mixing, and native-vs-stitch dispatch details.
 
+## Word-Level Timestamps
+
+Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"` — return timestamps only when the provider supplies them natively (free). `"on"` falls back to an STT round-trip (OpenAI Whisper by default, override via `timestampProvider`) when the provider has no native alignment. Works on both `generateSpeech` and `generateConversation`.
+
+```ts
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_multilingual_v2",
+  text: "Hello!",
+  voice: "voice-id",
+  timestamps: "on",
+})
+
+result.timestamps // [{ text, start, end }, ...] — seconds, word granularity
+```
+
+See `references/timestamps.md` for the cascade (native → override → Whisper fallback), custom STT providers, conversation behavior, and `TimestampKeyMissingError`.
+
 ## Progressive Disclosure
 
 This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the specific reference file when the user's task touches it — don't load everything up front.
@@ -88,6 +105,7 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 
 - `references/streaming.md` — `streamSpeech`, `StreamSpeechResult`, browser playback, `hasFeature(FEATURES.STREAMING)`, `StreamingNotSupportedError`
 - `references/conversation.md` — `generateConversation`, turns, native-vs-stitch dispatch, volume normalization, cross-provider mixing
+- `references/timestamps.md` — `timestamps: "on" | "auto" | "off"`, native vs derived cascade, `timestampProvider` override, STT fallback, conversation behavior
 - `references/audio-tags.md` — standardized `[tag]` syntax, per-provider passthrough vs SSML vs stripped-with-warning
 - `references/voice-cloning.md` — `{ audio }` / `{ url }` voice forms, which providers support cloning
 
@@ -105,6 +123,10 @@ generateSpeech({
   text: string,
   voice: Voice,                     // string | { url } | { audio }
   providerOptions?: object,         // pass-through to provider API (no transformation)
+  volumeDbfs?: number,              // RMS target loudness (≤ 0); re-encodes to audio/wav
+  timestamps?: "on" | "auto" | "off", // word-level alignment, default "auto"
+  timestampProvider?: string | ResolvedSTTModel, // STT override for the derived path
+  timestampApiKey?: string,         // API key for the STT provider (e.g. OPENAI_API_KEY)
   maxRetries?: number,              // default 2; retries 5xx/network only
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,

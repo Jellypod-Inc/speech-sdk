@@ -5,6 +5,8 @@
 ```ts
 interface SpeechResult {
   readonly audio: GeneratedAudioFile
+  readonly metadata: SpeechMetadata
+  readonly timestamps?: readonly WordTimestamp[]   // populated when requested
   readonly providerMetadata?: Record<string, unknown>
   readonly warnings?: string[]
 }
@@ -14,7 +16,15 @@ interface GeneratedAudioFile {
   readonly base64: string           // base64 (lazy-computed)
   readonly mediaType: string        // e.g. "audio/mpeg"
 }
+
+interface WordTimestamp {
+  readonly text: string
+  readonly start: number            // seconds from start of audio
+  readonly end: number              // seconds
+}
 ```
+
+`timestamps` is populated when `timestamps: "on"` is requested, or when `timestamps: "auto"` (default) is combined with a provider that returns alignment natively. See `timestamps.md`.
 
 `base64` is lazy-computed from `uint8Array` on first access — no overhead if unused.
 

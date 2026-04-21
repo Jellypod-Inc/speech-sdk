@@ -9,11 +9,14 @@ import {
 } from "@speech-sdk/core"
 ```
 
-| Error                    | When                                    |
-| ------------------------ | --------------------------------------- |
-| `ApiError`               | Provider returned non-2xx               |
-| `NoSpeechGeneratedError` | No audio produced — either the input was empty after preprocessing or the provider returned empty audio |
-| `SpeechSDKError`         | Base class for all SDK errors           |
+| Error                              | When                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `ApiError`                         | Provider returned non-2xx                                            |
+| `NoSpeechGeneratedError`           | Empty input (after tag stripping) or empty provider response         |
+| `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
+| `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
+| `TimestampKeyMissingError`         | `timestamps: "on"` fallback STT key missing (message names env var)  |
+| `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
 ## Catching
 

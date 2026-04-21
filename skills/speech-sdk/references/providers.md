@@ -22,23 +22,23 @@ SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the 
 
 ## Capability Matrix
 
-| Provider    | Streaming | Audio Tags              | Voice Cloning       | Open Source |
-| ----------- | --------- | ----------------------- | ------------------- | ----------- |
-| OpenAI      | Yes       | Yes (as instructions)   | No                  | No          |
-| ElevenLabs  | Yes       | Yes (`eleven_v3`)       | No                  | No          |
-| Deepgram    | Yes       | No                      | No                  | No          |
-| Cartesia    | Yes       | Yes (`sonic-3`)         | Yes (`sonic-3`)     | No          |
-| Hume        | Yes       | No                      | Yes (`octave-2`)    | No          |
-| Google      | Yes       | No                      | No                  | No          |
-| Fish Audio  | Yes       | Yes                     | Yes                 | Yes         |
-| Inworld     | Yes       | No                      | No                  | No          |
-| Murf        | No        | No                      | No                  | No          |
-| Resemble    | Yes       | No                      | Yes                 | Yes         |
-| fal         | No        | No                      | Yes (select models) | Varies      |
-| Mistral     | No        | No                      | Yes                 | Yes         |
-| xAI         | Yes       | Yes (`grok-tts`)        | No                  | No          |
+| Provider    | Streaming | Audio Tags              | Voice Cloning       | Timestamps           | Open Source |
+| ----------- | --------- | ----------------------- | ------------------- | -------------------- | ----------- |
+| OpenAI      | Yes       | Yes (as instructions)   | No                  | Derived (Whisper)    | No          |
+| ElevenLabs  | Yes       | Yes (`eleven_v3`)       | No                  | Native               | No          |
+| Deepgram    | Yes       | No                      | No                  | Derived              | No          |
+| Cartesia    | Yes       | Yes (`sonic-3`)         | Yes (`sonic-3`)     | Derived              | No          |
+| Hume        | Yes       | No                      | Yes (`octave-2`)    | Derived              | No          |
+| Google      | Yes       | No                      | No                  | Derived              | No          |
+| Fish Audio  | Yes       | Yes                     | Yes                 | Derived              | Yes         |
+| Inworld     | Yes       | No                      | No                  | Derived              | No          |
+| Murf        | No        | No                      | No                  | Derived              | No          |
+| Resemble    | Yes       | No                      | Yes                 | Derived              | Yes         |
+| fal         | No        | No                      | Yes (select models) | Derived              | Varies      |
+| Mistral     | No        | No                      | Yes                 | Derived              | Yes         |
+| xAI         | Yes       | Yes (`grok-tts`)        | No                  | Derived              | No          |
 
-Support is per-model — see each provider file in `providers/<name>.md`.
+Support is per-model — see each provider file in `providers/<name>.md`. "Native" timestamps come back in the TTS response (free); "Derived" means the SDK pipes the audio through STT on `timestamps: "on"` (extra cost + latency). See `timestamps.md`.
 
 ## Usage
 
