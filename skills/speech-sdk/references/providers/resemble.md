@@ -9,9 +9,25 @@
 
 ## Models
 
-| Model     | Streaming | Audio Tags | Voice Cloning | Open Source | Notes              |
-| --------- | --------- | ---------- | ------------- | ----------- | ------------------ |
-| `default` | Yes       | No         | Yes           | Yes         | Single model entry |
+| Model     | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Open Source | Notes              |
+| --------- | --------- | ---------- | ------------- | ----------------- | ----------- | ------------------ |
+| `default` | Yes       | No         | Yes           | Yes               | Yes         | Single model entry |
+
+## Timestamps
+
+`/synthesize` always returns `audio_timestamps` (no opt-in flag), so when `timestamps: "auto"` or `"on"` is set, the SDK aggregates Resemble's grapheme-level alignment (`graph_chars[]` + `graph_times[][start, end]`, in seconds) into the SDK's word list. Mirrors the ElevenLabs aggregator: split on whitespace, keep punctuation attached to the adjacent word.
+
+```ts
+const result = await generateSpeech({
+  model: "resemble/default",
+  text: "Hello, world!",
+  voice: "voice-uuid-from-resemble",
+  timestamps: "auto",
+})
+result.timestamps // [{ text: "Hello,", start: 0, end: 0.32 }, ...]
+```
+
+The streaming `/stream` endpoint is bytes-only — `timestamps: "on"` on a streamed call falls back to the default Whisper STT pass.
 
 ## Usage
 

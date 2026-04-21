@@ -9,10 +9,26 @@
 
 ## Models
 
-| Model      | Streaming | Audio Tags | Voice Cloning | Notes               |
-| ---------- | --------- | ---------- | ------------- | ------------------- |
-| `octave-2` | Yes       | No         | Yes           | Default; expressive |
-| `octave-1` | Yes       | No         | No            | Previous generation |
+| Model      | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes               |
+| ---------- | --------- | ---------- | ------------- | ----------------- | ------------------- |
+| `octave-2` | Yes       | No         | Yes           | Yes               | Default; expressive |
+| `octave-1` | Yes       | No         | No            | No                | Previous generation |
+
+## Timestamps
+
+`octave-2` returns word alignment natively. When `timestamps: "auto"` or `"on"` is set, the SDK routes through Hume's JSON `/v0/tts` endpoint with `include_timestamp_types: ["word"]` and `split_utterances: false`, then flattens the snippet timestamps to the SDK's seconds-based `WordTimestamp[]`.
+
+```ts
+const result = await generateSpeech({
+  model: "hume/octave-2",
+  text: "Hello, world!",
+  voice: "Kora",
+  timestamps: "auto",
+})
+result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
+```
+
+`octave-1` is bytes-only — `timestamps: "on"` falls back to the default Whisper STT pass.
 
 ## Usage
 

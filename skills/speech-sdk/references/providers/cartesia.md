@@ -9,12 +9,28 @@
 
 ## Models
 
-| Model     | Streaming | Audio Tags     | Voice Cloning | Notes                           |
-| --------- | --------- | -------------- | ------------- | ------------------------------- |
-| `sonic-3` | Yes       | Yes (via SSML) | Yes           | Current flagship; emotion tags  |
-| `sonic-2` | Yes       | No             | No            | Previous generation             |
+| Model     | Streaming | Audio Tags     | Voice Cloning | Native Timestamps | Notes                           |
+| --------- | --------- | -------------- | ------------- | ----------------- | ------------------------------- |
+| `sonic-3` | Yes       | Yes (via SSML) | Yes           | Yes               | Current flagship; emotion tags  |
+| `sonic-2` | Yes       | No             | No            | Yes               | Previous generation             |
 
 Default output is `audio/wav` at 44.1 kHz.
+
+## Timestamps
+
+When `timestamps: "auto"` or `"on"` is set, the SDK routes through Cartesia's `/tts/sse` endpoint with `add_timestamps: true`, accumulates the interleaved `chunk` and `timestamps` events, and returns the merged audio + word alignment.
+
+```ts
+const result = await generateSpeech({
+  model: "cartesia/sonic-3",
+  text: "Hello, world!",
+  voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
+  timestamps: "auto",
+})
+result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
+```
+
+The SSE path requests `output_format: { container: "raw", encoding: "pcm_s16le", sample_rate: 24_000 }` so audio chunks can be concatenated without per-chunk WAV-header arithmetic. The SDK wraps the concatenated PCM in a single RIFF/WAVE header before returning — the result is a standard `audio/wav` file at 24 kHz mono s16le. The audio-only `/tts/bytes` path (when `timestamps: "off"`) preserves the previous WAV defaults unchanged.
 
 ## Usage
 
