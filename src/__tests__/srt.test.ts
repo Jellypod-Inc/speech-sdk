@@ -96,6 +96,12 @@ describe("groupIntoSentences", () => {
     expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
   });
 
+  it("treats trailing curly quote as part of terminator", () => {
+    const a = w("\u201CRun.\u201D", 0, 0.4);
+    const b = w("Then", 0.5, 0.8);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
   it("handles final word without terminator as its own sentence", () => {
     const a = w("Hello.", 0, 0.4);
     const b = w("World", 0.5, 0.9);

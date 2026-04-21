@@ -46,8 +46,8 @@ export function formatSrtTime(seconds: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
 }
 
-// Matches a word ending in .!? optionally followed by a single closing quote.
-const SENTENCE_TERMINATOR = /[.!?]["']?$/;
+// Matches a word ending in .!? optionally followed by a straight or curly quote.
+const SENTENCE_TERMINATOR = /[.!?]["'\u2018\u2019\u201C\u201D]?$/;
 
 /**
  * Groups a flat list of word timestamps into sentences using
