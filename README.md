@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
 [![npm downloads](https://img.shields.io/npm/dm/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
 [![license](https://img.shields.io/npm/l/@speech-sdk/core)](https://github.com/Jellypod-Inc/speech-sdk/blob/main/LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/xcTQMU3nCV)
 
 A lightweight, provider-agnostic TypeScript SDK for text-to-speech. One API, 13 providers, zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
 
