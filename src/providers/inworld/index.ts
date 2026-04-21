@@ -4,6 +4,11 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import {
+  type InworldWordAlignment,
+  wordAlignmentToWordTimestamps,
+} from "./alignment.js";
 
 export interface InworldSpeechProviderConfig {
   apiKey?: string;
@@ -60,13 +65,13 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       id: "inworld-tts-1.5-max",
       releaseDate: "2025-08-15",
       languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
     {
       id: "inworld-tts-1.5-mini",
       releaseDate: "2025-08-15",
       languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
   ] as const;
 
@@ -115,10 +120,12 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: string;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     const { body, audioConfig } = this.buildBody(
       options.text,
@@ -126,6 +133,10 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       options.voice,
       options.providerOptions
     );
+
+    if (options.includeTimestamps) {
+      body.timestamp_type = "WORD";
+    }
 
     const url = `${this.baseURL}/tts/v1/voice`;
 
@@ -143,16 +154,26 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `inworld/${options.modelId}`);
 
-    const json = (await response.json()) as { audioContent?: string };
+    const json = (await response.json()) as {
+      audioContent?: string;
+      timestampInfo?: { wordAlignment?: InworldWordAlignment };
+    };
     if (!json.audioContent) {
       throw new Error(
         `inworld/${options.modelId}: response missing audioContent`
       );
     }
 
+    const wordAlignment = json.timestampInfo?.wordAlignment;
+    const timestamps =
+      options.includeTimestamps && wordAlignment
+        ? wordAlignmentToWordTimestamps(wordAlignment)
+        : undefined;
+
     return {
       audio: json.audioContent,
       mediaType: mediaTypeForEncoding(audioConfig.audio_encoding),
+      timestamps,
     };
   }
 

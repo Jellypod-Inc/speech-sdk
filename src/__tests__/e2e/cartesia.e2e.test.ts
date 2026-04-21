@@ -62,4 +62,50 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
+
+  describe("timestamps (native /tts/sse add_timestamps)", () => {
+    it("returns word timestamps on the auto default for sonic-3", async () => {
+      const result = await generateSpeech({
+        model: "cartesia/sonic-3",
+        text: TEST_TEXT,
+        voice,
+        timestamps: "auto",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeDefined();
+      const words = result.timestamps ?? [];
+      expect(words.length).toBeGreaterThan(0);
+      for (const w of words) {
+        expect(w.text.length).toBeGreaterThan(0);
+        expect(typeof w.start).toBe("number");
+        expect(typeof w.end).toBe("number");
+        expect(w.end).toBeGreaterThanOrEqual(w.start);
+      }
+      for (let i = 1; i < words.length; i++) {
+        const cur = words[i];
+        const prev = words[i - 1];
+        if (cur && prev) {
+          expect(cur.start).toBeGreaterThanOrEqual(prev.start);
+        }
+      }
+      const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
+      const durMs = result.metadata.audioDurationMs ?? 0;
+      if (durMs > 0) {
+        expect(Math.abs(lastEndMs - durMs)).toBeLessThan(500);
+      }
+    });
+
+    it("off mode suppresses timestamps even on a native model", async () => {
+      const result = await generateSpeech({
+        model: "cartesia/sonic-3",
+        text: TEST_TEXT,
+        voice,
+        timestamps: "off",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeUndefined();
+    });
+  });
 });

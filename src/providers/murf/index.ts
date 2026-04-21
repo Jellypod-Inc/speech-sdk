@@ -4,6 +4,11 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import {
+  type MurfWordDuration,
+  wordDurationsToWordTimestamps,
+} from "./alignment.js";
 
 export interface MurfSpeechProviderConfig {
   apiKey?: string;
@@ -54,7 +59,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
         "sk",
         "bg",
       ],
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
     {
       id: "FALCON",
@@ -81,10 +86,13 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: string | Uint8Array;
+    audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     const isFalcon = options.modelId === "FALCON";
     const url = isFalcon
@@ -126,10 +134,24 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       };
     }
 
-    const json = (await response.json()) as { encodedAudio: string };
+    const json = (await response.json()) as {
+      encodedAudio: string;
+      audioLengthInSeconds?: number;
+      wordDurations?: MurfWordDuration[];
+    };
+    const audioDurationMs =
+      typeof json.audioLengthInSeconds === "number"
+        ? Math.round(json.audioLengthInSeconds * 1000)
+        : undefined;
+    const timestamps =
+      options.includeTimestamps && json.wordDurations
+        ? wordDurationsToWordTimestamps(json.wordDurations)
+        : undefined;
     return {
       audio: json.encodedAudio,
+      audioDurationMs,
       mediaType: "audio/wav",
+      timestamps,
     };
   }
 

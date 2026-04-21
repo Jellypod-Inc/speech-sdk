@@ -4,6 +4,11 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import {
+  audioTimestampsToWordTimestamps,
+  type ResembleAudioTimestamps,
+} from "./alignment.js";
 
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
@@ -44,7 +49,12 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
         "tr",
         "zh",
       ],
-      features: ["streaming", "open-source", "inline-voice-cloning"],
+      features: [
+        "streaming",
+        "open-source",
+        "inline-voice-cloning",
+        { id: "timestamps", mode: "native" },
+      ],
     },
   ] as const;
 
@@ -65,10 +75,12 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: string;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     const url = `${this.baseURL}/synthesize`;
 
@@ -96,11 +108,22 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response, `resemble/${options.modelId}`);
 
-    const json = (await response.json()) as { audio_content: string };
+    // Resemble always returns `audio_timestamps`; gate the projection on
+    // the caller's opt-in rather than the presence of the field.
+    const json = (await response.json()) as {
+      audio_content: string;
+      audio_timestamps?: ResembleAudioTimestamps;
+    };
+
+    const timestamps =
+      options.includeTimestamps && json.audio_timestamps
+        ? audioTimestampsToWordTimestamps(json.audio_timestamps)
+        : undefined;
 
     return {
       audio: json.audio_content,
       mediaType: "audio/wav",
+      timestamps,
     };
   }
 

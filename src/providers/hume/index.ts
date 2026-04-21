@@ -1,9 +1,13 @@
+import { base64ToUint8Array } from "../../audio-utils.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import { type HumeSnippet, snippetsToWordTimestamps } from "./alignment.js";
 
 export interface HumeSpeechProviderConfig {
   apiKey?: string;
@@ -32,7 +36,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
         "ar",
         "ru",
       ] as const,
-      features: ["streaming", "inline-voice-cloning"],
+      features: [
+        "streaming",
+        "inline-voice-cloning",
+        { id: "timestamps", mode: "native" },
+      ],
     },
     {
       id: "octave-1",
@@ -69,10 +77,12 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     const utterance: Record<string, unknown> = { text: options.text };
     if (options.voice) {
@@ -88,6 +98,14 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
     if (version != null) {
       body.version = version;
+    }
+
+    // Native timestamps are only documented for Octave-2 (`version: "2"`).
+    // Hume returns alignment from the JSON `/v0/tts` endpoint — `/v0/tts/file`
+    // is bytes-only — so we route through it whenever the caller asks for
+    // word timing on a model that supports it.
+    if (options.includeTimestamps && version === "2") {
+      return this.generateWithTimestamps(options, body);
     }
 
     const url = `${this.baseURL}/tts/file`;
@@ -112,6 +130,74 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+    };
+  }
+
+  private async generateWithTimestamps(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    baseBody: Record<string, unknown>
+  ): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
+  }> {
+    // `split_utterances: false` keeps the response to a single snippet per
+    // utterance — its audio matches the top-level `generations[0].audio`
+    // byte-for-byte, so segment-relative timestamps line up with the audio
+    // we return. `include_timestamp_types: ["word"]` opts into word-level
+    // alignment (Hume defaults to none).
+    const body: Record<string, unknown> = {
+      ...baseBody,
+      include_timestamp_types: ["word"],
+      split_utterances: false,
+    };
+
+    const url = `${this.baseURL}/tts`;
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": resolveApiKey(this.apiKey, "HUME_API_KEY", "Hume"),
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `hume/${options.modelId}`);
+
+    const payload = (await response.json()) as {
+      generations?: {
+        audio?: string;
+        snippets?: HumeSnippet[][];
+      }[];
+    };
+    const gen = payload.generations?.[0];
+    if (!gen?.audio) {
+      throw new SpeechSDKError(
+        `hume/${options.modelId}: /v0/tts response missing generations[0].audio`
+      );
+    }
+
+    const audio = base64ToUint8Array(gen.audio);
+    const timestamps = gen.snippets
+      ? snippetsToWordTimestamps(gen.snippets)
+      : undefined;
+
+    // /v0/tts delivers audio as base64 in a JSON body, so there's no
+    // Content-Type for the bytes — derive it from the requested format.
+    const format = (baseBody.format ?? {}) as { type?: string };
+    return {
+      audio,
+      mediaType: humeFormatToMediaType(format.type),
+      timestamps,
     };
   }
 
@@ -250,4 +336,23 @@ export function createHume(config: HumeSpeechProviderConfig = {}) {
       modelId: modelId ?? provider.defaultModel,
     };
   };
+}
+
+/**
+ * Map a Hume `format.type` value to a standard media type. Used when decoding
+ * base64 audio from `/v0/tts`, which delivers bytes inside a JSON body with
+ * no Content-Type hint for the audio itself. PCM is always 48 kHz mono s16
+ * (Hume's only documented PCM mode).
+ */
+function humeFormatToMediaType(formatType: string | undefined): string {
+  if (!formatType) {
+    return "audio/mpeg";
+  }
+  if (formatType === "wav") {
+    return "audio/wav";
+  }
+  if (formatType === "pcm") {
+    return "audio/pcm;rate=48000";
+  }
+  return "audio/mpeg";
 }

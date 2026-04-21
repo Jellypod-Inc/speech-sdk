@@ -1,4 +1,6 @@
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
+import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -9,6 +11,11 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import {
+  type CartesiaWordTimestamps,
+  mergeWordTimestampMessages,
+} from "./alignment.js";
 
 export interface CartesiaSpeechProviderConfig {
   apiKey?: string;
@@ -68,13 +75,18 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         "mr",
         "pa",
       ],
-      features: ["streaming", "audio-tags", "inline-voice-cloning"],
+      features: [
+        "streaming",
+        "audio-tags",
+        "inline-voice-cloning",
+        { id: "timestamps", mode: "native" },
+      ],
     },
     {
       id: "sonic-2",
       releaseDate: "2025-03-13",
       languages: ["en"],
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
   ] as const;
 
@@ -204,11 +216,18 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
+    // /tts/bytes is audio-only; word timing requires the SSE endpoint.
+    if (options.includeTimestamps) {
+      return this.generateWithTimestamps(options);
+    }
+
     const url = `${this.baseURL}/tts/bytes`;
 
     const body: Record<string, unknown> = {
@@ -244,6 +263,74 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+    };
+  }
+
+  private async generateWithTimestamps(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
+  }> {
+    // Force raw pcm_s16le @ 24kHz: the SDK concatenates chunks directly and
+    // wraps them in a WAV header at end-of-stream. Allowing a caller to
+    // override the container would corrupt the merged audio since Cartesia
+    // SSE's wav/mp3 chunks are not safely concat-able.
+    const sampleRate = 24_000;
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      model_id: options.modelId,
+      transcript: options.text,
+      voice: { mode: "id", id: options.voice },
+      output_format: {
+        container: "raw",
+        encoding: "pcm_s16le",
+        sample_rate: sampleRate,
+      },
+      add_timestamps: true,
+    };
+
+    const url = `${this.baseURL}/tts/sse`;
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
+        "Cartesia-Version": "2025-04-16",
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+
+    if (!response.body) {
+      throw new SpeechSDKError(
+        `cartesia/${options.modelId}: /tts/sse response has no body`
+      );
+    }
+
+    const { audio: pcmAudio, timestamps } = await collectCartesiaSse(
+      response.body,
+      `cartesia/${options.modelId}`
+    );
+
+    // Concatenated PCM → standard WAV file, so callers don't need to know
+    // sample rate / encoding out-of-band to decode.
+    const audio = await wrapPcm16Mono(pcmAudio, sampleRate);
+    return {
+      audio,
+      mediaType: "audio/wav",
+      timestamps,
     };
   }
 
@@ -323,5 +410,102 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
       provider,
       modelId: modelId ?? provider.defaultModel,
     };
+  };
+}
+
+interface CartesiaSseEvent {
+  data?: string;
+  done?: boolean;
+  type?: string;
+  word_timestamps?: CartesiaWordTimestamps;
+}
+
+const SSE_LEADING_SPACE = /^ /;
+
+/**
+ * Drain a Cartesia `/tts/sse` response body into a single audio buffer plus
+ * a flat `WordTimestamp[]`. Buffers are collected separately because the
+ * server may interleave `chunk` and `timestamps` events in any order — we
+ * concatenate audio chunks in arrival order and flatten timestamp messages
+ * the same way at end-of-stream (`type: "done"`).
+ */
+async function collectCartesiaSse(
+  body: ReadableStream<Uint8Array>,
+  modelLabel: string
+): Promise<{
+  audio: Uint8Array;
+  timestamps: WordTimestamp[];
+}> {
+  const audioParts: Uint8Array[] = [];
+  const timestampMessages: CartesiaWordTimestamps[] = [];
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const flushEvent = (raw: string): void => {
+    const dataLines: string[] = [];
+    for (const rawLine of raw.split("\n")) {
+      const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+      if (line.startsWith("data:")) {
+        dataLines.push(line.slice(5).replace(SSE_LEADING_SPACE, ""));
+      }
+    }
+    if (dataLines.length === 0) {
+      return;
+    }
+    const json = dataLines.join("\n");
+    let parsed: CartesiaSseEvent;
+    try {
+      parsed = JSON.parse(json) as CartesiaSseEvent;
+    } catch {
+      throw new SpeechSDKError(
+        `${modelLabel}: malformed SSE event payload (not JSON)`
+      );
+    }
+    if (parsed.type === "chunk" && typeof parsed.data === "string") {
+      audioParts.push(base64ToUint8Array(parsed.data));
+    } else if (parsed.type === "timestamps" && parsed.word_timestamps) {
+      timestampMessages.push(parsed.word_timestamps);
+    } else if (parsed.type === "error") {
+      throw new SpeechSDKError(
+        `${modelLabel}: SSE error: ${JSON.stringify(parsed)}`
+      );
+    }
+  };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        buffer += decoder.decode();
+        if (buffer.length > 0) {
+          flushEvent(buffer);
+        }
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      let sepIndex = buffer.indexOf("\n\n");
+      while (sepIndex !== -1) {
+        const raw = buffer.slice(0, sepIndex);
+        buffer = buffer.slice(sepIndex + 2);
+        flushEvent(raw);
+        sepIndex = buffer.indexOf("\n\n");
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const totalLen = audioParts.reduce((n, p) => n + p.byteLength, 0);
+  const audio = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const part of audioParts) {
+    audio.set(part, offset);
+    offset += part.byteLength;
+  }
+  return {
+    audio,
+    timestamps: mergeWordTimestampMessages(timestampMessages),
   };
 }

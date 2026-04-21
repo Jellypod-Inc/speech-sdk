@@ -88,6 +88,45 @@ describe("Conversation timestamps e2e — stitch path", () => {
     expect(words.at(-1)?.end ?? 0).toBeLessThanOrEqual(durSec + 1);
   });
 
+  it("cross-provider stitch across newly-native providers (Murf + Hume) yields auto-mode timestamps with no STT round-trip", {
+    timeout: 180_000,
+  }, async () => {
+    const result = await generateConversation({
+      turns: [
+        {
+          model: "murf/GEN2",
+          voice: "en-US-natalie",
+          text: "Murf returns wordDurations natively.",
+        },
+        {
+          model: "hume/octave-2",
+          voice: "Kora",
+          text: "Hume Octave-2 returns alignment too.",
+        },
+      ],
+      gapMs: 200,
+      timestamps: "auto",
+    });
+
+    expect(result.timestamps).toBeDefined();
+    const words = result.timestamps ?? [];
+    // Both turns should contribute words — auto mode requires native on every turn.
+    expect(words.length).toBeGreaterThanOrEqual(8);
+
+    // Offsets are monotonically non-decreasing across turn boundaries.
+    for (let i = 1; i < words.length; i++) {
+      const cur = words[i];
+      const prev = words[i - 1];
+      if (cur && prev) {
+        expect(cur.start).toBeGreaterThanOrEqual(prev.start);
+      }
+    }
+
+    // No word should land past the concatenated audio duration.
+    const durSec = (result.metadata.audioDurationMs ?? 0) / 1000;
+    expect(words.at(-1)?.end ?? 0).toBeLessThanOrEqual(durSec + 1);
+  });
+
   it("auto mode with mixed native/derived providers returns undefined (all-or-nothing)", {
     timeout: 120_000,
   }, async () => {

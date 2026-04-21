@@ -60,4 +60,51 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
+
+  describe("timestamps (native /v0/tts)", () => {
+    it("returns word timestamps on the auto default for octave-2", async () => {
+      const result = await generateSpeech({
+        model: "hume/octave-2",
+        text: TEST_TEXT,
+        voice: "Kora",
+        timestamps: "auto",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeDefined();
+      const words = result.timestamps ?? [];
+      expect(words.length).toBeGreaterThan(0);
+      for (const w of words) {
+        expect(w.text.length).toBeGreaterThan(0);
+        expect(typeof w.start).toBe("number");
+        expect(typeof w.end).toBe("number");
+        expect(w.end).toBeGreaterThanOrEqual(w.start);
+      }
+      for (let i = 1; i < words.length; i++) {
+        const cur = words[i];
+        const prev = words[i - 1];
+        if (cur && prev) {
+          expect(cur.start).toBeGreaterThanOrEqual(prev.start);
+        }
+      }
+      const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
+      const durMs = result.metadata.audioDurationMs ?? 0;
+      // Last word's end must not exceed the audio; generous lower bound
+      // because providers often append trailing silence after the final word.
+      expect(lastEndMs).toBeLessThanOrEqual(durMs + 100);
+      expect(lastEndMs).toBeGreaterThan(durMs * 0.5);
+    });
+
+    it("off mode suppresses timestamps even on a native model", async () => {
+      const result = await generateSpeech({
+        model: "hume/octave-2",
+        text: TEST_TEXT,
+        voice: "Kora",
+        timestamps: "off",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeUndefined();
+    });
+  });
 });

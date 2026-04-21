@@ -60,4 +60,46 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
+
+  describe("timestamps (native wordDurations)", () => {
+    it("returns word timestamps on the auto default for GEN2", async () => {
+      const result = await generateSpeech({
+        model: "murf/GEN2",
+        text: TEST_TEXT,
+        voice: "en-US-natalie",
+        timestamps: "auto",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeDefined();
+      const words = result.timestamps ?? [];
+      expect(words.length).toBeGreaterThan(0);
+      for (const w of words) {
+        expect(w.text.length).toBeGreaterThan(0);
+        expect(typeof w.start).toBe("number");
+        expect(typeof w.end).toBe("number");
+        expect(w.end).toBeGreaterThanOrEqual(w.start);
+      }
+      for (let i = 1; i < words.length; i++) {
+        expect(words[i]?.start).toBeGreaterThanOrEqual(
+          words[i - 1]?.start ?? 0
+        );
+      }
+      const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
+      const durMs = result.metadata.audioDurationMs ?? 0;
+      expect(Math.abs(lastEndMs - durMs)).toBeLessThan(500);
+    });
+
+    it("off mode suppresses timestamps even on a native model", async () => {
+      const result = await generateSpeech({
+        model: "murf/GEN2",
+        text: TEST_TEXT,
+        voice: "en-US-natalie",
+        timestamps: "off",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeUndefined();
+    });
+  });
 });

@@ -168,7 +168,12 @@ await generateSpeech({
 | Provider | Timestamps |
 |---|---|
 | ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, free on `"auto"` |
-| All others (OpenAI, Deepgram, Cartesia, Hume, Google, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI) | No native alignment; `"on"` transcribes via the STT fallback, `"auto"` returns `undefined` |
+| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, free on `"auto"` (FALCON streaming model has no native alignment) |
+| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, free on `"auto"` (`octave-1` has no native alignment) |
+| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, free on `"auto"` (best on English/Spanish) |
+| Cartesia (`sonic-3`, `sonic-2`) | **Native** — routed through `/tts/sse` with `add_timestamps: true`; merges interleaved chunk + timestamps events into audio + `WordTimestamp[]` |
+| Resemble (`default`) | **Native** — `audio_timestamps` always returned by `/synthesize`; SDK aggregates grapheme-level timing into words (mirrors ElevenLabs aggregator) |
+| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `"on"` transcribes via the STT fallback, `"auto"` returns `undefined` |
 
 `generateConversation` accepts the same options and returns a flat `WordTimestamp[]` across all turns — stitch-path timings are offset by cumulative turn duration + gap.
 
