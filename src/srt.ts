@@ -195,3 +195,99 @@ export function wrapCueText(
   }
   return lines.join("\n");
 }
+
+/**
+ * Options for {@link timestampsToSrt}.
+ */
+export interface SrtOptions {
+  /**
+   * Minimum cue-char-count at which a trailing comma triggers a soft cue
+   * break. Prevents tiny fragments after every comma. Default `60`.
+   */
+  readonly longPhraseCommaBreakChars?: number;
+  /** Max total chars per cue. Default `maxLineLength * maxLinesPerCue`. */
+  readonly maxCharsPerCue?: number;
+  /** Max cue duration in milliseconds. Default `7000`. */
+  readonly maxCueDurationMs?: number;
+  /** Max chars per line (word-boundary wrap). Default `42`. */
+  readonly maxLineLength?: number;
+  /** Max lines per cue. Default `2`. */
+  readonly maxLinesPerCue?: number;
+}
+
+const DEFAULT_MAX_LINE_LENGTH = 42;
+const DEFAULT_MAX_LINES_PER_CUE = 2;
+const DEFAULT_MAX_CUE_DURATION_MS = 7000;
+const DEFAULT_LONG_PHRASE_COMMA_BREAK_CHARS = 60;
+
+/**
+ * Converts word-level timestamps into an SRT caption string.
+ *
+ * Sentence boundaries (`.`, `!`, `?` in word text, optionally followed
+ * by a closing quote) create cue breaks; long sentences are subdivided
+ * by character count, duration, and soft comma breaks. Each cue is
+ * greedily wrapped into up to `maxLinesPerCue` lines of `maxLineLength`
+ * characters.
+ *
+ * Returns the empty string for empty input.
+ *
+ * @example
+ * ```ts
+ * const { timestamps } = await generateSpeech({ ... });
+ * const srt = timestampsToSrt(timestamps ?? []);
+ * await fs.writeFile("out.srt", srt);
+ * ```
+ */
+export function timestampsToSrt(
+  timestamps: readonly WordTimestamp[],
+  options: SrtOptions = {}
+): string {
+  if (timestamps.length === 0) {
+    return "";
+  }
+
+  const maxLineLength = options.maxLineLength ?? DEFAULT_MAX_LINE_LENGTH;
+  const maxLinesPerCue = options.maxLinesPerCue ?? DEFAULT_MAX_LINES_PER_CUE;
+  const maxCharsPerCue =
+    options.maxCharsPerCue ?? maxLineLength * maxLinesPerCue;
+  const maxCueDurationMs =
+    options.maxCueDurationMs ?? DEFAULT_MAX_CUE_DURATION_MS;
+  const longPhraseCommaBreakChars =
+    options.longPhraseCommaBreakChars ?? DEFAULT_LONG_PHRASE_COMMA_BREAK_CHARS;
+
+  const sentences = groupIntoSentences(timestamps);
+  const cues: WordTimestamp[][] = [];
+  for (const sentence of sentences) {
+    cues.push(
+      ...splitSentenceIntoCues(sentence, {
+        maxCharsPerCue,
+        maxCueDurationMs,
+        longPhraseCommaBreakChars,
+      })
+    );
+  }
+
+  const blocks: string[] = [];
+  let index = 1;
+  for (const cue of cues) {
+    if (cue.length === 0) {
+      continue;
+    }
+    const normalizedWords = cue.map((wt) => normalizeTypography(wt.text));
+    const body = wrapCueText(normalizedWords, {
+      maxLineLength,
+      maxLines: maxLinesPerCue,
+    });
+    const first = cue[0];
+    const last = cue.at(-1);
+    if (!last) {
+      continue;
+    }
+    blocks.push(
+      `${index}\n${formatSrtTime(first.start)} --> ${formatSrtTime(last.end)}\n${body}\n`
+    );
+    index++;
+  }
+
+  return blocks.join("\n");
+}

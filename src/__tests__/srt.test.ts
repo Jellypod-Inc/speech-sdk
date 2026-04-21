@@ -4,6 +4,7 @@ import {
   groupIntoSentences,
   normalizeTypography,
   splitSentenceIntoCues,
+  timestampsToSrt,
   wrapCueText,
 } from "../srt.js";
 import type { WordTimestamp } from "../timestamps.js";
@@ -15,6 +16,7 @@ const w = (text: string, start: number, end: number): WordTimestamp => ({
 });
 
 const WHITESPACE = /\s+/;
+const CURLY_QUOTES = /[\u2018\u2019\u201C\u201D]/;
 
 describe("formatSrtTime", () => {
   it("formats zero as 00:00:00,000", () => {
@@ -179,5 +181,87 @@ describe("wrapCueText", () => {
     const lines = out.split("\n");
     expect(lines).toHaveLength(2);
     expect(lines.join(" ").split(WHITESPACE)).toEqual(words);
+  });
+});
+
+describe("timestampsToSrt", () => {
+  it("returns empty string for empty input", () => {
+    expect(timestampsToSrt([])).toBe("");
+  });
+
+  it("renders a single short sentence as one cue", () => {
+    const words: WordTimestamp[] = [w("Hello", 0, 0.5), w("world.", 0.5, 1.0)];
+    const srt = timestampsToSrt(words);
+    expect(srt).toBe("1\n00:00:00,000 --> 00:00:01,000\nHello world.\n");
+  });
+
+  it("emits sequential cue indices starting at 1", () => {
+    const words: WordTimestamp[] = [
+      w("One.", 0, 0.5),
+      w("Two.", 0.6, 1.0),
+      w("Three.", 1.1, 1.5),
+    ];
+    const srt = timestampsToSrt(words);
+    const indices = srt
+      .split("\n\n")
+      .filter(Boolean)
+      .map((block) => block.split("\n")[0]);
+    expect(indices).toEqual(["1", "2", "3"]);
+  });
+
+  it("uses first-word start and last-word end for each cue", () => {
+    const words: WordTimestamp[] = [w("Alpha", 1.0, 1.3), w("beta.", 1.3, 1.7)];
+    const srt = timestampsToSrt(words);
+    expect(srt).toContain("00:00:01,000 --> 00:00:01,700");
+  });
+
+  it("wraps long cues into two lines under 42 chars each", () => {
+    const makeLongWords = (): WordTimestamp[] => {
+      // 10 words of 5 chars each = ~59 chars with spaces, forces wrap.
+      const out: WordTimestamp[] = [];
+      for (let i = 0; i < 10; i++) {
+        out.push(w(`word${i}`, i * 0.3, i * 0.3 + 0.3));
+      }
+      out[9] = { ...out[9], text: "word9." };
+      return out;
+    };
+    const srt = timestampsToSrt(makeLongWords());
+    const body = srt.split("\n").slice(2, 4);
+    expect(body).toHaveLength(2);
+    for (const line of body) {
+      expect(line.length).toBeLessThanOrEqual(42);
+    }
+  });
+
+  it("normalizes typography in rendered output", () => {
+    const words: WordTimestamp[] = [
+      w("it\u2019s", 0, 0.3),
+      w("\u201Cdone\u201D.", 0.3, 0.8),
+    ];
+    const srt = timestampsToSrt(words);
+    expect(srt).toContain("it's");
+    expect(srt).toContain('"done".');
+    expect(srt).not.toMatch(CURLY_QUOTES);
+  });
+
+  it("honors custom options", () => {
+    const words: WordTimestamp[] = [
+      w("aaaa", 0, 0.3),
+      w("bbbb", 0.3, 0.6),
+      w("cccc.", 0.6, 1.0),
+    ];
+    const srt = timestampsToSrt(words, {
+      maxLineLength: 4,
+      maxLinesPerCue: 1,
+      maxCharsPerCue: 4,
+    });
+    const blocks = srt.split("\n\n").filter(Boolean);
+    expect(blocks).toHaveLength(3);
+  });
+
+  it("ends every block with a blank line separator (trailing newline)", () => {
+    const words: WordTimestamp[] = [w("Hi.", 0, 0.3)];
+    const srt = timestampsToSrt(words);
+    expect(srt.endsWith("\n")).toBe(true);
   });
 });
