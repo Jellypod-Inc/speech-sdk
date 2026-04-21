@@ -177,6 +177,31 @@ await generateSpeech({
 
 `generateConversation` accepts the same options and returns a flat `WordTimestamp[]` across all turns — stitch-path timings are offset by cumulative turn duration + gap.
 
+### SRT captions
+
+Convert word-level timestamps into an SRT caption file:
+
+```ts
+import { generateSpeech, timestampsToSrt } from '@speech-sdk/core';
+
+const { timestamps } = await generateSpeech({
+  model: 'elevenlabs/eleven_v3',
+  text: 'Hello world. This is a test.',
+  timestamps: 'on',
+});
+
+const srt = timestampsToSrt(timestamps ?? []);
+// 1
+// 00:00:00,000 --> 00:00:01,200
+// Hello world.
+//
+// 2
+// 00:00:01,300 --> 00:00:02,800
+// This is a test.
+```
+
+Cues break on sentence boundaries (`.`, `!`, `?`), then subdivide long sentences by character count, cue duration, and soft comma breaks. Pass `SrtOptions` to customize `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, or `longPhraseCommaBreakChars`.
+
 ## Volume normalization
 
 Pass `volumeDbfs` to RMS-normalize to an absolute target loudness (must be ≤ 0; `-20` is the broadcast/podcast convention).

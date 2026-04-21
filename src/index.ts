@@ -28,6 +28,8 @@ export type {
   SpeechToTextProvider,
   STTModelInfo,
 } from "./speech-to-text-provider.js";
+export type { SrtOptions } from "./srt.js";
+export { timestampsToSrt } from "./srt.js";
 export { streamSpeech } from "./stream-speech.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { TimestampMode, WordTimestamp } from "./timestamps.js";
