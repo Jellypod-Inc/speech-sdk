@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { formatSrtTime, normalizeTypography } from "../srt.js";
+import {
+  formatSrtTime,
+  groupIntoSentences,
+  normalizeTypography,
+} from "../srt.js";
+import type { WordTimestamp } from "../timestamps.js";
+
+const w = (text: string, start: number, end: number): WordTimestamp => ({
+  text,
+  start,
+  end,
+});
 
 describe("formatSrtTime", () => {
   it("formats zero as 00:00:00,000", () => {
@@ -47,5 +58,41 @@ describe("normalizeTypography", () => {
 
   it("leaves plain ASCII unchanged", () => {
     expect(normalizeTypography("hello world")).toBe("hello world");
+  });
+});
+
+describe("groupIntoSentences", () => {
+  it("returns empty array for empty input", () => {
+    expect(groupIntoSentences([])).toEqual([]);
+  });
+
+  it("returns one sentence for unpunctuated input", () => {
+    const words = [w("hello", 0, 0.4), w("world", 0.4, 0.9)];
+    expect(groupIntoSentences(words)).toEqual([words]);
+  });
+
+  it("splits on period", () => {
+    const a = w("Hi.", 0, 0.3);
+    const b = w("Bye", 0.4, 0.7);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("splits on question mark and exclamation", () => {
+    const a = w("Yes?", 0, 0.3);
+    const b = w("No!", 0.4, 0.7);
+    const c = w("Maybe", 0.8, 1.1);
+    expect(groupIntoSentences([a, b, c])).toEqual([[a], [b], [c]]);
+  });
+
+  it("treats trailing closing quote as part of terminator", () => {
+    const a = w('"Run."', 0, 0.4);
+    const b = w("Then", 0.5, 0.8);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
+  it("handles final word without terminator as its own sentence", () => {
+    const a = w("Hello.", 0, 0.4);
+    const b = w("World", 0.5, 0.9);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
   });
 });

@@ -1,3 +1,5 @@
+import type { WordTimestamp } from "./timestamps.js";
+
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_MINUTE = 60;
 const MS_PER_SECOND = 1000;
@@ -42,4 +44,35 @@ export function formatSrtTime(seconds: number): string {
   );
   const secs = totalSeconds % SECONDS_PER_MINUTE;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+// Matches a word ending in .!? optionally followed by a single closing quote.
+const SENTENCE_TERMINATOR = /[.!?]["']?$/;
+
+/**
+ * Groups a flat list of word timestamps into sentences using
+ * terminator punctuation (`.`, `!`, `?`, optionally followed by a
+ * closing quote) attached to the trailing word.
+ *
+ * Known limitation: abbreviations like "Dr." or "e.g." are treated as
+ * sentence ends. Acceptable for v1 captioning.
+ *
+ * Exported for testing; not part of the public API.
+ */
+export function groupIntoSentences(
+  words: readonly WordTimestamp[]
+): WordTimestamp[][] {
+  const sentences: WordTimestamp[][] = [];
+  let current: WordTimestamp[] = [];
+  for (const word of words) {
+    current.push(word);
+    if (SENTENCE_TERMINATOR.test(word.text.trim())) {
+      sentences.push(current);
+      current = [];
+    }
+  }
+  if (current.length > 0) {
+    sentences.push(current);
+  }
+  return sentences;
 }
