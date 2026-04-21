@@ -1,0 +1,27 @@
+src/__tests__/captions.test.ts
+  fe79894d9cb98155 1-386
+src/captions.ts
+  fe79894d9cb98155 1-355
+README.md
+  fe79894d9cb98155 175,177,180,185,189,197-207,210-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "338b72ec5a7ddb4c5150312a249777a1c47caabe",
+  "prompts": {
+    "fe79894d9cb98155": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c95ac1f-e55f-4eaa-ada3-29b01a837e40",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 810,
+      "total_deletions": 48,
+      "accepted_lines": 760,
+      "overriden_lines": 0
+    }
+  }
+}
