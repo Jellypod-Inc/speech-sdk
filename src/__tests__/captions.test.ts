@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  escapeVttText,
   formatSrtTime,
+  formatVttTime,
   groupIntoSentences,
   normalizeTypography,
   splitSentenceIntoCues,
-  timestampsToSrt,
+  timestampsToCaptions,
   wrapCueText,
-} from "../srt.js";
+} from "../captions.js";
 import type { WordTimestamp } from "../timestamps.js";
 
 const w = (text: string, start: number, end: number): WordTimestamp => ({
@@ -37,6 +39,36 @@ describe("formatSrtTime", () => {
 
   it("clamps negatives to 00:00:00,000", () => {
     expect(formatSrtTime(-1)).toBe("00:00:00,000");
+  });
+});
+
+describe("formatVttTime", () => {
+  it("uses a period decimal separator", () => {
+    expect(formatVttTime(0)).toBe("00:00:00.000");
+    expect(formatVttTime(1.5)).toBe("00:00:01.500");
+  });
+
+  it("matches SRT format apart from the separator", () => {
+    expect(formatVttTime(3661.5)).toBe("01:01:01.500");
+  });
+
+  it("clamps negatives to 00:00:00.000", () => {
+    expect(formatVttTime(-1)).toBe("00:00:00.000");
+  });
+});
+
+describe("escapeVttText", () => {
+  it("escapes ampersand, lt, and gt", () => {
+    expect(escapeVttText("a & b")).toBe("a &amp; b");
+    expect(escapeVttText("<tag>")).toBe("&lt;tag&gt;");
+  });
+
+  it("escapes ampersand first to avoid double-escaping", () => {
+    expect(escapeVttText("&lt;")).toBe("&amp;lt;");
+  });
+
+  it("leaves plain ASCII unchanged", () => {
+    expect(escapeVttText("hello world")).toBe("hello world");
   });
 });
 
@@ -190,15 +222,15 @@ describe("wrapCueText", () => {
   });
 });
 
-describe("timestampsToSrt", () => {
+describe("timestampsToCaptions — SRT (default)", () => {
   it("returns empty string for empty input", () => {
-    expect(timestampsToSrt([])).toBe("");
+    expect(timestampsToCaptions([])).toBe("");
   });
 
   it("renders a single short sentence as one cue", () => {
     const words: WordTimestamp[] = [w("Hello", 0, 0.5), w("world.", 0.5, 1.0)];
-    const srt = timestampsToSrt(words);
-    expect(srt).toBe("1\n00:00:00,000 --> 00:00:01,000\nHello world.\n");
+    const srt = timestampsToCaptions(words);
+    expect(srt).toBe("1\n00:00:00,000 --> 00:00:01,000\nHello world.\n\n");
   });
 
   it("emits sequential cue indices starting at 1", () => {
@@ -207,7 +239,7 @@ describe("timestampsToSrt", () => {
       w("Two.", 0.6, 1.0),
       w("Three.", 1.1, 1.5),
     ];
-    const srt = timestampsToSrt(words);
+    const srt = timestampsToCaptions(words);
     const indices = srt
       .split("\n\n")
       .filter(Boolean)
@@ -217,7 +249,7 @@ describe("timestampsToSrt", () => {
 
   it("uses first-word start and last-word end for each cue", () => {
     const words: WordTimestamp[] = [w("Alpha", 1.0, 1.3), w("beta.", 1.3, 1.7)];
-    const srt = timestampsToSrt(words);
+    const srt = timestampsToCaptions(words);
     expect(srt).toContain("00:00:01,000 --> 00:00:01,700");
   });
 
@@ -231,7 +263,7 @@ describe("timestampsToSrt", () => {
       out[9] = { ...out[9], text: "word9." };
       return out;
     };
-    const srt = timestampsToSrt(makeLongWords());
+    const srt = timestampsToCaptions(makeLongWords());
     const body = srt.split("\n").slice(2, 4);
     expect(body).toHaveLength(2);
     for (const line of body) {
@@ -244,10 +276,21 @@ describe("timestampsToSrt", () => {
       w("it\u2019s", 0, 0.3),
       w("\u201Cdone\u201D.", 0.3, 0.8),
     ];
-    const srt = timestampsToSrt(words);
+    const srt = timestampsToCaptions(words);
     expect(srt).toContain("it's");
     expect(srt).toContain('"done".');
     expect(srt).not.toMatch(CURLY_QUOTES);
+  });
+
+  it("does not HTML-escape ampersand/lt/gt in SRT bodies", () => {
+    const words: WordTimestamp[] = [
+      w("Tom", 0, 0.3),
+      w("&", 0.3, 0.4),
+      w("Jerry.", 0.4, 0.9),
+    ];
+    const srt = timestampsToCaptions(words);
+    expect(srt).toContain("Tom & Jerry.");
+    expect(srt).not.toContain("&amp;");
   });
 
   it("honors custom options", () => {
@@ -256,7 +299,7 @@ describe("timestampsToSrt", () => {
       w("bbbb", 0.3, 0.6),
       w("cccc.", 0.6, 1.0),
     ];
-    const srt = timestampsToSrt(words, {
+    const srt = timestampsToCaptions(words, {
       maxLineLength: 4,
       maxLinesPerCue: 1,
       maxCharsPerCue: 4,
@@ -265,9 +308,79 @@ describe("timestampsToSrt", () => {
     expect(blocks).toHaveLength(3);
   });
 
-  it("ends every block with a blank line separator (trailing newline)", () => {
+  it("ends with a trailing blank line per SRT convention", () => {
     const words: WordTimestamp[] = [w("Hi.", 0, 0.3)];
-    const srt = timestampsToSrt(words);
-    expect(srt.endsWith("\n")).toBe(true);
+    const srt = timestampsToCaptions(words);
+    expect(srt.endsWith("\n\n")).toBe(true);
+  });
+});
+
+describe("timestampsToCaptions — VTT", () => {
+  it("returns empty string for empty input (no header)", () => {
+    expect(timestampsToCaptions([], { format: "vtt" })).toBe("");
+  });
+
+  it("renders a single short sentence with WEBVTT header and period decimals", () => {
+    const words: WordTimestamp[] = [w("Hello", 0, 0.5), w("world.", 0.5, 1.0)];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt).toBe(
+      "WEBVTT\n\n1\n00:00:00.000 --> 00:00:01.000\nHello world.\n\n"
+    );
+  });
+
+  it("ends with a trailing blank line per WebVTT spec", () => {
+    const words: WordTimestamp[] = [w("Hi.", 0, 0.3)];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt.endsWith("\n\n")).toBe(true);
+  });
+
+  it("uses period decimal separator in every timestamp", () => {
+    const words: WordTimestamp[] = [w("One.", 0, 0.5), w("Two.", 0.6, 1.0)];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt).toContain("00:00:00.000 --> 00:00:00.500");
+    expect(vtt).toContain("00:00:00.600 --> 00:00:01.000");
+    expect(vtt).not.toContain(",");
+  });
+
+  it("starts with the WEBVTT header followed by a blank line", () => {
+    const words: WordTimestamp[] = [w("Hi.", 0, 0.3)];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt.startsWith("WEBVTT\n\n")).toBe(true);
+  });
+
+  it("HTML-escapes ampersand, lt, and gt in cue bodies", () => {
+    const words: WordTimestamp[] = [
+      w("Tom", 0, 0.3),
+      w("&", 0.3, 0.4),
+      w("<Jerry>.", 0.4, 0.9),
+    ];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt).toContain("Tom &amp; &lt;Jerry&gt;.");
+    // The raw, unescaped form must not appear — any un-escaped `<` would be
+    // parsed as the start of an inline WebVTT tag and silently swallow text.
+    expect(vtt).not.toContain("Tom & <Jerry>.");
+  });
+
+  it("emits sequential cue indices starting at 1", () => {
+    const words: WordTimestamp[] = [
+      w("One.", 0, 0.5),
+      w("Two.", 0.6, 1.0),
+      w("Three.", 1.1, 1.5),
+    ];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    const cueBlocks = vtt.split("\n\n").slice(1).filter(Boolean);
+    const indices = cueBlocks.map((block) => block.split("\n")[0]);
+    expect(indices).toEqual(["1", "2", "3"]);
+  });
+
+  it("normalizes typography in rendered output", () => {
+    const words: WordTimestamp[] = [
+      w("it\u2019s", 0, 0.3),
+      w("\u201Cdone\u201D.", 0.3, 0.8),
+    ];
+    const vtt = timestampsToCaptions(words, { format: "vtt" });
+    expect(vtt).toContain("it's");
+    expect(vtt).toContain('"done".');
+    expect(vtt).not.toMatch(CURLY_QUOTES);
   });
 });

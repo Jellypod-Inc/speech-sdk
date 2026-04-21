@@ -1,5 +1,7 @@
 // biome-ignore lint/performance/noBarrelFile: intentional public API barrel
 export { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+export type { CaptionFormat, CaptionsOptions } from "./captions.js";
+export { timestampsToCaptions } from "./captions.js";
 export {
   ApiError,
   NoSpeechGeneratedError,
@@ -28,8 +30,6 @@ export type {
   SpeechToTextProvider,
   STTModelInfo,
 } from "./speech-to-text-provider.js";
-export type { SrtOptions } from "./srt.js";
-export { timestampsToSrt } from "./srt.js";
 export { streamSpeech } from "./stream-speech.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { TimestampMode, WordTimestamp } from "./timestamps.js";

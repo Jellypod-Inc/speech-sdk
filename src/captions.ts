@@ -28,12 +28,26 @@ export function normalizeTypography(text: string): string {
   return out.replace(WHITESPACE_RUN, " ");
 }
 
+const VTT_ESCAPE_MAP: ReadonlyArray<readonly [RegExp, string]> = [
+  [/&/g, "&amp;"],
+  [/</g, "&lt;"],
+  [/>/g, "&gt;"],
+];
+
 /**
- * Formats a number of seconds as an SRT timestamp: `HH:MM:SS,mmm`.
- * Negative inputs are clamped to zero. Milliseconds are rounded.
+ * Escapes characters that would otherwise be interpreted as inline WebVTT
+ * markup. Applied only to the VTT render path; SRT passes raw text through.
  * Exported for testing; not part of the public API.
  */
-export function formatSrtTime(seconds: number): string {
+export function escapeVttText(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of VTT_ESCAPE_MAP) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
+function formatTimestamp(seconds: number, separator: "," | "."): string {
   const clamped = Math.max(0, seconds);
   const totalMs = Math.round(clamped * MS_PER_SECOND);
   const ms = totalMs % MS_PER_SECOND;
@@ -43,7 +57,25 @@ export function formatSrtTime(seconds: number): string {
     (totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE
   );
   const secs = totalSeconds % SECONDS_PER_MINUTE;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}${separator}${String(ms).padStart(3, "0")}`;
+}
+
+/**
+ * Formats a number of seconds as an SRT timestamp: `HH:MM:SS,mmm`.
+ * Negative inputs are clamped to zero. Milliseconds are rounded.
+ * Exported for testing; not part of the public API.
+ */
+export function formatSrtTime(seconds: number): string {
+  return formatTimestamp(seconds, ",");
+}
+
+/**
+ * Formats a number of seconds as a WebVTT timestamp: `HH:MM:SS.mmm`.
+ * Negative inputs are clamped to zero. Milliseconds are rounded.
+ * Exported for testing; not part of the public API.
+ */
+export function formatVttTime(seconds: number): string {
+  return formatTimestamp(seconds, ".");
 }
 
 // Matches a word ending in .!? optionally followed by a straight or curly quote.
@@ -129,8 +161,7 @@ export function splitSentenceIntoCues(
   for (const word of sentence) {
     const tentative = [...current, word];
     const exceedsChars = cueCharLength(tentative) > options.maxCharsPerCue;
-    const exceedsDuration =
-      cueDurationMs(tentative) * 1 > options.maxCueDurationMs;
+    const exceedsDuration = cueDurationMs(tentative) > options.maxCueDurationMs;
 
     if ((exceedsChars || exceedsDuration) && current.length > 0) {
       cues.push(current);
@@ -197,9 +228,21 @@ export function wrapCueText(
 }
 
 /**
- * Options for {@link timestampsToSrt}.
+ * Supported caption output formats.
+ *
+ * - `"srt"` — SubRip (`.srt`). Comma-decimal timestamps, numeric cue IDs,
+ *   plain text bodies. Widely supported by media players and upload tools.
+ * - `"vtt"` — WebVTT (`.vtt`). Period-decimal timestamps, `WEBVTT` header,
+ *   HTML-escaped bodies (`&`, `<`, `>`). Required for HTML `<track>`.
  */
-export interface SrtOptions {
+export type CaptionFormat = "srt" | "vtt";
+
+/**
+ * Options for {@link timestampsToCaptions}.
+ */
+export interface CaptionsOptions {
+  /** Output format. Default `"srt"`. */
+  readonly format?: CaptionFormat;
   /**
    * Minimum cue-char-count at which a trailing comma triggers a soft cue
    * break. Prevents tiny fragments after every comma. Default `60`.
@@ -220,8 +263,13 @@ const DEFAULT_MAX_LINES_PER_CUE = 2;
 const DEFAULT_MAX_CUE_DURATION_MS = 7000;
 const DEFAULT_LONG_PHRASE_COMMA_BREAK_CHARS = 60;
 
+function identity(text: string): string {
+  return text;
+}
+
 /**
- * Converts word-level timestamps into an SRT caption string.
+ * Converts word-level timestamps into a caption string in SRT or WebVTT
+ * format.
  *
  * Sentence boundaries (`.`, `!`, `?` in word text, optionally followed
  * by a closing quote) create cue breaks; long sentences are subdivided
@@ -234,18 +282,20 @@ const DEFAULT_LONG_PHRASE_COMMA_BREAK_CHARS = 60;
  * @example
  * ```ts
  * const { timestamps } = await generateSpeech({ ... });
- * const srt = timestampsToSrt(timestamps ?? []);
- * await fs.writeFile("out.srt", srt);
+ *
+ * const srt = timestampsToCaptions(timestamps ?? []);
+ * const vtt = timestampsToCaptions(timestamps ?? [], { format: "vtt" });
  * ```
  */
-export function timestampsToSrt(
+export function timestampsToCaptions(
   timestamps: readonly WordTimestamp[],
-  options: SrtOptions = {}
+  options: CaptionsOptions = {}
 ): string {
   if (timestamps.length === 0) {
     return "";
   }
 
+  const format: CaptionFormat = options.format ?? "srt";
   const maxLineLength = options.maxLineLength ?? DEFAULT_MAX_LINE_LENGTH;
   const maxLinesPerCue = options.maxLinesPerCue ?? DEFAULT_MAX_LINES_PER_CUE;
   const maxCharsPerCue =
@@ -267,13 +317,22 @@ export function timestampsToSrt(
     );
   }
 
+  const formatTime = format === "vtt" ? formatVttTime : formatSrtTime;
+  const escapeText = format === "vtt" ? escapeVttText : identity;
+
   const blocks: string[] = [];
+  if (format === "vtt") {
+    blocks.push("WEBVTT\n");
+  }
+
   let index = 1;
   for (const cue of cues) {
     if (cue.length === 0) {
       continue;
     }
-    const normalizedWords = cue.map((wt) => normalizeTypography(wt.text));
+    const normalizedWords = cue.map((wt) =>
+      escapeText(normalizeTypography(wt.text))
+    );
     const body = wrapCueText(normalizedWords, {
       maxLineLength,
       maxLines: maxLinesPerCue,
@@ -284,10 +343,13 @@ export function timestampsToSrt(
       continue;
     }
     blocks.push(
-      `${index}\n${formatSrtTime(first.start)} --> ${formatSrtTime(last.end)}\n${body}\n`
+      `${index}\n${formatTime(first.start)} --> ${formatTime(last.end)}\n${body}\n`
     );
     index++;
   }
 
-  return blocks.join("\n");
+  // Append a trailing newline so the file ends with a blank line after the
+  // last cue — required by WebVTT's empty-line-separator rule and the SRT
+  // convention that strict parsers (e.g. ffmpeg, browser <track>) expect.
+  return `${blocks.join("\n")}\n`;
 }
