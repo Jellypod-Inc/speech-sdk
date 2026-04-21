@@ -14,14 +14,22 @@ const TYPOGRAPHY_MAP: ReadonlyArray<readonly [RegExp, string]> = [
   [/\u2026/g, "..."],
 ];
 
+// C0 control chars (minus \t \n \r \v \f, which `\s` collapses downstream)
+// and DEL. Providers should never emit these in text, but a stray NUL or ESC
+// would silently corrupt SRT/VTT output — some parsers truncate on NUL.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — this regex exists to strip control characters
+const CONTROL_CHARS = /[\u0000-\u0008\u000E-\u001F\u007F]/g;
+
 const WHITESPACE_RUN = /\s+/g;
 
 /**
- * Sanitizes non-ASCII typography characters to ASCII equivalents and
- * collapses whitespace runs. Exported for testing.
+ * Sanitizes caption-body text: strips C0 control characters (U+0000–U+001F
+ * minus whitespace, plus U+007F DEL), folds non-ASCII typography (curly
+ * quotes, en/em dashes, ellipsis) to ASCII equivalents, and collapses
+ * whitespace runs to a single space. Exported for testing.
  */
 export function normalizeTypography(text: string): string {
-  let out = text;
+  let out = text.replace(CONTROL_CHARS, "");
   for (const [pattern, replacement] of TYPOGRAPHY_MAP) {
     out = out.replace(pattern, replacement);
   }

@@ -94,6 +94,21 @@ describe("normalizeTypography", () => {
     expect(normalizeTypography("a   b\t\tc")).toBe("a b c");
   });
 
+  it("strips C0 control characters and DEL", () => {
+    // NUL, ESC, DEL interleaved in a word — all should be removed.
+    expect(normalizeTypography("hel\u0000lo\u001Bwor\u007Fld")).toBe(
+      "helloworld"
+    );
+  });
+
+  it("preserves legitimate zero-width joiners and combining marks", () => {
+    // ZWJ (U+200D) in emoji sequences and combining acute (U+0301) must survive.
+    expect(normalizeTypography("e\u0301")).toBe("e\u0301");
+    expect(normalizeTypography("\u{1F468}\u200D\u{1F469}")).toBe(
+      "\u{1F468}\u200D\u{1F469}"
+    );
+  });
+
   it("leaves plain ASCII unchanged", () => {
     expect(normalizeTypography("hello world")).toBe("hello world");
   });
