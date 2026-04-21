@@ -32,7 +32,7 @@ SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the 
 | Google      | Yes       | No                      | No                  | Via STT        | No          |
 | Fish Audio  | Yes       | Yes                     | Yes                 | Via STT        | Yes         |
 | Inworld     | Yes       | No                      | No                  | **Native**     | No          |
-| Murf        | `FALCON`  | No                      | No                  | **Native** (`GEN2`) | No     |
+| Murf        | Yes (`FALCON`) | No                 | No                  | **Native** (`GEN2`) | No     |
 | Resemble    | Yes       | No                      | Yes                 | **Native**     | Yes         |
 | fal         | No        | No                      | Yes (select models) | Via STT        | Varies      |
 | Mistral     | No        | No                      | Yes                 | Via STT        | Yes         |

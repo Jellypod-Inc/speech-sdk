@@ -66,7 +66,7 @@ export function audioTimestampsToWordTimestamps(
     }
     const s = t[0];
     const e = t[1];
-    if (typeof s !== "number" || typeof e !== "number") {
+    if (!(Number.isFinite(s) && Number.isFinite(e))) {
       continue;
     }
 
