@@ -76,3 +76,83 @@ export function groupIntoSentences(
   }
   return sentences;
 }
+
+const COMMA_TERMINATOR = /,["']?$/;
+
+interface CueSplitOptions {
+  readonly longPhraseCommaBreakChars: number;
+  readonly maxCharsPerCue: number;
+  readonly maxCueDurationMs: number;
+}
+
+function cueCharLength(cue: readonly WordTimestamp[]): number {
+  // Sum word lengths + (n-1) spaces between words.
+  let chars = 0;
+  for (const word of cue) {
+    chars += word.text.length;
+  }
+  if (cue.length > 1) {
+    chars += cue.length - 1;
+  }
+  return chars;
+}
+
+function cueDurationMs(cue: readonly WordTimestamp[]): number {
+  if (cue.length === 0) {
+    return 0;
+  }
+  const first = cue[0];
+  const last = cue.at(-1);
+  if (!last) {
+    return 0;
+  }
+  return (last.end - first.start) * 1000;
+}
+
+/**
+ * Subdivides a sentence (an ordered list of words) into one or more cues.
+ * Breaks are chosen in this priority order:
+ *   1. Hard: character budget exceeded → break before the offending word.
+ *   2. Hard: duration exceeded → break before the offending word.
+ *   3. Soft: comma in a word that leaves the current cue above
+ *      `longPhraseCommaBreakChars` → break after that word.
+ *
+ * Exported for testing; not part of the public API.
+ */
+export function splitSentenceIntoCues(
+  sentence: readonly WordTimestamp[],
+  options: CueSplitOptions
+): WordTimestamp[][] {
+  const cues: WordTimestamp[][] = [];
+  let current: WordTimestamp[] = [];
+
+  for (const word of sentence) {
+    const tentative = [...current, word];
+    const exceedsChars = cueCharLength(tentative) > options.maxCharsPerCue;
+    const exceedsDuration =
+      cueDurationMs(tentative) * 1 > options.maxCueDurationMs;
+
+    if ((exceedsChars || exceedsDuration) && current.length > 0) {
+      cues.push(current);
+      current = [word];
+      continue;
+    }
+
+    current.push(word);
+
+    const endsWithComma = COMMA_TERMINATOR.test(word.text.trim());
+    if (
+      endsWithComma &&
+      cueCharLength(current) + 1 >= options.longPhraseCommaBreakChars
+    ) {
+      cues.push(current);
+      current = [];
+    }
+  }
+
+  if (current.length > 0) {
+    cues.push(current);
+  }
+
+  return cues;
+}

@@ -3,6 +3,7 @@ import {
   formatSrtTime,
   groupIntoSentences,
   normalizeTypography,
+  splitSentenceIntoCues,
 } from "../srt.js";
 import type { WordTimestamp } from "../timestamps.js";
 
@@ -94,5 +95,52 @@ describe("groupIntoSentences", () => {
     const a = w("Hello.", 0, 0.4);
     const b = w("World", 0.5, 0.9);
     expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+});
+
+describe("splitSentenceIntoCues", () => {
+  const opts = {
+    maxCharsPerCue: 20,
+    maxCueDurationMs: 5000,
+    longPhraseCommaBreakChars: 15,
+  };
+
+  it("returns the sentence unchanged if it fits", () => {
+    const s = [w("short", 0, 0.5), w("one.", 0.5, 0.9)];
+    expect(splitSentenceIntoCues(s, opts)).toEqual([s]);
+  });
+
+  it("splits when char budget is exceeded", () => {
+    const s = [
+      w("this", 0, 0.3),
+      w("is", 0.3, 0.5),
+      w("a", 0.5, 0.6),
+      w("longer", 0.6, 1.0),
+      w("sentence", 1.0, 1.5),
+      w("here.", 1.5, 2.0),
+    ];
+    const cues = splitSentenceIntoCues(s, opts);
+    expect(cues.length).toBeGreaterThan(1);
+    // Every word is preserved in order.
+    expect(cues.flat()).toEqual(s);
+  });
+
+  it("breaks on comma when cue exceeds longPhraseCommaBreakChars", () => {
+    const s = [
+      w("one", 0, 0.3),
+      w("two", 0.3, 0.6),
+      w("three,", 0.6, 1.0),
+      w("four", 1.0, 1.3),
+      w("five.", 1.3, 1.7),
+    ];
+    const cues = splitSentenceIntoCues(s, opts);
+    expect(cues[0]).toEqual([s[0], s[1], s[2]]);
+    expect(cues[1]).toEqual([s[3], s[4]]);
+  });
+
+  it("splits when duration exceeds max", () => {
+    const s = [w("slow", 0, 3), w("talker.", 3, 6)];
+    const cues = splitSentenceIntoCues(s, { ...opts, maxCharsPerCue: 100 });
+    expect(cues).toEqual([[s[0]], [s[1]]]);
   });
 });
