@@ -1,0 +1,77 @@
+src/__tests__/e2e/conversation-timestamps.e2e.test.ts
+  d5a5f3e13a7b090b 91-129
+src/providers/murf/alignment.ts
+  d5a5f3e13a7b090b 1-35
+skills/speech-sdk/references/providers.md
+  d5a5f3e13a7b090b 25-39,45
+src/__tests__/e2e/inworld.e2e.test.ts
+  d5a5f3e13a7b090b 65-113
+skills/speech-sdk/references/providers/cartesia.md
+  d5a5f3e13a7b090b 12-15,19-33
+src/providers/inworld/alignment.ts
+  d5a5f3e13a7b090b 1-15,19-48
+skills/speech-sdk/references/providers/hume.md
+  d5a5f3e13a7b090b 12-31
+src/__tests__/e2e/murf.e2e.test.ts
+  d5a5f3e13a7b090b 63-104
+skills/speech-sdk/references/providers/inworld.md
+  d5a5f3e13a7b090b 12-15,19-33
+src/__tests__/murf-timestamps.test.ts
+  d5a5f3e13a7b090b 1-131
+skills/speech-sdk/references/providers/murf.md
+  d5a5f3e13a7b090b 12-15,19-33
+src/__tests__/inworld-timestamps.test.ts
+  d5a5f3e13a7b090b 1-149
+src/providers/cartesia/alignment.ts
+  d5a5f3e13a7b090b 1-42
+src/providers/murf/index.ts
+  d5a5f3e13a7b090b 7-11,62,89,92,95,137-149,152,154
+src/providers/hume/index.ts
+  d5a5f3e13a7b090b 1-2,9-10,39-43,80,85,103-110,136-203,340-358
+src/providers/resemble/alignment.ts
+  d5a5f3e13a7b090b 1-86
+src/__tests__/resemble-timestamps.test.ts
+  d5a5f3e13a7b090b 1-176
+src/__tests__/cartesia-timestamps.test.ts
+  d5a5f3e13a7b090b 1-84,86-181
+skills/speech-sdk/references/providers/resemble.md
+  d5a5f3e13a7b090b 12-30
+src/__tests__/e2e/cartesia.e2e.test.ts
+  d5a5f3e13a7b090b 65-110
+src/__tests__/hume-timestamps.test.ts
+  d5a5f3e13a7b090b 1-178
+src/providers/hume/alignment.ts
+  d5a5f3e13a7b090b 1-60
+src/__tests__/e2e/resemble.e2e.test.ts
+  d5a5f3e13a7b090b 62-110
+src/providers/inworld/index.ts
+  d5a5f3e13a7b090b 7-11,68,74,123,128,137-140,157-160,167-172,176
+src/providers/resemble/index.ts
+  d5a5f3e13a7b090b 7-11,52-57,78,83,111-121,126
+src/providers/cartesia/index.ts
+  d5a5f3e13a7b090b 2-3,14-18,78-83,89,219,224,226-230,269-336,415-511
+src/__tests__/e2e/hume.e2e.test.ts
+  d5a5f3e13a7b090b 63-109
+README.md
+  d5a5f3e13a7b090b 171-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "db6fe0d70d8095180926380f84ed9edd6a9bb488",
+  "prompts": {
+    "d5a5f3e13a7b090b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ba0cea3-649f-40b5-a887-fbcc99d46790",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 3182,
+      "total_deletions": 980,
+      "accepted_lines": 2349,
+      "overriden_lines": 2
+    }
+  }
+}
