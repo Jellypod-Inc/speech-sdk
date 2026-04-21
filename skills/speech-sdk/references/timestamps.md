@@ -42,25 +42,23 @@ When `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"
 2. **User override `timestampProvider`** — custom STT model (`"provider/model"` string or `ResolvedSTTModel`). Use this to route to a cheaper in-house Whisper or a gateway.
 3. **Default STT fallback** — OpenAI Whisper (`openai/whisper-1`). Requires `OPENAI_API_KEY` (or `timestampApiKey`), else throws `TimestampKeyMissingError`.
 
-## Native vs Derived Capability
+## Per-Provider Support
 
-Models declare their timestamp capability as a feature:
+As of v0.7, only one provider returns word alignment natively in its TTS response:
+
+- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` return alignment via `/with-timestamps`. `timestamps: "auto"` gets it for free.
+
+Every other provider is audio-only today. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio.
+
+Check a specific model at runtime:
 
 ```ts
 import { getFeature, type TimestampsFeature } from "@speech-sdk/core"
 
 const feat = getFeature<TimestampsFeature>(modelInfo, "timestamps")
-// { id: "timestamps", mode: "native" }   → alignment in the TTS response
-// { id: "timestamps", mode: "derived" }  → SDK pipes audio through STT on "on"
-// undefined                              → no declared capability; STT fallback handles "on"
+// { id: "timestamps", mode: "native" } → alignment in the TTS response
+// otherwise                            → STT fallback on "on", undefined on "auto"
 ```
-
-As of v0.7, only two providers declare a `timestamps` feature:
-
-- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` declare `{ mode: "native" }` and return alignment via `/with-timestamps`.
-- **OpenAI** — `gpt-4o-mini-tts`, `tts-1`, `tts-1-hd` declare `{ mode: "derived" }`; the SDK transcribes their output via Whisper on `timestamps: "on"`.
-
-Every other provider has **no declared timestamps capability**. `timestamps: "auto"` on those providers returns `undefined`; `timestamps: "on"` still works, routing through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override.
 
 ## Custom STT Provider
 
