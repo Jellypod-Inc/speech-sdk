@@ -8,9 +8,6 @@ on:
 jobs:
   notify-slack:
     runs-on: ubuntu-latest
-    # Mirror the Discord workflow: skip pre-releases so test publishes don't
-    # spam the internal channel.
-    if: ${{ !github.event.release.prerelease }}
     steps:
       - name: Post release to Slack
         env:
