@@ -1,0 +1,73 @@
+name: Notify Slack on Release
+
+# Fires the moment a GitHub Release is published.
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    # Mirror the Discord workflow: skip pre-releases so test publishes don't
+    # spam the internal channel.
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Post release to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name || github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_PUBLISHED_AT: ${{ github.event.release.published_at }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          # Slack section mrkdwn blocks cap at 3000 chars; stay under to leave
+          # room for the surrounding formatting.
+          body="${RELEASE_BODY:-_No release notes provided._}"
+          if [ ${#body} -gt 2900 ]; then
+            body="${body:0:2900}…"
+          fi
+
+          header="$REPO_NAME — $RELEASE_NAME"
+
+          payload=$(jq -n \
+            --arg header "$header" \
+            --arg body "$body" \
+            --arg tag "$RELEASE_TAG" \
+            --arg published "$RELEASE_PUBLISHED_AT" \
+            --arg url "$RELEASE_URL" \
+            '{
+              text: ($header + " — " + $url),
+              blocks: [
+                {
+                  type: "header",
+                  text: { type: "plain_text", text: $header, emoji: true }
+                },
+                {
+                  type: "section",
+                  text: { type: "mrkdwn", text: $body }
+                },
+                {
+                  type: "section",
+                  fields: [
+                    { type: "mrkdwn", text: ("*Version*\n" + $tag) },
+                    { type: "mrkdwn", text: ("*Published*\n" + $published) }
+                  ]
+                },
+                {
+                  type: "actions",
+                  elements: [
+                    {
+                      type: "button",
+                      text: { type: "plain_text", text: "View release", emoji: true },
+                      url: $url
+                    }
+                  ]
+                }
+              ]
+            }')
+
+          curl -fsS -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$SLACK_WEBHOOK_URL"
