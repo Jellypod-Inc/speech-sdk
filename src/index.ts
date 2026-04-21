@@ -1,5 +1,7 @@
 // biome-ignore lint/performance/noBarrelFile: intentional public API barrel
 export { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+export type { CaptionFormat, CaptionsOptions } from "./captions.js";
+export { timestampsToCaptions } from "./captions.js";
 export {
   ApiError,
   NoSpeechGeneratedError,
