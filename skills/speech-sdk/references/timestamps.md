@@ -39,8 +39,8 @@ type TimestampMode = "on" | "auto" | "off"
 When `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"` returns native timestamps only — it never triggers STT; if the provider has no native alignment, `timestamps` is `undefined` on the result.)
 
 1. **Native** — provider returns alignment directly in its TTS response (e.g. ElevenLabs `/with-timestamps`).
-2. **User override `timestampProvider`** — custom STT model (`"provider/model"` string or `ResolvedSTTModel`). Use this to route to a cheaper in-house Whisper or a gateway.
-3. **Default STT fallback** — OpenAI Whisper (`openai/whisper-1`). Requires `OPENAI_API_KEY` (or `timestampApiKey`), else throws `TimestampKeyMissingError`.
+2. **User override `timestampProvider`** — a `ResolvedSTTModel` constructed via a factory. Use this to route to a cheaper in-house Whisper or a gateway.
+3. **Default STT fallback** — OpenAI Whisper (`openai/whisper-1`). Requires `OPENAI_API_KEY`, else throws `TimestampKeyMissingError`.
 
 ## Per-Provider Support
 
@@ -62,20 +62,24 @@ const feat = getFeature<TimestampsFeature>(modelInfo, "timestamps")
 
 ## Custom STT Provider
 
-Override the STT target used on the derived path:
+`timestampProvider` accepts a `ResolvedSTTModel`. Construct one via a factory — the built-in OpenAI STT factory lives at the `@speech-sdk/core/stt/openai` subpath:
 
 ```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createOpenAISTT } from "@speech-sdk/core/stt/openai"
+
+const whisper = createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })
+
 await generateSpeech({
   model: "cartesia/sonic-3",
   text: "...",
   voice: "voice-id",
   timestamps: "on",
-  timestampProvider: "openai/whisper-1",    // or a ResolvedSTTModel
-  timestampApiKey: process.env.MY_WHISPER_KEY,
+  timestampProvider: whisper("whisper-1"),
 })
 ```
 
-For a fully custom provider, implement `SpeechToTextProvider` and pass a `ResolvedSTTModel`:
+For a fully custom provider, implement `SpeechToTextProvider` and pass the resolved model directly:
 
 ```ts
 import type { SpeechToTextProvider, ResolvedSTTModel } from "@speech-sdk/core"
@@ -83,14 +87,12 @@ import type { SpeechToTextProvider, ResolvedSTTModel } from "@speech-sdk/core"
 const myProvider: SpeechToTextProvider = { /* ... */ }
 const resolved: ResolvedSTTModel = { provider: myProvider, modelId: "whisper-ish" }
 
-await generateSpeech({ ..., timestamps: "on", timestampProvider: resolved })
+await generateSpeech({ /* ... */ timestamps: "on", timestampProvider: resolved })
 ```
-
-The STT subpath export `@speech-sdk/core/stt/openai` is also available if you want to reuse the built-in OpenAI STT provider directly.
 
 ## Conversations
 
-`generateConversation` accepts the same `timestamps` / `timestampProvider` / `timestampApiKey` options and returns a single flat `WordTimestamp[]` across all turns.
+`generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a single flat `WordTimestamp[]` across all turns.
 
 - **Stitch path** — each turn's word timings are offset by the cumulative turn duration + gap. Monotonic across turn boundaries. Works cross-provider (each turn gets native alignment when available, else STT).
 - **Native dialogue path** — the provider renders everything in one call; the mixed audio yields a flat list **without speaker labels** (a limitation of one-shot dialogue rendering). `timestamps: "on"` without native dialogue alignment transcribes the mix via STT.
@@ -121,8 +123,12 @@ Exported from `@speech-sdk/core`:
 
 - `TimestampMode`, `WordTimestamp`
 - `TimestampsFeature`, `FEATURES.TIMESTAMPS`, `getFeature`, `hasFeature`
-- `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`, `resolveSTTModel`
-- `TimestampKeyMissingError` (from the base `errors` export)
+- `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`
+- `TimestampKeyMissingError`
+
+From `@speech-sdk/core/stt/openai`:
+
+- `createOpenAISTT`, `OpenAISpeechToTextProvider`
 
 ## Errors
 

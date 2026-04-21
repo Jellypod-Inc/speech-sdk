@@ -93,7 +93,6 @@ export async function generateConversation<V extends Voice = Voice>(
     headers: options.headers,
     timestamps: options.timestamps ?? "auto",
     timestampProvider: options.timestampProvider,
-    timestampApiKey: options.timestampApiKey,
   });
 
   if (stitched.audio.length === 0) {
@@ -253,7 +252,6 @@ async function runNative<V extends Voice>(args: {
     mediaType: outputMediaType,
     ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
     timestampProvider: options.timestampProvider,
-    timestampApiKey: options.timestampApiKey,
     abortSignal: options.abortSignal,
   });
 
@@ -289,8 +287,7 @@ async function resolveNativeDialogueTimestamps(args: {
   audio: Uint8Array;
   mediaType: string;
   ttsModel: string;
-  timestampProvider: string | ResolvedSTTModel | undefined;
-  timestampApiKey: string | undefined;
+  timestampProvider: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
   if (args.timestampMode === "off") {
@@ -305,7 +302,6 @@ async function resolveNativeDialogueTimestamps(args: {
       audio: args.audio,
       mediaType: args.mediaType,
       timestampProvider: args.timestampProvider,
-      timestampApiKey: args.timestampApiKey,
       abortSignal: args.abortSignal,
     });
   }

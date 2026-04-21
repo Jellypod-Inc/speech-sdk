@@ -9,7 +9,6 @@ export {
 } from "./errors.js";
 export { generateSpeech } from "./generate-speech.js";
 export type { SpeechMetadata } from "./metadata.js";
-export { resolveSTTModel } from "./resolve-stt-provider.js";
 export type {
   Feature,
   ModelInfo,

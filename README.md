@@ -112,7 +112,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `normalizeVolume` (default `true`), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
+Options: `gapMs` (default 300), `normalizeVolume` (default `true`), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
 
 **Native dialogue caps:**
 
@@ -149,7 +149,19 @@ result.timestamps;
 | `"on"` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
 | `"off"` | Never return timestamps. |
 
-On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override with `timestampProvider` (`"provider/model"` string or `ResolvedSTTModel`) and `timestampApiKey`.
+On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override by constructing a `ResolvedSTTModel` via a factory and passing it as `timestampProvider`:
+
+```ts
+import { createOpenAISTT } from '@speech-sdk/core/stt/openai';
+
+await generateSpeech({
+  model: 'cartesia/sonic-3',
+  text: 'Hello!',
+  voice: 'voice-id',
+  timestamps: 'on',
+  timestampProvider: createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })('whisper-1'),
+});
+```
 
 **Per-provider support:**
 
@@ -250,8 +262,7 @@ generateSpeech({
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
   timestamps?: "on" | "auto" | "off",     // default "auto"
-  timestampProvider?: string | ResolvedSTTModel,
-  timestampApiKey?: string,
+  timestampProvider?: ResolvedSTTModel,   // override the STT fallback
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,

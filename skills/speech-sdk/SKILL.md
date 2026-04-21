@@ -77,7 +77,7 @@ See `references/conversation.md` for the full API, cross-provider mixing, and na
 
 ## Word-Level Timestamps
 
-Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"` — return timestamps only when the provider supplies them natively (free). `"on"` falls back to an STT round-trip (OpenAI Whisper by default, override via `timestampProvider`) when the provider has no native alignment. Works on both `generateSpeech` and `generateConversation`.
+Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"` — return timestamps only when the provider supplies them natively (free). `"on"` falls back to an STT round-trip (OpenAI Whisper by default, override by passing a `ResolvedSTTModel` as `timestampProvider`) when the provider has no native alignment. Works on both `generateSpeech` and `generateConversation`.
 
 ```ts
 const result = await generateSpeech({
@@ -125,8 +125,7 @@ generateSpeech({
   providerOptions?: object,         // pass-through to provider API (no transformation)
   volumeDbfs?: number,              // RMS target loudness (≤ 0); re-encodes to audio/wav
   timestamps?: "on" | "auto" | "off", // word-level alignment, default "auto"
-  timestampProvider?: string | ResolvedSTTModel, // STT override for the derived path
-  timestampApiKey?: string,         // API key for the STT provider (e.g. OPENAI_API_KEY)
+  timestampProvider?: ResolvedSTTModel, // override the STT fallback (e.g. createOpenAISTT({ apiKey })("whisper-1"))
   maxRetries?: number,              // default 2; retries 5xx/network only
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,
