@@ -48,17 +48,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
    */
   timestamps?: TimestampMode;
   /**
-   * Override the STT provider used for the derived-timestamps path. Accepts a
-   * `"provider/model"` string (e.g. `"openai/whisper-1"`, `"deepgram/nova-3"`)
-   * or a `ResolvedSTTModel` for custom providers. Only consulted when
-   * timestamps are requested AND the TTS provider can't supply them natively.
+   * Override the STT provider used for the derived-timestamps path. Construct
+   * via a factory (e.g. `createOpenAISTT({ apiKey })("whisper-1")`). Only
+   * consulted when timestamps are requested AND the TTS provider can't supply
+   * them natively. Defaults to OpenAI Whisper read from `OPENAI_API_KEY`.
    */
-  timestampProvider?: string | ResolvedSTTModel;
-  /**
-   * API key for the STT provider used in the derived-timestamps path. Falls
-   * back to the env var of the chosen STT provider (e.g. `OPENAI_API_KEY`).
-   */
-  timestampApiKey?: string;
+  timestampProvider?: ResolvedSTTModel;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -68,7 +63,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     volumeDbfs,
     timestamps: timestampMode = "auto",
     timestampProvider,
-    timestampApiKey,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
@@ -188,7 +182,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
         audio: audio.uint8Array,
         mediaType: outputMediaType,
         timestampProvider,
-        timestampApiKey,
         abortSignal,
       });
       debug(
@@ -239,7 +232,7 @@ function logTimestampDecision(args: {
   mode: TimestampMode;
   hasNative: boolean;
   willRequestNative: boolean;
-  timestampProvider: string | ResolvedSTTModel | undefined;
+  timestampProvider: ResolvedSTTModel | undefined;
 }): void {
   const { modelIdentifier, mode, willRequestNative } = args;
   if (mode === "off") {
@@ -264,12 +257,7 @@ function logTimestampDecision(args: {
   );
 }
 
-function describeSTTTarget(
-  provider: string | ResolvedSTTModel | undefined
-): string {
-  if (typeof provider === "string") {
-    return provider;
-  }
+function describeSTTTarget(provider: ResolvedSTTModel | undefined): string {
   if (provider) {
     return `${provider.provider.id}/${provider.modelId}`;
   }

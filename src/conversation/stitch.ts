@@ -24,8 +24,7 @@ interface StitchInput<V extends Voice = Voice> {
     providerOptions: Record<string, unknown>;
     mediaType: string;
   }[];
-  readonly timestampApiKey?: string;
-  readonly timestampProvider?: string | ResolvedSTTModel;
+  readonly timestampProvider?: ResolvedSTTModel;
   readonly timestamps: TimestampMode;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
@@ -104,7 +103,6 @@ export async function runStitch<V extends Voice>(
         headers: input.headers,
         timestamps: input.timestamps,
         timestampProvider: input.timestampProvider,
-        timestampApiKey: input.timestampApiKey,
       });
       // Prefer the mediaType from getStitchOptions over the response
       // content-type: providers' response headers often omit the sample

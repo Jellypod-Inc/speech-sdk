@@ -31,14 +31,13 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
    */
   readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
-  /** API key for the derived-timestamps STT provider. */
-  readonly timestampApiKey?: string;
   /**
-   * Override the STT provider used for the derived-timestamps path. Accepts
-   * a `"provider/model"` string or `ResolvedSTTModel`. Only consulted when
-   * the TTS provider can't supply timestamps natively.
+   * Override the STT provider used for the derived-timestamps path. Construct
+   * via a factory (e.g. `createOpenAISTT({ apiKey })("whisper-1")`). Only
+   * consulted when the TTS provider can't supply timestamps natively. Defaults
+   * to OpenAI Whisper read from `OPENAI_API_KEY`.
    */
-  readonly timestampProvider?: string | ResolvedSTTModel;
+  readonly timestampProvider?: ResolvedSTTModel;
   /**
    * Controls whether the returned `SpeechResult` includes word-level
    * timestamps. Default `"auto"`. On the stitch path each turn's timestamps
