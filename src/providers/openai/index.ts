@@ -96,19 +96,23 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       id: "gpt-4o-mini-tts",
       releaseDate: "2025-03-20",
       languages: OpenAISpeechProvider.LANGUAGES,
-      features: ["streaming", "audio-tags"],
+      features: [
+        "streaming",
+        "audio-tags",
+        { id: "timestamps", mode: "derived" },
+      ],
     },
     {
       id: "tts-1",
       releaseDate: "2023-11-06",
       languages: OpenAISpeechProvider.LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "derived" }],
     },
     {
       id: "tts-1-hd",
       releaseDate: "2023-11-06",
       languages: OpenAISpeechProvider.LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "derived" }],
     },
   ] as const;
 

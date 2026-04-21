@@ -1,4 +1,5 @@
 import { SpeechSDKError } from "./errors.js";
+import { parseProviderModelSpec } from "./provider-utils.js";
 import { CartesiaSpeechProvider } from "./providers/cartesia/index.js";
 import { DeepgramSpeechProvider } from "./providers/deepgram/index.js";
 import { ElevenLabsSpeechProvider } from "./providers/elevenlabs/index.js";
@@ -68,21 +69,10 @@ export function resolveModel(
     return model;
   }
 
-  const slashIndex = model.indexOf("/");
-  let providerName: string;
-  let modelId: string | undefined;
-
-  if (slashIndex === -1) {
-    providerName = model;
-    modelId = undefined;
-  } else {
-    providerName = model.slice(0, slashIndex);
-    modelId = model.slice(slashIndex + 1);
-  }
-
+  const { providerName, modelId } = parseProviderModelSpec(model);
   const provider = createBuiltinProvider(providerName, options);
   return {
     provider,
-    modelId: modelId || provider.defaultModel,
+    modelId: modelId ?? provider.defaultModel,
   };
 }

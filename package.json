@@ -70,6 +70,10 @@
     "./xai": {
       "types": "./dist/providers/xai/index.d.ts",
       "default": "./dist/providers/xai/index.js"
+    },
+    "./stt/openai": {
+      "types": "./dist/stt-providers/openai/index.d.ts",
+      "default": "./dist/stt-providers/openai/index.js"
     }
   },
   "files": [

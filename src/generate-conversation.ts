@@ -4,12 +4,20 @@ import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
 import type { GenerateConversationOptions } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
+import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { resolveModel } from "./resolve-provider.js";
-import type { ResolvedModel, Voice } from "./speech-provider.js";
+import {
+  modelDeclaresNativeTimestamps,
+  type ResolvedModel,
+  type Voice,
+} from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
+import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
+import type { WordTimestamp } from "./timestamps.js";
 
 // biome-ignore lint/performance/noBarrelFile: public entry point — re-export error classes so callers get fn + types + errors from one import
 export {
@@ -83,6 +91,9 @@ export async function generateConversation<V extends Voice = Voice>(
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
+    timestamps: options.timestamps ?? "auto",
+    timestampProvider: options.timestampProvider,
+    timestampApiKey: options.timestampApiKey,
   });
 
   if (stitched.audio.length === 0) {
@@ -112,6 +123,7 @@ export async function generateConversation<V extends Voice = Voice>(
     metadata,
     providerMetadata: { turns: stitched.providerMetadataPerTurn },
     warnings: stitched.warnings.length > 0 ? [...stitched.warnings] : undefined,
+    timestamps: stitched.timestamps,
   };
 }
 
@@ -157,6 +169,29 @@ async function runNative<V extends Voice>(args: {
     ? { ...options.providerOptions, ...stitchOpts.providerOptions }
     : options.providerOptions;
 
+  const timestampMode = options.timestamps ?? "auto";
+  const hasNativeDialogueTimestamps = modelDeclaresNativeTimestamps(resolved);
+  const shouldRequestNative =
+    (timestampMode === "on" || timestampMode === "auto") &&
+    hasNativeDialogueTimestamps;
+
+  const dialogueId = `${resolved.provider.id}/${resolved.modelId}`;
+  if (timestampMode === "off") {
+    debug(`${dialogueId} (dialogue): timestamps: "off" — skipping alignment.`);
+  } else if (shouldRequestNative) {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "${timestampMode}" — requesting native dialogue alignment.`
+    );
+  } else if (timestampMode === "auto") {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "auto" — dialogue endpoint has no native alignment; skipping. Pass timestamps: "on" to derive from the mixed audio via STT (flat list, no speaker labels).`
+    );
+  } else {
+    debug(
+      `${dialogueId} (dialogue): timestamps: "on" but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
+    );
+  }
+
   const result = await pRetry(
     () =>
       generateDialogue({
@@ -165,6 +200,7 @@ async function runNative<V extends Voice>(args: {
         providerOptions: dialogueProviderOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
+        includeTimestamps: shouldRequestNative,
       }),
     {
       retries: maxRetries,
@@ -210,6 +246,17 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
+  const timestamps = await resolveNativeDialogueTimestamps({
+    timestampMode,
+    nativeTimestamps: result.timestamps,
+    audio: audio.uint8Array,
+    mediaType: outputMediaType,
+    ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+    timestampProvider: options.timestampProvider,
+    timestampApiKey: options.timestampApiKey,
+    abortSignal: options.abortSignal,
+  });
+
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
   const metadata: SpeechMetadata = {
@@ -225,5 +272,42 @@ async function runNative<V extends Voice>(args: {
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: warnings.length > 0 ? warnings : undefined,
+    timestamps,
   };
+}
+
+// Resolves timestamps for the native dialogue path:
+//   - "off"                            → undefined
+//   - native alignment returned        → pass through
+//   - "on" without native              → STT fallback on the mixed audio
+//     (flat WordTimestamp[] without speaker labels — limitation of one-call
+//     dialogue rendering)
+//   - "auto" without native            → undefined
+async function resolveNativeDialogueTimestamps(args: {
+  timestampMode: "on" | "auto" | "off";
+  nativeTimestamps: readonly WordTimestamp[] | undefined;
+  audio: Uint8Array;
+  mediaType: string;
+  ttsModel: string;
+  timestampProvider: string | ResolvedSTTModel | undefined;
+  timestampApiKey: string | undefined;
+  abortSignal: AbortSignal | undefined;
+}): Promise<readonly WordTimestamp[] | undefined> {
+  if (args.timestampMode === "off") {
+    return;
+  }
+  if (args.nativeTimestamps && args.nativeTimestamps.length > 0) {
+    return args.nativeTimestamps;
+  }
+  if (args.timestampMode === "on") {
+    return await deriveTimestampsViaSTT({
+      ttsModel: args.ttsModel,
+      audio: args.audio,
+      mediaType: args.mediaType,
+      timestampProvider: args.timestampProvider,
+      timestampApiKey: args.timestampApiKey,
+      abortSignal: args.abortSignal,
+    });
+  }
+  return;
 }

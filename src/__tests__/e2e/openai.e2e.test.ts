@@ -128,4 +128,53 @@ describe("OpenAI e2e", () => {
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.ttfbMs).toBeGreaterThanOrEqual(0);
   });
+
+  describe("timestamps (derived via Whisper fallback)", () => {
+    it("auto mode does NOT derive timestamps (OpenAI TTS has no native alignment)", async () => {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: TEST_TEXT,
+        voice: VOICE,
+        timestamps: "auto",
+      });
+
+      expect(result.timestamps).toBeUndefined();
+    });
+
+    it("on mode pipes synthesized audio through Whisper and returns word timestamps", async () => {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: TEST_TEXT,
+        voice: VOICE,
+        timestamps: "on",
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps).toBeDefined();
+      const words = result.timestamps ?? [];
+      expect(words.length).toBeGreaterThan(0);
+      for (const w of words) {
+        expect(w.text.length).toBeGreaterThan(0);
+        expect(w.end).toBeGreaterThanOrEqual(w.start);
+      }
+      for (let i = 1; i < words.length; i++) {
+        expect(words[i]?.start).toBeGreaterThanOrEqual(
+          words[i - 1]?.start ?? 0
+        );
+      }
+    });
+
+    it("honors timestampProvider override (explicit openai/whisper-1)", async () => {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: TEST_TEXT,
+        voice: VOICE,
+        timestamps: "on",
+        timestampProvider: "openai/whisper-1",
+      });
+
+      expect(result.timestamps).toBeDefined();
+      expect((result.timestamps ?? []).length).toBeGreaterThan(0);
+    });
+  });
 });

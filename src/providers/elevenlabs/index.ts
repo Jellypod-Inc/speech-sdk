@@ -1,4 +1,5 @@
 import { stripAudioTags } from "../../audio-tags.js";
+import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -10,6 +11,11 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
+import {
+  alignmentToWordTimestamps,
+  type ElevenLabsAlignment,
+} from "./alignment.js";
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -144,25 +150,29 @@ export class ElevenLabsSpeechProvider
       id: "eleven_v3",
       releaseDate: "2025-06-08",
       languages: ElevenLabsSpeechProvider.V3_LANGUAGES,
-      features: ["streaming", "audio-tags"],
+      features: [
+        "streaming",
+        "audio-tags",
+        { id: "timestamps", mode: "native" },
+      ],
     },
     {
       id: "eleven_multilingual_v2",
       releaseDate: "2023-08-22",
       languages: ElevenLabsSpeechProvider.V2_LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
     {
       id: "eleven_flash_v2_5",
       releaseDate: "2024-12-01",
       languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
     {
       id: "eleven_flash_v2",
       releaseDate: "2024-12-01",
       languages: ["en"] as const,
-      features: ["streaming"],
+      features: ["streaming", { id: "timestamps", mode: "native" }],
     },
   ] as const;
 
@@ -180,7 +190,11 @@ export class ElevenLabsSpeechProvider
     text: string,
     modelId: string,
     providerOptions: Record<string, unknown> | undefined
-  ): { body: Record<string, unknown>; queryString: string } {
+  ): {
+    body: Record<string, unknown>;
+    queryString: string;
+    outputFormat: string | undefined;
+  } {
     const opts = providerOptions ?? {};
     const {
       output_format,
@@ -196,8 +210,10 @@ export class ElevenLabsSpeechProvider
     };
 
     const queryParams = new URLSearchParams();
-    if (output_format != null) {
-      queryParams.set("output_format", String(output_format));
+    const outputFormat =
+      output_format == null ? undefined : String(output_format);
+    if (outputFormat != null) {
+      queryParams.set("output_format", outputFormat);
     }
     if (enable_logging != null) {
       queryParams.set("enable_logging", String(enable_logging));
@@ -209,7 +225,7 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    return { body, queryString: queryParams.toString() };
+    return { body, queryString: queryParams.toString(), outputFormat };
   }
 
   processAudioTags(
@@ -231,11 +247,13 @@ export class ElevenLabsSpeechProvider
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     if (!options.voice) {
       throw new SpeechSDKError(
@@ -243,13 +261,20 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const { body, queryString } = this.buildRequest(
+    const { body, queryString, outputFormat } = this.buildRequest(
       options.text,
       options.modelId,
       options.providerOptions
     );
 
-    let url = `${this.baseURL}/v1/text-to-speech/${options.voice}`;
+    // When timestamps are requested, ElevenLabs exposes a dedicated endpoint
+    // that returns base64 audio + character-level alignment in a JSON body
+    // (rather than raw audio bytes). We post the same body/query, then
+    // aggregate characters → words before returning.
+    const path = options.includeTimestamps
+      ? `/v1/text-to-speech/${options.voice}/with-timestamps`
+      : `/v1/text-to-speech/${options.voice}`;
+    let url = `${this.baseURL}${path}`;
     if (queryString) {
       url += `?${queryString}`;
     }
@@ -272,19 +297,55 @@ export class ElevenLabsSpeechProvider
 
     await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
 
-    const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
     const parsedDuration =
       durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
-    const audioDurationMs = Number.isFinite(parsedDuration)
+    const headerDurationMs = Number.isFinite(parsedDuration)
       ? Math.round(parsedDuration * 1000)
       : undefined;
 
+    if (options.includeTimestamps) {
+      const payload = (await response.json()) as {
+        audio_base64?: string;
+        alignment?: ElevenLabsAlignment;
+        normalized_alignment?: ElevenLabsAlignment;
+      };
+
+      if (!payload.audio_base64) {
+        throw new SpeechSDKError(
+          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64`
+        );
+      }
+
+      const audio = base64ToUint8Array(payload.audio_base64);
+      // `normalized_alignment` matches what was actually spoken (e.g.,
+      // expanded numbers/abbreviations), so it's the right source for
+      // user-facing word timings.
+      const alignment =
+        payload.normalized_alignment ?? payload.alignment ?? null;
+      const timestamps = alignment
+        ? alignmentToWordTimestamps(alignment)
+        : undefined;
+
+      return {
+        audio,
+        audioDurationMs: headerDurationMs,
+        // /with-timestamps returns the audio as base64 inside a JSON body,
+        // so there's no Content-Type hint for the audio bytes themselves —
+        // we derive it from the requested output_format.
+        mediaType: elevenLabsFormatToMediaType(outputFormat),
+        providerMetadata: requestId ? { requestId } : undefined,
+        timestamps,
+      };
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+
     return {
       audio: new Uint8Array(arrayBuffer),
-      audioDurationMs,
+      audioDurationMs: headerDurationMs,
       mediaType,
       providerMetadata: requestId ? { requestId } : undefined,
     };
@@ -447,4 +508,37 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
       modelId: modelId ?? provider.defaultModel,
     };
   };
+}
+
+/**
+ * Map an ElevenLabs `output_format` identifier (e.g. `"pcm_24000"`,
+ * `"mp3_44100_128"`, `"ulaw_8000"`, `"opus_48000_32"`) to a standard media
+ * type. Used when decoding base64 audio from `/with-timestamps`, which
+ * delivers the bytes inside a JSON body with no Content-Type hint for the
+ * audio itself. Unknown or missing formats fall back to the endpoint's
+ * default, which is mp3.
+ */
+function elevenLabsFormatToMediaType(format: string | undefined): string {
+  if (!format) {
+    return "audio/mpeg";
+  }
+  if (format.startsWith("mp3_")) {
+    return "audio/mpeg";
+  }
+  if (format.startsWith("pcm_")) {
+    const rate = Number.parseInt(format.slice(4), 10);
+    return Number.isFinite(rate) && rate > 0
+      ? `audio/pcm;rate=${rate}`
+      : "audio/pcm";
+  }
+  if (format.startsWith("ulaw_")) {
+    const rate = Number.parseInt(format.slice(5), 10);
+    return Number.isFinite(rate) && rate > 0
+      ? `audio/basic;rate=${rate}`
+      : "audio/basic";
+  }
+  if (format.startsWith("opus_")) {
+    return "audio/opus";
+  }
+  return "audio/mpeg";
 }

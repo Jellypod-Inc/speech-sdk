@@ -1,10 +1,28 @@
-import { ApiError } from "./errors.js";
+import { ApiError, MissingApiKeyError } from "./errors.js";
 
 // Identifies traffic originating from this SDK so providers can bucket
 // usage by integration. Sent as `X-User-Agent` because `User-Agent` is
 // a forbidden header name in browser fetch. Callers may override via
 // options.headers.
 export const SDK_USER_AGENT = "jellypod-speech-sdk";
+
+/**
+ * Split a `"provider/model"` spec into its parts. Spec with no slash is
+ * treated as a bare provider name (caller falls back to `defaultModel`).
+ */
+export function parseProviderModelSpec(spec: string): {
+  providerName: string;
+  modelId: string | undefined;
+} {
+  const slashIndex = spec.indexOf("/");
+  if (slashIndex === -1) {
+    return { providerName: spec, modelId: undefined };
+  }
+  return {
+    providerName: spec.slice(0, slashIndex),
+    modelId: spec.slice(slashIndex + 1) || undefined,
+  };
+}
 
 export function resolveApiKey(
   stored: string | undefined,
@@ -15,9 +33,7 @@ export function resolveApiKey(
     stored ??
     (typeof process === "undefined" ? undefined : process.env?.[envVar]);
   if (!key) {
-    throw new Error(
-      `${providerName} API key is required. Pass it via apiKey option or set the ${envVar} environment variable.`
-    );
+    throw new MissingApiKeyError({ providerName, envVar });
   }
   return key;
 }
