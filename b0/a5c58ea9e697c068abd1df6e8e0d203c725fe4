@@ -1,0 +1,25 @@
+src/__tests__/srt.test.ts
+  fe79894d9cb98155 7,19,186-192,194-212,214-267
+src/srt.ts
+  fe79894d9cb98155 198-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "b0a5c58ea9e697c068abd1df6e8e0d203c725fe4",
+  "prompts": {
+    "fe79894d9cb98155": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c95ac1f-e55f-4eaa-ada3-29b01a837e40",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 187,
+      "total_deletions": 0,
+      "accepted_lines": 178,
+      "overriden_lines": 2
+    }
+  }
+}
