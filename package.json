@@ -71,6 +71,10 @@
       "types": "./dist/providers/xai/index.d.ts",
       "default": "./dist/providers/xai/index.js"
     },
+    "./gateway": {
+      "types": "./dist/providers/gateway/index.d.ts",
+      "default": "./dist/providers/gateway/index.js"
+    },
     "./stt/openai": {
       "types": "./dist/stt-providers/openai/index.d.ts",
       "default": "./dist/stt-providers/openai/index.js"

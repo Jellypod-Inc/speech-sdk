@@ -334,7 +334,7 @@ describe("generateSpeech", () => {
     }
   });
 
-  it("passes apiKey to provider when model is a string", async () => {
+  it("routes string models through the speech gateway with apiKey as bearer", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -349,12 +349,20 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         text: "Hello",
         voice: "alloy",
-        apiKey: "sk-custom-key",
+        apiKey: "gw-custom-key",
       });
 
       expect(result.audio).toBeDefined();
-      const [, init] = mockFetch.mock.calls[0];
-      expect(init.headers.Authorization).toBe("Bearer sk-custom-key");
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://api.speechgateway.com/v1/audio/speech");
+      expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
+      const body = JSON.parse(init.body);
+      expect(body).toEqual({
+        mode: "inline",
+        model: "openai/tts-1",
+        voice: "alloy",
+        text: "Hello",
+      });
     } finally {
       globalThis.fetch = savedFetch;
     }

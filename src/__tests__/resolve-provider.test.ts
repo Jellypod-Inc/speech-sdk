@@ -2,34 +2,29 @@ import { describe, expect, it } from "vitest";
 import { resolveModel } from "../resolve-provider.js";
 
 describe("resolveModel", () => {
-  it("resolves provider/model string", () => {
+  it("routes provider/model string to the speech gateway", () => {
     const result = resolveModel("openai/tts-1");
-    expect(result.modelId).toBe("tts-1");
-    expect(result.provider.id).toBe("openai");
+    expect(result.provider.id).toBe("speech-gateway");
+    expect(result.modelId).toBe("openai/tts-1");
   });
 
-  it("resolves provider-only string with default model", () => {
+  it("routes bare provider strings to the gateway with the raw spec as modelId", () => {
     const result = resolveModel("openai");
-    expect(result.provider.id).toBe("openai");
-    expect(result.modelId).toBe("gpt-4o-mini-tts");
+    expect(result.provider.id).toBe("speech-gateway");
+    expect(result.modelId).toBe("openai");
   });
 
-  it("resolves elevenlabs provider", () => {
+  it("routes elevenlabs model strings to the gateway", () => {
     const result = resolveModel("elevenlabs/eleven_flash_v2_5");
-    expect(result.provider.id).toBe("elevenlabs");
-    expect(result.modelId).toBe("eleven_flash_v2_5");
-  });
-
-  it("throws for unknown provider", () => {
-    expect(() => resolveModel("unknown/model")).toThrow(
-      "Unknown provider: unknown"
-    );
+    expect(result.provider.id).toBe("speech-gateway");
+    expect(result.modelId).toBe("elevenlabs/eleven_flash_v2_5");
   });
 
   it("passes through ResolvedModel objects unchanged", () => {
     const mockProvider = {
       id: "test",
       defaultModel: "test-model",
+      models: [],
       generate: async () => ({
         audio: new Uint8Array(),
         mediaType: "audio/mpeg",
@@ -40,18 +35,19 @@ describe("resolveModel", () => {
     expect(result).toBe(resolved);
   });
 
-  it("passes apiKey to the created provider", () => {
-    const result = resolveModel("openai/tts-1", { apiKey: "test-key-123" });
-    expect(result.provider.id).toBe("openai");
-    expect(result.modelId).toBe("tts-1");
-    // The provider is constructed with the apiKey; we verify it was created
-    // successfully (apiKey is stored privately, so we just ensure no error)
+  it("forwards apiKey to the gateway provider", () => {
+    const result = resolveModel("openai/tts-1", { apiKey: "gw-key-123" });
+    expect(result.provider.id).toBe("speech-gateway");
+    expect(result.modelId).toBe("openai/tts-1");
+    // apiKey is stored privately on the provider; the generate-speech tests
+    // verify it is forwarded as a Bearer token on the outgoing request.
   });
 
   it("ignores apiKey when model is a ResolvedModel", () => {
     const mockProvider = {
       id: "test",
       defaultModel: "test-model",
+      models: [],
       generate: async () => ({
         audio: new Uint8Array(),
         mediaType: "audio/mpeg",
