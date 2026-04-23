@@ -1,6 +1,36 @@
 # All Providers
 
-SpeechSDK supports 13 providers. Use `provider/model` strings, or pass just the provider name to use its default model. (fal has no default model — you must always pass a specific `fal-ai/<model>` path.)
+SpeechSDK supports 13 upstream providers through Speech Gateway by default. `provider/model` strings use Speech Gateway. Provider factories call upstream providers directly. (fal has no default model — pass a specific `fal-ai/<model>` path.)
+
+## Speech Gateway Routing
+
+String models such as `"openai/gpt-4o-mini-tts"` and `"elevenlabs/eleven_v3"` are Speech Gateway requests. They call `https://api.speechgateway.com/v1/audio/speech` with `SPEECH_GATEWAY_API_KEY` or the `apiKey` option. The JSON body is the SDK request body:
+
+```json
+{
+  "mode": "inline",
+  "model": "openai/gpt-4o-mini-tts",
+  "voice": "alloy",
+  "text": "Hello!",
+  "timestamps": "auto",
+  "volumeDbfs": -20,
+  "providerOptions": {}
+}
+```
+
+Use direct factories (`createOpenAI()`, `createElevenLabs()`, etc.) to bypass Speech Gateway and hit upstream APIs directly with provider-specific keys.
+
+## Gateway-Specific Branches
+
+Use `isSpeechGatewayModel(resolved)` when SDK logic needs to branch for Speech Gateway. Gateway routing is request-level behavior, not model metadata.
+
+```ts
+if (isSpeechGatewayModel(resolved)) {
+  // Send gateway-supported options to the gateway and skip local fallbacks.
+}
+```
+
+Current gateway-specific `generateSpeech` behavior sends `timestamps` and `volumeDbfs` to Speech Gateway. Direct provider models keep native-provider behavior and local fallbacks.
 
 ## Provider Table
 
@@ -82,4 +112,4 @@ await generateSpeech({
 
 ## API Key Resolution
 
-String models read the key from the env var in the table above. Override with factory functions — see `configuration.md`.
+String models read `SPEECH_GATEWAY_API_KEY` or use the `apiKey` option as the gateway bearer token. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.

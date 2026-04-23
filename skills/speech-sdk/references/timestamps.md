@@ -1,6 +1,6 @@
 # Word-Level Timestamps
 
-`generateSpeech` and `generateConversation` can return word-level alignment alongside the audio. Timings are word granularity, `start` / `end` in seconds from the start of the generated audio.
+`generateSpeech` and `generateConversation` return word-level alignment alongside the audio when timestamps are enabled and the selected route provides them. Timings are word granularity, `start` / `end` in seconds from the start of the generated audio.
 
 ## Quick Start
 
@@ -30,13 +30,37 @@ type TimestampMode = "on" | "auto" | "off"
 
 | Mode     | Behavior                                                                                              |
 | -------- | ----------------------------------------------------------------------------------------------------- |
-| `"auto"` *(default)* | Return timestamps only if the TTS provider supplies them natively. No extra API calls.   |
-| `"on"`   | Always return timestamps. Uses native alignment when available; otherwise falls back to STT.         |
+| `"auto"` *(default)* | Gateway decides whether to return timestamps; direct providers return native timestamps only. |
+| `"on"`   | Gateway must return timestamps for string models. Direct providers use native alignment or STT fallback. |
 | `"off"`  | Never return timestamps, even when the provider would return them for free.                          |
 
-## Cascade
+## Speech Gateway Behavior
 
-When `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"` returns native timestamps only — it never triggers STT; if the provider has no native alignment, `timestamps` is `undefined` on the result.)
+String models route through Speech Gateway. For `generateSpeech`, the SDK sends `timestamps` in the gateway JSON body:
+
+```json
+{
+  "mode": "inline",
+  "model": "openai/gpt-4o-mini-tts",
+  "voice": "alloy",
+  "text": "Hello!",
+  "timestamps": "on"
+}
+```
+
+When `timestamps: "on"` is used with a gateway-routed string model, all timestamp work happens on the gateway. The SDK does not run a client-side STT fallback. If the gateway response does not include word timestamps, `generateSpeech` throws `GatewayTimestampsUnavailableError`.
+
+Use `isSpeechGatewayModel(resolved)` for gateway-specific timestamp branches:
+
+```ts
+if (isSpeechGatewayModel(resolved)) {
+  // Ask Speech Gateway for timestamps; do not run local STT fallback.
+}
+```
+
+## Direct Provider Cascade
+
+For factory-created direct provider models, when `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"` returns native timestamps only — it never triggers STT; if the provider has no native alignment, `timestamps` is `undefined` on the result.)
 
 1. **Native** — provider returns alignment directly in its TTS response (e.g. ElevenLabs `/with-timestamps`).
 2. **User override `timestampProvider`** — a `ResolvedSTTModel` constructed via a factory. Use this to route to a cheaper in-house Whisper or a gateway.
@@ -44,11 +68,11 @@ When `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"
 
 ## Per-Provider Support
 
-As of v0.7, only one provider returns word alignment natively in its TTS response:
+Direct provider support varies by model:
 
 - **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` return alignment via `/with-timestamps`. `timestamps: "auto"` gets it for free.
 
-Every other provider is audio-only today. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio.
+Providers without native alignment are audio-only on the direct path. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio. This STT fallback does not run for Speech Gateway string models.
 
 Check a specific model at runtime:
 
@@ -125,6 +149,7 @@ Exported from `@speech-sdk/core`:
 - `TimestampsFeature`, `FEATURES.TIMESTAMPS`, `getFeature`, `hasFeature`
 - `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`
 - `TimestampKeyMissingError`
+- `GatewayTimestampsUnavailableError`, `isSpeechGatewayModel`
 
 From `@speech-sdk/core/stt/openai`:
 
@@ -134,7 +159,8 @@ From `@speech-sdk/core/stt/openai`:
 
 | Error                       | When                                                                 |
 | --------------------------- | -------------------------------------------------------------------- |
-| `TimestampKeyMissingError`  | `timestamps: "on"` triggers the STT fallback but no key is configured — message names the env var |
+| `TimestampKeyMissingError`  | Direct provider `timestamps: "on"` triggers the STT fallback but no key is configured — message names the env var |
+| `GatewayTimestampsUnavailableError` | Gateway-routed `timestamps: "on"` response did not include word timestamps |
 
 Other errors (`ApiError`, etc.) propagate from the underlying STT call on the derived path.
 

@@ -5,6 +5,7 @@ import {
   generateSpeech,
   ApiError,
   NoSpeechGeneratedError,
+  GatewayTimestampsUnavailableError,
   SpeechSDKError,
 } from "@speech-sdk/core"
 ```
@@ -16,6 +17,7 @@ import {
 | `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
 | `TimestampKeyMissingError`         | `timestamps: "on"` fallback STT key missing (message names env var)  |
+| `GatewayTimestampsUnavailableError` | Gateway-routed `timestamps: "on"` response has no word timestamps   |
 | `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
 ## Catching

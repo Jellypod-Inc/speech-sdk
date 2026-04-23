@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { TimestampKeyMissingError } from "../errors.js";
+import {
+  GatewayTimestampsUnavailableError,
+  TimestampKeyMissingError,
+} from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
 import type { SpeechProvider } from "../speech-provider.js";
@@ -9,6 +12,7 @@ import type { WordTimestamp } from "../timestamps.js";
 function createTTSProvider(
   overrides: Partial<{
     audio: Uint8Array;
+    id: string;
     mediaType: string;
     timestamps: WordTimestamp[];
     feature: { id: "timestamps"; mode: "native" | "derived" };
@@ -29,7 +33,7 @@ function createTTSProvider(
     });
 
   return {
-    id: "test-tts",
+    id: overrides.id ?? "test-tts",
     defaultModel: "t-model",
     models: [
       {
@@ -144,6 +148,47 @@ describe("generateSpeech timestamps option", () => {
     expect(stt.transcribe).toHaveBeenCalledOnce();
     expect(result.timestamps).toHaveLength(2);
     expect(result.timestamps?.[0]?.text).toBe("Hello");
+  });
+
+  it("on mode: asks the gateway for server-side timestamps before STT fallback", async () => {
+    let captured: boolean | undefined;
+    const provider = createTTSProvider({
+      id: "speech-gateway",
+      timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+      captureIncludeTimestamps: (v) => {
+        captured = v;
+      },
+    });
+    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "openai/tts-1" },
+      text: "Hello",
+      voice: "v",
+      timestamps: "on",
+      timestampProvider: { provider: stt, modelId: "m" },
+    });
+
+    expect(captured).toBe(true);
+    expect(stt.transcribe).not.toHaveBeenCalled();
+    expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
+  });
+
+  it("on mode: never runs client-side STT fallback for gateway requests", async () => {
+    const provider = createTTSProvider({ id: "speech-gateway" });
+    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "openai/tts-1" },
+        text: "Hello",
+        voice: "v",
+        timestamps: "on",
+        timestampProvider: { provider: stt, modelId: "m" },
+      })
+    ).rejects.toThrow(GatewayTimestampsUnavailableError);
+
+    expect(stt.transcribe).not.toHaveBeenCalled();
   });
 
   it("on mode without override: tries default openai/whisper-1 and errors with actionable message when OPENAI_API_KEY is unset", async () => {

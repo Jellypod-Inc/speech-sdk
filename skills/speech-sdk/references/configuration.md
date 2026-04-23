@@ -1,6 +1,21 @@
 # Configuration
 
-By default SpeechSDK reads API keys from env vars. Use factory functions when you need custom keys, base URLs, or fetch implementations.
+String models use Speech Gateway and read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models bypass Speech Gateway and call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+
+## String Models: Speech Gateway
+
+```ts
+await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  apiKey: process.env.SPEECH_GATEWAY_API_KEY,
+  timestamps: "auto",
+  volumeDbfs: -20,
+})
+```
+
+String-model requests send the SDK request body to Speech Gateway. `timestamps`, `volumeDbfs`, `providerOptions`, `model`, `voice`, and `text` are JSON body fields. Transport/control fields (`apiKey`, `headers`, `abortSignal`, `maxRetries`) are not JSON body fields. Gateway-owned headers (`Accept`, `Content-Type`, `Authorization`) are set by the SDK and cannot be overridden by caller headers.
 
 ## Factory Functions
 
@@ -19,6 +34,8 @@ await generateSpeech({
   voice: "alloy",
 })
 ```
+
+Factory-created `ResolvedModel`s call the upstream provider directly and do not use Speech Gateway.
 
 Call the factory with no arg to use the provider's default model:
 
@@ -44,6 +61,7 @@ await generateSpeech({ model: openai(), text: "...", voice: "alloy" })
 | `@speech-sdk/core/fal-ai`        | `createFal()`          |
 | `@speech-sdk/core/mistral`       | `createMistral()`      |
 | `@speech-sdk/core/xai`           | `createXai()`          |
+| `@speech-sdk/core/gateway`       | `createSpeechGateway()` |
 
 ## Configuration Options
 
@@ -74,6 +92,8 @@ interface GenerateSpeechOptions {
   text: string
   voice: Voice
   providerOptions?: object          // provider-specific, passed through
+  volumeDbfs?: number               // gateway: server-side; direct providers: local WAV normalization
+  timestamps?: "on" | "auto" | "off" // gateway: server-side; direct providers: native or STT fallback
   maxRetries?: number               // default 2
   abortSignal?: AbortSignal
   headers?: Record<string, string>

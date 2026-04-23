@@ -1,13 +1,10 @@
-import type { WordTimestamp } from "./timestamps.js";
+import type { TimestampMode, WordTimestamp } from "./timestamps.js";
 
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
 /**
- * A capability supported by a model. Today every feature is just an id (a
- * string), meaning "this model has feature X". The union also accepts an
- * object form `{ id, ...params }` so features that need parameters (e.g.
- * `timestamps` with a `mode`) can extend the type without breaking
- * existing string-based features.
+ * A capability supported by a model. String features mean "this model has
+ * feature X". Object features carry parameters, such as timestamp mode.
  */
 export type Feature = string | TimestampsFeature | { readonly id: string };
 
@@ -96,12 +93,15 @@ export interface SpeechProvider<
      * orchestrator then routes through an STT fallback.
      */
     includeTimestamps?: boolean;
+    timestamps?: TimestampMode;
+    volumeDbfs?: number;
   }): Promise<{
     audio: string | Uint8Array;
     audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
+    warnings?: string[];
   }>;
 
   generateDialogue?(options: {
@@ -158,6 +158,10 @@ export interface SpeechProvider<
 export interface ResolvedModel<TVoice extends Voice = Voice> {
   modelId: string;
   provider: SpeechProvider<string, TVoice>;
+}
+
+export function isSpeechGatewayModel(model: ResolvedModel): boolean {
+  return model.provider.id === "speech-gateway";
 }
 
 /**

@@ -4,6 +4,7 @@ export type { CaptionFormat, CaptionsOptions } from "./captions.js";
 export { timestampsToCaptions } from "./captions.js";
 export {
   ApiError,
+  GatewayTimestampsUnavailableError,
   NoSpeechGeneratedError,
   SpeechSDKError,
   StreamingNotSupportedError,
@@ -23,6 +24,7 @@ export {
   FEATURES,
   getFeature,
   hasFeature,
+  isSpeechGatewayModel,
 } from "./speech-provider.js";
 export type { GeneratedAudioFile, SpeechResult } from "./speech-result.js";
 export type {

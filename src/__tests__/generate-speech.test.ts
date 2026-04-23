@@ -362,6 +362,41 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         voice: "alloy",
         text: "Hello",
+        timestamps: "auto",
+      });
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("passes volumeDbfs through to the speech gateway instead of normalizing locally", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "gw-custom-key",
+        volumeDbfs: -20,
+      });
+
+      expect(result.audio.mediaType).toBe("audio/mpeg");
+      const [, init] = mockFetch.mock.calls[0];
+      expect(JSON.parse(init.body)).toEqual({
+        mode: "inline",
+        model: "openai/tts-1",
+        voice: "alloy",
+        text: "Hello",
+        timestamps: "auto",
+        volumeDbfs: -20,
       });
     } finally {
       globalThis.fetch = savedFetch;

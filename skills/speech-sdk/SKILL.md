@@ -5,7 +5,7 @@ description: "How to use @speech-sdk/core for text-to-speech and multi-speaker c
 
 # @speech-sdk/core
 
-Universal TypeScript TTS SDK. One API, 13 providers, zero lock-in. Runs in Node, Edge, and Browser.
+Universal TypeScript TTS SDK. One API. String models use Speech Gateway. Factory models call providers directly. Runs in Node, Edge, and Browser.
 
 **Three top-level functions** — `generateSpeech` (single utterance), `streamSpeech` (chunked audio), `generateConversation` (multi-speaker dialogue).
 
@@ -31,7 +31,7 @@ result.audio.base64     // string — lazy-computed base64
 result.audio.mediaType  // "audio/mpeg"
 ```
 
-Pass `provider/model` (e.g. `"elevenlabs/eleven_v3"`) or just `provider` to use its default model. API keys resolve from env vars automatically.
+Pass `provider/model` strings (e.g. `"elevenlabs/eleven_v3"`) to use Speech Gateway. String models use `SPEECH_GATEWAY_API_KEY` or the `apiKey` option and send the SDK request body to the gateway. Use provider factories such as `createOpenAI()` or `createElevenLabs()` to call the upstream provider directly with its own API key.
 
 ## Streaming
 
@@ -77,7 +77,7 @@ See `references/conversation.md` for the full API, cross-provider mixing, and na
 
 ## Word-Level Timestamps
 
-Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"` — return timestamps only when the provider supplies them natively (free). `"on"` falls back to an STT round-trip (OpenAI Whisper by default, override by passing a `ResolvedSTTModel` as `timestampProvider`) when the provider has no native alignment. Works on both `generateSpeech` and `generateConversation`.
+Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"`. With string models routed through Speech Gateway, timestamp generation is handled by the gateway; the client does not run a local STT fallback. With direct provider factories, `"auto"` returns native timestamps when available and `"on"` falls back to an STT round-trip when the provider has no native alignment.
 
 ```ts
 const result = await generateSpeech({
@@ -90,7 +90,7 @@ const result = await generateSpeech({
 result.timestamps // [{ text, start, end }, ...] — seconds, word granularity
 ```
 
-See `references/timestamps.md` for the cascade (native → override → Whisper fallback), custom STT providers, conversation behavior, and `TimestampKeyMissingError`.
+See `references/timestamps.md` for gateway behavior, direct-provider fallback behavior, custom STT providers, conversation behavior, gateway routing checks, and timestamp errors.
 
 ## Progressive Disclosure
 
@@ -123,7 +123,7 @@ generateSpeech({
   text: string,
   voice: Voice,                     // string | { url } | { audio }
   providerOptions?: object,         // pass-through to provider API (no transformation)
-  volumeDbfs?: number,              // RMS target loudness (≤ 0); re-encodes to audio/wav
+  volumeDbfs?: number,              // RMS target loudness (≤ 0); gateway does server-side, direct providers use local WAV normalization
   timestamps?: "on" | "auto" | "off", // word-level alignment, default "auto"
   timestampProvider?: ResolvedSTTModel, // override the STT fallback (e.g. createOpenAISTT({ apiKey })("whisper-1"))
   maxRetries?: number,              // default 2; retries 5xx/network only
@@ -132,4 +132,6 @@ generateSpeech({
 })
 ```
 
-`providerOptions` use each provider's own field names. Most values are passed straight through to the request body, but some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
+For string models, `providerOptions` are sent inside the Speech Gateway JSON body and gateway-owned transport headers (`Accept`, `Content-Type`, `Authorization`) cannot be overridden by caller headers. For direct provider factories, `providerOptions` use each upstream provider's own field names; some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
+
+Use `isSpeechGatewayModel(resolved)` for gateway-specific branches. Current gateway-specific `generateSpeech` behavior sends `timestamps` and `volumeDbfs` to Speech Gateway instead of doing local STT or local WAV normalization.
