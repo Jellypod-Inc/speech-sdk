@@ -5,11 +5,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
-import type {
-  ConversationWordTimestamp,
-  TimestampMode,
-  WordTimestamp,
-} from "../../timestamps.js";
+import type { WordTimestamp } from "../../timestamps.js";
 import { CARTESIA_MODELS, CARTESIA_PROVIDER_ID } from "../cartesia/index.js";
 import { DEEPGRAM_MODELS, DEEPGRAM_PROVIDER_ID } from "../deepgram/index.js";
 import {
@@ -44,9 +40,8 @@ export interface SpeechGatewayProviderConfig {
 interface GatewayJsonResponse {
   audio: string;
   mediaType: string;
-  providerMetadata?: Record<string, unknown>;
-  timestamps?: WordTimestamp[];
-  warnings?: string[];
+  timestamps: WordTimestamp[];
+  warnings: string[];
 }
 
 const GATEWAY_401_MESSAGE =
@@ -141,12 +136,10 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
-    timestamps?: TimestampMode;
     volumeDbfs?: number;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
-    providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
     warnings?: string[];
   }> {
@@ -162,11 +155,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       voice: options.voice,
       text: options.text,
     };
-    if (options.includeTimestamps) {
-      body.timestamps = options.timestamps ?? "on";
-    } else if (options.timestamps) {
-      body.timestamps = options.timestamps;
-    }
     if (options.volumeDbfs != null) {
       body.volumeDbfs = options.volumeDbfs;
     }
@@ -174,7 +162,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       body.providerOptions = options.providerOptions;
     }
 
-    const url = `${this.baseURL}/audio/speech`;
+    // Endpoint split: binary vs JSON-with-timestamps lives at two URLs now;
+    // Accept-header content negotiation is gone.
+    const url = options.includeTimestamps
+      ? `${this.baseURL}/audio/speech/with-timestamps`
+      : `${this.baseURL}/audio/speech`;
     const accept = options.includeTimestamps
       ? "application/json"
       : "audio/mpeg";
@@ -197,8 +189,8 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
-    const contentType = response.headers.get("content-type");
     if (options.includeTimestamps) {
+      const contentType = response.headers.get("content-type");
       if (!contentType?.includes("application/json")) {
         throw new Error(
           `speech-gateway/${options.modelId}: requested JSON response for timestamps but server returned content-type "${contentType}"`
@@ -208,7 +200,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       return {
         audio: decodeBase64(payload.audio),
         mediaType: payload.mediaType,
-        providerMetadata: payload.providerMetadata,
         timestamps: payload.timestamps,
         warnings: payload.warnings,
       };
@@ -284,12 +275,15 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
 
   /**
    * Conversation fast-path through the gateway. Sends every turn in a single
-   * `POST /v1/audio/conversation` call; server renders, stitches, normalizes,
-   * and returns one mixed audio file. Avoids the N-round-trip stitch path and
-   * keeps audio-mux code out of caller bundles.
+   * `POST /v1/audio/conversation` call; the server renders, stitches,
+   * normalizes, and returns one mixed audio file as raw bytes. Avoids the
+   * N-round-trip stitch path and keeps audio-mux code out of caller bundles.
    *
-   * Always negotiates `application/json` (the mixed-audio response can't
-   * stream usefully without losing per-turn metadata + warnings).
+   * The conversation endpoint carries no per-turn attribution or timestamps
+   * on the wire today — attribution is server-side only (logged into the
+   * `speech_requests` table), and per-turn alignment is deferred until
+   * `/v1/audio/conversation/with-timestamps` ships. Callers that need word
+   * timestamps must derive them via STT over the returned mixed audio.
    */
   async generateConversation(options: {
     modelId: string;
@@ -301,18 +295,12 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     gapMs?: number;
     volumeDbfs?: number;
     normalizeVolume?: boolean;
-    timestamps?: TimestampMode;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
-    providerMetadata: {
-      turns: Array<{ provider: string; model: string; voice: string }>;
-    };
-    timestamps: readonly ConversationWordTimestamp[];
-    warnings: readonly string[];
   }> {
     if (options.turns.length === 0) {
       throw new Error(
@@ -338,7 +326,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       gapMs: options.gapMs ?? 300,
       volumeDbfs: options.volumeDbfs ?? -20,
       normalizeVolume: options.normalizeVolume ?? true,
-      timestamps: options.timestamps ?? "off",
     };
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
@@ -350,7 +337,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       method: "POST",
       headers: {
         ...options.headers,
-        Accept: "application/json",
+        Accept: "audio/*",
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -364,17 +351,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
-    const payload = parseConversationJsonResponse(
-      await response.json(),
-      `speech-gateway/${options.modelId}`
-    );
+    const arrayBuffer = await response.arrayBuffer();
 
     return {
-      audio: decodeBase64(payload.audio),
-      mediaType: payload.mediaType,
-      providerMetadata: { turns: payload.perTurn },
-      timestamps: payload.timestamps,
-      warnings: payload.warnings,
+      audio: new Uint8Array(arrayBuffer),
+      mediaType: mediaTypeFromHeaders(response.headers),
     };
   }
 }
@@ -404,17 +385,14 @@ function parseGatewayJsonResponse(payload: unknown): GatewayJsonResponse {
   return {
     audio: payload.audio,
     mediaType: payload.mediaType,
-    providerMetadata: isRecord(payload.providerMetadata)
-      ? payload.providerMetadata
-      : undefined,
     timestamps: parseTimestamps(payload.timestamps),
     warnings: parseWarnings(payload.warnings),
   };
 }
 
-function parseTimestamps(value: unknown): WordTimestamp[] | undefined {
-  if (value === undefined) {
-    return undefined;
+function parseTimestamps(value: unknown): WordTimestamp[] {
+  if (value === undefined || value === null) {
+    return [];
   }
   if (!Array.isArray(value)) {
     throw new Error(
@@ -438,9 +416,9 @@ function parseTimestamps(value: unknown): WordTimestamp[] | undefined {
   return timestamps;
 }
 
-function parseWarnings(value: unknown): string[] | undefined {
-  if (value === undefined) {
-    return undefined;
+function parseWarnings(value: unknown): string[] {
+  if (value === undefined || value === null) {
+    return [];
   }
   if (
     !(Array.isArray(value) && value.every((item) => typeof item === "string"))
@@ -461,110 +439,4 @@ function decodeBase64(value: string): Uint8Array {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-interface ConversationJsonResponse {
-  audio: string;
-  mediaType: string;
-  perTurn: Array<{ provider: string; model: string; voice: string }>;
-  timestamps: readonly ConversationWordTimestamp[];
-  warnings: readonly string[];
-}
-
-function parseConversationJsonResponse(
-  payload: unknown,
-  modelLabel: string
-): ConversationJsonResponse {
-  if (!isRecord(payload)) {
-    throw new Error(`${modelLabel}: expected JSON response object`);
-  }
-  if (typeof payload.audio !== "string") {
-    throw new Error(`${modelLabel}: JSON response missing base64 audio`);
-  }
-  if (typeof payload.mediaType !== "string") {
-    throw new Error(`${modelLabel}: JSON response missing mediaType`);
-  }
-
-  // Wire shape is { providerMetadata: { perTurn: [...] } }; remap to the
-  // public { providerMetadata: { turns: [...] } } shape for parity with the
-  // existing stitch-path result.
-  const providerMetadata = isRecord(payload.providerMetadata)
-    ? payload.providerMetadata
-    : {};
-  const perTurnRaw = providerMetadata.perTurn;
-  const perTurn: Array<{ provider: string; model: string; voice: string }> = [];
-  if (Array.isArray(perTurnRaw)) {
-    for (const item of perTurnRaw) {
-      if (
-        !isRecord(item) ||
-        typeof item.provider !== "string" ||
-        typeof item.model !== "string" ||
-        typeof item.voice !== "string"
-      ) {
-        throw new Error(
-          `${modelLabel}: JSON response contains an invalid providerMetadata.perTurn entry`
-        );
-      }
-      // Preserve any extra fields (e.g. requestId) alongside the required keys.
-      perTurn.push({
-        ...(item as Record<string, unknown>),
-        provider: item.provider,
-        model: item.model,
-        voice: item.voice,
-      } as { provider: string; model: string; voice: string });
-    }
-  }
-
-  // `timestamps` is always present per spec — [] in Phase 1. Parse defensively
-  // anyway; missing/invalid falls back to [].
-  const timestamps = parseConversationTimestamps(
-    payload.timestamps,
-    modelLabel
-  );
-
-  // `warnings` is always present per spec — [] when no warnings.
-  const warnings = Array.isArray(payload.warnings)
-    ? payload.warnings.filter((w): w is string => typeof w === "string")
-    : [];
-
-  return {
-    audio: payload.audio,
-    mediaType: payload.mediaType,
-    perTurn,
-    timestamps,
-    warnings,
-  };
-}
-
-function parseConversationTimestamps(
-  value: unknown,
-  modelLabel: string
-): readonly ConversationWordTimestamp[] {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  if (!Array.isArray(value)) {
-    throw new Error(`${modelLabel}: JSON response timestamps must be an array`);
-  }
-  const out: ConversationWordTimestamp[] = [];
-  for (const item of value) {
-    if (
-      !isRecord(item) ||
-      typeof item.text !== "string" ||
-      typeof item.start !== "number" ||
-      typeof item.end !== "number" ||
-      typeof item.turnIndex !== "number"
-    ) {
-      throw new Error(
-        `${modelLabel}: JSON response contains an invalid conversation timestamp (missing text/start/end/turnIndex)`
-      );
-    }
-    out.push({
-      text: item.text,
-      start: item.start,
-      end: item.end,
-      turnIndex: item.turnIndex,
-    });
-  }
-  return out;
 }

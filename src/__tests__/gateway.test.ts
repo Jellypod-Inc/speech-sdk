@@ -28,6 +28,15 @@ function mockFetchOk(body = new Uint8Array([1, 2, 3])) {
   });
 }
 
+function mockFetchAudio(body: Uint8Array, contentType: string) {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-type": contentType }),
+    arrayBuffer: async () => body.buffer,
+  });
+}
+
 function mockFetchJson(body: unknown) {
   return vi.fn().mockResolvedValue({
     ok: true,
@@ -71,15 +80,12 @@ describe("SpeechGatewayProvider", () => {
     });
   });
 
-  it("requests JSON and parses base64 audio when timestamps are requested", async () => {
+  it("hits /audio/speech/with-timestamps and parses base64 audio when timestamps are requested", async () => {
     const fetchFn = mockFetchJson({
       audio: btoa("Hello"),
       mediaType: "audio/mpeg",
       timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
       warnings: ["timestamp alignment was approximate"],
-      providerMetadata: {
-        requestId: "gw-req-123",
-      },
     });
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -97,22 +103,22 @@ describe("SpeechGatewayProvider", () => {
     expect(result.mediaType).toBe("audio/mpeg");
     expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
     expect(result.warnings).toEqual(["timestamp alignment was approximate"]);
-    expect(result.providerMetadata).toEqual({
-      requestId: "gw-req-123",
-    });
 
-    const [, init] = fetchFn.mock.calls[0];
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+    );
     expect(init.headers.Accept).toBe("application/json");
+    // Body carries no `timestamps` field — the URL split is the switch now.
     expect(JSON.parse(init.body)).toEqual({
       mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello",
-      timestamps: "on",
     });
   });
 
-  it("sends timestamp auto mode to the gateway for JSON negotiation", async () => {
+  it("defaults missing warnings/timestamps in the JSON envelope to empty arrays", async () => {
     const fetchFn = mockFetchJson({
       audio: btoa("Hello"),
       mediaType: "audio/mpeg",
@@ -122,23 +128,15 @@ describe("SpeechGatewayProvider", () => {
       fetch: fetchFn as unknown as typeof globalThis.fetch,
     });
 
-    await provider.generate({
+    const result = await provider.generate({
       modelId: "openai/tts-1",
       text: "Hello",
       voice: "alloy",
       includeTimestamps: true,
-      timestamps: "auto",
     });
 
-    const [, init] = fetchFn.mock.calls[0];
-    expect(init.headers.Accept).toBe("application/json");
-    expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
-      model: "openai/tts-1",
-      voice: "alloy",
-      text: "Hello",
-      timestamps: "auto",
-    });
+    expect(result.timestamps).toEqual([]);
+    expect(result.warnings).toEqual([]);
   });
 
   it("identifies gateway-routed resolved models", () => {
@@ -151,6 +149,7 @@ describe("SpeechGatewayProvider", () => {
       audio: btoa("Hello"),
       mediaType: "audio/mpeg",
       timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+      warnings: [],
     });
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -175,7 +174,7 @@ describe("SpeechGatewayProvider", () => {
     expect(init.headers["Content-Type"]).toBe("application/json");
   });
 
-  it("throws when JSON timestamps are requested but server returns binary", async () => {
+  it("throws when the with-timestamps endpoint returns binary", async () => {
     const fetchFn = mockFetchOk();
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -191,15 +190,11 @@ describe("SpeechGatewayProvider", () => {
       })
     ).rejects.toThrow(JSON_TIMESTAMPS_BINARY_RE);
 
-    const [, init] = fetchFn.mock.calls[0];
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+    );
     expect(init.headers.Accept).toBe("application/json");
-    expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
-      model: "openai/tts-1",
-      voice: "alloy",
-      text: "Hello",
-      timestamps: "on",
-    });
   });
 
   it("respects a custom baseURL", async () => {
@@ -448,19 +443,8 @@ describe("SpeechGatewayProvider", () => {
 });
 
 describe("SpeechGatewayProvider.generateConversation", () => {
-  it("posts conversation payload with mode, turns, gap/volume/normalize, timestamps defaults", async () => {
-    const fetchFn = mockFetchJson({
-      audio: btoa("ABC"),
-      mediaType: "audio/wav",
-      timestamps: [],
-      warnings: [],
-      providerMetadata: {
-        perTurn: [
-          { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
-          { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
-        ],
-      },
-    });
+  it("posts conversation payload with mode, turns, gap/volume/normalize defaults; reads raw mixed audio", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
       fetch: fetchFn as unknown as typeof globalThis.fetch,
@@ -476,10 +460,12 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
-    expect(init.headers.Accept).toBe("application/json");
+    expect(init.headers.Accept).toBe("audio/*");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
 
+    // No `timestamps` field on the wire anymore — the `/with-timestamps`
+    // variant is deferred until per-turn alignment is implementable.
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       mode: "conversation",
@@ -491,27 +477,14 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       gapMs: 300,
       volumeDbfs: -20,
       normalizeVolume: true,
-      timestamps: "off",
     });
 
     expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));
     expect(result.mediaType).toBe("audio/wav");
-    expect(result.timestamps).toEqual([]);
-    expect(result.warnings).toEqual([]);
-    expect(result.providerMetadata.turns).toEqual([
-      { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
-      { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
-    ]);
   });
 
-  it("does not let caller Accept header override application/json on conversation", async () => {
-    const fetchFn = mockFetchJson({
-      audio: btoa("A"),
-      mediaType: "audio/wav",
-      timestamps: [],
-      warnings: [],
-      providerMetadata: { perTurn: [] },
-    });
+  it("does not let caller Accept header override audio/* on conversation", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
       fetch: fetchFn as unknown as typeof globalThis.fetch,
@@ -521,69 +494,30 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       modelId: "openai/gpt-4o-mini-tts",
       turns: [{ voice: "alloy", text: "Hi." }],
       headers: {
-        Accept: "audio/mpeg",
+        Accept: "application/json",
         Authorization: "Bearer caller-key",
         "Content-Type": "text/plain",
       },
     });
 
     const [, init] = fetchFn.mock.calls[0];
-    expect(init.headers.Accept).toBe("application/json");
+    expect(init.headers.Accept).toBe("audio/*");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
   });
 
-  it("parses populated timestamps with turnIndex", async () => {
-    const fetchFn = mockFetchJson({
-      audio: btoa("A"),
-      mediaType: "audio/wav",
-      timestamps: [
-        { text: "Hi", start: 0, end: 0.2, turnIndex: 0 },
-        { text: "there.", start: 0.2, end: 0.5, turnIndex: 0 },
-        { text: "Hello!", start: 0.8, end: 1.1, turnIndex: 1 },
-      ],
-      warnings: ["mock warning"],
-      providerMetadata: {
-        perTurn: [
-          { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
-          { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
-        ],
-      },
-    });
-    const provider = new SpeechGatewayProvider({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    const result = await provider.generateConversation({
-      modelId: "openai/gpt-4o-mini-tts",
-      turns: [
-        { voice: "alloy", text: "Hi there." },
-        { voice: "nova", text: "Hello!" },
-      ],
-      timestamps: "on",
-    });
-
-    expect(result.timestamps).toEqual([
-      { text: "Hi", start: 0, end: 0.2, turnIndex: 0 },
-      { text: "there.", start: 0.2, end: 0.5, turnIndex: 0 },
-      { text: "Hello!", start: 0.8, end: 1.1, turnIndex: 1 },
-    ]);
-    expect(result.warnings).toEqual(["mock warning"]);
-  });
-
-  it("throws ApiError with problem+json code on 501 timestamps_unsupported", async () => {
+  it("surfaces problem+json `code` on error responses", async () => {
     const fetchFn = vi.fn().mockResolvedValue({
       ok: false,
-      status: 501,
+      status: 400,
       headers: new Headers({ "content-type": "application/problem+json" }),
       text: async () =>
         JSON.stringify({
           type: "about:blank",
-          title: "ServiceError",
-          status: 501,
-          detail: 'timestamps: "on" is not supported for this model',
-          code: "timestamps_unsupported",
+          title: "ValidationError",
+          status: 400,
+          detail: "conversation input invalid",
+          code: "conversation_input_invalid",
         }),
     });
     const provider = new SpeechGatewayProvider({
@@ -595,21 +529,12 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       provider.generateConversation({
         modelId: "openai/gpt-4o-mini-tts",
         turns: [{ voice: "alloy", text: "Hi." }],
-        timestamps: "on",
       })
     ).rejects.toMatchObject({
       name: "ApiError",
-      statusCode: 501,
-      code: "timestamps_unsupported",
+      statusCode: 400,
+      code: "conversation_input_invalid",
     });
-
-    await expect(
-      provider.generateConversation({
-        modelId: "openai/gpt-4o-mini-tts",
-        turns: [{ voice: "alloy", text: "Hi." }],
-        timestamps: "on",
-      })
-    ).rejects.toThrow(TIMESTAMPS_UNSUPPORTED_RE);
   });
 
   it("rewrites 401 to signup-friendly message on conversation", async () => {
@@ -633,13 +558,7 @@ describe("SpeechGatewayProvider.generateConversation", () => {
   });
 
   it("rejects empty turns array client-side", async () => {
-    const fetchFn = mockFetchJson({
-      audio: btoa("A"),
-      mediaType: "audio/wav",
-      timestamps: [],
-      warnings: [],
-      providerMetadata: { perTurn: [] },
-    });
+    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
       fetch: fetchFn as unknown as typeof globalThis.fetch,
@@ -655,13 +574,7 @@ describe("SpeechGatewayProvider.generateConversation", () => {
   });
 
   it("rejects turns missing voice client-side", async () => {
-    const fetchFn = mockFetchJson({
-      audio: btoa("A"),
-      mediaType: "audio/wav",
-      timestamps: [],
-      warnings: [],
-      providerMetadata: { perTurn: [] },
-    });
+    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
       fetch: fetchFn as unknown as typeof globalThis.fetch,

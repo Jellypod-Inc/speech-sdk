@@ -166,27 +166,11 @@ async function runGateway<V extends Voice>(args: {
   const provider = resolved.provider as unknown as SpeechGatewayProvider;
   const modelLabel = `${provider.id}/${resolved.modelId}`;
 
-  // Capability gate: the gateway accepts `timestamps: "on"` today only for
-  // models that carry native alignment in their TTS response (the same set the
-  // SDK recognizes via `modelDeclaresNativeTimestamps`). For those, pass "on"
-  // through — the server surfaces the provider's alignment in the JSON
-  // envelope. For everything else, downgrade to "off" on the wire and run
-  // client-side STT on the mixed audio so the user still gets attributed
-  // timestamps. This matches direct-provider behavior and avoids the
-  // server's `timestamps_unsupported_for_model` 400 reject path.
+  // The conversation endpoint returns raw mixed audio only — no per-turn
+  // alignment on the wire. When the caller asks for timestamps, derive them
+  // client-side via STT over the mixed audio and attribute back to turns.
   const requestedMode: TimestampMode = options.timestamps ?? "auto";
-  const serverCanReturnTimestamps = modelDeclaresNativeTimestamps(resolved);
-  const sttFallbackNeeded =
-    requestedMode === "on" && !serverCanReturnTimestamps;
-  const wireTimestampsMode: TimestampMode = sttFallbackNeeded
-    ? "off"
-    : requestedMode;
-
-  if (sttFallbackNeeded) {
-    debug(
-      `${modelLabel}: timestamps: "on" via gateway but model has no native alignment — sending "off" and running STT on the mixed audio.`
-    );
-  }
+  const sttFallbackNeeded = requestedMode === "on";
 
   // Each turn's voice must be a string over the wire. Object-shaped voices
   // (URL / inline audio) aren't supported by the gateway conversation path
@@ -212,7 +196,6 @@ async function runGateway<V extends Voice>(args: {
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,
         normalizeVolume: options.normalizeVolume,
-        timestamps: wireTimestampsMode,
         providerOptions: options.providerOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
@@ -245,16 +228,10 @@ async function runGateway<V extends Voice>(args: {
   );
 
   // Resolve timestamps:
-  //   - "off"                   → undefined
-  //   - server returned data    → pass through as-is (already carries turnIndex)
-  //   - "on" + STT fallback     → STT + text-match-attribute to turns[]
-  //   - "auto" without data     → undefined
+  //   - "off" / "auto"  → undefined (server has no way to return them)
+  //   - "on"            → STT over mixed audio + text-match-attribute to turns[]
   let timestamps: readonly ConversationWordTimestamp[] | undefined;
-  if (requestedMode === "off") {
-    timestamps = undefined;
-  } else if (result.timestamps.length > 0) {
-    timestamps = result.timestamps;
-  } else if (sttFallbackNeeded) {
+  if (sttFallbackNeeded) {
     const derived = await deriveTimestampsViaSTT({
       ttsModel: modelLabel,
       audio: audio.uint8Array,
@@ -279,14 +256,25 @@ async function runGateway<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
-  const warnings =
-    result.warnings.length > 0 ? [...result.warnings] : undefined;
+  // Rebuild per-turn attribution from caller input: the gateway's conversation
+  // endpoint no longer carries it on the wire (server-side only in
+  // `speech_requests`). The model id is `<provider>/<model>` on the gateway
+  // path, so split it for the public shape.
+  const slashIdx = resolved.modelId.indexOf("/");
+  const wireProvider =
+    slashIdx === -1 ? resolved.modelId : resolved.modelId.slice(0, slashIdx);
+  const wireModel =
+    slashIdx === -1 ? resolved.modelId : resolved.modelId.slice(slashIdx + 1);
+  const perTurn = wireTurns.map((t) => ({
+    provider: wireProvider,
+    model: wireModel,
+    voice: t.voice,
+  }));
 
   return {
     audio,
     metadata,
-    providerMetadata: result.providerMetadata,
-    warnings,
+    providerMetadata: { turns: perTurn },
     timestamps,
   };
 }

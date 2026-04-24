@@ -135,7 +135,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
             abortSignal,
             headers,
             includeTimestamps: shouldRequestNative,
-            timestamps: timestampMode,
             volumeDbfs,
           })
         : resolved.provider.generate({

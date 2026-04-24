@@ -193,22 +193,12 @@ describe("generateConversation", () => {
   });
 
   it("routes gateway-supported model through runGateway with a single HTTP call", async () => {
+    const bytes = new Uint8Array([88, 89, 90]);
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "application/json" }),
-      json: async () => ({
-        audio: btoa("XYZ"),
-        mediaType: "audio/wav",
-        timestamps: [],
-        warnings: [],
-        providerMetadata: {
-          perTurn: [
-            { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
-            { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
-          ],
-        },
-      }),
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
     });
     const gateway = createSpeechGateway({
       apiKey: "gw-key",
@@ -232,11 +222,15 @@ describe("generateConversation", () => {
     expect(body.mode).toBe("conversation");
     expect(body.model).toBe("openai/gpt-4o-mini-tts");
     expect(body.turns).toHaveLength(2);
+    // No `timestamps` field on the wire.
+    expect(body.timestamps).toBeUndefined();
 
     expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.metadata.provider).toBe("speech-gateway");
     expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
+    // Per-turn attribution is reconstructed from the caller's input (server
+    // no longer returns it on the wire — it's logged server-side only).
     expect(result.providerMetadata).toEqual({
       turns: [
         { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
@@ -246,26 +240,17 @@ describe("generateConversation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
-  it('downgrades gateway timestamps:"on" on the wire for models without native alignment', async () => {
-    // When the resolved model doesn't declare native word-timestamps, the SDK
-    // must silently downgrade the wire mode to "off" and leave STT fallback
-    // to run on the mixed audio — instead of letting the caller hit the
-    // server's `timestamps_unsupported_for_model` 400 reject. This test uses
-    // `openai/gpt-4o-mini-tts` which has no native alignment, so the
-    // downgrade fires; if a caller used `elevenlabs/eleven_v3` (which does
-    // declare native timestamps) the SDK would pass "on" through and the
-    // server would return aligned data in the response envelope.
+  it('derives timestamps via STT when timestamps:"on" and conversation endpoint has no wire alignment', async () => {
+    // The gateway conversation endpoint returns raw audio bytes only — no
+    // per-turn alignment on the wire today. When the caller asks for word
+    // timestamps, the SDK must derive them via STT over the mixed audio and
+    // attribute them back to turns[].
+    const bytes = new Uint8Array([65]);
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "application/json" }),
-      json: async () => ({
-        audio: btoa("A"),
-        mediaType: "audio/wav",
-        timestamps: [],
-        warnings: [],
-        providerMetadata: { perTurn: [] },
-      }),
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
     });
     const gateway = createSpeechGateway({
       apiKey: "gw-key",
@@ -300,11 +285,11 @@ describe("generateConversation", () => {
       },
     });
 
-    // Wire timestamps mode must be "off" — the capability gate suppressed "on".
+    // No `timestamps` field on the wire anymore.
     const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body.timestamps).toBe("off");
-    // And the STT fallback ran (because requested was "on").
+    expect(body.timestamps).toBeUndefined();
+    // STT fallback ran because the caller asked for timestamps: "on".
     expect(transcribe).toHaveBeenCalledTimes(1);
   });
 

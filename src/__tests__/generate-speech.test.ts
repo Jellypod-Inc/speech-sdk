@@ -357,7 +357,11 @@ describe("generateSpeech", () => {
 
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
-      expect(url).toBe("https://api.speechgateway.com/v1/audio/speech");
+      // Default `timestamps: "auto"` routes through the with-timestamps URL
+      // on the gateway (gateway always asks for JSON alignment when !"off").
+      expect(url).toBe(
+        "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+      );
       expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
       const body = JSON.parse(init.body);
       expect(body).toEqual({
@@ -365,7 +369,6 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         voice: "alloy",
         text: "Hello",
-        timestamps: "auto",
       });
     } finally {
       globalThis.fetch = savedFetch;
@@ -401,7 +404,6 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         voice: "alloy",
         text: "Hello",
-        timestamps: "auto",
         volumeDbfs: -20,
       });
     } finally {
