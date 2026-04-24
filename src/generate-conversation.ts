@@ -16,7 +16,6 @@ import {
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
-import { GATEWAY_CONVERSATION_TIMESTAMPS_SUPPORTED } from "./providers/gateway/capabilities.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
@@ -167,13 +166,16 @@ async function runGateway<V extends Voice>(args: {
   const provider = resolved.provider as unknown as SpeechGatewayProvider;
   const modelLabel = `${provider.id}/${resolved.modelId}`;
 
-  // Capability gate: the server returns 501 today for `timestamps: "on"` on
-  // conversation. Instead of surfacing that, downgrade to "off" on the wire
-  // and run client-side STT on the mixed audio — same behavior as direct
-  // providers without native dialogue alignment. When the server flips the
-  // capability flag, zero caller-code change is needed.
+  // Capability gate: the gateway accepts `timestamps: "on"` today only for
+  // models that carry native alignment in their TTS response (the same set the
+  // SDK recognizes via `modelDeclaresNativeTimestamps`). For those, pass "on"
+  // through — the server surfaces the provider's alignment in the JSON
+  // envelope. For everything else, downgrade to "off" on the wire and run
+  // client-side STT on the mixed audio so the user still gets attributed
+  // timestamps. This matches direct-provider behavior and avoids the
+  // server's `timestamps_unsupported_for_model` 400 reject path.
   const requestedMode: TimestampMode = options.timestamps ?? "auto";
-  const serverCanReturnTimestamps = GATEWAY_CONVERSATION_TIMESTAMPS_SUPPORTED;
+  const serverCanReturnTimestamps = modelDeclaresNativeTimestamps(resolved);
   const sttFallbackNeeded =
     requestedMode === "on" && !serverCanReturnTimestamps;
   const wireTimestampsMode: TimestampMode = sttFallbackNeeded
@@ -182,7 +184,7 @@ async function runGateway<V extends Voice>(args: {
 
   if (sttFallbackNeeded) {
     debug(
-      `${modelLabel}: timestamps: "on" via gateway — server has no per-word alignment yet; sending "off" and running STT on the mixed audio.`
+      `${modelLabel}: timestamps: "on" via gateway but model has no native alignment — sending "off" and running STT on the mixed audio.`
     );
   }
 

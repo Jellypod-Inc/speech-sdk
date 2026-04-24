@@ -246,14 +246,15 @@ describe("generateConversation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
-  it('downgrades gateway timestamps:"on" on the wire (Phase 1 capability-gate)', async () => {
-    // When the server does not yet support per-word alignment on conversation
-    // (Phase 1: GATEWAY_CONVERSATION_TIMESTAMPS_SUPPORTED is false), the SDK
+  it('downgrades gateway timestamps:"on" on the wire for models without native alignment', async () => {
+    // When the resolved model doesn't declare native word-timestamps, the SDK
     // must silently downgrade the wire mode to "off" and leave STT fallback
-    // to run on the mixed audio — instead of letting the caller hit 501
-    // server-side. This test asserts the downgrade happens without actually
-    // executing the STT round-trip (we intercept by overriding
-    // timestampProvider with a stub).
+    // to run on the mixed audio — instead of letting the caller hit the
+    // server's `timestamps_unsupported_for_model` 400 reject. This test uses
+    // `openai/gpt-4o-mini-tts` which has no native alignment, so the
+    // downgrade fires; if a caller used `elevenlabs/eleven_v3` (which does
+    // declare native timestamps) the SDK would pass "on" through and the
+    // server would return aligned data in the response envelope.
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
