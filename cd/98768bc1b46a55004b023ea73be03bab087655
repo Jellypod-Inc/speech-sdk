@@ -1,0 +1,23 @@
+AGENTS.md
+  1ffebd879d1c9a8d 74-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cd98768bc1b46a55004b023ea73be03bab087655",
+  "prompts": {
+    "1ffebd879d1c9a8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0672cd4-f45c-4045-83ec-144feb4bc972",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 125,
+      "total_deletions": 0,
+      "accepted_lines": 125,
+      "overriden_lines": 0
+    }
+  }
+}
