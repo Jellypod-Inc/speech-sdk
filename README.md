@@ -422,7 +422,7 @@ try {
 }
 ```
 
-`ApiError.code` is populated from the RFC 7807 `application/problem+json` `code` extension when the upstream surface provides one (currently the Speech Gateway). Match on `err.code` rather than parsing `err.message` text for programmatic branching — for example, the Speech Gateway returns `code: "timestamps_unsupported"` for 501 on conversation `timestamps: "on"` when the underlying model can't satisfy it.
+`ApiError.code` is populated from the RFC 7807 `application/problem+json` `code` extension when the upstream provides one (currently only the Speech Gateway). Match on `err.code` over `err.message` text — codes are a stable contract, messages aren't.
 
 | Error | When |
 |---|---|
