@@ -77,7 +77,7 @@ See `references/conversation.md` for the full API, cross-provider mixing, and na
 
 ## Word-Level Timestamps
 
-Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"`. With string models routed through Speech Gateway, timestamp generation is handled by the gateway; the client does not run a local STT fallback. With direct provider factories, `"auto"` returns native timestamps when available and `"on"` falls back to an STT round-trip when the provider has no native alignment.
+Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"`. With direct provider factories, `"auto"` returns native timestamps when available and `"on"` falls back to an STT round-trip when the provider has no native alignment. Gateway routing: `generateSpeech` always hits `/v1/audio/speech/with-timestamps` when mode is `"auto"`/`"on"` and relies on the gateway (no client-side STT). `generateConversation` returns mixed audio from `/v1/audio/conversation` — `"auto"` returns without timestamps (endpoint carries none on the wire yet), `"on"` runs STT locally over the mixed audio and attributes words back to turns. When `/v1/audio/conversation/with-timestamps` ships, the SDK switches to the server-side path and the local fallback goes away.
 
 ```ts
 const result = await generateSpeech({

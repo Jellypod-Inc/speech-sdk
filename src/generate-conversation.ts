@@ -167,8 +167,13 @@ async function runGateway<V extends Voice>(args: {
   const modelLabel = `${provider.id}/${resolved.modelId}`;
 
   // The conversation endpoint returns raw mixed audio only — no per-turn
-  // alignment on the wire. When the caller asks for timestamps, derive them
-  // client-side via STT over the mixed audio and attribute back to turns.
+  // alignment on the wire today. When `timestamps: "on"` is requested, the
+  // SDK runs STT over the mixed audio and attributes each word back to a
+  // turn via text-matching. This mirrors what `/v1/audio/conversation/with-
+  // timestamps` will do server-side once it ships; at that point the SDK
+  // switches to hitting that endpoint and this local fallback goes away.
+  // `"auto"` never triggers STT — the conversation fast-path returns without
+  // timestamps, same as a provider without native alignment.
   const requestedMode: TimestampMode = options.timestamps ?? "auto";
   const sttFallbackNeeded = requestedMode === "on";
 

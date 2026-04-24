@@ -24,7 +24,7 @@ interface WordTimestamp {
 }
 ```
 
-`timestamps` is populated from the provider or Speech Gateway response. Gateway-routed `timestamps: "on"` never runs client-side STT fallback; if the gateway response lacks timestamps, the SDK throws `GatewayTimestampsUnavailableError`. See `timestamps.md`.
+`timestamps` is populated from the provider or Speech Gateway response. Gateway-routed `generateSpeech` with `timestamps: "on"` never runs client-side STT — if the gateway response lacks timestamps, the SDK throws `GatewayTimestampsUnavailableError`. Gateway-routed `generateConversation` with `timestamps: "on"` runs STT locally over the mixed audio and attributes words back to turns (the gateway will move this server-side once `/v1/audio/conversation/with-timestamps` ships). See `timestamps.md`.
 
 `base64` is lazy-computed from `uint8Array` on first access — no overhead if unused.
 

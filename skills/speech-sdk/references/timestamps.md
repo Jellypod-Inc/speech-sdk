@@ -36,25 +36,21 @@ type TimestampMode = "on" | "auto" | "off"
 
 ## Speech Gateway Behavior
 
-String models route through Speech Gateway. For `generateSpeech`, the SDK sends `timestamps` in the gateway JSON body:
+String models route through Speech Gateway. The SDK picks the endpoint based on the requested mode — the wire body carries no `timestamps` field.
 
-```json
-{
-  "mode": "inline",
-  "model": "openai/gpt-4o-mini-tts",
-  "voice": "alloy",
-  "text": "Hello!",
-  "timestamps": "on"
-}
-```
+- `generateSpeech` with `timestamps: "auto"` or `"on"` → `POST /v1/audio/speech/with-timestamps` (JSON envelope: `{ audio, mediaType, warnings, timestamps }`).
+- `generateSpeech` with `timestamps: "off"` → `POST /v1/audio/speech` (raw bytes, streamed when the provider supports it).
+- `generateConversation` with any mode → `POST /v1/audio/conversation` (raw mixed audio bytes). The endpoint does not carry word alignment on the wire today; a `/v1/audio/conversation/with-timestamps` variant is pending server-side support for per-turn attribution.
 
-When `timestamps: "on"` is used with a gateway-routed string model, all timestamp work happens on the gateway. The SDK does not run a client-side STT fallback. If the gateway response does not include word timestamps, `generateSpeech` throws `GatewayTimestampsUnavailableError`.
+For `generateSpeech`, all timestamp work happens on the gateway — the SDK does not run a client-side STT fallback. If the response is missing timestamps, `timestamps: "on"` throws `GatewayTimestampsUnavailableError` and `"auto"` returns without them.
+
+For `generateConversation`, `timestamps: "on"` runs STT locally over the mixed audio and attributes words back to turns via text-matching; `"auto"` returns without timestamps. When the gateway ships `/v1/audio/conversation/with-timestamps` the SDK will hit that endpoint and this local path goes away.
 
 Use `isSpeechGatewayModel(resolved)` for gateway-specific timestamp branches:
 
 ```ts
 if (isSpeechGatewayModel(resolved)) {
-  // Ask Speech Gateway for timestamps; do not run local STT fallback.
+  // Gateway routing — see rules above.
 }
 ```
 
@@ -72,7 +68,7 @@ Direct provider support varies by model:
 
 - **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` return alignment via `/with-timestamps`. `timestamps: "auto"` gets it for free.
 
-Providers without native alignment are audio-only on the direct path. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio. This STT fallback does not run for Speech Gateway string models.
+Providers without native alignment are audio-only on the direct path. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio. This STT fallback does not run for `generateSpeech` through the Speech Gateway (the gateway handles it server-side), but it does run for gateway-routed `generateConversation` with `timestamps: "on"` until `/v1/audio/conversation/with-timestamps` ships.
 
 Check a specific model at runtime:
 
@@ -118,7 +114,7 @@ await generateSpeech({ /* ... */ timestamps: "on", timestampProvider: resolved }
 
 `generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a flat `ConversationWordTimestamp[]` across all turns. `ConversationWordTimestamp` extends `WordTimestamp` with a required `turnIndex: number` — the index into the input `turns[]` array that produced that word. Existing callers reading `.text / .start / .end` keep working; new callers can attribute every word to its source turn.
 
-- **Gateway fast-path** — when every turn uses the same gateway-routed string model, the server renders + stitches in one call and returns per-word `turnIndex` directly on the response.
+- **Gateway fast-path** — when every turn uses the same gateway-routed string model, the server renders + stitches in one call and returns mixed audio. Per-word `turnIndex` is derived client-side today: STT over the mixed audio plus text-matching against the input turns. When `/v1/audio/conversation/with-timestamps` ships, `turnIndex` will come back on the response and the client-side step goes away.
 - **Stitch path** — each turn's word timings are offset by the cumulative turn duration + gap. Monotonic across turn boundaries; `turnIndex` is exact by construction (each turn renders separately). Works cross-provider (each turn gets native alignment when available, else STT).
 - **Native dialogue path** — the provider renders everything in one call; `turnIndex` is derived by text-matching the provider's flat word stream against the input transcripts. If matching diverges (the provider inserts, drops, or reorders words), `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices.
 
