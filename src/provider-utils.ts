@@ -38,33 +38,60 @@ export function resolveApiKey(
   return key;
 }
 
-function extractErrorMessage(body: string | undefined): string | undefined {
+/**
+ * Parse an error response body and extract the human-readable message + the
+ * RFC 7807 `code` extension (if present). Handles both `application/json` and
+ * `application/problem+json` shapes — both parse identically as JSON. Returns
+ * a truncated raw body as the message for non-JSON payloads so callers still
+ * get something useful to display.
+ */
+function parseErrorJson(body: string | undefined): {
+  message?: string;
+  code?: string;
+} {
   if (!body) {
-    return undefined;
+    return {};
   }
   try {
     const json = JSON.parse(body);
-    // Common error response shapes
+    let message: string | undefined;
+    // Common error response shapes, in priority order.
     if (typeof json.error === "string") {
-      return json.error;
+      message = json.error;
+    } else if (typeof json.error?.message === "string") {
+      message = json.error.message;
+    } else if (typeof json.message === "string") {
+      message = json.message;
+    } else if (typeof json.detail === "string") {
+      message = json.detail;
+    } else {
+      message = body.length > 200 ? `${body.slice(0, 200)}…` : body;
     }
-    if (typeof json.error?.message === "string") {
-      return json.error.message;
-    }
-    if (typeof json.message === "string") {
-      return json.message;
-    }
-    if (typeof json.detail === "string") {
-      return json.detail;
-    }
+    const code = typeof json.code === "string" ? json.code : undefined;
+    return { message, code };
   } catch {
-    // Not JSON — use raw text, truncated
-    if (body.length > 200) {
-      return `${body.slice(0, 200)}…`;
-    }
-    return body;
+    // Not JSON — use raw text, truncated.
+    const message = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    return { message };
   }
-  return body.length > 200 ? `${body.slice(0, 200)}…` : body;
+}
+
+/**
+ * Classify an `ApiError` as retriable or terminal for `p-retry`. 4xx errors
+ * are terminal (client bugs / auth issues never fix themselves on retry). 501
+ * Not Implemented is terminal too: the gateway uses it to signal "this
+ * capability will never work on this model" (e.g. `timestamps: "on"` on
+ * `conversation`), with `code: "timestamps_unsupported"`. Every other 5xx is
+ * assumed transient.
+ */
+export function isRetriableApiError(error: ApiError): boolean {
+  if (error.statusCode < 500) {
+    return false;
+  }
+  if (error.statusCode === 501) {
+    return false;
+  }
+  return true;
 }
 
 export async function handleErrorResponse(
@@ -73,7 +100,7 @@ export async function handleErrorResponse(
 ): Promise<void> {
   if (!response.ok) {
     const responseBody = await response.text().catch(() => undefined);
-    const detail = extractErrorMessage(responseBody);
+    const { message: detail, code } = parseErrorJson(responseBody);
     const message = detail
       ? `${model} API error ${response.status}: ${detail}`
       : `${model} API error ${response.status}`;
@@ -82,6 +109,7 @@ export async function handleErrorResponse(
       statusCode: response.status,
       model,
       responseBody,
+      code,
     });
   }
 }

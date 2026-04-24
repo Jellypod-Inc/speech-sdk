@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
+import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 const AT_LEAST_ONE_TURN_RE = /at least one turn/i;
@@ -188,5 +190,150 @@ describe("generateConversation", () => {
       })
     ).rejects.toThrow(NATIVE_PROVIDER_OPTIONS_RE);
     expect(provider.generateDialogue).not.toHaveBeenCalled();
+  });
+
+  it("routes gateway-supported model through runGateway with a single HTTP call", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("XYZ"),
+        mediaType: "audio/wav",
+        timestamps: [],
+        warnings: [],
+        providerMetadata: {
+          perTurn: [
+            { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
+            { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
+          ],
+        },
+      }),
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+
+    const result = await generateConversation({
+      model: resolved,
+      turns: [
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ],
+    });
+
+    // Exactly one HTTP call — no N-trip stitch path.
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    const body = JSON.parse(init.body);
+    expect(body.mode).toBe("conversation");
+    expect(body.model).toBe("openai/gpt-4o-mini-tts");
+    expect(body.turns).toHaveLength(2);
+
+    expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
+    expect(result.audio.mediaType).toBe("audio/wav");
+    expect(result.metadata.provider).toBe("speech-gateway");
+    expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
+    expect(result.providerMetadata).toEqual({
+      turns: [
+        { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
+        { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
+      ],
+    });
+    expect(result.warnings).toBeUndefined();
+  });
+
+  it('downgrades gateway timestamps:"on" on the wire (Phase 1 capability-gate)', async () => {
+    // When the server does not yet support per-word alignment on conversation
+    // (Phase 1: GATEWAY_CONVERSATION_TIMESTAMPS_SUPPORTED is false), the SDK
+    // must silently downgrade the wire mode to "off" and leave STT fallback
+    // to run on the mixed audio — instead of letting the caller hit 501
+    // server-side. This test asserts the downgrade happens without actually
+    // executing the STT round-trip (we intercept by overriding
+    // timestampProvider with a stub).
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("A"),
+        mediaType: "audio/wav",
+        timestamps: [],
+        warnings: [],
+        providerMetadata: { perTurn: [] },
+      }),
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+
+    // STT stub that returns a token-per-word alignment for the input transcript.
+    const transcribe = vi.fn().mockResolvedValue({
+      timestamps: [
+        { text: "Hi", start: 0, end: 0.1 },
+        { text: "there.", start: 0.1, end: 0.3 },
+        { text: "Hello!", start: 0.4, end: 0.6 },
+      ],
+    });
+
+    await generateConversation({
+      model: resolved,
+      turns: [
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      timestamps: "on",
+      timestampProvider: {
+        provider: {
+          id: "stub-stt",
+          defaultModel: "stub",
+          models: [],
+          transcribe,
+        },
+        modelId: "stub",
+      },
+    });
+
+    // Wire timestamps mode must be "off" — the capability gate suppressed "on".
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.timestamps).toBe("off");
+    // And the STT fallback ran (because requested was "on").
+    expect(transcribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on 501 Not Implemented in the native path", async () => {
+    // 501 is the gateway's "this capability will never work" signal (e.g.
+    // timestamps: "on" on conversation). Retrying wastes round-trips.
+    const error = new ApiError("Not implemented", {
+      statusCode: 501,
+      model: "native/m",
+      code: "timestamps_unsupported",
+    });
+    const provider: SpeechProvider = {
+      id: "native",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn(),
+      generateDialogue: vi.fn().mockRejectedValue(error),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        maxRetries: 2,
+      })
+    ).rejects.toThrow();
+    expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
   });
 });

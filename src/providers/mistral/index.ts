@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
 
 function safeParseJson(input: string): unknown {
@@ -20,29 +24,23 @@ export interface MistralSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const MISTRAL_PROVIDER_ID = "mistral" as const;
+
+export const MISTRAL_MODELS: readonly ModelInfo[] = [
+  {
+    id: "voxtral-mini-tts-2603",
+    releaseDate: "2026-03-23",
+    languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
+    features: ["streaming", "open-source", "inline-voice-cloning"],
+  },
+] as const;
+
 export class MistralSpeechProvider
   implements SpeechProvider<string, string | { audio: string | Uint8Array }>
 {
-  readonly id = "mistral";
+  readonly id = MISTRAL_PROVIDER_ID;
   readonly defaultModel = "voxtral-mini-tts-2603";
-  readonly models = [
-    {
-      id: "voxtral-mini-tts-2603",
-      releaseDate: "2026-03-23",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "nl",
-        "pt",
-        "it",
-        "hi",
-        "ar",
-      ] as const,
-      features: ["streaming", "open-source", "inline-voice-cloning"],
-    },
-  ] as const;
+  readonly models = MISTRAL_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

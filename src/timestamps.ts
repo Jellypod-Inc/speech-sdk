@@ -10,6 +10,21 @@ export interface WordTimestamp {
 }
 
 /**
+ * Word-granularity alignment data returned by `generateConversation()`.
+ * Extends `WordTimestamp` with the index of the conversation turn the word
+ * belongs to. On the stitch path the index is exact (each turn is rendered
+ * separately). On the native dialogue path the index is derived by
+ * text-matching the provider's word timestamps against the input turns; if
+ * matching fails (e.g. the provider hallucinated, dropped, or reordered
+ * words), `ConversationTimestampAttributionError` is thrown rather than
+ * silently emitting wrong indices.
+ */
+export interface ConversationWordTimestamp extends WordTimestamp {
+  /** Index into the `turns` array submitted to `generateConversation`. */
+  readonly turnIndex: number;
+}
+
+/**
  * Controls whether `generateSpeech()` returns word timestamps.
  *
  * - `"auto"` (default): return timestamps only if the TTS provider supplies

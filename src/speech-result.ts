@@ -1,5 +1,5 @@
 import type { SpeechMetadata } from "./metadata.js";
-import type { WordTimestamp } from "./timestamps.js";
+import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
 export interface GeneratedAudioFile {
   readonly base64: string;
@@ -21,6 +21,17 @@ export interface SpeechResult {
    */
   readonly timestamps?: readonly WordTimestamp[];
   readonly warnings?: string[];
+}
+
+/**
+ * Result returned by `generateConversation()`. Identical to `SpeechResult`
+ * except that every word timestamp also carries a `turnIndex` pointing back
+ * into the input `turns[]` array. Because `ConversationWordTimestamp`
+ * extends `WordTimestamp`, callers that previously read `.text/.start/.end`
+ * keep working unchanged.
+ */
+export interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
+  readonly timestamps?: readonly ConversationWordTimestamp[];
 }
 
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {

@@ -5,20 +5,32 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
-import type { TimestampMode, WordTimestamp } from "../../timestamps.js";
-import { CartesiaSpeechProvider } from "../cartesia/index.js";
-import { DeepgramSpeechProvider } from "../deepgram/index.js";
-import { ElevenLabsSpeechProvider } from "../elevenlabs/index.js";
-import { FalSpeechProvider } from "../fal/index.js";
-import { FishAudioSpeechProvider } from "../fish-audio/index.js";
-import { GoogleSpeechProvider } from "../google/index.js";
-import { HumeSpeechProvider } from "../hume/index.js";
-import { InworldSpeechProvider } from "../inworld/index.js";
-import { MistralSpeechProvider } from "../mistral/index.js";
-import { MurfSpeechProvider } from "../murf/index.js";
-import { OpenAISpeechProvider } from "../openai/index.js";
-import { ResembleSpeechProvider } from "../resemble/index.js";
-import { XaiSpeechProvider } from "../xai/index.js";
+import type {
+  ConversationWordTimestamp,
+  TimestampMode,
+  WordTimestamp,
+} from "../../timestamps.js";
+import { CARTESIA_MODELS, CARTESIA_PROVIDER_ID } from "../cartesia/index.js";
+import { DEEPGRAM_MODELS, DEEPGRAM_PROVIDER_ID } from "../deepgram/index.js";
+import {
+  ELEVENLABS_MODELS,
+  ELEVENLABS_PROVIDER_ID,
+} from "../elevenlabs/index.js";
+import { FAL_MODELS, FAL_PROVIDER_ID } from "../fal/index.js";
+import {
+  FISH_AUDIO_MODELS,
+  FISH_AUDIO_PROVIDER_ID,
+} from "../fish-audio/index.js";
+import { GOOGLE_MODELS, GOOGLE_PROVIDER_ID } from "../google/index.js";
+import { HUME_MODELS, HUME_PROVIDER_ID } from "../hume/index.js";
+import { INWORLD_MODELS, INWORLD_PROVIDER_ID } from "../inworld/index.js";
+import { MISTRAL_MODELS, MISTRAL_PROVIDER_ID } from "../mistral/index.js";
+import { MURF_MODELS, MURF_PROVIDER_ID } from "../murf/index.js";
+import { OPENAI_MODELS, OPENAI_PROVIDER_ID } from "../openai/index.js";
+import { RESEMBLE_MODELS, RESEMBLE_PROVIDER_ID } from "../resemble/index.js";
+import { XAI_MODELS, XAI_PROVIDER_ID } from "../xai/index.js";
+
+export const SPEECH_GATEWAY_PROVIDER_ID = "speech-gateway" as const;
 
 export interface SpeechGatewayProviderConfig {
   apiKey?: string;
@@ -26,8 +38,9 @@ export interface SpeechGatewayProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-let cachedModels: readonly ModelInfo[] | undefined;
-
+// audioDurationMs is intentionally not extracted — the SDK computes audio
+// duration client-side via mediabunny so all paths (gateway + direct
+// providers) behave identically.
 interface GatewayJsonResponse {
   audio: string;
   mediaType: string;
@@ -36,29 +49,44 @@ interface GatewayJsonResponse {
   warnings?: string[];
 }
 
+const GATEWAY_401_MESSAGE =
+  "Speech Gateway rejected your API key (401). Get a key at https://wavform.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
+
 // Aggregates every built-in provider's model list under `<provider>/<model>`
 // ids so capability checks (e.g. native timestamps) keep working when the
 // user routes through the gateway.
+//
+// Evaluated lazily on first access: `speech-provider.ts` imports
+// `SPEECH_GATEWAY_PROVIDER_ID` from this module, which means the providers
+// we re-import here may not yet be fully initialized at module-load time
+// (the provider modules import `speech-provider.ts` too). By deferring the
+// aggregation until the first call we sidestep that circular-init ordering
+// without instantiating any provider classes.
+let aggregatedModelsCache: readonly ModelInfo[] | undefined;
+
 function aggregatedModels(): readonly ModelInfo[] {
-  if (cachedModels) {
-    return cachedModels;
+  if (aggregatedModelsCache) {
+    return aggregatedModelsCache;
   }
-  const sources: SpeechProvider[] = [
-    new OpenAISpeechProvider({}),
-    new ElevenLabsSpeechProvider({}),
-    new DeepgramSpeechProvider({}),
-    new CartesiaSpeechProvider({}),
-    new HumeSpeechProvider({}),
-    new InworldSpeechProvider({}),
-    new GoogleSpeechProvider({}),
-    new FishAudioSpeechProvider({}),
-    new MurfSpeechProvider({}),
-    new ResembleSpeechProvider({}),
-    new FalSpeechProvider({}),
-    new MistralSpeechProvider({}),
-    new XaiSpeechProvider({}),
+  const sources: readonly {
+    id: string;
+    models: readonly ModelInfo[];
+  }[] = [
+    { id: OPENAI_PROVIDER_ID, models: OPENAI_MODELS },
+    { id: ELEVENLABS_PROVIDER_ID, models: ELEVENLABS_MODELS },
+    { id: DEEPGRAM_PROVIDER_ID, models: DEEPGRAM_MODELS },
+    { id: CARTESIA_PROVIDER_ID, models: CARTESIA_MODELS },
+    { id: HUME_PROVIDER_ID, models: HUME_MODELS },
+    { id: INWORLD_PROVIDER_ID, models: INWORLD_MODELS },
+    { id: GOOGLE_PROVIDER_ID, models: GOOGLE_MODELS },
+    { id: FISH_AUDIO_PROVIDER_ID, models: FISH_AUDIO_MODELS },
+    { id: MURF_PROVIDER_ID, models: MURF_MODELS },
+    { id: RESEMBLE_PROVIDER_ID, models: RESEMBLE_MODELS },
+    { id: FAL_PROVIDER_ID, models: FAL_MODELS },
+    { id: MISTRAL_PROVIDER_ID, models: MISTRAL_MODELS },
+    { id: XAI_PROVIDER_ID, models: XAI_MODELS },
   ];
-  cachedModels = sources.flatMap((src) =>
+  aggregatedModelsCache = sources.flatMap((src) =>
     src.models.map((model) => ({
       id: `${src.id}/${model.id}`,
       releaseDate: model.releaseDate,
@@ -66,11 +94,11 @@ function aggregatedModels(): readonly ModelInfo[] {
       features: model.features,
     }))
   );
-  return cachedModels;
+  return aggregatedModelsCache;
 }
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
-  readonly id = "speech-gateway";
+  readonly id = SPEECH_GATEWAY_PROVIDER_ID;
   readonly defaultModel = "openai/gpt-4o-mini-tts";
 
   get models(): readonly ModelInfo[] {
@@ -164,12 +192,18 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
+    if (response.status === 401) {
+      throw new Error(GATEWAY_401_MESSAGE);
+    }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
-    if (
-      options.includeTimestamps &&
-      response.headers.get("content-type")?.includes("application/json")
-    ) {
+    const contentType = response.headers.get("content-type");
+    if (options.includeTimestamps) {
+      if (!contentType?.includes("application/json")) {
+        throw new Error(
+          `speech-gateway/${options.modelId}: requested JSON response for timestamps but server returned content-type "${contentType}"`
+        );
+      }
       const payload = parseGatewayJsonResponse(await response.json());
       return {
         audio: decodeBase64(payload.audio),
@@ -222,6 +256,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       method: "POST",
       headers: {
         ...options.headers,
+        Accept: "audio/mpeg",
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -230,6 +265,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
+    if (response.status === 401) {
+      throw new Error(GATEWAY_401_MESSAGE);
+    }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
     if (!response.body) {
@@ -241,6 +279,102 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     return {
       stream: response.body,
       mediaType: mediaTypeFromHeaders(response.headers),
+    };
+  }
+
+  /**
+   * Conversation fast-path through the gateway. Sends every turn in a single
+   * `POST /v1/audio/conversation` call; server renders, stitches, normalizes,
+   * and returns one mixed audio file. Avoids the N-round-trip stitch path and
+   * keeps audio-mux code out of caller bundles.
+   *
+   * Always negotiates `application/json` (the mixed-audio response can't
+   * stream usefully without losing per-turn metadata + warnings).
+   */
+  async generateConversation(options: {
+    modelId: string;
+    turns: readonly {
+      voice: string;
+      text: string;
+      providerOptions?: Record<string, unknown>;
+    }[];
+    gapMs?: number;
+    volumeDbfs?: number;
+    normalizeVolume?: boolean;
+    timestamps?: TimestampMode;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    providerMetadata: {
+      turns: Array<{ provider: string; model: string; voice: string }>;
+    };
+    timestamps: readonly ConversationWordTimestamp[];
+    warnings: readonly string[];
+  }> {
+    if (options.turns.length === 0) {
+      throw new Error(
+        `speech-gateway/${options.modelId}: at least one turn is required.`
+      );
+    }
+    if (!options.turns.every((t) => t.voice)) {
+      throw new Error(
+        `speech-gateway/${options.modelId}: every turn must specify a "voice" when routing through the speech gateway.`
+      );
+    }
+
+    // Send gapMs/volumeDbfs/normalizeVolume explicitly every call — don't rely
+    // on server defaults (spec). Keep turns flat (voice/text/providerOptions).
+    const body: Record<string, unknown> = {
+      mode: "conversation",
+      model: options.modelId,
+      turns: options.turns.map((t) => ({
+        voice: t.voice,
+        text: t.text,
+        ...(t.providerOptions && { providerOptions: t.providerOptions }),
+      })),
+      gapMs: options.gapMs ?? 300,
+      volumeDbfs: options.volumeDbfs ?? -20,
+      normalizeVolume: options.normalizeVolume ?? true,
+      timestamps: options.timestamps ?? "off",
+    };
+    if (options.providerOptions) {
+      body.providerOptions = options.providerOptions;
+    }
+
+    const url = `${this.baseURL}/audio/conversation`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        ...options.headers,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.resolveKey()}`,
+        "X-User-Agent": SDK_USER_AGENT,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    if (response.status === 401) {
+      throw new Error(GATEWAY_401_MESSAGE);
+    }
+    await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
+
+    const payload = parseConversationJsonResponse(
+      await response.json(),
+      `speech-gateway/${options.modelId}`
+    );
+
+    return {
+      audio: decodeBase64(payload.audio),
+      mediaType: payload.mediaType,
+      providerMetadata: { turns: payload.perTurn },
+      timestamps: payload.timestamps,
+      warnings: payload.warnings,
     };
   }
 }
@@ -327,4 +461,110 @@ function decodeBase64(value: string): Uint8Array {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+interface ConversationJsonResponse {
+  audio: string;
+  mediaType: string;
+  perTurn: Array<{ provider: string; model: string; voice: string }>;
+  timestamps: readonly ConversationWordTimestamp[];
+  warnings: readonly string[];
+}
+
+function parseConversationJsonResponse(
+  payload: unknown,
+  modelLabel: string
+): ConversationJsonResponse {
+  if (!isRecord(payload)) {
+    throw new Error(`${modelLabel}: expected JSON response object`);
+  }
+  if (typeof payload.audio !== "string") {
+    throw new Error(`${modelLabel}: JSON response missing base64 audio`);
+  }
+  if (typeof payload.mediaType !== "string") {
+    throw new Error(`${modelLabel}: JSON response missing mediaType`);
+  }
+
+  // Wire shape is { providerMetadata: { perTurn: [...] } }; remap to the
+  // public { providerMetadata: { turns: [...] } } shape for parity with the
+  // existing stitch-path result.
+  const providerMetadata = isRecord(payload.providerMetadata)
+    ? payload.providerMetadata
+    : {};
+  const perTurnRaw = providerMetadata.perTurn;
+  const perTurn: Array<{ provider: string; model: string; voice: string }> = [];
+  if (Array.isArray(perTurnRaw)) {
+    for (const item of perTurnRaw) {
+      if (
+        !isRecord(item) ||
+        typeof item.provider !== "string" ||
+        typeof item.model !== "string" ||
+        typeof item.voice !== "string"
+      ) {
+        throw new Error(
+          `${modelLabel}: JSON response contains an invalid providerMetadata.perTurn entry`
+        );
+      }
+      // Preserve any extra fields (e.g. requestId) alongside the required keys.
+      perTurn.push({
+        ...(item as Record<string, unknown>),
+        provider: item.provider,
+        model: item.model,
+        voice: item.voice,
+      } as { provider: string; model: string; voice: string });
+    }
+  }
+
+  // `timestamps` is always present per spec — [] in Phase 1. Parse defensively
+  // anyway; missing/invalid falls back to [].
+  const timestamps = parseConversationTimestamps(
+    payload.timestamps,
+    modelLabel
+  );
+
+  // `warnings` is always present per spec — [] when no warnings.
+  const warnings = Array.isArray(payload.warnings)
+    ? payload.warnings.filter((w): w is string => typeof w === "string")
+    : [];
+
+  return {
+    audio: payload.audio,
+    mediaType: payload.mediaType,
+    perTurn,
+    timestamps,
+    warnings,
+  };
+}
+
+function parseConversationTimestamps(
+  value: unknown,
+  modelLabel: string
+): readonly ConversationWordTimestamp[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${modelLabel}: JSON response timestamps must be an array`);
+  }
+  const out: ConversationWordTimestamp[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      typeof item.text !== "string" ||
+      typeof item.start !== "number" ||
+      typeof item.end !== "number" ||
+      typeof item.turnIndex !== "number"
+    ) {
+      throw new Error(
+        `${modelLabel}: JSON response contains an invalid conversation timestamp (missing text/start/end/turnIndex)`
+      );
+    }
+    out.push({
+      text: item.text,
+      start: item.start,
+      end: item.end,
+      turnIndex: item.turnIndex,
+    });
+  }
+  return out;
 }

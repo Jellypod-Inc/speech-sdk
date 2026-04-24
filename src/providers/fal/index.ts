@@ -4,7 +4,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface FalSpeechProviderConfig {
   apiKey?: string;
@@ -12,32 +16,36 @@ export interface FalSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const FAL_PROVIDER_ID = "fal-ai" as const;
+
+export const FAL_MODELS: readonly ModelInfo[] = [
+  {
+    id: "f5-tts",
+    releaseDate: "2024-10-08",
+    languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
+    features: ["open-source", "inline-voice-cloning"],
+  },
+  {
+    id: "kokoro",
+    releaseDate: "2025-01-27",
+    languages: ["en", "fr", "ko", "ja", "zh"],
+    features: ["open-source"],
+  },
+  {
+    id: "orpheus-tts",
+    releaseDate: "2025-03-18",
+    languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
+    features: ["open-source"],
+  },
+] as const;
+
 export class FalSpeechProvider
   implements SpeechProvider<string, string | { url: string }>
 {
-  readonly id = "fal-ai";
+  readonly id = FAL_PROVIDER_ID;
   readonly defaultModel = "";
 
-  readonly models = [
-    {
-      id: "f5-tts",
-      releaseDate: "2024-10-08",
-      languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
-      features: ["open-source", "inline-voice-cloning"],
-    },
-    {
-      id: "kokoro",
-      releaseDate: "2025-01-27",
-      languages: ["en", "fr", "ko", "ja", "zh"],
-      features: ["open-source"],
-    },
-    {
-      id: "orpheus-tts",
-      releaseDate: "2025-03-18",
-      languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
-      features: ["open-source"],
-    },
-  ] as const;
+  readonly models = FAL_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

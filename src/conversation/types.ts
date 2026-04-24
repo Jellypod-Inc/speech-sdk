@@ -39,10 +39,14 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
    */
   readonly timestampProvider?: ResolvedSTTModel;
   /**
-   * Controls whether the returned `SpeechResult` includes word-level
-   * timestamps. Default `"auto"`. On the stitch path each turn's timestamps
-   * are offset by cumulative duration + gap and concatenated flat; on the
-   * native path the mixed audio yields a flat list without speaker labels.
+   * Controls whether the returned `ConversationResult` includes word-level
+   * timestamps. Default `"auto"`. Both paths emit
+   * `ConversationWordTimestamp[]` whose `turnIndex` field points back into
+   * `turns[]`. On the stitch path the index is exact (each turn renders
+   * separately and timestamps are offset by cumulative duration + gap). On
+   * the native dialogue path the index is derived by text-matching the
+   * provider's flat timestamps against the input transcripts; if matching
+   * diverges, `ConversationTimestampAttributionError` is thrown.
    */
   readonly timestamps?: TimestampMode;
   readonly turns: readonly ConversationTurn<V>[];

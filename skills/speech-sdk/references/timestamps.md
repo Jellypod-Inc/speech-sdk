@@ -116,10 +116,13 @@ await generateSpeech({ /* ... */ timestamps: "on", timestampProvider: resolved }
 
 ## Conversations
 
-`generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a single flat `WordTimestamp[]` across all turns.
+`generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a flat `ConversationWordTimestamp[]` across all turns. `ConversationWordTimestamp` extends `WordTimestamp` with a required `turnIndex: number` — the index into the input `turns[]` array that produced that word. Existing callers reading `.text / .start / .end` keep working; new callers can attribute every word to its source turn.
 
-- **Stitch path** — each turn's word timings are offset by the cumulative turn duration + gap. Monotonic across turn boundaries. Works cross-provider (each turn gets native alignment when available, else STT).
-- **Native dialogue path** — the provider renders everything in one call; the mixed audio yields a flat list **without speaker labels** (a limitation of one-shot dialogue rendering). `timestamps: "on"` without native dialogue alignment transcribes the mix via STT.
+- **Gateway fast-path** — when every turn uses the same gateway-routed string model, the server renders + stitches in one call and returns per-word `turnIndex` directly on the response.
+- **Stitch path** — each turn's word timings are offset by the cumulative turn duration + gap. Monotonic across turn boundaries; `turnIndex` is exact by construction (each turn renders separately). Works cross-provider (each turn gets native alignment when available, else STT).
+- **Native dialogue path** — the provider renders everything in one call; `turnIndex` is derived by text-matching the provider's flat word stream against the input transcripts. If matching diverges (the provider inserts, drops, or reorders words), `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices.
+
+`turnIndex` is why conversation timestamps are a different type from `generateSpeech`'s `WordTimestamp[]`. It is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback — without re-deriving turn boundaries from `gapMs` and per-turn durations.
 
 ```ts
 const result = await generateConversation({
@@ -130,7 +133,56 @@ const result = await generateConversation({
   timestamps: "on",
 })
 
-result.timestamps // monotonic word timings across both turns
+result.timestamps // ConversationWordTimestamp[] — monotonic across both turns, each with turnIndex
+```
+
+### Collapsing flat timestamps into per-turn spans
+
+The common UI pattern is to reduce the flat per-word list into one span per turn — the start / end / combined text of each turn — so you can drive chat-bubble UIs or speaker-attributed captions. Walk the list and merge consecutive words with the same `turnIndex`:
+
+```ts
+import { generateConversation, type ConversationWordTimestamp } from "@speech-sdk/core"
+
+const result = await generateConversation({
+  model: "elevenlabs/eleven_v3",
+  turns: [
+    { voice: "rachel", text: "Hi there." },
+    { voice: "adam",   text: "Hello!" },
+  ],
+  timestamps: "on",
+})
+
+// result.timestamps is ConversationWordTimestamp[]:
+//   { text, start, end, turnIndex }[]
+
+function toTurnSpans(
+  timestamps: readonly ConversationWordTimestamp[],
+  turns: readonly { voice: string }[],
+) {
+  type Span = { turnIndex: number; voice: string; start: number; end: number; text: string }
+  const spans: Span[] = []
+  for (const word of timestamps) {
+    const last = spans.at(-1)
+    if (last?.turnIndex === word.turnIndex) {
+      last.end = word.end
+      last.text += " " + word.text
+    } else {
+      spans.push({
+        turnIndex: word.turnIndex,
+        voice: turns[word.turnIndex].voice,
+        start: word.start,
+        end: word.end,
+        text: word.text,
+      })
+    }
+  }
+  return spans
+}
+
+// Each span: { voice, start, end, text } — answers
+// "voice X plays from t=0.00 to t=0.42, voice Y from t=0.72 to t=1.05, ..."
+// Natural input for chat-bubble UIs, speaker-attributed captions, or
+// karaoke-style highlighting during playback.
 ```
 
 ## Types
@@ -141,14 +193,19 @@ interface WordTimestamp {
   readonly start: number   // seconds
   readonly end: number     // seconds
 }
+
+// Returned by generateConversation — extends WordTimestamp with turnIndex
+interface ConversationWordTimestamp extends WordTimestamp {
+  readonly turnIndex: number   // index into the input turns[] array
+}
 ```
 
 Exported from `@speech-sdk/core`:
 
-- `TimestampMode`, `WordTimestamp`
+- `TimestampMode`, `WordTimestamp`, `ConversationWordTimestamp`
 - `TimestampsFeature`, `FEATURES.TIMESTAMPS`, `getFeature`, `hasFeature`
 - `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`
-- `TimestampKeyMissingError`
+- `TimestampKeyMissingError`, `ConversationTimestampAttributionError`
 - `GatewayTimestampsUnavailableError`, `isSpeechGatewayModel`
 
 From `@speech-sdk/core/stt/openai`:

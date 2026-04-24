@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type MurfWordDuration,
@@ -16,58 +20,62 @@ export interface MurfSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const MURF_PROVIDER_ID = "murf" as const;
+
+export const MURF_MODELS: readonly ModelInfo[] = [
+  {
+    id: "GEN2",
+    releaseDate: "2025-01-01",
+    languages: [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "zh",
+      "ar",
+      "hi",
+      "bn",
+      "ta",
+      "pt",
+      "it",
+      "ja",
+      "ko",
+      "nl",
+      "pl",
+      "ru",
+      "sv",
+      "tr",
+      "id",
+      "ms",
+      "tl",
+      "cs",
+      "fi",
+      "th",
+      "vi",
+      "da",
+      "no",
+      "ro",
+      "el",
+      "hu",
+      "uk",
+      "sk",
+      "bg",
+    ],
+    features: ["streaming", { id: "timestamps", mode: "native" }],
+  },
+  {
+    id: "FALCON",
+    releaseDate: "2025-01-01",
+    languages: ["en"],
+    features: ["streaming"],
+  },
+] as const;
+
 export class MurfSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "murf";
+  readonly id = MURF_PROVIDER_ID;
   readonly defaultModel = "GEN2";
 
-  readonly models = [
-    {
-      id: "GEN2",
-      releaseDate: "2025-01-01",
-      languages: [
-        "en",
-        "de",
-        "es",
-        "fr",
-        "zh",
-        "ar",
-        "hi",
-        "bn",
-        "ta",
-        "pt",
-        "it",
-        "ja",
-        "ko",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "id",
-        "ms",
-        "tl",
-        "cs",
-        "fi",
-        "th",
-        "vi",
-        "da",
-        "no",
-        "ro",
-        "el",
-        "hu",
-        "uk",
-        "sk",
-        "bg",
-      ],
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "FALCON",
-      releaseDate: "2025-01-01",
-      languages: ["en"],
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = MURF_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

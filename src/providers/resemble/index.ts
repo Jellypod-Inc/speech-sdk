@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   audioTimestampsToWordTimestamps,
@@ -16,47 +20,51 @@ export interface ResembleSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const RESEMBLE_PROVIDER_ID = "resemble" as const;
+
+export const RESEMBLE_MODELS: readonly ModelInfo[] = [
+  {
+    id: "default",
+    releaseDate: "2025-09-04",
+    languages: [
+      "en",
+      "ar",
+      "da",
+      "de",
+      "el",
+      "es",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "ms",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "sv",
+      "sw",
+      "tr",
+      "zh",
+    ],
+    features: [
+      "streaming",
+      "open-source",
+      "inline-voice-cloning",
+      { id: "timestamps", mode: "native" },
+    ],
+  },
+] as const;
+
 export class ResembleSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "resemble";
+  readonly id = RESEMBLE_PROVIDER_ID;
   readonly defaultModel = "default";
 
-  readonly models = [
-    {
-      id: "default",
-      releaseDate: "2025-09-04",
-      languages: [
-        "en",
-        "ar",
-        "da",
-        "de",
-        "el",
-        "es",
-        "fi",
-        "fr",
-        "he",
-        "hi",
-        "it",
-        "ja",
-        "ko",
-        "ms",
-        "nl",
-        "no",
-        "pl",
-        "pt",
-        "ru",
-        "sv",
-        "sw",
-        "tr",
-        "zh",
-      ],
-      features: [
-        "streaming",
-        "open-source",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-  ] as const;
+  readonly models = RESEMBLE_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

@@ -1,9 +1,14 @@
-import type { ResolvedModel, Voice } from "../speech-provider.js";
+import {
+  isSpeechGatewayModel,
+  type ResolvedModel,
+  type Voice,
+} from "../speech-provider.js";
 import { DialogueConstraintError, StitchUnsupportedError } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyContext, voiceKey } from "./validate.js";
 
 export type ConversationPath =
+  | { kind: "gateway"; resolved: ResolvedModel<Voice> }
   | { kind: "native"; resolved: ResolvedModel<Voice> }
   | {
       kind: "stitch";
@@ -28,6 +33,21 @@ export function chooseConversationPath(input: {
   );
 
   if (allSame) {
+    // Gateway fast-path: one HTTP call to `/v1/audio/conversation`, server
+    // does render + stitch + normalize. Preferred when every turn routes to
+    // the same gateway-served model. Heterogeneous gateway models (different
+    // modelIds) fall through to native → stitch below.
+    if (isSpeechGatewayModel(first)) {
+      // Gateway accepts every aggregated model on `/v1/audio/conversation`;
+      // server handles per-turn rendering for providers without native
+      // multi-speaker. Voice clones (`{url}`/`{audio}`) still require stitch
+      // — the flat turn wire shape takes string voices only.
+      const allVoicesString = turns.every((t) => typeof t.voice === "string");
+      if (allVoicesString) {
+        return { kind: "gateway", resolved: first };
+      }
+    }
+
     const { provider, modelId } = first;
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);

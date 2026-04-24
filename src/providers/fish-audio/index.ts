@@ -6,6 +6,7 @@ import {
 } from "../../provider-utils.js";
 import {
   hasFeature,
+  type ModelInfo,
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
@@ -16,23 +17,27 @@ export interface FishAudioSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
+
+export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
+  {
+    id: "s2-pro",
+    releaseDate: "2026-03-09",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "open-source",
+      "inline-voice-cloning",
+    ],
+  },
+] as const;
+
 export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "fish-audio";
+  readonly id = FISH_AUDIO_PROVIDER_ID;
   readonly defaultModel = "s2-pro";
 
-  readonly models = [
-    {
-      id: "s2-pro",
-      releaseDate: "2026-03-09",
-      languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
-      features: [
-        "streaming",
-        "audio-tags",
-        "open-source",
-        "inline-voice-cloning",
-      ],
-    },
-  ] as const;
+  readonly models = FISH_AUDIO_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

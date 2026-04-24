@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 
 /**
  * Deepgram's /v1/speak endpoint takes audio-shaping parameters (model,
@@ -38,18 +42,22 @@ export interface DeepgramSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const DEEPGRAM_PROVIDER_ID = "deepgram" as const;
+
+export const DEEPGRAM_MODELS: readonly ModelInfo[] = [
+  {
+    id: "aura-2",
+    releaseDate: "2025-04-15",
+    languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
+    features: ["streaming"],
+  },
+] as const;
+
 export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "deepgram";
+  readonly id = DEEPGRAM_PROVIDER_ID;
   readonly defaultModel = "aura-2";
 
-  readonly models = [
-    {
-      id: "aura-2",
-      releaseDate: "2025-04-15",
-      languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = DEEPGRAM_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

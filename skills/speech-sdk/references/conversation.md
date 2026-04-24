@@ -4,10 +4,11 @@
 
 **Don't** loop over `generateSpeech` yourself. `generateConversation`:
 
-- Routes to a provider's **native multi-speaker endpoint** when one exists (ElevenLabs request-stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, etc.).
+- Routes to the **Speech Gateway fast-path** when every turn uses the same gateway-routed string model (one HTTP call, server renders + stitches + normalizes).
+- Otherwise routes to a provider's **native multi-speaker endpoint** when one exists (ElevenLabs request-stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, etc.).
 - Otherwise runs turns in parallel and concatenates the decoded PCM locally with a configurable gap.
 - **RMS-normalizes the output** so every conversation plays back at the same loudness.
-- Returns a single `SpeechResult` identical in shape to `generateSpeech`'s.
+- Returns a `ConversationResult`, identical in shape to `SpeechResult` except `timestamps` is `ConversationWordTimestamp[]` (adds `turnIndex`).
 
 ## Import
 
@@ -76,12 +77,13 @@ await generateConversation({
 
 Mixed-provider conversations always take the stitch path.
 
-## Dispatch: Native vs Stitch
+## Dispatch: Gateway, Native, Stitch
 
-SpeechSDK picks automatically:
+SpeechSDK picks automatically from three paths:
 
-- **Native** — one provider, supports `generateDialogue`, and turn voices/count satisfy that provider's `dialogueCapabilities` (e.g. `minVoices`, `maxVoices`). Provider returns a fully-mixed file.
-- **Stitch** — everything else. Turns run in parallel via `generateSpeech`, each forced into a PCM/WAV mode (`getStitchOptions`), then concatenated with `gapMs` silence. Requires every model to expose a decodable PCM/WAV mode — otherwise `StitchUnsupportedError` is thrown.
+- **Gateway fast-path** — every turn uses the same gateway-routed string model (e.g. `"elevenlabs/eleven_v3"`) and every turn uses a string voice (not a voice clone). The SDK sends one HTTP request to `api.speechgateway.com` and the server handles rendering, per-turn stitching, gap insertion, and RMS normalization. Faster than local stitch — no per-turn round trips, no audio-mux code in the client bundle. Allow-by-default for any gateway-routed model. Voice clones (`{url}` / `{audio}` voice shapes) always fall through to the stitch path, because the gateway endpoint doesn't ingest reference audio inline.
+- **Native** — one direct provider, supports `generateDialogue`, and turn voices/count satisfy that provider's `dialogueCapabilities` (e.g. `minVoices`, `maxVoices`). Provider returns a fully-mixed file.
+- **Stitch** — everything else: mixed providers, voice clones on otherwise gateway-routable models, or a single provider with no dialogue endpoint. Turns run in parallel via `generateSpeech`, each forced into a PCM/WAV mode (`getStitchOptions`), then concatenated with `gapMs` silence. Requires every model to expose a decodable PCM/WAV mode — otherwise `StitchUnsupportedError` is thrown.
 
 ## Volume Normalization
 
@@ -93,10 +95,10 @@ SpeechSDK picks automatically:
 
 ## Result
 
-Same shape as `generateSpeech`:
+Shape is `ConversationResult`, identical to `SpeechResult` except `timestamps` is narrowed to `ConversationWordTimestamp[]`:
 
 ```ts
-{
+interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
   audio: GeneratedAudioFile,         // concatenated / mixed audio
   metadata: {
     latencyMs, inputChars,
@@ -104,12 +106,19 @@ Same shape as `generateSpeech`:
     model,
     audioDurationMs?,
   },
-  providerMetadata: {
+  providerMetadata?: {
     turns: [...]                     // per-turn metadata on stitch path
   } | ProviderNativeMetadata,
+  timestamps?: readonly ConversationWordTimestamp[],
   warnings?: string[],
 }
+
+interface ConversationWordTimestamp extends WordTimestamp {
+  turnIndex: number   // index into the input turns[] array
+}
 ```
+
+Every word carries a `turnIndex` pointing back into the input `turns[]`. On the stitch path the index is exact (each turn renders separately and timestamps are offset by cumulative duration + gap). On the gateway and native-dialogue paths the index is attributed by the server / derived by text-matching the provider's flat timestamps against the input transcripts; if matching diverges on the native path, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. See `references/timestamps.md` for the worked aggregation example that collapses flat timestamps into per-turn spans.
 
 ## Errors
 

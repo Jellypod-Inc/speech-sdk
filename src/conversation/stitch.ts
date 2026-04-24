@@ -2,7 +2,10 @@ import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
-import type { TimestampMode, WordTimestamp } from "../timestamps.js";
+import type {
+  ConversationWordTimestamp,
+  TimestampMode,
+} from "../timestamps.js";
 import {
   concatPcmToWav,
   dbfsToInt16Rms,
@@ -43,7 +46,7 @@ interface StitchOutput {
     | Record<string, unknown>
     | undefined
   )[];
-  readonly timestamps?: readonly WordTimestamp[];
+  readonly timestamps?: readonly ConversationWordTimestamp[];
   readonly warnings: readonly string[];
 }
 
@@ -162,7 +165,7 @@ export async function runStitch<V extends Voice>(
     input.timestamps !== "off" &&
     perTurn.every((p) => p.result.timestamps !== undefined);
 
-  let timestamps: WordTimestamp[] | undefined;
+  let timestamps: ConversationWordTimestamp[] | undefined;
   if (allTurnsHaveTimestamps) {
     timestamps = [];
     let offsetSec = 0;
@@ -173,6 +176,7 @@ export async function runStitch<V extends Voice>(
           text: w.text,
           start: w.start + offsetSec,
           end: w.end + offsetSec,
+          turnIndex: i,
         });
       }
       offsetSec += (turnDurations[i] ?? 0) + gapSeconds;

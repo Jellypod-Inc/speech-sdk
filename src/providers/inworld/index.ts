@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type InworldWordAlignment,
@@ -40,40 +44,44 @@ function mediaTypeForEncoding(encoding: string | undefined): string {
   }
 }
 
+export const INWORLD_PROVIDER_ID = "inworld" as const;
+
+// Inworld TTS supports 11 languages out of the box.
+// https://docs.inworld.ai/tts/overview#supported-languages
+const INWORLD_LANGUAGES = [
+  "en",
+  "es",
+  "fr",
+  "de",
+  "it",
+  "pt",
+  "ja",
+  "ko",
+  "nl",
+  "pl",
+  "zh",
+] as const;
+
+export const INWORLD_MODELS: readonly ModelInfo[] = [
+  {
+    id: "inworld-tts-1.5-max",
+    releaseDate: "2025-08-15",
+    languages: INWORLD_LANGUAGES,
+    features: ["streaming", { id: "timestamps", mode: "native" }],
+  },
+  {
+    id: "inworld-tts-1.5-mini",
+    releaseDate: "2025-08-15",
+    languages: INWORLD_LANGUAGES,
+    features: ["streaming", { id: "timestamps", mode: "native" }],
+  },
+] as const;
+
 export class InworldSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "inworld";
+  readonly id = INWORLD_PROVIDER_ID;
   readonly defaultModel = "inworld-tts-1.5-max";
 
-  // Inworld TTS supports 11 languages out of the box.
-  // https://docs.inworld.ai/tts/overview#supported-languages
-  private static readonly LANGUAGES = [
-    "en",
-    "es",
-    "fr",
-    "de",
-    "it",
-    "pt",
-    "ja",
-    "ko",
-    "nl",
-    "pl",
-    "zh",
-  ] as const;
-
-  readonly models = [
-    {
-      id: "inworld-tts-1.5-max",
-      releaseDate: "2025-08-15",
-      languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "inworld-tts-1.5-mini",
-      releaseDate: "2025-08-15",
-      languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-  ] as const;
+  readonly models = INWORLD_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

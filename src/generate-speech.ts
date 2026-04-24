@@ -10,6 +10,7 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
   isSpeechGatewayModel,
@@ -122,22 +123,35 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const result = await pRetry(
     () =>
-      resolved.provider.generate({
-        modelId: resolved.modelId,
-        text: processedText,
-        voice,
-        providerOptions,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-        timestamps: isGateway ? timestampMode : undefined,
-        volumeDbfs: isGateway ? volumeDbfs : undefined,
-      }),
+      isSpeechGatewayModel(resolved)
+        ? resolved.provider.generate({
+            modelId: resolved.modelId,
+            text: processedText,
+            // Gateway inline mode only accepts string voice IDs. The runtime
+            // check in SpeechGatewayProvider.generate() surfaces a clear
+            // error if the caller passed a non-string voice.
+            voice: voice as unknown as string,
+            providerOptions,
+            abortSignal,
+            headers,
+            includeTimestamps: shouldRequestNative,
+            timestamps: timestampMode,
+            volumeDbfs,
+          })
+        : resolved.provider.generate({
+            modelId: resolved.modelId,
+            text: processedText,
+            voice,
+            providerOptions,
+            abortSignal,
+            headers,
+            includeTimestamps: shouldRequestNative,
+          }),
     {
       retries: maxRetries,
       signal: abortSignal,
       shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && error.statusCode < 500) {
+        if (error instanceof ApiError && !isRetriableApiError(error)) {
           return false;
         }
         return true;

@@ -3,7 +3,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface XaiSpeechProviderConfig {
   apiKey?: string;
@@ -11,40 +15,44 @@ export interface XaiSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const XAI_PROVIDER_ID = "xai" as const;
+
+// ISO 639-1 codes, matching the rest of the SDK. xAI's API also accepts
+// region-qualified BCP-47 codes (e.g. `pt-BR`, `es-MX`) and `auto` for
+// detection — callers can pass either via `providerOptions.language`.
+const XAI_LANGUAGES = [
+  "en",
+  "ar",
+  "bn",
+  "zh",
+  "fr",
+  "de",
+  "hi",
+  "id",
+  "it",
+  "ja",
+  "ko",
+  "pt",
+  "ru",
+  "es",
+  "tr",
+  "vi",
+] as const;
+
+export const XAI_MODELS: readonly ModelInfo[] = [
+  {
+    id: "grok-tts",
+    releaseDate: "2025-11-01",
+    languages: XAI_LANGUAGES,
+    features: ["streaming", "audio-tags"],
+  },
+] as const;
+
 export class XaiSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "xai";
+  readonly id = XAI_PROVIDER_ID;
   readonly defaultModel = "grok-tts";
 
-  // ISO 639-1 codes, matching the rest of the SDK. xAI's API also accepts
-  // region-qualified BCP-47 codes (e.g. `pt-BR`, `es-MX`) and `auto` for
-  // detection — callers can pass either via `providerOptions.language`.
-  private static readonly LANGUAGES = [
-    "en",
-    "ar",
-    "bn",
-    "zh",
-    "fr",
-    "de",
-    "hi",
-    "id",
-    "it",
-    "ja",
-    "ko",
-    "pt",
-    "ru",
-    "es",
-    "tr",
-    "vi",
-  ] as const;
-
-  readonly models = [
-    {
-      id: "grok-tts",
-      releaseDate: "2025-11-01",
-      languages: XaiSpeechProvider.LANGUAGES,
-      features: ["streaming", "audio-tags"],
-    },
-  ] as const;
+  readonly models = XAI_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

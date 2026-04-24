@@ -8,6 +8,7 @@ import {
 } from "../../provider-utils.js";
 import {
   hasFeature,
+  type ModelInfo,
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
@@ -23,72 +24,76 @@ export interface CartesiaSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const CARTESIA_PROVIDER_ID = "cartesia" as const;
+
+export const CARTESIA_MODELS: readonly ModelInfo[] = [
+  {
+    id: "sonic-3",
+    releaseDate: "2025-10-27",
+    languages: [
+      "en",
+      "fr",
+      "de",
+      "es",
+      "pt",
+      "zh",
+      "ja",
+      "hi",
+      "it",
+      "ko",
+      "nl",
+      "pl",
+      "ru",
+      "sv",
+      "tr",
+      "tl",
+      "bg",
+      "ro",
+      "ar",
+      "cs",
+      "el",
+      "fi",
+      "hr",
+      "ms",
+      "sk",
+      "da",
+      "ta",
+      "uk",
+      "hu",
+      "no",
+      "vi",
+      "bn",
+      "th",
+      "he",
+      "ka",
+      "id",
+      "te",
+      "gu",
+      "kn",
+      "ml",
+      "mr",
+      "pa",
+    ],
+    features: [
+      "streaming",
+      "audio-tags",
+      "inline-voice-cloning",
+      { id: "timestamps", mode: "native" },
+    ],
+  },
+  {
+    id: "sonic-2",
+    releaseDate: "2025-03-13",
+    languages: ["en"],
+    features: ["streaming", { id: "timestamps", mode: "native" }],
+  },
+] as const;
+
 export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "cartesia";
+  readonly id = CARTESIA_PROVIDER_ID;
   readonly defaultModel = "sonic-3";
 
-  readonly models = [
-    {
-      id: "sonic-3",
-      releaseDate: "2025-10-27",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "zh",
-        "ja",
-        "hi",
-        "it",
-        "ko",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "tl",
-        "bg",
-        "ro",
-        "ar",
-        "cs",
-        "el",
-        "fi",
-        "hr",
-        "ms",
-        "sk",
-        "da",
-        "ta",
-        "uk",
-        "hu",
-        "no",
-        "vi",
-        "bn",
-        "th",
-        "he",
-        "ka",
-        "id",
-        "te",
-        "gu",
-        "kn",
-        "ml",
-        "mr",
-        "pa",
-      ],
-      features: [
-        "streaming",
-        "audio-tags",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-    {
-      id: "sonic-2",
-      releaseDate: "2025-03-13",
-      languages: ["en"],
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-  ] as const;
+  readonly models = CARTESIA_MODELS;
 
   private static readonly PASSTHROUGH_TAGS = ["laughter"] as const;
 

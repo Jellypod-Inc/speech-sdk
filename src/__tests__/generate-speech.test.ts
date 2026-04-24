@@ -338,8 +338,11 @@ describe("generateSpeech", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "audio/mpeg" }),
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("\x01\x02\x03"),
+        mediaType: "audio/mpeg",
+      }),
     });
 
     const savedFetch = globalThis.fetch;
@@ -373,8 +376,11 @@ describe("generateSpeech", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "audio/mpeg" }),
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("\x01\x02\x03"),
+        mediaType: "audio/mpeg",
+      }),
     });
 
     const savedFetch = globalThis.fetch;
@@ -420,6 +426,31 @@ describe("generateSpeech", () => {
     const error = new ApiError("Auth error", {
       statusCode: 401,
       model: "mock/test-model",
+    });
+
+    const provider: SpeechProvider = {
+      id: "mock",
+      defaultModel: "mock-model",
+      generate: vi.fn().mockRejectedValue(error),
+    };
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "Hello",
+        maxRetries: 2,
+      })
+    ).rejects.toThrow();
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on 501 Not Implemented", async () => {
+    // 501 is how the gateway surfaces "this capability will never work"
+    // (e.g. timestamps unsupported). Retrying just wastes round-trips.
+    const error = new ApiError("Not implemented", {
+      statusCode: 501,
+      model: "mock/test-model",
+      code: "timestamps_unsupported",
     });
 
     const provider: SpeechProvider = {

@@ -9,6 +9,13 @@ export class ApiError extends SpeechSDKError {
   readonly statusCode: number;
   readonly responseBody?: unknown;
   readonly model: string;
+  /**
+   * Stable machine-readable error code from RFC 7807 `application/problem+json`
+   * responses (the `code` extension). Optional — only populated when the
+   * provider emits it (currently Speech Gateway). Callers can match on this
+   * instead of parsing error messages.
+   */
+  readonly code?: string;
 
   constructor(
     message: string,
@@ -17,6 +24,7 @@ export class ApiError extends SpeechSDKError {
       model: string;
       responseBody?: unknown;
       cause?: unknown;
+      code?: string;
     }
   ) {
     super(message, { cause: options.cause });
@@ -24,6 +32,7 @@ export class ApiError extends SpeechSDKError {
     this.statusCode = options.statusCode;
     this.model = options.model;
     this.responseBody = options.responseBody;
+    this.code = options.code;
   }
 }
 
@@ -88,6 +97,41 @@ export class TimestampKeyMissingError extends SpeechSDKError {
         `pass a configured timestampProvider, or use timestamps: 'auto' | 'off'.`
     );
     this.name = "TimestampKeyMissingError";
+  }
+}
+
+/**
+ * Thrown by the native-dialogue conversation path when the SDK cannot
+ * reliably attribute the provider's flat word timestamps back to the input
+ * `turns[]`. Happens when the TTS provider inserts, drops, or substantially
+ * reorders words such that text-matching against the input transcript fails.
+ *
+ * The error names the turn index where matching diverged, plus the expected
+ * vs. observed word, so callers can decide whether to retry, downgrade to
+ * `timestamps: "off"`, or switch to the stitch path (different model per
+ * turn) where attribution is exact by construction.
+ */
+export class ConversationTimestampAttributionError extends SpeechSDKError {
+  readonly turnIndex: number;
+  readonly observed: string;
+  readonly expected: string;
+
+  constructor(args: {
+    turnIndex: number;
+    observed: string;
+    expected: string;
+    modelId: string;
+  }) {
+    super(
+      `Failed to attribute timestamps to conversation turns at turn ${args.turnIndex} (${args.modelId}). ` +
+        `Expected next word "${args.expected}" but got "${args.observed}". ` +
+        "The TTS provider may have inserted, dropped, or reordered words. " +
+        'Pass timestamps: "off" to disable attribution, or use the stitch path (different model per turn) for guaranteed attribution.'
+    );
+    this.name = "ConversationTimestampAttributionError";
+    this.turnIndex = args.turnIndex;
+    this.observed = args.observed;
+    this.expected = args.expected;
   }
 }
 

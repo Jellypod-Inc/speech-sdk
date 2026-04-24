@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../errors.js";
 import {
   createSpeechGateway,
   SpeechGatewayProvider,
@@ -7,6 +8,14 @@ import { isSpeechGatewayModel } from "../speech-provider.js";
 
 const VOICE_REQUIRED_RE = /"voice" is required/;
 const SIGNUP_RE = /https:\/\/wavform\.ai\//;
+const JSON_TIMESTAMPS_BINARY_RE =
+  /requested JSON response for timestamps but server returned content-type/;
+const GATEWAY_401_RE = /Speech Gateway rejected your API key/;
+const TIMESTAMPS_UNSUPPORTED_RE = /timestamps: "on" is not supported/;
+const BAD_REQUEST_RE = /bad request/;
+const INTERNAL_SERVER_ERROR_RE = /Internal Server Error/;
+const CONVO_AT_LEAST_ONE_TURN_RE = /at least one turn is required/;
+const CONVO_EVERY_TURN_VOICE_RE = /every turn must specify a "voice"/;
 
 function mockFetchOk(body = new Uint8Array([1, 2, 3])) {
   return vi.fn().mockResolvedValue({
@@ -166,22 +175,21 @@ describe("SpeechGatewayProvider", () => {
     expect(init.headers["Content-Type"]).toBe("application/json");
   });
 
-  it("falls back to binary parsing when JSON timestamps are requested but audio is returned", async () => {
+  it("throws when JSON timestamps are requested but server returns binary", async () => {
     const fetchFn = mockFetchOk();
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
       fetch: fetchFn as unknown as typeof globalThis.fetch,
     });
 
-    const result = await provider.generate({
-      modelId: "openai/tts-1",
-      text: "Hello",
-      voice: "alloy",
-      includeTimestamps: true,
-    });
-
-    expect(result.audio).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.timestamps).toBeUndefined();
+    await expect(
+      provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        includeTimestamps: true,
+      })
+    ).rejects.toThrow(JSON_TIMESTAMPS_BINARY_RE);
 
     const [, init] = fetchFn.mock.calls[0];
     expect(init.headers.Accept).toBe("application/json");
@@ -268,6 +276,157 @@ describe("SpeechGatewayProvider", () => {
     expect(resolved.modelId).toBe("elevenlabs/eleven_flash_v2_5");
   });
 
+  it("forces Accept: audio/mpeg on stream() even when caller overrides it", async () => {
+    const body = new ReadableStream<Uint8Array>();
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body,
+      headers: new Headers({
+        "content-type": "audio/mpeg",
+      }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.stream({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect(init.headers.Accept).toBe("audio/mpeg");
+  });
+
+  it("throws a signup-friendly 401 error when the gateway rejects the key", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify({ error: "unauthorized" }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      })
+    ).rejects.toThrow(GATEWAY_401_RE);
+  });
+
+  it("extracts RFC 7807 problem+json code into ApiError.code on 501", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 501,
+      headers: new Headers({ "content-type": "application/problem+json" }),
+      text: async () =>
+        JSON.stringify({
+          type: "about:blank",
+          title: "ServiceError",
+          status: 501,
+          detail: 'timestamps: "on" is not supported for this model',
+          code: "timestamps_unsupported",
+        }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      })
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      statusCode: 501,
+      code: "timestamps_unsupported",
+    });
+
+    // Also verify the rejection is an ApiError and the human-readable detail
+    // made it into the message.
+    await expect(
+      provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      })
+    ).rejects.toThrow(TIMESTAMPS_UNSUPPORTED_RE);
+  });
+
+  it("leaves ApiError.code undefined when error body has no code field", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify({ error: "bad request" }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      });
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiError);
+    const apiError = thrown as ApiError;
+    expect(apiError.statusCode).toBe(400);
+    expect(apiError.code).toBeUndefined();
+    expect(apiError.message).toMatch(BAD_REQUEST_RE);
+  });
+
+  it("handles non-JSON error bodies without throwing during code extraction", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers({ "content-type": "text/plain" }),
+      text: async () => "Internal Server Error",
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      });
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiError);
+    const apiError = thrown as ApiError;
+    expect(apiError.statusCode).toBe(500);
+    expect(apiError.code).toBeUndefined();
+    expect(apiError.message).toMatch(INTERNAL_SERVER_ERROR_RE);
+  });
+
   it("throws a signup-friendly error when no apiKey or env var is set", async () => {
     const savedKey = process.env.SPEECH_GATEWAY_API_KEY;
     process.env.SPEECH_GATEWAY_API_KEY = "";
@@ -285,5 +444,235 @@ describe("SpeechGatewayProvider", () => {
         process.env.SPEECH_GATEWAY_API_KEY = savedKey;
       }
     }
+  });
+});
+
+describe("SpeechGatewayProvider.generateConversation", () => {
+  it("posts conversation payload with mode, turns, gap/volume/normalize, timestamps defaults", async () => {
+    const fetchFn = mockFetchJson({
+      audio: btoa("ABC"),
+      mediaType: "audio/wav",
+      timestamps: [],
+      warnings: [],
+      providerMetadata: {
+        perTurn: [
+          { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
+          { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
+        ],
+      },
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+    });
+
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    expect(init.headers.Accept).toBe("application/json");
+    expect(init.headers.Authorization).toBe("Bearer gw-key");
+    expect(init.headers["Content-Type"]).toBe("application/json");
+
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({
+      mode: "conversation",
+      model: "openai/gpt-4o-mini-tts",
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      gapMs: 300,
+      volumeDbfs: -20,
+      normalizeVolume: true,
+      timestamps: "off",
+    });
+
+    expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));
+    expect(result.mediaType).toBe("audio/wav");
+    expect(result.timestamps).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.providerMetadata.turns).toEqual([
+      { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
+      { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
+    ]);
+  });
+
+  it("does not let caller Accept header override application/json on conversation", async () => {
+    const fetchFn = mockFetchJson({
+      audio: btoa("A"),
+      mediaType: "audio/wav",
+      timestamps: [],
+      warnings: [],
+      providerMetadata: { perTurn: [] },
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [{ voice: "alloy", text: "Hi." }],
+      headers: {
+        Accept: "audio/mpeg",
+        Authorization: "Bearer caller-key",
+        "Content-Type": "text/plain",
+      },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect(init.headers.Accept).toBe("application/json");
+    expect(init.headers.Authorization).toBe("Bearer gw-key");
+    expect(init.headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("parses populated timestamps with turnIndex", async () => {
+    const fetchFn = mockFetchJson({
+      audio: btoa("A"),
+      mediaType: "audio/wav",
+      timestamps: [
+        { text: "Hi", start: 0, end: 0.2, turnIndex: 0 },
+        { text: "there.", start: 0.2, end: 0.5, turnIndex: 0 },
+        { text: "Hello!", start: 0.8, end: 1.1, turnIndex: 1 },
+      ],
+      warnings: ["mock warning"],
+      providerMetadata: {
+        perTurn: [
+          { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
+          { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
+        ],
+      },
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      timestamps: "on",
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "Hi", start: 0, end: 0.2, turnIndex: 0 },
+      { text: "there.", start: 0.2, end: 0.5, turnIndex: 0 },
+      { text: "Hello!", start: 0.8, end: 1.1, turnIndex: 1 },
+    ]);
+    expect(result.warnings).toEqual(["mock warning"]);
+  });
+
+  it("throws ApiError with problem+json code on 501 timestamps_unsupported", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 501,
+      headers: new Headers({ "content-type": "application/problem+json" }),
+      text: async () =>
+        JSON.stringify({
+          type: "about:blank",
+          title: "ServiceError",
+          status: 501,
+          detail: 'timestamps: "on" is not supported for this model',
+          code: "timestamps_unsupported",
+        }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [{ voice: "alloy", text: "Hi." }],
+        timestamps: "on",
+      })
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      statusCode: 501,
+      code: "timestamps_unsupported",
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [{ voice: "alloy", text: "Hi." }],
+        timestamps: "on",
+      })
+    ).rejects.toThrow(TIMESTAMPS_UNSUPPORTED_RE);
+  });
+
+  it("rewrites 401 to signup-friendly message on conversation", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify({ error: "unauthorized" }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [{ voice: "alloy", text: "Hi." }],
+      })
+    ).rejects.toThrow(GATEWAY_401_RE);
+  });
+
+  it("rejects empty turns array client-side", async () => {
+    const fetchFn = mockFetchJson({
+      audio: btoa("A"),
+      mediaType: "audio/wav",
+      timestamps: [],
+      warnings: [],
+      providerMetadata: { perTurn: [] },
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [],
+      })
+    ).rejects.toThrow(CONVO_AT_LEAST_ONE_TURN_RE);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("rejects turns missing voice client-side", async () => {
+    const fetchFn = mockFetchJson({
+      audio: btoa("A"),
+      mediaType: "audio/wav",
+      timestamps: [],
+      warnings: [],
+      providerMetadata: { perTurn: [] },
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [{ voice: "", text: "Hi." }],
+      })
+    ).rejects.toThrow(CONVO_EVERY_TURN_VOICE_RE);
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@ import {
   DialogueConstraintError,
   StitchUnsupportedError,
 } from "../conversation/errors.js";
+import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 function mockProvider(overrides: Partial<SpeechProvider> = {}): SpeechProvider {
@@ -125,6 +126,79 @@ describe("chooseConversationPath", () => {
         turns: [
           { voice: "nova", text: "Hi." },
           { voice: "shimmer", text: "Hello." },
+        ],
+      })
+    ).toThrow(StitchUnsupportedError);
+  });
+
+  it("returns gateway when all turns share one supported gateway model", () => {
+    const gateway = createSpeechGateway({ apiKey: "k" });
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+    const result = chooseConversationPath({
+      resolvedPerTurn: [resolved, resolved],
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello." },
+      ],
+    });
+    expect(result.kind).toBe("gateway");
+    if (result.kind === "gateway") {
+      expect(result.resolved.modelId).toBe("openai/gpt-4o-mini-tts");
+    }
+  });
+
+  it("falls through past gateway when gateway models are heterogeneous", () => {
+    const gateway = createSpeechGateway({ apiKey: "k" });
+    const resolvedA = gateway("openai/gpt-4o-mini-tts");
+    const resolvedB = gateway("elevenlabs/eleven_v3");
+    // Heterogeneous modelIds → allSame is false → no gateway fast-path. The
+    // speech-gateway provider has no getStitchOptions, so the stitch fallback
+    // throws StitchUnsupportedError — proving we didn't stay on the gateway
+    // branch (which would have returned a ConversationPath without throwing).
+    expect(() =>
+      chooseConversationPath({
+        resolvedPerTurn: [resolvedA, resolvedB],
+        turns: [
+          { voice: "alloy", text: "Hi." },
+          { voice: "rachel", text: "Hello." },
+        ],
+      })
+    ).toThrow(StitchUnsupportedError);
+  });
+
+  it("returns gateway for arbitrary aggregated models (no per-model gate)", () => {
+    const gateway = createSpeechGateway({ apiKey: "k" });
+    // Allow-by-default: every gateway-routed model should take the gateway
+    // branch regardless of whether the upstream provider supports native
+    // multi-speaker — the server handles per-turn rendering. This test uses
+    // cartesia/sonic-3 (a model that was NOT in the old 3-entry capability
+    // table) to prove there's no SDK-side allowlist left.
+    const resolved = gateway("cartesia/sonic-3");
+    const result = chooseConversationPath({
+      resolvedPerTurn: [resolved, resolved],
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "b", text: "Hello." },
+      ],
+    });
+    expect(result.kind).toBe("gateway");
+    if (result.kind === "gateway") {
+      expect(result.resolved.modelId).toBe("cartesia/sonic-3");
+    }
+  });
+
+  it("falls through past gateway when any turn uses an object-shaped voice (clone ref)", () => {
+    const gateway = createSpeechGateway({ apiKey: "k" });
+    // Gateway conversation wire contract accepts string voices only on the
+    // flat turn shape; voice clones (`{url}` / `{audio}`) go through stitch.
+    // StitchUnsupportedError confirms dispatch left the gateway branch.
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+    expect(() =>
+      chooseConversationPath({
+        resolvedPerTurn: [resolved, resolved],
+        turns: [
+          { voice: "alloy", text: "Hi." },
+          { voice: { url: "https://example.com/clone.wav" }, text: "Hello." },
         ],
       })
     ).toThrow(StitchUnsupportedError);

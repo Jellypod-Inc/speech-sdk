@@ -4,6 +4,7 @@ export type { CaptionFormat, CaptionsOptions } from "./captions.js";
 export { timestampsToCaptions } from "./captions.js";
 export {
   ApiError,
+  ConversationTimestampAttributionError,
   GatewayTimestampsUnavailableError,
   NoSpeechGeneratedError,
   SpeechSDKError,
@@ -26,7 +27,11 @@ export {
   hasFeature,
   isSpeechGatewayModel,
 } from "./speech-provider.js";
-export type { GeneratedAudioFile, SpeechResult } from "./speech-result.js";
+export type {
+  ConversationResult,
+  GeneratedAudioFile,
+  SpeechResult,
+} from "./speech-result.js";
 export type {
   ResolvedSTTModel,
   SpeechToTextProvider,
@@ -34,5 +39,9 @@ export type {
 } from "./speech-to-text-provider.js";
 export { streamSpeech } from "./stream-speech.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
-export type { TimestampMode, WordTimestamp } from "./timestamps.js";
+export type {
+  ConversationWordTimestamp,
+  TimestampMode,
+  WordTimestamp,
+} from "./timestamps.js";
 export type { GenerateSpeechOptions } from "./types.js";

@@ -5,7 +5,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import { type HumeSnippet, snippetsToWordTimestamps } from "./alignment.js";
 
@@ -15,40 +19,44 @@ export interface HumeSpeechProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
+export const HUME_PROVIDER_ID = "hume" as const;
+
+export const HUME_MODELS: readonly ModelInfo[] = [
+  {
+    id: "octave-2",
+    releaseDate: "2025-10-01",
+    languages: [
+      "en",
+      "fr",
+      "de",
+      "es",
+      "pt",
+      "ja",
+      "ko",
+      "hi",
+      "it",
+      "ar",
+      "ru",
+    ] as const,
+    features: [
+      "streaming",
+      "inline-voice-cloning",
+      { id: "timestamps", mode: "native" },
+    ],
+  },
+  {
+    id: "octave-1",
+    releaseDate: "2025-03-01",
+    languages: ["en"] as const,
+    features: ["streaming"],
+  },
+] as const;
+
 export class HumeSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "hume";
+  readonly id = HUME_PROVIDER_ID;
   readonly defaultModel = "octave-2";
 
-  readonly models = [
-    {
-      id: "octave-2",
-      releaseDate: "2025-10-01",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "ja",
-        "ko",
-        "hi",
-        "it",
-        "ar",
-        "ru",
-      ] as const,
-      features: [
-        "streaming",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-    {
-      id: "octave-1",
-      releaseDate: "2025-03-01",
-      languages: ["en"] as const,
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = HUME_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;

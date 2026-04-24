@@ -1,4 +1,6 @@
-import type { TimestampMode, WordTimestamp } from "./timestamps.js";
+import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
+import { SPEECH_GATEWAY_PROVIDER_ID } from "./providers/gateway/index.js";
+import type { WordTimestamp } from "./timestamps.js";
 
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
@@ -93,8 +95,6 @@ export interface SpeechProvider<
      * orchestrator then routes through an STT fallback.
      */
     includeTimestamps?: boolean;
-    timestamps?: TimestampMode;
-    volumeDbfs?: number;
   }): Promise<{
     audio: string | Uint8Array;
     audioDurationMs?: number;
@@ -160,8 +160,10 @@ export interface ResolvedModel<TVoice extends Voice = Voice> {
   provider: SpeechProvider<string, TVoice>;
 }
 
-export function isSpeechGatewayModel(model: ResolvedModel): boolean {
-  return model.provider.id === "speech-gateway";
+export function isSpeechGatewayModel<V extends Voice>(
+  model: ResolvedModel<V>
+): model is ResolvedModel<V> & { provider: SpeechGatewayProvider } {
+  return model.provider.id === SPEECH_GATEWAY_PROVIDER_ID;
 }
 
 /**
