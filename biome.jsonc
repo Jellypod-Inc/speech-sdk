@@ -1,9 +1,14 @@
 {
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/vitest"
+  ],
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite/biome/core", "ultracite/biome/vitest"],
   "overrides": [
     {
-      "includes": ["src/__tests__/e2e/**/*.ts"],
+      "includes": [
+        "src/__tests__/e2e/**/*.ts"
+      ],
       "linter": {
         "rules": {
           "style": {
