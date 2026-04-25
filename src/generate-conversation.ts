@@ -12,6 +12,7 @@ import {
   ApiError,
   ConversationTimestampAttributionError,
   NoSpeechGeneratedError,
+  TimestampFallbackNotConfiguredError,
 } from "./errors.js";
 import { debug, info } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
@@ -140,7 +141,8 @@ export async function generateConversation<V extends Voice = Voice>(
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? "off",
-    timestampFallback: options.timestampFallback,
+    timestampFallback:
+      options.timestampFallback ?? resolvedPerTurn[0]?.fallbackSTT,
   });
 
   if (stitched.audio.length === 0) {
@@ -390,6 +392,7 @@ async function runNative<V extends Voice>(args: {
     audio: audio.uint8Array,
     mediaType: outputMediaType,
     ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+    resolved,
     timestampFallback: options.timestampFallback,
     abortSignal: options.abortSignal,
     turns: options.turns,
@@ -420,6 +423,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   audio: Uint8Array;
   mediaType: string;
   ttsModel: string;
+  resolved: ResolvedModel<V>;
   timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
   turns: readonly ConversationTurn<V>[];
@@ -434,11 +438,17 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       modelId: args.ttsModel,
     });
   }
+  const fallback = args.timestampFallback ?? args.resolved.fallbackSTT;
+  if (!fallback) {
+    throw new TimestampFallbackNotConfiguredError({
+      ttsModel: args.ttsModel,
+    });
+  }
   const derived = await deriveTimestampsViaSTT({
     ttsModel: args.ttsModel,
     audio: args.audio,
     mediaType: args.mediaType,
-    timestampFallback: args.timestampFallback,
+    timestampFallback: fallback,
     abortSignal: args.abortSignal,
   });
   return attributeTimestampsToTurns({

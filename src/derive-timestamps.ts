@@ -6,16 +6,9 @@ export async function deriveTimestampsViaSTT(args: {
   ttsModel: string;
   audio: Uint8Array;
   mediaType: string;
-  timestampFallback: ResolvedSTTModel | undefined;
+  timestampFallback: ResolvedSTTModel;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[]> {
-  if (!args.timestampFallback) {
-    // Callers (resolveTimestamps in generate-speech, conversation path in Task 5)
-    // must gate on a configured fallback before calling this function.
-    throw new Error(
-      `deriveTimestampsViaSTT called without a configured timestampFallback for ${args.ttsModel}. This is a bug.`
-    );
-  }
   const sttModel = args.timestampFallback;
 
   try {

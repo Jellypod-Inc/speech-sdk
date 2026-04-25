@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConversationTimestampAttributionError } from "../errors.js";
+import {
+  ConversationTimestampAttributionError,
+  TimestampFallbackNotConfiguredError,
+} from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
@@ -263,6 +266,24 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(result.timestamps?.[4]?.turnIndex).toBe(2);
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
   });
+
+  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback (stitch path)', async () => {
+    // Use the existing stitchTTS helper — features:[] means no native timestamps,
+    // so the stitch path will need STT to derive them. No timestampFallback
+    // configured → should throw TimestampFallbackNotConfiguredError.
+    const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
+
+    await expect(
+      generateConversation({
+        model: { provider: ttsProvider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        timestamps: "on",
+      })
+    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
+  });
 });
 
 describe("generateConversation timestamps — native path", () => {
@@ -392,6 +413,22 @@ describe("generateConversation timestamps — native path", () => {
     expect(result.timestamps).toHaveLength(2);
     expect(result.timestamps?.[0]?.turnIndex).toBe(0);
     expect(result.timestamps?.[1]?.turnIndex).toBe(1);
+  });
+
+  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback (native path)', async () => {
+    const provider = nativeTTS({});
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        timestamps: "on",
+        normalizeVolume: false,
+      })
+    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
   });
 
   it("attribution: throws ConversationTimestampAttributionError when provider words don't match input transcript", async () => {
