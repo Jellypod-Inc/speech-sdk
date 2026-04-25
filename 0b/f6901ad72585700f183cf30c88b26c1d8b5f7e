@@ -1,0 +1,133 @@
+skills/speech-sdk/references/providers/elevenlabs.md
+  9f77151f338adbcd 91
+src/__tests__/gateway.test.ts
+  9f77151f338adbcd 261-283
+skills/speech-sdk/references/timestamps.md
+  9f77151f338adbcd 28,34,40-41,44,46,48,52,62,64,66,69,71-73,75,80,84,194,197,199-201,203,205
+  0f69590e2e54295b 33
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  9f77151f338adbcd 120
+  0f69590e2e54295b 125
+skills/speech-sdk/references/providers.md
+  9f77151f338adbcd 24
+  0f69590e2e54295b 66-67
+src/conversation/types.ts
+  0f69590e2e54295b 43
+skills/speech-sdk/references/conversation.md
+  9f77151f338adbcd 16,20,125
+src/__tests__/e2e/gateway.e2e.test.ts
+  0f69590e2e54295b 81
+skills/speech-sdk/references/providers/deepgram.md
+  9f77151f338adbcd 49
+skills/speech-sdk/references/providers/cartesia.md
+  0f69590e2e54295b 21,28
+  9f77151f338adbcd 74
+skills/speech-sdk/references/providers/fish-audio.md
+  9f77151f338adbcd 63
+src/generate-speech.ts
+  9f77151f338adbcd 52-53
+  0f69590e2e54295b 48-49,70,111,306
+skills/speech-sdk/references/voice-cloning.md
+  9f77151f338adbcd 9,25,39
+src/errors.ts
+  0f69590e2e54295b 97
+src/__tests__/e2e/conversation-timestamps.e2e.test.ts
+  0f69590e2e54295b 108,113
+skills/speech-sdk/references/providers/resemble.md
+  0f69590e2e54295b 18,25
+  9f77151f338adbcd 66
+skills/speech-sdk/references/providers/xai.md
+  9f77151f338adbcd 64
+skills/speech-sdk/references/providers/inworld.md
+  0f69590e2e54295b 21,28
+  9f77151f338adbcd 61
+skills/speech-sdk/references/providers/fal.md
+  9f77151f338adbcd 47
+skills/speech-sdk/references/streaming.md
+  9f77151f338adbcd 84,87-94
+src/speech-result.ts
+  0f69590e2e54295b 15-17
+src/__tests__/e2e/resemble.e2e.test.ts
+  0f69590e2e54295b 69
+  9f77151f338adbcd 64
+src/__tests__/timestamps.test.ts
+  0f69590e2e54295b 67-68,72-74,82-83
+skills/speech-sdk/references/providers/google.md
+  9f77151f338adbcd 51
+README.md
+  9f77151f338adbcd 68,77,178
+skills/speech-sdk/references/providers/mistral.md
+  9f77151f338adbcd 59
+skills/speech-sdk/references/providers/murf.md
+  9f77151f338adbcd 65
+  0f69590e2e54295b 28
+src/__tests__/generate-conversation.test.ts
+  9f77151f338adbcd 243-273
+src/providers/gateway/index.ts
+  9f77151f338adbcd 1-2,4-8,133-143,201-204,276-279,369-372
+src/timestamps.ts
+  9f77151f338adbcd 30-34,36
+skills/speech-sdk/SKILL.md
+  9f77151f338adbcd 55,74,80,106,108,127,137
+src/__tests__/generate-speech.test.ts
+  9f77151f338adbcd 7-8,365,455-480
+  0f69590e2e54295b 347,359,364,390,403
+src/__tests__/e2e/cartesia.e2e.test.ts
+  0f69590e2e54295b 72
+  9f77151f338adbcd 67
+skills/speech-sdk/references/providers/openai.md
+  9f77151f338adbcd 62
+src/__tests__/e2e/murf.e2e.test.ts
+  9f77151f338adbcd 65
+  0f69590e2e54295b 70
+skills/speech-sdk/references/providers/hume.md
+  9f77151f338adbcd 68
+  0f69590e2e54295b 19,26
+skills/speech-sdk/references/configuration.md
+  0f69590e2e54295b 13
+  9f77151f338adbcd 18,24,49-51,83
+src/__tests__/e2e/inworld.e2e.test.ts
+  9f77151f338adbcd 70
+  0f69590e2e54295b 75
+src/__tests__/e2e/hume.e2e.test.ts
+  0f69590e2e54295b 70
+  9f77151f338adbcd 65
+src/generate-conversation.ts
+  9f77151f338adbcd 63-68,70-73,132,184,243-244,336,339,346,439-441
+  0f69590e2e54295b 449,468-479
+src/__tests__/conversation-timestamps.test.ts
+  0f69590e2e54295b 131,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0bf6901ad72585700f183cf30c88b26c1d8b5f7e",
+  "prompts": {
+    "0f69590e2e54295b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abae513-8606-46c7-bc17-cc6a1d310a69",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 59,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 284,
+      "total_deletions": 205,
+      "accepted_lines": 225,
+      "overriden_lines": 0
+    }
+  }
+}
