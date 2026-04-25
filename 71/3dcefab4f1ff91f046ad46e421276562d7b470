@@ -1,0 +1,75 @@
+src/errors.ts
+  e2a9c3d00f251d06 12
+src/providers/cartesia/index.ts
+  e2a9c3d00f251d06 430
+src/providers/gateway/index.ts
+  e2a9c3d00f251d06 295
+src/providers/hume/alignment.ts
+  e2a9c3d00f251d06 3,17
+src/providers/elevenlabs/alignment.ts
+  e2a9c3d00f251d06 3,12-13
+src/audio-duration.ts
+  e2a9c3d00f251d06 9
+src/conversation/types.ts
+  e2a9c3d00f251d06 20,23,27
+src/stt-providers/openai/index.ts
+  e2a9c3d00f251d06 19,81,123,181-182
+src/generate-speech.ts
+  e2a9c3d00f251d06 11,35-36,39-40,65,106,262,282
+src/provider-utils.ts
+  e2a9c3d00f251d06 3,63
+src/conversation/stitch.ts
+  e2a9c3d00f251d06 106,146
+src/audio-utils.ts
+  e2a9c3d00f251d06 17
+src/captions.ts
+  e2a9c3d00f251d06 17,66,70-71,90,123,166,198,219,275
+src/providers/cartesia/alignment.ts
+  e2a9c3d00f251d06 3,10
+src/metadata.ts
+  e2a9c3d00f251d06 2,5,9
+src/logger.ts
+  e2a9c3d00f251d06 1,25,34-37
+src/providers/hume/index.ts
+  e2a9c3d00f251d06 349
+src/providers/deepgram/index.ts
+  e2a9c3d00f251d06 12-13
+src/providers/elevenlabs/index.ts
+  e2a9c3d00f251d06 514
+src/conversation/validate.ts
+  e2a9c3d00f251d06 4
+src/providers/murf/alignment.ts
+  e2a9c3d00f251d06 3
+src/conversation/pcm-concat.ts
+  e2a9c3d00f251d06 9,35,76,216,225
+src/providers/inworld/alignment.ts
+  e2a9c3d00f251d06 3,24
+src/generate-conversation.ts
+  e2a9c3d00f251d06 16,110-111,127,188,192,247-249,274,312-313,325,343,377,465-466,490,541,560
+src/__tests__/e2e/_save-audio.ts
+  e2a9c3d00f251d06 70,85
+src/speech-provider.ts
+  e2a9c3d00f251d06 139
+src/providers/resemble/alignment.ts
+  e2a9c3d00f251d06 3-4,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "713dcefab4f1ff91f046ad46e421276562d7b470",
+  "prompts": {
+    "e2a9c3d00f251d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0977ba6-d642-4087-b8c3-5a1e443f449f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 235,
+      "overriden_lines": 0
+    }
+  }
+}
