@@ -1,0 +1,37 @@
+skills/speech-sdk/references/configuration.md
+  e2a9c3d00f251d06 3,5,18,38,82-83
+skills/speech-sdk/references/providers/cartesia.md
+  e2a9c3d00f251d06 21
+skills/speech-sdk/references/error-handling.md
+  e2a9c3d00f251d06 20,50
+skills/speech-sdk/references/providers/resemble.md
+  e2a9c3d00f251d06 18
+skills/speech-sdk/references/timestamps.md
+  e2a9c3d00f251d06 36,38,41,44-45,48,50-55,57,105-107,206-207
+skills/speech-sdk/references/providers.md
+  e2a9c3d00f251d06 3,85
+skills/speech-sdk/references/conversation.md
+  e2a9c3d00f251d06 7,80,84-86,121
+skills/speech-sdk/references/result.md
+  e2a9c3d00f251d06 27,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "605eee13005d853290ba373ec011e5ef9414670f",
+  "prompts": {
+    "e2a9c3d00f251d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0977ba6-d642-4087-b8c3-5a1e443f449f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 273,
+      "total_deletions": 853,
+      "accepted_lines": 273,
+      "overriden_lines": 0
+    }
+  }
+}
