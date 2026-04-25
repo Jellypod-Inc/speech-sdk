@@ -1,0 +1,45 @@
+README.md
+  0f69590e2e54295b 177,198-201,204,422
+  9f77151f338adbcd 28,69,100,133,183,211-212,338,361,375-410
+src/index.ts
+  9f77151f338adbcd 1,3-7,12,17,19
+src/types.ts
+  9f77151f338adbcd 2-49,59-60,62
+package.json
+  9f77151f338adbcd 14-16,18-20
+src/providers.ts
+  9f77151f338adbcd 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3a5647d130052a930bbfc15989715e8b546aa7b8",
+  "prompts": {
+    "0f69590e2e54295b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abae513-8606-46c7-bc17-cc6a1d310a69",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 102,
+      "total_deletions": 225,
+      "accepted_lines": 102,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 145,
+      "total_deletions": 111,
+      "accepted_lines": 145,
+      "overriden_lines": 0
+    }
+  }
+}
