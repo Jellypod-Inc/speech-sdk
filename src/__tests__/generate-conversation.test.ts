@@ -314,7 +314,7 @@ describe("generateConversation", () => {
         { voice: "nova", text: "Hello!" },
       ],
       timestamps: "on",
-      timestampProvider: {
+      timestampFallback: {
         provider: {
           id: "stub-stt",
           defaultModel: "stub",

@@ -38,7 +38,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   timestamps?: TimestampMode;
   // Defaults to OpenAI Whisper via OPENAI_API_KEY. Only used when the TTS
   // provider can't return timestamps natively.
-  timestampProvider?: ResolvedSTTModel;
+  timestampFallback?: ResolvedSTTModel;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -47,7 +47,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     headers,
     volumeDbfs,
     timestamps: timestampMode = "off",
-    timestampProvider,
+    timestampFallback,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
@@ -92,7 +92,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     mode: timestampMode,
     hasNative: hasNativeTimestamps,
     willRequestNative: shouldRequestNative,
-    timestampProvider,
+    timestampFallback,
   });
 
   const startTime = performance.now();
@@ -172,7 +172,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     resultTimestamps: result.timestamps,
     audio: audio.uint8Array,
     mediaType: outputMediaType,
-    timestampProvider,
+    timestampFallback,
     abortSignal,
   });
 
@@ -207,7 +207,7 @@ async function resolveTimestamps(args: {
   resultTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
-  timestampProvider: ResolvedSTTModel | undefined;
+  timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
   const {
@@ -216,7 +216,7 @@ async function resolveTimestamps(args: {
     resultTimestamps,
     audio,
     mediaType,
-    timestampProvider,
+    timestampFallback,
     abortSignal,
   } = args;
 
@@ -235,7 +235,7 @@ async function resolveTimestamps(args: {
     ttsModel: modelIdentifier,
     audio,
     mediaType,
-    timestampProvider,
+    timestampFallback,
     abortSignal,
   });
   debug(
@@ -265,7 +265,7 @@ function logTimestampDecision(args: {
   mode: TimestampMode;
   hasNative: boolean;
   willRequestNative: boolean;
-  timestampProvider: ResolvedSTTModel | undefined;
+  timestampFallback: ResolvedSTTModel | undefined;
 }): void {
   const { modelIdentifier, mode, willRequestNative } = args;
   if (mode === "off") {
@@ -280,7 +280,7 @@ function logTimestampDecision(args: {
   }
   // mode === "on" and no native support → will fall back to STT
   info(
-    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampProvider)} for word timestamps (adds a round-trip).`
+    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampFallback)} for word timestamps (adds a round-trip).`
   );
 }
 

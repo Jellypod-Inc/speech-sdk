@@ -12,10 +12,10 @@ export async function deriveTimestampsViaSTT(args: {
   ttsModel: string;
   audio: Uint8Array;
   mediaType: string;
-  timestampProvider: ResolvedSTTModel | undefined;
+  timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[]> {
-  const sttModel = args.timestampProvider ?? defaultTimestampProvider();
+  const sttModel = args.timestampFallback ?? defaultTimestampProvider();
 
   try {
     const { timestamps } = await sttModel.provider.transcribe({

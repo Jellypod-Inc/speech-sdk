@@ -56,7 +56,7 @@ export interface GenerateSpeechOptions<V extends Voice = Voice> {
   model: string | ResolvedModel<V>;
   providerOptions?: Record<string, unknown>;
   text: string;
-  timestampProvider?: ResolvedSTTModel;
+  timestampFallback?: ResolvedSTTModel;
   timestamps?: TimestampMode;
   voice: V;
   volumeDbfs?: number;

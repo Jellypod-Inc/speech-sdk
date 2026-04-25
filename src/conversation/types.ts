@@ -21,7 +21,7 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
   // Defaults to OpenAI Whisper via OPENAI_API_KEY.
-  readonly timestampProvider?: ResolvedSTTModel;
+  readonly timestampFallback?: ResolvedSTTModel;
   readonly timestamps?: TimestampMode;
   readonly turns: readonly ConversationTurn<V>[];
   // dBFS, must be ≤ 0. Default -20.

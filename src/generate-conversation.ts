@@ -140,7 +140,7 @@ export async function generateConversation<V extends Voice = Voice>(
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? "off",
-    timestampProvider: options.timestampProvider,
+    timestampFallback: options.timestampFallback,
   });
 
   if (stitched.audio.length === 0) {
@@ -390,7 +390,7 @@ async function runNative<V extends Voice>(args: {
     audio: audio.uint8Array,
     mediaType: outputMediaType,
     ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
-    timestampProvider: options.timestampProvider,
+    timestampFallback: options.timestampFallback,
     abortSignal: options.abortSignal,
     turns: options.turns,
   });
@@ -420,7 +420,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   audio: Uint8Array;
   mediaType: string;
   ttsModel: string;
-  timestampProvider: ResolvedSTTModel | undefined;
+  timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
   turns: readonly ConversationTurn<V>[];
 }): Promise<readonly ConversationWordTimestamp[] | undefined> {
@@ -438,7 +438,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     ttsModel: args.ttsModel,
     audio: args.audio,
     mediaType: args.mediaType,
-    timestampProvider: args.timestampProvider,
+    timestampFallback: args.timestampFallback,
     abortSignal: args.abortSignal,
   });
   return attributeTimestampsToTurns({

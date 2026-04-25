@@ -115,7 +115,7 @@ describe("generateSpeech timestamps option", () => {
       text: "Yo",
       voice: "v",
       timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(stt.transcribe).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe("generateSpeech timestamps option", () => {
       text: "Hello world",
       voice: "v",
       timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(stt.transcribe).toHaveBeenCalledOnce();
@@ -160,7 +160,7 @@ describe("generateSpeech timestamps option", () => {
       text: "Hello",
       voice: "v",
       timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(captured).toBe(true);
@@ -178,7 +178,7 @@ describe("generateSpeech timestamps option", () => {
         text: "Hello",
         voice: "v",
         timestamps: "on",
-        timestampProvider: { provider: stt, modelId: "m" },
+        timestampFallback: { provider: stt, modelId: "m" },
       })
     ).rejects.toThrow(GatewayTimestampsUnavailableError);
 

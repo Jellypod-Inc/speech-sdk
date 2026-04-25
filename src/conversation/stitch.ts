@@ -27,7 +27,7 @@ interface StitchInput<V extends Voice = Voice> {
     providerOptions: Record<string, unknown>;
     mediaType: string;
   }[];
-  readonly timestampProvider?: ResolvedSTTModel;
+  readonly timestampFallback?: ResolvedSTTModel;
   readonly timestamps: TimestampMode;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
@@ -101,7 +101,7 @@ export async function runStitch<V extends Voice>(
         abortSignal: input.abortSignal,
         headers: input.headers,
         timestamps: input.timestamps,
-        timestampProvider: input.timestampProvider,
+        timestampFallback: input.timestampFallback,
       });
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(

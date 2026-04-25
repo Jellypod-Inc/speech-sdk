@@ -189,7 +189,7 @@ describe("generateConversation timestamps — stitch path", () => {
         },
       ],
       timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestampFallback: { provider: stt, modelId: "m" },
       gapMs: 100,
     });
 
@@ -309,7 +309,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "there" },
       ],
       timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestampFallback: { provider: stt, modelId: "m" },
       normalizeVolume: false,
     });
 
