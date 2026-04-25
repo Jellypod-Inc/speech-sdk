@@ -18,7 +18,7 @@ Both support 11 languages: `en`, `es`, `fr`, `de`, `it`, `pt`, `ja`, `ko`, `nl`,
 
 ## Timestamps
 
-Both Inworld models return word alignment natively. The SDK adds `timestamp_type: "WORD"` to the request when `timestamps: "on"` or `"on"` is set, then projects `timestampInfo.wordAlignment.{words, wordStartTimeSeconds, wordEndTimeSeconds}` into the SDK's seconds-based `WordTimestamp[]` (no unit conversion needed — Inworld already emits seconds).
+Both Inworld models return word alignment natively. The SDK adds `timestamp_type: "WORD"` to the request when `timestamps: "on"` is set, then projects `timestampInfo.wordAlignment.{words, wordStartTimeSeconds, wordEndTimeSeconds}` into the SDK's seconds-based `WordTimestamp[]` (no unit conversion needed — Inworld already emits seconds).
 
 ```ts
 const result = await generateSpeech({

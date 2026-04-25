@@ -204,7 +204,7 @@ Errors are exported from `@speech-sdk/core`:
 
 From `@speech-sdk/core/providers`:
 
-- `createOpenAISTT`, `OpenAISpeechToTextProvider`
+- `createOpenAISTT`
 
 ## Errors
 
