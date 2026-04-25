@@ -1,0 +1,61 @@
+src/__tests__/e2e/murf.e2e.test.ts
+  8a3ab4cf342abbee 70,98
+src/__tests__/conversation-timestamps.test.ts
+  8a3ab4cf342abbee 128,162,198,262,277,290,312,339,360,389,419,428,438,464,476
+src/__tests__/e2e/cartesia.e2e.test.ts
+  8a3ab4cf342abbee 72,104
+src/generate-conversation.ts
+  8a3ab4cf342abbee 138,184,311,313,316-317,320,324,382,412,421
+src/__tests__/e2e/openai.e2e.test.ts
+  8a3ab4cf342abbee 143
+src/__tests__/e2e/inworld.e2e.test.ts
+  8a3ab4cf342abbee 75,107
+src/conversation/types.ts
+  8a3ab4cf342abbee 21
+src/__tests__/generate-conversation.test.ts
+  8a3ab4cf342abbee 274,316
+src/conversation/stitch.ts
+  8a3ab4cf342abbee 5,28,148,169,174
+src/__tests__/e2e/resemble.e2e.test.ts
+  8a3ab4cf342abbee 69,104
+src/__tests__/timestamps.test.ts
+  8a3ab4cf342abbee 99,121,143,170,191,198,217,253
+src/types.ts
+  8a3ab4cf342abbee 55
+src/__tests__/e2e/conversation-timestamps.e2e.test.ts
+  8a3ab4cf342abbee 26,73,108
+src/generate-speech.ts
+  8a3ab4cf342abbee 25,39,47,84,89,140,166-167,189,202,210,266,271-273,278,282,284
+src/errors.ts
+  8a3ab4cf342abbee 103
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  8a3ab4cf342abbee 125,156
+src/__tests__/e2e/hume.e2e.test.ts
+  8a3ab4cf342abbee 70,103
+src/__tests__/generate-speech.test.ts
+  8a3ab4cf342abbee 359,364-365,403
+README.md
+  8a3ab4cf342abbee 19,164,175,177-178,180,200,213,222-225,228,244,292,446,494
+src/__tests__/e2e/gateway.e2e.test.ts
+  8a3ab4cf342abbee 17,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8762fcb1a1c838a005cd6c5615fb3f11230a6c54",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 2,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    }
+  }
+}
