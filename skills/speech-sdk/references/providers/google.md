@@ -48,6 +48,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createGoogle } from "@speech-sdk/core/google"
+import { createGoogle } from "@speech-sdk/core/providers"
 const google = createGoogle({ apiKey: process.env.GOOGLE_API_KEY })
 ```

@@ -1,9 +1,11 @@
-import { MissingApiKeyError } from "../../errors.js";
+import { stripAudioTags } from "../../audio-tags.js";
+import { ApiError, MissingApiKeyError } from "../../errors.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  hasFeature,
+  type ModelInfo,
+  type ResolvedModel,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import { CARTESIA_MODELS, CARTESIA_PROVIDER_ID } from "../cartesia/index.js";
@@ -128,6 +130,17 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     return key;
   }
 
+  processAudioTags(
+    text: string,
+    modelId: string
+  ): { text: string; warnings: string[] } {
+    const model = this.models.find((m) => m.id === modelId);
+    if (model && hasFeature(model, "audio-tags")) {
+      return { text, warnings: [] };
+    }
+    return stripAudioTags(text, `speech-gateway/${modelId}`);
+  }
+
   async generate(options: {
     modelId: string;
     text: string;
@@ -185,7 +198,10 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new Error(GATEWAY_401_MESSAGE);
+      throw new ApiError(GATEWAY_401_MESSAGE, {
+        statusCode: 401,
+        model: `speech-gateway/${options.modelId}`,
+      });
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
@@ -257,7 +273,10 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new Error(GATEWAY_401_MESSAGE);
+      throw new ApiError(GATEWAY_401_MESSAGE, {
+        statusCode: 401,
+        model: `speech-gateway/${options.modelId}`,
+      });
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
@@ -347,7 +366,10 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new Error(GATEWAY_401_MESSAGE);
+      throw new ApiError(GATEWAY_401_MESSAGE, {
+        statusCode: 401,
+        model: `speech-gateway/${options.modelId}`,
+      });
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 

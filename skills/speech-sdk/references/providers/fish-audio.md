@@ -60,6 +60,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createFishAudio } from "@speech-sdk/core/fish-audio"
+import { createFishAudio } from "@speech-sdk/core/providers"
 const fishAudio = createFishAudio({ apiKey: process.env.FISH_AUDIO_API_KEY })
 ```

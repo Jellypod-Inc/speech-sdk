@@ -240,6 +240,37 @@ describe("generateConversation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
+  it("reuses the top-level string model so gateway conversations stay on the one-call path", async () => {
+    const bytes = new Uint8Array([88, 89, 90]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = fetchFn as unknown as typeof globalThis.fetch;
+    try {
+      const result = await generateConversation({
+        model: "openai/gpt-4o-mini-tts",
+        apiKey: "gw-key",
+        turns: [
+          { voice: "alloy", text: "Hi there." },
+          { voice: "nova", text: "Hello!" },
+        ],
+      });
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchFn.mock.calls[0];
+      expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+      expect(JSON.parse(init.body).model).toBe("openai/gpt-4o-mini-tts");
+      expect(result.metadata.provider).toBe("speech-gateway");
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
   it('derives timestamps via STT when timestamps:"on" and conversation endpoint has no wire alignment', async () => {
     // The gateway conversation endpoint returns raw audio bytes only — no
     // per-turn alignment on the wire today. When the caller asks for word

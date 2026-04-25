@@ -105,12 +105,12 @@ describe("Conversation timestamps e2e — stitch path", () => {
         },
       ],
       gapMs: 200,
-      timestamps: "auto",
+      timestamps: "on",
     });
 
     expect(result.timestamps).toBeDefined();
     const words = result.timestamps ?? [];
-    // Both turns should contribute words — auto mode requires native on every turn.
+    // Both turns are native, so each contributes word timestamps directly.
     expect(words.length).toBeGreaterThanOrEqual(8);
 
     // Offsets are monotonically non-decreasing across turn boundaries.
@@ -125,28 +125,5 @@ describe("Conversation timestamps e2e — stitch path", () => {
     // No word should land past the concatenated audio duration.
     const durSec = (result.metadata.audioDurationMs ?? 0) / 1000;
     expect(words.at(-1)?.end ?? 0).toBeLessThanOrEqual(durSec + 1);
-  });
-
-  it("auto mode with mixed native/derived providers returns undefined (all-or-nothing)", {
-    timeout: 120_000,
-  }, async () => {
-    const result = await generateConversation({
-      turns: [
-        {
-          model: "elevenlabs/eleven_flash_v2",
-          voice: ELEVENLABS_VOICE_A,
-          text: "ElevenLabs has native timestamps.",
-        },
-        {
-          model: "openai/tts-1",
-          voice: "nova",
-          text: "OpenAI does not, in auto mode.",
-        },
-      ],
-      timestamps: "auto",
-    });
-
-    expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    expect(result.timestamps).toBeUndefined();
   });
 });

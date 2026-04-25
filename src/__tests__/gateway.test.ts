@@ -258,6 +258,29 @@ describe("SpeechGatewayProvider", () => {
     expect(ids).toContain("elevenlabs/eleven_flash_v2_5");
   });
 
+  it("preserves audio tags for gateway-routed models that support them", () => {
+    const provider = new SpeechGatewayProvider({});
+    const result = provider.processAudioTags(
+      "[laugh] Hello.",
+      "openai/gpt-4o-mini-tts"
+    );
+
+    expect(result).toEqual({ text: "[laugh] Hello.", warnings: [] });
+  });
+
+  it("strips audio tags for gateway-routed models that do not support them", () => {
+    const provider = new SpeechGatewayProvider({});
+    const result = provider.processAudioTags(
+      "[laugh] Hello.",
+      "deepgram/aura-2"
+    );
+
+    expect(result.text).toBe("Hello.");
+    expect(result.warnings).toEqual([
+      "Audio tag [laugh] is not supported by speech-gateway/deepgram/aura-2 and was removed.",
+    ]);
+  });
+
   it("factory createSpeechGateway returns a ResolvedModel with the default model", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     const resolved = gateway();

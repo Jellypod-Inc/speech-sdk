@@ -4,6 +4,8 @@ import { generateSpeech } from "../generate-speech.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
+const SPEECH_GATEWAY_RE = /Speech Gateway rejected your API key/;
+
 function createMockProvider(
   overrides?: Partial<
     ReturnType<SpeechProvider["generate"]> extends Promise<infer T> ? T : never
@@ -342,6 +344,7 @@ describe("generateSpeech", () => {
       json: async () => ({
         audio: btoa("\x01\x02\x03"),
         mediaType: "audio/mpeg",
+        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
       }),
     });
 
@@ -353,12 +356,13 @@ describe("generateSpeech", () => {
         text: "Hello",
         voice: "alloy",
         apiKey: "gw-custom-key",
+        timestamps: "on",
       });
 
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
-      // Default `timestamps: "auto"` routes through the with-timestamps URL
-      // on the gateway (gateway always asks for JSON alignment when !"off").
+      // `timestamps: "on"` routes through the JSON-with-timestamps URL on the
+      // gateway; the default `"off"` hits `/v1/audio/speech` for raw bytes.
       expect(url).toBe(
         "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
       );
@@ -383,6 +387,7 @@ describe("generateSpeech", () => {
       json: async () => ({
         audio: btoa("\x01\x02\x03"),
         mediaType: "audio/mpeg",
+        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
       }),
     });
 
@@ -395,6 +400,7 @@ describe("generateSpeech", () => {
         voice: "alloy",
         apiKey: "gw-custom-key",
         volumeDbfs: -20,
+        timestamps: "on",
       });
 
       expect(result.audio.mediaType).toBe("audio/mpeg");
@@ -444,6 +450,32 @@ describe("generateSpeech", () => {
       })
     ).rejects.toThrow();
     expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry gateway 401 responses", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify({ error: "unauthorized" }),
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      await expect(
+        generateSpeech({
+          model: "openai/tts-1",
+          text: "Hello",
+          voice: "alloy",
+          apiKey: "bad-gw-key",
+          maxRetries: 2,
+        })
+      ).rejects.toThrow(SPEECH_GATEWAY_RE);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
   });
 
   it("does not retry on 501 Not Implemented", async () => {

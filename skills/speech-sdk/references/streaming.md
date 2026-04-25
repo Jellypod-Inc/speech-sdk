@@ -81,16 +81,17 @@ setTimeout(() => controller.abort(), 2000)
 
 ## Provider Support
 
-Not every model streams. Check at runtime:
+Not every model streams. Call `streamSpeech` directly and handle unsupported models:
 
 ```ts
-import { FEATURES, hasFeature } from "@speech-sdk/core"
-import { createOpenAI } from "@speech-sdk/core/openai"
+import { StreamingNotSupportedError, streamSpeech } from "@speech-sdk/core"
 
-const model = createOpenAI()("gpt-4o-mini-tts")
-
-if (hasFeature(model, FEATURES.STREAMING)) {
-  // safe to call streamSpeech
+try {
+  await streamSpeech({ model: "openai/gpt-4o-mini-tts", text: "...", voice: "alloy" })
+} catch (error) {
+  if (error instanceof StreamingNotSupportedError) {
+    // fall back to generateSpeech
+  }
 }
 ```
 

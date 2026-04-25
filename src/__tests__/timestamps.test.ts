@@ -64,21 +64,14 @@ function createSTTProvider(
 }
 
 describe("generateSpeech timestamps option", () => {
-  it("returns undefined timestamps by default when the provider is not native", async () => {
-    const provider = createTTSProvider();
-    const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
-      text: "Hello",
-      voice: "v",
-    });
-
-    expect(result.timestamps).toBeUndefined();
-  });
-
-  it("auto mode: asks a native provider for timestamps and returns them", async () => {
+  it('default ("off"): never asks the provider for timestamps, even when the model is native', async () => {
+    let captured: boolean | undefined;
     const provider = createTTSProvider({
       feature: { id: "timestamps", mode: "native" },
       timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
+      captureIncludeTimestamps: (v) => {
+        captured = v;
+      },
     });
     const result = await generateSpeech({
       model: { provider, modelId: "t-model" },
@@ -86,7 +79,8 @@ describe("generateSpeech timestamps option", () => {
       voice: "v",
     });
 
-    expect(result.timestamps).toEqual([{ text: "Hi", start: 0, end: 0.3 }]);
+    expect(captured).toBe(false);
+    expect(result.timestamps).toBeUndefined();
   });
 
   it("off mode: never passes includeTimestamps and never returns timestamps", async () => {
@@ -213,25 +207,6 @@ describe("generateSpeech timestamps option", () => {
         process.env.OPENAI_API_KEY = originalKey;
       }
     }
-  });
-
-  it("auto mode: does not request native timestamps when the model is derived-only", async () => {
-    let captured: boolean | undefined;
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
-      captureIncludeTimestamps: (v) => {
-        captured = v;
-      },
-    });
-    const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
-      text: "Hi",
-      voice: "v",
-      // auto (default)
-    });
-
-    expect(captured).toBe(false);
-    expect(result.timestamps).toBeUndefined();
   });
 });
 

@@ -128,7 +128,7 @@ describe("generateConversation timestamps — stitch path", () => {
         },
       ],
       gapMs: 200,
-      timestamps: "auto",
+      timestamps: "on",
     });
 
     expect(result.timestamps).toHaveLength(2);
@@ -171,33 +171,6 @@ describe("generateConversation timestamps — stitch path", () => {
       .calls) {
       expect(call[0].includeTimestamps).toBe(false);
     }
-  });
-
-  it("auto mode with a non-timestamped turn: returns undefined (all-or-nothing)", async () => {
-    const providerWithTs = stitchTTS({
-      id: "a",
-      feature: "native",
-      timestamps: [{ text: "Hi", start: 0, end: 0.05 }],
-    });
-    const providerWithoutTs = stitchTTS({ id: "b" }); // no TIMESTAMPS feature
-
-    const result = await generateConversation({
-      turns: [
-        {
-          model: { provider: providerWithTs, modelId: "m" },
-          voice: "v1",
-          text: "Hi",
-        },
-        {
-          model: { provider: providerWithoutTs, modelId: "m" },
-          voice: "v2",
-          text: "yo",
-        },
-      ],
-      timestamps: "auto",
-    });
-
-    expect(result.timestamps).toBeUndefined();
   });
 
   it("on mode: derives timestamps via user-supplied STT for providers without native support", async () => {
@@ -282,7 +255,7 @@ describe("generateConversation timestamps — stitch path", () => {
         },
       ],
       gapMs: 100,
-      timestamps: "auto",
+      timestamps: "on",
     });
 
     expect(result.timestamps).toHaveLength(6);
@@ -345,22 +318,6 @@ describe("generateConversation timestamps — native path", () => {
     expect(stt.transcribe).toHaveBeenCalledOnce();
     expect(result.timestamps).toHaveLength(2);
     expect(result.timestamps?.[0]?.text).toBe("Hello");
-  });
-
-  it("auto mode: no native feature, no STT fallback — returns undefined", async () => {
-    const provider = nativeTTS({ feature: "derived" });
-
-    const result = await generateConversation({
-      model: { provider, modelId: "m" },
-      turns: [
-        { voice: "a", text: "Hello" },
-        { voice: "b", text: "there" },
-      ],
-      timestamps: "auto",
-      normalizeVolume: false,
-    });
-
-    expect(result.timestamps).toBeUndefined();
   });
 
   it("off mode: never populates timestamps even when native is available", async () => {

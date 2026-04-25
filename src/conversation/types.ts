@@ -40,7 +40,7 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   readonly timestampProvider?: ResolvedSTTModel;
   /**
    * Controls whether the returned `ConversationResult` includes word-level
-   * timestamps. Default `"auto"`. Both paths emit
+   * timestamps. Default `"off"`. When `"on"`, both paths emit
    * `ConversationWordTimestamp[]` whose `turnIndex` field points back into
    * `turns[]`. On the stitch path the index is exact (each turn renders
    * separately and timestamps are offset by cumulative duration + gap). On

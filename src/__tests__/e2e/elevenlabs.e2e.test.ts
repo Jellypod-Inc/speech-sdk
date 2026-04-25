@@ -117,12 +117,12 @@ describe("ElevenLabs e2e", () => {
   });
 
   describe("timestamps (native /with-timestamps)", () => {
-    it("returns word timestamps on the auto default", async () => {
+    it("returns word timestamps on the timestamps:on", async () => {
       const result = await generateSpeech({
         model: "elevenlabs/eleven_flash_v2",
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "auto",
+        timestamps: "on",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -78,9 +78,7 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
     expect(result.metadata.provider).toBe("speech-gateway");
     expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
 
-    // Phase 1: server returns empty timestamps array; SDK converts "off"/
-    // "auto" + no data to undefined. Default mode is "auto", so no STT
-    // fallback — timestamps should be undefined here.
+    // Default mode is "off", so the SDK doesn't even ask for timestamps.
     expect(result.timestamps).toBeUndefined();
 
     expect(result.providerMetadata).toBeDefined();

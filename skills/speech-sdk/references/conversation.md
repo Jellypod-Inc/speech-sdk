@@ -13,11 +13,11 @@
 ## Import
 
 ```ts
-import { generateConversation } from "@speech-sdk/core/conversation"
+import { generateConversation } from "@speech-sdk/core"
 import type {
   ConversationTurn,
   GenerateConversationOptions,
-} from "@speech-sdk/core/conversation"
+} from "@speech-sdk/core/types"
 ```
 
 ## Quick Start
@@ -122,7 +122,7 @@ Every word carries a `turnIndex` pointing back into the input `turns[]`. On the 
 
 ## Errors
 
-From `@speech-sdk/core/conversation/errors`:
+From `@speech-sdk/core`:
 
 | Error                       | When                                                                                         |
 | --------------------------- | -------------------------------------------------------------------------------------------- |

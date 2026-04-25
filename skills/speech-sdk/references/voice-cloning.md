@@ -6,7 +6,7 @@ Some providers support inline voice cloning — pass a voice object with referen
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createMistral } from "@speech-sdk/core/mistral"
+import { createMistral } from "@speech-sdk/core/providers"
 
 const mistral = createMistral()
 
@@ -22,7 +22,7 @@ Also accepts `Uint8Array` (assumes the same `mistral` factory from the snippet a
 ```ts
 import { readFileSync } from "fs"
 import { generateSpeech } from "@speech-sdk/core"
-import { createMistral } from "@speech-sdk/core/mistral"
+import { createMistral } from "@speech-sdk/core/providers"
 
 const mistral = createMistral()
 
@@ -36,7 +36,7 @@ await generateSpeech({
 ## From a URL
 
 ```ts
-import { createFal } from "@speech-sdk/core/fal-ai"
+import { createFal } from "@speech-sdk/core/providers"
 
 const fal = createFal()
 

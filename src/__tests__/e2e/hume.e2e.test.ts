@@ -62,12 +62,12 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
   });
 
   describe("timestamps (native /v0/tts)", () => {
-    it("returns word timestamps on the auto default for octave-2", async () => {
+    it("returns word timestamps on the timestamps:on for octave-2", async () => {
       const result = await generateSpeech({
         model: "hume/octave-2",
         text: TEST_TEXT,
         voice: "Kora",
-        timestamps: "auto",
+        timestamps: "on",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -18,14 +18,14 @@ Default output is `audio/wav` at 44.1 kHz.
 
 ## Timestamps
 
-When `timestamps: "auto"` or `"on"` is set, the SDK routes through Cartesia's `/tts/sse` endpoint with `add_timestamps: true`, accumulates the interleaved `chunk` and `timestamps` events, and returns the merged audio + word alignment.
+When `timestamps: "on"` or `"on"` is set, the SDK routes through Cartesia's `/tts/sse` endpoint with `add_timestamps: true`, accumulates the interleaved `chunk` and `timestamps` events, and returns the merged audio + word alignment.
 
 ```ts
 const result = await generateSpeech({
   model: "cartesia/sonic-3",
   text: "Hello, world!",
   voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
-  timestamps: "auto",
+  timestamps: "on",
 })
 result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
 ```
@@ -71,6 +71,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createCartesia } from "@speech-sdk/core/cartesia"
+import { createCartesia } from "@speech-sdk/core/providers"
 const cartesia = createCartesia({ apiKey: process.env.CARTESIA_API_KEY })
 ```

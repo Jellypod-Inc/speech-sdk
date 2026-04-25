@@ -94,7 +94,7 @@ export class TimestampKeyMissingError extends SpeechSDKError {
     super(
       `${options.ttsModel} does not return word timestamps natively. ` +
         `Set ${options.envVar} to enable the ${options.sttProvider} fallback, ` +
-        `pass a configured timestampProvider, or use timestamps: 'auto' | 'off'.`
+        `pass a configured timestampProvider, or use timestamps: 'off'.`
     );
     this.name = "TimestampKeyMissingError";
   }

@@ -10,18 +10,18 @@ await generateSpeech({
   text: "Hello!",
   voice: "alloy",
   apiKey: process.env.SPEECH_GATEWAY_API_KEY,
-  timestamps: "auto",
+  timestamps: "on",
   volumeDbfs: -20,
 })
 ```
 
-String-model requests send the SDK request body to Speech Gateway. `timestamps`, `volumeDbfs`, `providerOptions`, `model`, `voice`, and `text` are JSON body fields. Transport/control fields (`apiKey`, `headers`, `abortSignal`, `maxRetries`) are not JSON body fields. Gateway-owned headers (`Accept`, `Content-Type`, `Authorization`) are set by the SDK and cannot be overridden by caller headers.
+String-model requests route through Speech Gateway. `model`, `voice`, `text`, `volumeDbfs`, and `providerOptions` are JSON body fields; `timestamps` selects the gateway endpoint. Transport/control fields (`apiKey`, `headers`, `abortSignal`, `maxRetries`) are not JSON body fields. Gateway-owned headers (`Accept`, `Content-Type`, `Authorization`) are set by the SDK and cannot be overridden by caller headers.
 
 ## Factory Functions
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createOpenAI } from "@speech-sdk/core/openai"
+import { createOpenAI } from "@speech-sdk/core/providers"
 
 const myOpenAI = createOpenAI({
   apiKey: "sk-...",
@@ -46,22 +46,9 @@ await generateSpeech({ model: openai(), text: "...", voice: "alloy" })
 
 ## Available Factories
 
-| Import                           | Function               |
-| -------------------------------- | ---------------------- |
-| `@speech-sdk/core/openai`        | `createOpenAI()`       |
-| `@speech-sdk/core/elevenlabs`    | `createElevenLabs()`   |
-| `@speech-sdk/core/deepgram`      | `createDeepgram()`     |
-| `@speech-sdk/core/cartesia`      | `createCartesia()`     |
-| `@speech-sdk/core/hume`          | `createHume()`         |
-| `@speech-sdk/core/google`        | `createGoogle()`       |
-| `@speech-sdk/core/fish-audio`    | `createFishAudio()`    |
-| `@speech-sdk/core/inworld`       | `createInworld()`      |
-| `@speech-sdk/core/murf`          | `createMurf()`         |
-| `@speech-sdk/core/resemble`      | `createResemble()`     |
-| `@speech-sdk/core/fal-ai`        | `createFal()`          |
-| `@speech-sdk/core/mistral`       | `createMistral()`      |
-| `@speech-sdk/core/xai`           | `createXai()`          |
-| `@speech-sdk/core/gateway`       | `createSpeechGateway()` |
+| Import | Functions |
+| --- | --- |
+| `@speech-sdk/core/providers` | `createOpenAI()`, `createElevenLabs()`, `createDeepgram()`, `createCartesia()`, `createHume()`, `createGoogle()`, `createFishAudio()`, `createInworld()`, `createMurf()`, `createResemble()`, `createFal()`, `createMistral()`, `createXai()`, `createSpeechGateway()`, `createOpenAISTT()` |
 
 ## Configuration Options
 
@@ -93,7 +80,7 @@ interface GenerateSpeechOptions {
   voice: Voice
   providerOptions?: object          // provider-specific, passed through
   volumeDbfs?: number               // gateway: server-side; direct providers: local WAV normalization
-  timestamps?: "on" | "auto" | "off" // gateway: server-side; direct providers: native or STT fallback
+  timestamps?: "on" | "off"          // default "off"; gateway: server-side; direct providers: native or STT fallback
   maxRetries?: number               // default 2
   abortSignal?: AbortSignal
   headers?: Record<string, string>

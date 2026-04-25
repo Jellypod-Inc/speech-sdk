@@ -61,12 +61,12 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
   });
 
   describe("timestamps (native audio_timestamps)", () => {
-    it("returns word timestamps on the auto default", async () => {
+    it("returns word timestamps on the timestamps:on", async () => {
       const result = await generateSpeech({
         model: "resemble/default",
         text: TEST_TEXT,
         voice,
-        timestamps: "auto",
+        timestamps: "on",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

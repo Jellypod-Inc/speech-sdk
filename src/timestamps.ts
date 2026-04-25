@@ -27,12 +27,10 @@ export interface ConversationWordTimestamp extends WordTimestamp {
 /**
  * Controls whether `generateSpeech()` returns word timestamps.
  *
- * - `"auto"` (default): return timestamps only if the TTS provider supplies
- *   them natively. Free, no extra API calls.
- * - `"on"`: always return timestamps. Uses native data when available;
- *   otherwise falls back to a speech-to-text round-trip of the synthesized
- *   audio (cost + latency implications).
- * - `"off"`: never return timestamps, even when the provider would give them
- *   away for free.
+ * - `"off"` (default): never return timestamps.
+ * - `"on"`: always return timestamps. Uses native alignment when the TTS
+ *   provider supplies it; otherwise falls back to a speech-to-text round-trip
+ *   of the synthesized audio (cost + latency implications). Through Speech
+ *   Gateway the fallback runs server-side.
  */
-export type TimestampMode = "on" | "auto" | "off";
+export type TimestampMode = "on" | "off";

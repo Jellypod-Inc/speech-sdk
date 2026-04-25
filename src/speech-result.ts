@@ -12,9 +12,9 @@ export interface SpeechResult {
   readonly metadata: SpeechMetadata;
   readonly providerMetadata?: Record<string, unknown>;
   /**
-   * Word-level alignment data. Populated when `timestamps: "on"` or when
-   * `timestamps: "auto"` (default) is combined with a TTS provider that
-   * returns alignment natively. Undefined otherwise.
+   * Word-level alignment data. Populated when `timestamps: "on"` is passed —
+   * native alignment when the TTS provider returns it, otherwise derived via
+   * an STT round-trip. Undefined when timestamps are off (the default).
    *
    * Timestamps are always word-granularity with start/end in seconds.
    * Character- or phoneme-level native data is aggregated internally.

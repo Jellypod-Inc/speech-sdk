@@ -131,17 +131,6 @@ describe("OpenAI e2e", () => {
   });
 
   describe("timestamps (derived via Whisper fallback)", () => {
-    it("auto mode does NOT derive timestamps (OpenAI TTS has no native alignment)", async () => {
-      const result = await generateSpeech({
-        model: "openai/tts-1",
-        text: TEST_TEXT,
-        voice: VOICE,
-        timestamps: "auto",
-      });
-
-      expect(result.timestamps).toBeUndefined();
-    });
-
     it("on mode pipes synthesized audio through Whisper and returns word timestamps", async () => {
       const result = await generateSpeech({
         model: "openai/tts-1",

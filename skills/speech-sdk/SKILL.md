@@ -52,7 +52,7 @@ for await (const chunk of result.audio) process.stdout.write(chunk)
 If you're trying to create speech with multiple speakers (podcasts, dialogues, or any output with multiple voices), this is how you should do it. Use `generateConversation` — it returns a single stitched `SpeechResult` and handles dispatch, concatenation, gaps, and volume normalization. Some providers have native multi-speaker endpoints it will route to.
 
 ```ts
-import { generateConversation } from "@speech-sdk/core/conversation"
+import { generateConversation } from "@speech-sdk/core"
 
 const result = await generateConversation({
   model: "openai/gpt-4o-mini-tts", // default for every turn
@@ -71,13 +71,13 @@ result.audio.mediaType  // e.g. "audio/wav"
 - **Dispatch**: providers with a native multi-speaker endpoint (e.g. ElevenLabs stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker) take the "native" path; everything else is stitched locally (parallel single-turn calls → PCM concat with inter-turn gap).
 - **Volume normalization**: on by default — every conversation is RMS-leveled to ~-20 dBFS so separate outputs play back at the same loudness. Pass `normalizeVolume: false` to skip, or `volumeDbfs: -18` to retarget.
 - **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn).
-- **Errors**: `ConversationInputError` (bad input), `DialogueConstraintError` (native path can't satisfy turns), `StitchUnsupportedError` (provider can't emit PCM for stitching). Import from `@speech-sdk/core/conversation/errors`.
+- **Errors**: `ConversationInputError` (bad input), `DialogueConstraintError` (native path can't satisfy turns), `StitchUnsupportedError` (provider can't emit PCM for stitching). Import from `@speech-sdk/core`.
 
 See `references/conversation.md` for the full API, cross-provider mixing, and native-vs-stitch dispatch details.
 
 ## Word-Level Timestamps
 
-Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"auto"`. With direct provider factories, `"auto"` returns native timestamps when available and `"on"` falls back to an STT round-trip when the provider has no native alignment. Gateway routing: `generateSpeech` always hits `/v1/audio/speech/with-timestamps` when mode is `"auto"`/`"on"` and relies on the gateway (no client-side STT). `generateConversation` returns mixed audio from `/v1/audio/conversation` — `"auto"` returns without timestamps (endpoint carries none on the wire yet), `"on"` runs STT locally over the mixed audio and attributes words back to turns. When `/v1/audio/conversation/with-timestamps` ships, the SDK switches to the server-side path and the local fallback goes away.
+Pass `timestamps: "on"` to force word-level alignment alongside the audio. Default is `"off"`. With direct provider factories, `"on"` uses native alignment when available and falls back to an STT round-trip when the provider has no native alignment. Gateway routing: `generateSpeech` hits `/v1/audio/speech/with-timestamps` when mode is `"on"` and relies on the gateway (no client-side STT). `generateConversation` returns mixed audio from `/v1/audio/conversation`; `"on"` runs STT locally over the mixed audio and attributes words back to turns.
 
 ```ts
 const result = await generateSpeech({
@@ -103,9 +103,9 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 
 ### Features
 
-- `references/streaming.md` — `streamSpeech`, `StreamSpeechResult`, browser playback, `hasFeature(FEATURES.STREAMING)`, `StreamingNotSupportedError`
+- `references/streaming.md` — `streamSpeech`, `StreamSpeechResult`, browser playback, `StreamingNotSupportedError`
 - `references/conversation.md` — `generateConversation`, turns, native-vs-stitch dispatch, volume normalization, cross-provider mixing
-- `references/timestamps.md` — `timestamps: "on" | "auto" | "off"`, native vs derived cascade, `timestampProvider` override, STT fallback, conversation behavior
+- `references/timestamps.md` — `timestamps: "on" | "off"`, native vs derived cascade, `timestampProvider` override, STT fallback, conversation behavior
 - `references/audio-tags.md` — standardized `[tag]` syntax, per-provider passthrough vs SSML vs stripped-with-warning
 - `references/voice-cloning.md` — `{ audio }` / `{ url }` voice forms, which providers support cloning
 
@@ -124,7 +124,7 @@ generateSpeech({
   voice: Voice,                     // string | { url } | { audio }
   providerOptions?: object,         // pass-through to provider API (no transformation)
   volumeDbfs?: number,              // RMS target loudness (≤ 0); gateway does server-side, direct providers use local WAV normalization
-  timestamps?: "on" | "auto" | "off", // word-level alignment, default "auto"
+  timestamps?: "on" | "off",        // word-level alignment, default "off"
   timestampProvider?: ResolvedSTTModel, // override the STT fallback (e.g. createOpenAISTT({ apiKey })("whisper-1"))
   maxRetries?: number,              // default 2; retries 5xx/network only
   abortSignal?: AbortSignal,
@@ -134,4 +134,4 @@ generateSpeech({
 
 For string models, `providerOptions` are sent inside the Speech Gateway JSON body and gateway-owned transport headers (`Accept`, `Content-Type`, `Authorization`) cannot be overridden by caller headers. For direct provider factories, `providerOptions` use each upstream provider's own field names; some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
 
-Use `isSpeechGatewayModel(resolved)` for gateway-specific branches. Current gateway-specific `generateSpeech` behavior sends `timestamps` and `volumeDbfs` to Speech Gateway instead of doing local STT or local WAV normalization.
+String model inputs are gateway-routed. Factory-created `ResolvedModel` inputs call direct providers. Current gateway-specific `generateSpeech` behavior sends `volumeDbfs` to Speech Gateway and selects a timestamp endpoint when `timestamps` is `"on"` instead of doing local STT or local WAV normalization.

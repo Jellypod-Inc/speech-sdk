@@ -12,7 +12,6 @@ String models such as `"openai/gpt-4o-mini-tts"` and `"elevenlabs/eleven_v3"` ar
   "model": "openai/gpt-4o-mini-tts",
   "voice": "alloy",
   "text": "Hello!",
-  "timestamps": "auto",
   "volumeDbfs": -20,
   "providerOptions": {}
 }
@@ -22,15 +21,7 @@ Use direct factories (`createOpenAI()`, `createElevenLabs()`, etc.) to bypass Sp
 
 ## Gateway-Specific Branches
 
-Use `isSpeechGatewayModel(resolved)` when SDK logic needs to branch for Speech Gateway. Gateway routing is request-level behavior, not model metadata.
-
-```ts
-if (isSpeechGatewayModel(resolved)) {
-  // Send gateway-supported options to the gateway and skip local fallbacks.
-}
-```
-
-Current gateway-specific `generateSpeech` behavior sends `timestamps` and `volumeDbfs` to Speech Gateway. Direct provider models keep native-provider behavior and local fallbacks.
+String models are gateway requests. Factory-created models are direct provider requests. Gateway routing is request-level behavior, not model metadata. Current gateway-specific `generateSpeech` behavior sends `volumeDbfs` to Speech Gateway and selects a timestamp endpoint when `timestamps` is `"on"`. Direct provider models keep native-provider behavior and local fallbacks.
 
 ## Provider Table
 
@@ -72,8 +63,8 @@ Support is per-model — see each provider file in `providers/<name>.md`.
 
 **Timestamps column legend:**
 
-- **Native** — TTS response carries word alignment. `timestamps: "auto"` returns it for free; `timestamps: "on"` uses it. Currently: ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`), Murf (`GEN2`), Hume (`octave-2`), Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`), Cartesia (`sonic-3`, `sonic-2`), Resemble (`default`).
-- **Via STT** — no native alignment. `timestamps: "on"` transcribes the synthesized audio via the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override (extra cost + latency). `timestamps: "auto"` returns `undefined`.
+- **Native** — TTS response carries word alignment. `timestamps: "on"` uses the native path with no STT round-trip. Currently: ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`), Murf (`GEN2`), Hume (`octave-2`), Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`), Cartesia (`sonic-3`, `sonic-2`), Resemble (`default`).
+- **Via STT** — no native alignment. `timestamps: "on"` transcribes the synthesized audio via the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override (extra cost + latency).
 
 See `timestamps.md` for the full cascade and overrides.
 

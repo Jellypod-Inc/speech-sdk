@@ -88,7 +88,7 @@ const second = await generateSpeech({
 ## Factory
 
 ```ts
-import { createElevenLabs } from "@speech-sdk/core/elevenlabs"
+import { createElevenLabs } from "@speech-sdk/core/providers"
 const elevenlabs = createElevenLabs({ apiKey: process.env.ELEVENLABS_API_KEY })
 await generateSpeech({ model: elevenlabs("eleven_v3"), text: "...", voice: "..." })
 ```

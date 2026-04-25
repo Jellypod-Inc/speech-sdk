@@ -67,12 +67,12 @@ describe.skipIf(!hasKey)("Inworld e2e", () => {
     it.each([
       "inworld-tts-1.5-max",
       "inworld-tts-1.5-mini",
-    ] as const)("returns word timestamps on the auto default for %s", async (modelId) => {
+    ] as const)("returns word timestamps on the timestamps:on for %s", async (modelId) => {
       const result = await generateSpeech({
         model: `inworld/${modelId}`,
         text: TEST_TEXT,
         voice,
-        timestamps: "auto",
+        timestamps: "on",
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -25,38 +25,31 @@ result.timestamps
 ## Modes
 
 ```ts
-type TimestampMode = "on" | "auto" | "off"
+type TimestampMode = "on" | "off"
 ```
 
 | Mode     | Behavior                                                                                              |
 | -------- | ----------------------------------------------------------------------------------------------------- |
-| `"auto"` *(default)* | Gateway decides whether to return timestamps; direct providers return native timestamps only. |
-| `"on"`   | Gateway must return timestamps for string models. Direct providers use native alignment or STT fallback. |
-| `"off"`  | Never return timestamps, even when the provider would return them for free.                          |
+| `"on"`   | Always return timestamps. Native alignment when the provider supplies it, STT fallback otherwise.     |
+| `"off"` *(default)* | Never return timestamps. |
 
 ## Speech Gateway Behavior
 
 String models route through Speech Gateway. The SDK picks the endpoint based on the requested mode — the wire body carries no `timestamps` field.
 
-- `generateSpeech` with `timestamps: "auto"` or `"on"` → `POST /v1/audio/speech/with-timestamps` (JSON envelope: `{ audio, mediaType, warnings, timestamps }`).
-- `generateSpeech` with `timestamps: "off"` → `POST /v1/audio/speech` (raw bytes, streamed when the provider supports it).
+- `generateSpeech` with `timestamps: "on"` → `POST /v1/audio/speech/with-timestamps` (JSON envelope: `{ audio, mediaType, warnings, timestamps }`).
+- `generateSpeech` with `timestamps: "off"` (default) → `POST /v1/audio/speech` (raw bytes, streamed when the provider supports it).
 - `generateConversation` with any mode → `POST /v1/audio/conversation` (raw mixed audio bytes). The endpoint does not carry word alignment on the wire today; a `/v1/audio/conversation/with-timestamps` variant is pending server-side support for per-turn attribution.
 
-For `generateSpeech`, all timestamp work happens on the gateway — the SDK does not run a client-side STT fallback. If the response is missing timestamps, `timestamps: "on"` throws `GatewayTimestampsUnavailableError` and `"auto"` returns without them.
+For `generateSpeech`, all timestamp work happens on the gateway — the SDK does not run a client-side STT fallback. If the response is missing timestamps, `timestamps: "on"` throws `GatewayTimestampsUnavailableError`.
 
-For `generateConversation`, `timestamps: "on"` runs STT locally over the mixed audio and attributes words back to turns via text-matching; `"auto"` returns without timestamps. When the gateway ships `/v1/audio/conversation/with-timestamps` the SDK will hit that endpoint and this local path goes away.
+For `generateConversation`, `timestamps: "on"` runs STT locally over the mixed audio and attributes words back to turns via text-matching. When the gateway ships `/v1/audio/conversation/with-timestamps` the SDK will hit that endpoint and this local path goes away.
 
-Use `isSpeechGatewayModel(resolved)` for gateway-specific timestamp branches:
-
-```ts
-if (isSpeechGatewayModel(resolved)) {
-  // Gateway routing — see rules above.
-}
-```
+String model inputs are gateway-routed. Factory-created `ResolvedModel` inputs are direct-provider requests.
 
 ## Direct Provider Cascade
 
-For factory-created direct provider models, when `timestamps` is `"on"`, the SDK resolves timestamps in this order. (`"auto"` returns native timestamps only — it never triggers STT; if the provider has no native alignment, `timestamps` is `undefined` on the result.)
+For factory-created direct provider models, when `timestamps` is `"on"`, the SDK resolves timestamps in this order:
 
 1. **Native** — provider returns alignment directly in its TTS response (e.g. ElevenLabs `/with-timestamps`).
 2. **User override `timestampProvider`** — a `ResolvedSTTModel` constructed via a factory. Use this to route to a cheaper in-house Whisper or a gateway.
@@ -66,27 +59,29 @@ For factory-created direct provider models, when `timestamps` is `"on"`, the SDK
 
 Direct provider support varies by model:
 
-- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` return alignment via `/with-timestamps`. `timestamps: "auto"` gets it for free.
+- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5` return alignment via `/with-timestamps`. `timestamps: "on"` uses native alignment with no STT round-trip.
 
-Providers without native alignment are audio-only on the direct path. `timestamps: "auto"` returns `undefined`; `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio. This STT fallback does not run for `generateSpeech` through the Speech Gateway (the gateway handles it server-side), but it does run for gateway-routed `generateConversation` with `timestamps: "on"` until `/v1/audio/conversation/with-timestamps` ships.
+Providers without native alignment are audio-only on the direct path. `timestamps: "on"` routes through the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override, which transcribes the synthesized audio. This STT fallback does not run for `generateSpeech` through the Speech Gateway, but it does run for gateway-routed `generateConversation` with `timestamps: "on"` until `/v1/audio/conversation/with-timestamps` ships.
 
-Check a specific model at runtime:
+Check a specific model's public metadata at runtime:
 
 ```ts
-import { getFeature, type TimestampsFeature } from "@speech-sdk/core"
+import type { TimestampsFeature } from "@speech-sdk/core/types"
 
-const feat = getFeature<TimestampsFeature>(modelInfo, "timestamps")
+const feat = modelInfo.features.find(
+  (f): f is TimestampsFeature => typeof f !== "string" && f.id === "timestamps",
+)
 // { id: "timestamps", mode: "native" } → alignment in the TTS response
-// otherwise                            → STT fallback on "on", undefined on "auto"
+// otherwise                            → STT fallback when timestamps: "on"
 ```
 
 ## Custom STT Provider
 
-`timestampProvider` accepts a `ResolvedSTTModel`. Construct one via a factory — the built-in OpenAI STT factory lives at the `@speech-sdk/core/stt/openai` subpath:
+`timestampProvider` accepts a `ResolvedSTTModel`. Construct one via a factory from `@speech-sdk/core/providers`:
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createOpenAISTT } from "@speech-sdk/core/stt/openai"
+import { createOpenAISTT } from "@speech-sdk/core/providers"
 
 const whisper = createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })
 
@@ -196,15 +191,18 @@ interface ConversationWordTimestamp extends WordTimestamp {
 }
 ```
 
-Exported from `@speech-sdk/core`:
+Types are exported from `@speech-sdk/core/types`:
 
 - `TimestampMode`, `WordTimestamp`, `ConversationWordTimestamp`
-- `TimestampsFeature`, `FEATURES.TIMESTAMPS`, `getFeature`, `hasFeature`
+- `TimestampsFeature`
 - `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`
-- `TimestampKeyMissingError`, `ConversationTimestampAttributionError`
-- `GatewayTimestampsUnavailableError`, `isSpeechGatewayModel`
 
-From `@speech-sdk/core/stt/openai`:
+Errors are exported from `@speech-sdk/core`:
+
+- `TimestampKeyMissingError`, `ConversationTimestampAttributionError`
+- `GatewayTimestampsUnavailableError`
+
+From `@speech-sdk/core/providers`:
 
 - `createOpenAISTT`, `OpenAISpeechToTextProvider`
 

@@ -65,7 +65,7 @@ The SDK has two ways to reach a provider, and the choice is made by **how you pa
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
 // 2. Factory → calls the provider directly (no proxy hop)
-//    Reads the provider's env var (e.g. OPENAI_API_KEY), or pass apiKey explicitly.
+//    Reads the provider's env var (e.g. OPENAI_API_KEY), or pass apiKey to the factory.
 import { createOpenAI } from '@speech-sdk/core/providers';
 await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', voice: 'alloy' });
 ```
@@ -74,7 +74,7 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 |---|---|---|
 | When to use | You want one bill, one key, easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
 | Setup | `SPEECH_GATEWAY_API_KEY` only | One env var per provider you use |
-| Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `apiKey` option → `<PROVIDER>_API_KEY` |
+| Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
 | Endpoint | `api.speechgateway.com` | Provider's own API |
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
@@ -174,8 +174,8 @@ result.timestamps;
 
 | Mode | Behavior |
 |---|---|
-| `"off"` *(default)* | Never return timestamps. |
 | `"on"` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
+| `"off"` *(default)* | Never return timestamps. |
 
 On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override by constructing a `ResolvedSTTModel` via a factory and passing it as `timestampProvider`:
 

@@ -56,7 +56,7 @@ providerOptions: {
 ## Factory
 
 ```ts
-import { createMistral } from "@speech-sdk/core/mistral"
+import { createMistral } from "@speech-sdk/core/providers"
 const mistral = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
 await generateSpeech({ model: mistral(), text: "...", voice: { audio: "..." } })
 ```

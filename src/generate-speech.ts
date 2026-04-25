@@ -45,13 +45,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   volumeDbfs?: number;
   /**
    * Controls whether the returned `SpeechResult` includes word-level
-   * timestamps. Default `"auto"` — return natively when the TTS provider
-   * supplies alignment, otherwise omit. `"on"` forces word timestamps.
+   * timestamps. Default `"off"`. `"on"` forces word timestamps — native
+   * alignment when the TTS provider supplies it, STT fallback otherwise.
    *
    * Gateway-routed string models ask Speech Gateway for timestamps and do not
-   * run a client-side STT fallback. Direct providers still fall back to STT
-   * when they cannot return timestamps natively. `"off"` suppresses timestamps
-   * even for providers that would return them free.
+   * run a client-side STT fallback. Direct providers fall back to STT locally
+   * when they cannot return timestamps natively.
    */
   timestamps?: TimestampMode;
   /**
@@ -68,7 +67,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     abortSignal,
     headers,
     volumeDbfs,
-    timestamps: timestampMode = "auto",
+    timestamps: timestampMode = "off",
     timestampProvider,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
@@ -109,7 +108,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative =
-    timestampMode !== "off" && (hasNativeTimestamps || isGateway);
+    timestampMode === "on" && (hasNativeTimestamps || isGateway);
 
   logTimestampDecision({
     modelIdentifier,
@@ -257,10 +256,6 @@ async function resolveTimestamps(args: {
     return resultTimestamps;
   }
 
-  if (timestampMode !== "on") {
-    return undefined;
-  }
-
   const timestamps = await deriveTimestampsViaSTT({
     ttsModel: modelIdentifier,
     audio,
@@ -308,13 +303,7 @@ function logTimestampDecision(args: {
   }
   if (willRequestNative) {
     debug(
-      `${modelIdentifier}: timestamps: "${mode}" — requesting native alignment from the provider.`
-    );
-    return;
-  }
-  if (mode === "auto") {
-    debug(
-      `${modelIdentifier}: timestamps: "auto" — model has no native alignment; skipping. Pass timestamps: "on" to derive via STT (adds a round-trip of the synthesized audio through Whisper by default).`
+      `${modelIdentifier}: timestamps: "on" — requesting native alignment from the provider.`
     );
     return;
   }

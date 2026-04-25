@@ -59,7 +59,7 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createOpenAI } from "@speech-sdk/core/openai"
+import { createOpenAI } from "@speech-sdk/core/providers"
 
 const openai = createOpenAI({ apiKey: "sk-...", baseURL: "https://my-proxy.com/v1" })
 await generateSpeech({ model: openai("gpt-4o-mini-tts"), text: "...", voice: "alloy" })

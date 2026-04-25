@@ -60,8 +60,17 @@ export async function generateConversation<V extends Voice = Voice>(
 ): Promise<ConversationResult> {
   validateConversationInput(options);
 
+  const topLevelResolved =
+    options.model === undefined
+      ? undefined
+      : (resolveModel(options.model, {
+          apiKey: options.apiKey,
+        }) as ResolvedModel<V>);
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
-    const model = turn.model ?? options.model;
+    if (turn.model === undefined && topLevelResolved) {
+      return topLevelResolved;
+    }
+    const model = turn.model;
     if (!model) {
       throw new Error("generateConversation: model is required");
     }
@@ -120,7 +129,7 @@ export async function generateConversation<V extends Voice = Voice>(
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
-    timestamps: options.timestamps ?? "auto",
+    timestamps: options.timestamps ?? "off",
     timestampProvider: options.timestampProvider,
   });
 
@@ -172,9 +181,7 @@ async function runGateway<V extends Voice>(args: {
   // turn via text-matching. This mirrors what `/v1/audio/conversation/with-
   // timestamps` will do server-side once it ships; at that point the SDK
   // switches to hitting that endpoint and this local fallback goes away.
-  // `"auto"` never triggers STT — the conversation fast-path returns without
-  // timestamps, same as a provider without native alignment.
-  const requestedMode: TimestampMode = options.timestamps ?? "auto";
+  const requestedMode: TimestampMode = options.timestamps ?? "off";
   const sttFallbackNeeded = requestedMode === "on";
 
   // Each turn's voice must be a string over the wire. Object-shaped voices
@@ -233,8 +240,8 @@ async function runGateway<V extends Voice>(args: {
   );
 
   // Resolve timestamps:
-  //   - "off" / "auto"  → undefined (server has no way to return them)
-  //   - "on"            → STT over mixed audio + text-match-attribute to turns[]
+  //   - "off"  → undefined
+  //   - "on"   → STT over mixed audio + text-match-attribute to turns[]
   let timestamps: readonly ConversationWordTimestamp[] | undefined;
   if (sttFallbackNeeded) {
     const derived = await deriveTimestampsViaSTT({
@@ -326,22 +333,17 @@ async function runNative<V extends Voice>(args: {
     ? { ...options.providerOptions, ...stitchOpts.providerOptions }
     : options.providerOptions;
 
-  const timestampMode = options.timestamps ?? "auto";
+  const timestampMode = options.timestamps ?? "off";
   const hasNativeDialogueTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative =
-    (timestampMode === "on" || timestampMode === "auto") &&
-    hasNativeDialogueTimestamps;
+    timestampMode === "on" && hasNativeDialogueTimestamps;
 
   const dialogueId = `${resolved.provider.id}/${resolved.modelId}`;
   if (timestampMode === "off") {
     debug(`${dialogueId} (dialogue): timestamps: "off" — skipping alignment.`);
   } else if (shouldRequestNative) {
     debug(
-      `${dialogueId} (dialogue): timestamps: "${timestampMode}" — requesting native dialogue alignment.`
-    );
-  } else if (timestampMode === "auto") {
-    debug(
-      `${dialogueId} (dialogue): timestamps: "auto" — dialogue endpoint has no native alignment; skipping. Pass timestamps: "on" to derive from the mixed audio via STT, then attribute words back to turns via text-matching.`
+      `${dialogueId} (dialogue): timestamps: "on" — requesting native dialogue alignment.`
     );
   } else {
     debug(
@@ -434,10 +436,9 @@ async function runNative<V extends Voice>(args: {
 }
 
 // Resolves timestamps for the native dialogue path:
-//   - "off"                            → undefined
-//   - native alignment returned        → attribute words to turns and pass through
-//   - "on" without native              → STT fallback, then attribute to turns
-//   - "auto" without native            → undefined
+//   - "off"                       → undefined
+//   - native alignment returned   → attribute words to turns and pass through
+//   - "on" without native         → STT fallback, then attribute to turns
 //
 // On both alignment-bearing branches the flat word list is split back across
 // `turns[]` by greedy text-matching (case-insensitive, punctuation-insensitive)
@@ -445,7 +446,7 @@ async function runNative<V extends Voice>(args: {
 // (`ConversationTimestampAttributionError`), we surface it loudly rather than
 // silently emit a wrong `turnIndex`.
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
-  timestampMode: "on" | "auto" | "off";
+  timestampMode: TimestampMode;
   nativeTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
@@ -464,21 +465,18 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       modelId: args.ttsModel,
     });
   }
-  if (args.timestampMode === "on") {
-    const derived = await deriveTimestampsViaSTT({
-      ttsModel: args.ttsModel,
-      audio: args.audio,
-      mediaType: args.mediaType,
-      timestampProvider: args.timestampProvider,
-      abortSignal: args.abortSignal,
-    });
-    return attributeTimestampsToTurns({
-      timestamps: derived,
-      turns: args.turns,
-      modelId: args.ttsModel,
-    });
-  }
-  return;
+  const derived = await deriveTimestampsViaSTT({
+    ttsModel: args.ttsModel,
+    audio: args.audio,
+    mediaType: args.mediaType,
+    timestampProvider: args.timestampProvider,
+    abortSignal: args.abortSignal,
+  });
+  return attributeTimestampsToTurns({
+    timestamps: derived,
+    turns: args.turns,
+    modelId: args.ttsModel,
+  });
 }
 
 /**
