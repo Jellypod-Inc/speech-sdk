@@ -1,0 +1,29 @@
+src/generate-conversation.ts
+  8a3ab4cf342abbee 143,437
+src/generate-speech.ts
+  8a3ab4cf342abbee 87,226
+src/__tests__/timestamps.test.ts
+  8a3ab4cf342abbee 114-118,128,136-140,163-167,184-188
+src/__tests__/conversation-timestamps.test.ts
+  8a3ab4cf342abbee 173,175,180-184,189-193,327,330-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7e86232a9ad567a77b21e766461fa1c0bd0c9b1f",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 29,
+      "accepted_lines": 57,
+      "overriden_lines": 0
+    }
+  }
+}
