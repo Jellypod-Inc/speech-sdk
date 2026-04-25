@@ -67,7 +67,7 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
         model: "murf/GEN2",
         text: TEST_TEXT,
         voice: "en-US-natalie",
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -95,7 +95,7 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
         model: "murf/GEN2",
         text: TEST_TEXT,
         voice: "en-US-natalie",
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

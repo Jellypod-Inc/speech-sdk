@@ -1,5 +1,4 @@
 import type { ResolvedModel, Voice } from "./speech-provider.js";
-import type { TimestampMode } from "./timestamps.js";
 
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
 export type {
@@ -42,7 +41,6 @@ export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { OpenAISpeechToTextProviderConfig } from "./stt-providers/openai/index.js";
 export type {
   ConversationWordTimestamp,
-  TimestampMode,
   WordTimestamp,
 } from "./timestamps.js";
 
@@ -54,7 +52,7 @@ export interface GenerateSpeechOptions<V extends Voice = Voice> {
   model: string | ResolvedModel<V>;
   providerOptions?: Record<string, unknown>;
   text: string;
-  timestamps?: TimestampMode;
+  timestamps?: boolean;
   voice: V;
   volumeDbfs?: number;
 }

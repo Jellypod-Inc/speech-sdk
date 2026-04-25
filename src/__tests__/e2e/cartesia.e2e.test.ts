@@ -69,7 +69,7 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
         model: "cartesia/sonic-3",
         text: TEST_TEXT,
         voice,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -101,7 +101,7 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
         model: "cartesia/sonic-3",
         text: TEST_TEXT,
         voice,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

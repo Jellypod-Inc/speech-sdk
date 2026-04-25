@@ -122,7 +122,7 @@ describe("ElevenLabs e2e", () => {
         model: "elevenlabs/eleven_flash_v2",
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -153,7 +153,7 @@ describe("ElevenLabs e2e", () => {
         model: "elevenlabs/eleven_flash_v2",
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -1,5 +1,4 @@
 import type { ResolvedModel, Voice } from "../speech-provider.js";
-import type { TimestampMode } from "../timestamps.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
   readonly model?: string | ResolvedModel<V>;
@@ -19,7 +18,7 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   // Default true. Default target -20 dBFS (broadcast/podcast standard).
   readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
-  readonly timestamps?: TimestampMode;
+  readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];
   // dBFS, must be ≤ 0. Default -20.
   readonly volumeDbfs?: number;

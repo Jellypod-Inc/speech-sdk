@@ -356,13 +356,13 @@ describe("generateSpeech", () => {
         text: "Hello",
         voice: "alloy",
         apiKey: "gw-custom-key",
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
-      // `timestamps: "on"` routes through the JSON-with-timestamps URL on the
-      // gateway; the default `"off"` hits `/v1/audio/speech` for raw bytes.
+      // `timestamps: true` routes through the JSON-with-timestamps URL on the
+      // gateway; the default `false` hits `/v1/audio/speech` for raw bytes.
       expect(url).toBe(
         "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
       );
@@ -400,7 +400,7 @@ describe("generateSpeech", () => {
         voice: "alloy",
         apiKey: "gw-custom-key",
         volumeDbfs: -20,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.mediaType).toBe("audio/mpeg");

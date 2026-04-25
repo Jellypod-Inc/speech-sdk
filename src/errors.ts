@@ -100,7 +100,7 @@ export class ConversationTimestampAttributionError extends SpeechSDKError {
       `Failed to attribute timestamps to conversation turns at turn ${args.turnIndex} (${args.modelId}). ` +
         `Expected next word "${args.expected}" but got "${args.observed}". ` +
         "The TTS provider may have inserted, dropped, or reordered words. " +
-        'Pass timestamps: "off" to disable attribution, or use the stitch path (different model per turn) for guaranteed attribution.'
+        "Pass timestamps: false to disable attribution, or use the stitch path (different model per turn) for guaranteed attribution."
     );
     this.name = "ConversationTimestampAttributionError";
     this.turnIndex = args.turnIndex;

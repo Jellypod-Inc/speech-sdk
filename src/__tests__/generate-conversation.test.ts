@@ -271,7 +271,7 @@ describe("generateConversation", () => {
     }
   });
 
-  it('routes timestamps:"on" to /with-timestamps and uses server-attributed words', async () => {
+  it("routes timestamps:true to /with-timestamps and uses server-attributed words", async () => {
     // The gateway's /v1/audio/conversation/with-timestamps endpoint returns a
     // JSON envelope with base64 audio + per-word timestamps already attributed
     // to turns via `turnIndex`. The SDK must hit that URL, send
@@ -313,7 +313,7 @@ describe("generateConversation", () => {
         { voice: "alloy", text: "Hi there." },
         { voice: "nova", text: "Hello!" },
       ],
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(transcribe).not.toHaveBeenCalled();

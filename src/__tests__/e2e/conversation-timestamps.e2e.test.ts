@@ -23,7 +23,7 @@ describe("Conversation timestamps e2e — stitch path", () => {
         { voice: "nova", text: turn3 },
       ],
       gapMs,
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.timestamps).toBeDefined();
@@ -70,7 +70,7 @@ describe("Conversation timestamps e2e — stitch path", () => {
         },
       ],
       gapMs: 200,
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.timestamps).toBeDefined();
@@ -105,7 +105,7 @@ describe("Conversation timestamps e2e — stitch path", () => {
         },
       ],
       gapMs: 200,
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.timestamps).toBeDefined();

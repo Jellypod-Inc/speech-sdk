@@ -125,7 +125,7 @@ describe("generateConversation timestamps — stitch path", () => {
         },
       ],
       gapMs: 200,
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.timestamps).toHaveLength(2);
@@ -159,7 +159,7 @@ describe("generateConversation timestamps — stitch path", () => {
         { model: { provider, modelId: "m" }, voice: "v1", text: "Hi" },
         { model: { provider, modelId: "m" }, voice: "v2", text: "yo" },
       ],
-      timestamps: "off",
+      timestamps: false,
     });
 
     expect(result.timestamps).toBeUndefined();
@@ -195,7 +195,7 @@ describe("generateConversation timestamps — stitch path", () => {
           text: "yo",
         },
       ],
-      timestamps: "on",
+      timestamps: true,
       gapMs: 100,
     });
 
@@ -259,7 +259,7 @@ describe("generateConversation timestamps — stitch path", () => {
         },
       ],
       gapMs: 100,
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.timestamps).toHaveLength(6);
@@ -274,7 +274,7 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
   });
 
-  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback (stitch path)', async () => {
+  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback (stitch path)", async () => {
     // Use the existing stitchTTS helper — features:[] means no native timestamps,
     // so the stitch path will need STT to derive them. No timestampFallback
     // configured → should throw TimestampFallbackNotConfiguredError.
@@ -287,7 +287,7 @@ describe("generateConversation timestamps — stitch path", () => {
           { voice: "a", text: "Hi." },
           { voice: "b", text: "Hello." },
         ],
-        timestamps: "on",
+        timestamps: true,
       })
     ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
   });
@@ -309,7 +309,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "a", text: "Hello" },
         { voice: "b", text: "there" },
       ],
-      timestamps: "on",
+      timestamps: true,
       normalizeVolume: false, // skip the decode path for MP3 response
     });
 
@@ -336,7 +336,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "a", text: "Hello" },
         { voice: "b", text: "there" },
       ],
-      timestamps: "on",
+      timestamps: true,
       normalizeVolume: false,
     });
 
@@ -357,7 +357,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "a", text: "Hi" },
         { voice: "b", text: "yo" },
       ],
-      timestamps: "off",
+      timestamps: false,
       normalizeVolume: false,
     });
 
@@ -386,7 +386,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "a", text: "Hello there, friend." },
         { voice: "b", text: "How are you?" },
       ],
-      timestamps: "on",
+      timestamps: true,
       normalizeVolume: false,
     });
 
@@ -416,7 +416,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "a", text: "hello" },
         { voice: "b", text: "world" },
       ],
-      timestamps: "on",
+      timestamps: true,
       normalizeVolume: false,
     });
 
@@ -425,7 +425,7 @@ describe("generateConversation timestamps — native path", () => {
     expect(result.timestamps?.[1]?.turnIndex).toBe(1);
   });
 
-  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback (native path)', async () => {
+  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback (native path)", async () => {
     const provider = nativeTTS({});
 
     await expect(
@@ -435,7 +435,7 @@ describe("generateConversation timestamps — native path", () => {
           { voice: "a", text: "Hi." },
           { voice: "b", text: "Hello." },
         ],
-        timestamps: "on",
+        timestamps: true,
         normalizeVolume: false,
       })
     ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
@@ -461,7 +461,7 @@ describe("generateConversation timestamps — native path", () => {
           { voice: "a", text: "Hello there." },
           { voice: "b", text: "How are you?" },
         ],
-        timestamps: "on",
+        timestamps: true,
         normalizeVolume: false,
       })
     ).rejects.toThrow(ConversationTimestampAttributionError);
@@ -473,7 +473,7 @@ describe("generateConversation timestamps — native path", () => {
           { voice: "a", text: "Hello there." },
           { voice: "b", text: "How are you?" },
         ],
-        timestamps: "on",
+        timestamps: true,
         normalizeVolume: false,
       })
     ).rejects.toThrow(ATTRIBUTION_FAILED_RE);

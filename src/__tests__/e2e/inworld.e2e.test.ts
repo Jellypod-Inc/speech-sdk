@@ -72,7 +72,7 @@ describe.skipIf(!hasKey)("Inworld e2e", () => {
         model: `inworld/${modelId}`,
         text: TEST_TEXT,
         voice,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe.skipIf(!hasKey)("Inworld e2e", () => {
         model: "inworld/inworld-tts-1.5-max",
         text: TEST_TEXT,
         voice,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

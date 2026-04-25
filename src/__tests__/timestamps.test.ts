@@ -96,7 +96,7 @@ describe("generateSpeech timestamps option", () => {
       model: { provider, modelId: "t-model" },
       text: "Hi",
       voice: "v",
-      timestamps: "off",
+      timestamps: false,
     });
 
     expect(captured).toBe(false);
@@ -118,7 +118,7 @@ describe("generateSpeech timestamps option", () => {
       },
       text: "Yo",
       voice: "v",
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(stt.transcribe).not.toHaveBeenCalled();
@@ -140,7 +140,7 @@ describe("generateSpeech timestamps option", () => {
       },
       text: "Hello world",
       voice: "v",
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(stt.transcribe).toHaveBeenCalledOnce();
@@ -167,7 +167,7 @@ describe("generateSpeech timestamps option", () => {
       },
       text: "Hello",
       voice: "v",
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(captured).toBe(true);
@@ -188,14 +188,14 @@ describe("generateSpeech timestamps option", () => {
         },
         text: "Hello",
         voice: "v",
-        timestamps: "on",
+        timestamps: true,
       })
     ).rejects.toThrow(GatewayTimestampsUnavailableError);
 
     expect(stt.transcribe).not.toHaveBeenCalled();
   });
 
-  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback configured', async () => {
+  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback configured", async () => {
     const fakeBytes = new Uint8Array([65]);
     const provider: SpeechProvider = {
       id: "stub",
@@ -214,7 +214,7 @@ describe("generateSpeech timestamps option", () => {
         model: { provider, modelId: "m" },
         voice: "v",
         text: "hi",
-        timestamps: "on",
+        timestamps: true,
       })
     ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
   });
@@ -250,7 +250,7 @@ describe("generateSpeech timestamps option", () => {
       },
       voice: "v",
       text: "hi",
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(transcribe).toHaveBeenCalledTimes(1);

@@ -140,7 +140,7 @@ describe("OpenAI e2e", () => {
         model: openai("tts-1"),
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

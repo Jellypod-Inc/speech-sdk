@@ -7,5 +7,3 @@ export interface WordTimestamp {
 export interface ConversationWordTimestamp extends WordTimestamp {
   readonly turnIndex: number;
 }
-
-export type TimestampMode = "on" | "off";

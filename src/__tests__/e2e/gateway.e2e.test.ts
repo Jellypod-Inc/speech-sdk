@@ -14,7 +14,7 @@ describe.skipIf(!hasKey)("Speech Gateway e2e", () => {
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello world from the gateway.",
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -111,7 +111,7 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
         { voice: "nova", text: "And I am Nova, nice to meet you." },
         { voice: "alloy", text: "Great, let us get started." },
       ],
-      timestamps: "on",
+      timestamps: true,
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -67,7 +67,7 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
         model: "hume/octave-2",
         text: TEST_TEXT,
         voice: "Kora",
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -100,7 +100,7 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
         model: "hume/octave-2",
         text: TEST_TEXT,
         voice: "Kora",
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

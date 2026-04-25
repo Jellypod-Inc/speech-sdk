@@ -2,10 +2,7 @@ import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
-import type {
-  ConversationWordTimestamp,
-  TimestampMode,
-} from "../timestamps.js";
+import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
   concatPcmToWav,
   dbfsToInt16Rms,
@@ -28,7 +25,7 @@ interface StitchInput<V extends Voice = Voice> {
     mediaType: string;
   }[];
   readonly timestampFallback?: ResolvedSTTModel;
-  readonly timestamps: TimestampMode;
+  readonly timestamps: boolean;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
   readonly volumeDbfs?: number;
@@ -148,8 +145,7 @@ export async function runStitch<V extends Voice>(
     (p) => p.segment.pcm.length / p.segment.sampleRate
   );
   const allTurnsHaveTimestamps =
-    input.timestamps !== "off" &&
-    perTurn.every((p) => p.result.timestamps !== undefined);
+    input.timestamps && perTurn.every((p) => p.result.timestamps !== undefined);
 
   let timestamps: ConversationWordTimestamp[] | undefined;
   if (allTurnsHaveTimestamps) {
@@ -170,12 +166,12 @@ export async function runStitch<V extends Voice>(
     debug(
       `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s).`
     );
-  } else if (input.timestamps !== "off") {
+  } else if (input.timestamps) {
     const missing = perTurn
       .map((p, i) => (p.result.timestamps === undefined ? i : -1))
       .filter((i) => i !== -1);
     debug(
-      `stitch: returning no timestamps — ${missing.length}/${perTurn.length} turn(s) had no alignment data (turns: ${missing.join(", ")}). Use timestamps: "on" and/or mark provider models as native/derived to get full coverage.`
+      `stitch: returning no timestamps — ${missing.length}/${perTurn.length} turn(s) had no alignment data (turns: ${missing.join(", ")}). Pass timestamps: true and/or mark provider models as native/derived to get full coverage.`
     );
   }
 

@@ -22,7 +22,7 @@ import {
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
-import type { TimestampMode, WordTimestamp } from "./timestamps.js";
+import type { WordTimestamp } from "./timestamps.js";
 
 export async function generateSpeech<V extends Voice = Voice>(options: {
   model: string | ResolvedModel<V>;
@@ -36,7 +36,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   // Must be ≤ 0. Direct providers without a decodable output mode throw
   // VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
-  timestamps?: TimestampMode;
+  timestamps?: boolean;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -44,7 +44,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     abortSignal,
     headers,
     volumeDbfs,
-    timestamps: timestampMode = "off",
+    timestamps = false,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
@@ -81,13 +81,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   }
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
-  const shouldRequestNative =
-    timestampMode === "on" && (hasNativeTimestamps || isGateway);
+  const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
 
   const effectiveFallback = resolved.fallbackSTT;
   logTimestampDecision({
     modelIdentifier,
-    mode: timestampMode,
+    enabled: timestamps,
     hasNative: hasNativeTimestamps,
     willRequestNative: shouldRequestNative,
     effectiveFallback,
@@ -138,7 +137,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     throw new NoSpeechGeneratedError();
   }
 
-  if (isGateway && timestampMode === "on" && !result.timestamps?.length) {
+  if (isGateway && timestamps && !result.timestamps?.length) {
     throw new GatewayTimestampsUnavailableError(modelIdentifier);
   }
 
@@ -164,8 +163,8 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     (await computeAudioDuration(audio.uint8Array, outputMediaType)) ??
     result.audioDurationMs;
 
-  const timestamps = await resolveTimestamps({
-    timestampMode,
+  const resolvedTimestamps = await resolveTimestamps({
+    timestamps,
     modelIdentifier,
     resolved,
     resultTimestamps: result.timestamps,
@@ -187,7 +186,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
-    timestamps,
+    timestamps: resolvedTimestamps,
   };
 }
 
@@ -200,7 +199,7 @@ function mergeWarnings(
 }
 
 async function resolveTimestamps(args: {
-  timestampMode: TimestampMode;
+  timestamps: boolean;
   modelIdentifier: string;
   resolved: ResolvedModel;
   resultTimestamps: readonly WordTimestamp[] | undefined;
@@ -208,7 +207,7 @@ async function resolveTimestamps(args: {
   mediaType: string;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
-  if (args.timestampMode === "off") {
+  if (!args.timestamps) {
     return undefined;
   }
   if (args.resultTimestamps?.length) {
@@ -264,25 +263,25 @@ function preprocessText(
 // STT-fallback branch is info-level because it changes billing.
 function logTimestampDecision(args: {
   modelIdentifier: string;
-  mode: TimestampMode;
+  enabled: boolean;
   hasNative: boolean;
   willRequestNative: boolean;
   effectiveFallback: ResolvedSTTModel | undefined;
 }): void {
-  const { modelIdentifier, mode, willRequestNative } = args;
-  if (mode === "off") {
-    debug(`${modelIdentifier}: timestamps: "off" — skipping alignment.`);
+  const { modelIdentifier, enabled, willRequestNative } = args;
+  if (!enabled) {
+    debug(`${modelIdentifier}: timestamps: false — skipping alignment.`);
     return;
   }
   if (willRequestNative) {
     debug(
-      `${modelIdentifier}: timestamps: "on" — requesting native alignment from the provider.`
+      `${modelIdentifier}: timestamps: true — requesting native alignment from the provider.`
     );
     return;
   }
-  // mode === "on" and no native support → will fall back to STT
+  // enabled and no native support → will fall back to STT
   info(
-    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.effectiveFallback)} for word timestamps (adds a round-trip).`
+    `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.effectiveFallback)} for word timestamps (adds a round-trip).`
   );
 }
 

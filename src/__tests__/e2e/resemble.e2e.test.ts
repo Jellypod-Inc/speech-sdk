@@ -66,7 +66,7 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
         model: "resemble/default",
         text: TEST_TEXT,
         voice,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -101,7 +101,7 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
         model: "resemble/default",
         text: TEST_TEXT,
         voice,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

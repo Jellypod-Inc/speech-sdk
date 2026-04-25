@@ -16,7 +16,7 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 - **Universal** — `generateSpeech()` works across OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini TTS, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, and xAI.
 - **Streaming** — `streamSpeech()` returns a standard `ReadableStream<Uint8Array>`.
 - **Conversations** — `generateConversation()` produces multi-speaker audio, routing through the Speech Gateway fast-path when every turn uses the same gateway-routed model, using native dialogue endpoints where available, and stitching locally when neither applies.
-- **Word-level timestamps** — `timestamps: "on"` returns alignment, using the provider's native data or falling back to STT.
+- **Word-level timestamps** — `timestamps: true` returns alignment, using the provider's native data or falling back to STT.
 - **Volume normalization** — RMS-level outputs to an absolute loudness target.
 - **Audio tags & voice cloning** — `[laugh]`, `[sigh]`, emotion cues; reference-audio cloning where supported.
 
@@ -161,7 +161,7 @@ const result = await generateSpeech({
   model: 'elevenlabs/eleven_multilingual_v2',
   text: 'Hello from speech-sdk!',
   voice: 'JBFqnCBsd6RMkjVDRZzb',
-  timestamps: 'on',
+  timestamps: true,
 });
 
 result.timestamps;
@@ -172,12 +172,12 @@ result.timestamps;
 // ]
 ```
 
-| Mode | Behavior |
+| Value | Behavior |
 |---|---|
-| `"on"` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
-| `"off"` *(default)* | Never return timestamps. |
+| `true` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
+| `false` *(default)* | Never return timestamps. |
 
-On `"on"`, models without native alignment require an STT fallback — there is no implicit default. Configure it once on the factory (`fallbackSTT`) or override it per call (`timestampFallback`). Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
+With `timestamps: true`, models without native alignment require an STT fallback — there is no implicit default. Configure it once on the factory (`fallbackSTT`) or override it per call (`timestampFallback`). Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
 
 **Resolution order:** per-call `timestampFallback` → factory `fallbackSTT` → throws `TimestampFallbackNotConfiguredError`.
 
@@ -197,7 +197,7 @@ const result = await generateSpeech({
   model: openai('tts-1'),
   voice: 'alloy',
   text: 'Hello, world.',
-  timestamps: 'on',
+  timestamps: true,
 });
 ```
 
@@ -210,7 +210,7 @@ await generateSpeech({
   model: openai('tts-1'),
   voice: 'alloy',
   text: 'Hello!',
-  timestamps: 'on',
+  timestamps: true,
   timestampFallback: createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })('whisper-1'),
 });
 ```
@@ -219,13 +219,13 @@ await generateSpeech({
 
 | Provider | Timestamps |
 |---|---|
-| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, no STT round-trip on `"on"` |
-| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, no STT round-trip on `"on"` (FALCON streaming model has no native alignment) |
-| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, no STT round-trip on `"on"` (`octave-1` has no native alignment) |
-| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, no STT round-trip on `"on"` (best on English/Spanish) |
+| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, no STT round-trip on `true` |
+| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, no STT round-trip on `true` (FALCON streaming model has no native alignment) |
+| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, no STT round-trip on `true` (`octave-1` has no native alignment) |
+| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, no STT round-trip on `true` (best on English/Spanish) |
 | Cartesia (`sonic-3`, `sonic-2`) | **Native** — routed through `/tts/sse` with `add_timestamps: true`; merges interleaved chunk + timestamps events into audio + `WordTimestamp[]` |
 | Resemble (`default`) | **Native** — `audio_timestamps` always returned by `/synthesize`; SDK aggregates grapheme-level timing into words (mirrors ElevenLabs aggregator) |
-| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `"on"` transcribes via the STT fallback |
+| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `true` transcribes via the STT fallback |
 
 `generateConversation` accepts the same options and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`. Stitch-path timings are offset by cumulative turn duration + gap; gateway and native-dialogue paths derive `turnIndex` from the server-attributed word sequence.
 
@@ -241,7 +241,7 @@ const result = await generateConversation({
     { voice: 'rachel', text: 'Hi there.' },
     { voice: 'adam',   text: 'Hello!' },
   ],
-  timestamps: 'on',
+  timestamps: true,
 });
 
 // result.timestamps is ConversationWordTimestamp[]:
@@ -289,7 +289,7 @@ const { timestamps } = await generateSpeech({
   model: 'elevenlabs/eleven_v3',
   text: 'Hello world. This is a test.',
   voice: 'JBFqnCBsd6RMkjVDRZzb',
-  timestamps: 'on',
+  timestamps: true,
 });
 
 const srt = timestampsToCaptions(timestamps ?? []);
@@ -443,7 +443,7 @@ generateSpeech({
   voice: Voice,                           // required — string | { url } | { audio }
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
-  timestamps?: "on" | "off",              // default "off"
+  timestamps?: boolean,                   // default false
   timestampFallback?: ResolvedSTTModel,   // per-call STT fallback override
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
@@ -491,7 +491,7 @@ try {
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |
-| `TimestampFallbackNotConfiguredError` | `timestamps: "on"` with no native support and no `fallbackSTT`/`timestampFallback` configured |
+| `TimestampFallbackNotConfiguredError` | `timestamps: true` with no native support and no `fallbackSTT`/`timestampFallback` configured |
 | `TimestampKeyMissingError` | STT fallback configured but its API key is missing |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
