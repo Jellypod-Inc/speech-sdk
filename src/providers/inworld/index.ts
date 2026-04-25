@@ -8,6 +8,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type InworldWordAlignment,
@@ -17,6 +18,7 @@ import {
 export interface InworldSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -359,11 +361,13 @@ function parseInworldNdjsonStream(
 
 export function createInworld(config: InworldSpeechProviderConfig = {}) {
   const provider = new InworldSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function inworld(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

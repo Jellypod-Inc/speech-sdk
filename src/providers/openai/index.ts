@@ -10,11 +10,13 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { buildOpenAIInstructionsFromTags } from "./instructions.js";
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -292,11 +294,13 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
 
 export function createOpenAI(config: OpenAISpeechProviderConfig = {}) {
   const provider = new OpenAISpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function openai(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

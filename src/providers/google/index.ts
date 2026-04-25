@@ -12,6 +12,7 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
@@ -27,6 +28,7 @@ function base64ToBytes(b64: string): Uint8Array {
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -422,11 +424,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
 export function createGoogle(config: GoogleSpeechProviderConfig = {}) {
   const provider = new GoogleSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function google(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

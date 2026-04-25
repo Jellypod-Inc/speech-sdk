@@ -12,6 +12,7 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type CartesiaWordTimestamps,
@@ -21,6 +22,7 @@ import {
 export interface CartesiaSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -404,11 +406,13 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
   const provider = new CartesiaSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function cartesia(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

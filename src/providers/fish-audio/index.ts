@@ -10,10 +10,12 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 export interface FishAudioSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -232,11 +234,13 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
 export function createFishAudio(config: FishAudioSpeechProviderConfig = {}) {
   const provider = new FishAudioSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function fishAudio(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

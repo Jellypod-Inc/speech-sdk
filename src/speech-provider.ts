@@ -1,5 +1,6 @@
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { SPEECH_GATEWAY_PROVIDER_ID } from "./providers/gateway/index.js";
+import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
@@ -106,6 +107,7 @@ export interface SpeechProvider<
 }
 
 export interface ResolvedModel<TVoice extends Voice = Voice> {
+  fallbackSTT?: ResolvedSTTModel;
   modelId: string;
   provider: SpeechProvider<string, TVoice>;
 }

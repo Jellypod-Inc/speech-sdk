@@ -8,6 +8,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 // Deepgram /v1/speak takes audio-shaping params on the query string;
 // only `text` belongs in the body or it returns PAYLOAD_ERROR.
@@ -35,6 +36,7 @@ function buildSpeakUrl(
 export interface DeepgramSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -157,11 +159,13 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {
   const provider = new DeepgramSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function deepgram(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

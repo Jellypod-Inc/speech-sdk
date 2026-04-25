@@ -9,10 +9,12 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 export interface FalSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -160,6 +162,7 @@ export class FalSpeechProvider
 
 export function createFal(config: FalSpeechProviderConfig = {}) {
   const provider = new FalSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function fal(
     modelId?: string
@@ -167,6 +170,7 @@ export function createFal(config: FalSpeechProviderConfig = {}) {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

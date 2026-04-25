@@ -8,10 +8,12 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 export interface XaiSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -200,10 +202,12 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
 
 export function createXai(config: XaiSpeechProviderConfig = {}) {
   const provider = new XaiSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
   return function xai(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

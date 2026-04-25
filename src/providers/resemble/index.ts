@@ -8,6 +8,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   audioTimestampsToWordTimestamps,
@@ -17,6 +18,7 @@ import {
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -199,11 +201,13 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
 export function createResemble(config: ResembleSpeechProviderConfig = {}) {
   const provider = new ResembleSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function resemble(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

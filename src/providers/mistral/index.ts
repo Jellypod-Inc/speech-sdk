@@ -8,6 +8,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
 
 function safeParseJson(input: string): unknown {
@@ -21,6 +22,7 @@ function safeParseJson(input: string): unknown {
 export interface MistralSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -243,9 +245,14 @@ function mediaTypeForResponseFormat(format: unknown): string {
 
 export function createMistral(config: MistralSpeechProviderConfig = {}) {
   const provider = new MistralSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
   return function mistral(
     modelId?: string
   ): ResolvedModel<string | { audio: string | Uint8Array }> {
-    return { provider, modelId: modelId ?? provider.defaultModel };
+    return {
+      provider,
+      modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
+    };
   };
 }

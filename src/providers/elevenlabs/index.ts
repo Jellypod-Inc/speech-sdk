@@ -12,6 +12,7 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   alignmentToWordTimestamps,
@@ -21,6 +22,7 @@ import {
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -502,11 +504,13 @@ export class ElevenLabsSpeechProvider
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function elevenlabs(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

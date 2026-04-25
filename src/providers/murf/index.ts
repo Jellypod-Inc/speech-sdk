@@ -8,6 +8,7 @@ import type {
   ResolvedModel,
   SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type MurfWordDuration,
@@ -17,6 +18,7 @@ import {
 export interface MurfSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -224,11 +226,13 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
 export function createMurf(config: MurfSpeechProviderConfig = {}) {
   const provider = new MurfSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function murf(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }
