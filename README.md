@@ -25,7 +25,7 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 - [Install](#install) · [Quick start](#quick-start) · [Supported providers](#supported-providers)
 - [Streaming](#streaming) · [Conversations](#conversations) · [Timestamps](#timestamps)
 - [Volume normalization](#volume-normalization) · [Audio tags](#audio-tags) · [Voice cloning](#voice-cloning)
-- [Custom configuration](#custom-configuration) · [API reference](#api-reference) · [Error handling](#error-handling) · [Development](#development)
+- [Custom configuration](#custom-configuration) · [Public imports](#public-imports) · [API reference](#api-reference) · [Error handling](#error-handling) · [Development](#development)
 
 ## Install
 
@@ -66,7 +66,7 @@ await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'all
 
 // 2. Factory → calls the provider directly (no proxy hop)
 //    Reads the provider's env var (e.g. OPENAI_API_KEY), or pass apiKey explicitly.
-import { createOpenAI } from '@speech-sdk/core/openai';
+import { createOpenAI } from '@speech-sdk/core/providers';
 await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', voice: 'alloy' });
 ```
 
@@ -97,7 +97,7 @@ The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want 
 | [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
 | [xAI](https://docs.x.ai/docs/models) | `xai` | `grok-tts` | `XAI_API_KEY` |
 
-The "Env var" column applies when you call the provider **directly** via its factory (`createOpenAI()`, `createElevenLabs()`, etc.). When you pass a string `model` like `"openai/tts-1"`, the request goes through Speech Gateway and reads `SPEECH_GATEWAY_API_KEY` instead — see [Gateway vs direct provider](#gateway-vs-direct-provider).
+The "Env var" column applies when you call the provider **directly** via its factory (`createOpenAI()`, `createElevenLabs()`, etc.). Import provider factories from `@speech-sdk/core/providers`. When you pass a string `model` like `"openai/tts-1"`, the request goes through Speech Gateway and reads `SPEECH_GATEWAY_API_KEY` instead — see [Gateway vs direct provider](#gateway-vs-direct-provider).
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 
@@ -130,7 +130,7 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 - **Stitch fallback** — multi-provider, voice clones, or no dialogue endpoint. Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
 
 ```ts
-import { generateConversation } from '@speech-sdk/core/conversation';
+import { generateConversation } from '@speech-sdk/core';
 
 const result = await generateConversation({
   turns: [
@@ -174,14 +174,13 @@ result.timestamps;
 
 | Mode | Behavior |
 |---|---|
-| `"auto"` *(default)* | Return timestamps only if the provider supplies them natively. Free. |
+| `"off"` *(default)* | Never return timestamps. |
 | `"on"` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
-| `"off"` | Never return timestamps. |
 
 On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override by constructing a `ResolvedSTTModel` via a factory and passing it as `timestampProvider`:
 
 ```ts
-import { createOpenAISTT } from '@speech-sdk/core/stt/openai';
+import { createOpenAISTT } from '@speech-sdk/core/providers';
 
 await generateSpeech({
   model: 'cartesia/sonic-3',
@@ -196,20 +195,21 @@ await generateSpeech({
 
 | Provider | Timestamps |
 |---|---|
-| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, free on `"auto"` |
-| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, free on `"auto"` (FALCON streaming model has no native alignment) |
-| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, free on `"auto"` (`octave-1` has no native alignment) |
-| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, free on `"auto"` (best on English/Spanish) |
+| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, no STT round-trip on `"on"` |
+| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, no STT round-trip on `"on"` (FALCON streaming model has no native alignment) |
+| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, no STT round-trip on `"on"` (`octave-1` has no native alignment) |
+| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, no STT round-trip on `"on"` (best on English/Spanish) |
 | Cartesia (`sonic-3`, `sonic-2`) | **Native** — routed through `/tts/sse` with `add_timestamps: true`; merges interleaved chunk + timestamps events into audio + `WordTimestamp[]` |
 | Resemble (`default`) | **Native** — `audio_timestamps` always returned by `/synthesize`; SDK aggregates grapheme-level timing into words (mirrors ElevenLabs aggregator) |
-| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `"on"` transcribes via the STT fallback, `"auto"` returns `undefined` |
+| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `"on"` transcribes via the STT fallback |
 
 `generateConversation` accepts the same options and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`. Stitch-path timings are offset by cumulative turn duration + gap; gateway and native-dialogue paths derive `turnIndex` from the server-attributed word sequence.
 
 `turnIndex` is why conversation timestamps are a different type from speech. It is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback — without re-deriving turn boundaries from `gapMs` and per-turn durations.
 
 ```ts
-import { generateConversation, type ConversationWordTimestamp } from '@speech-sdk/core';
+import { generateConversation } from '@speech-sdk/core';
+import type { ConversationWordTimestamp } from '@speech-sdk/core/types';
 
 const result = await generateConversation({
   model: 'elevenlabs/eleven_v3',
@@ -335,8 +335,7 @@ await generateSpeech({
 Some providers support reference-audio cloning. Pass a voice object instead of a string.
 
 ```ts
-import { createMistral } from '@speech-sdk/core/mistral';
-import { createFal } from '@speech-sdk/core/fal-ai';
+import { createFal, createMistral } from '@speech-sdk/core/providers';
 
 // Base64 reference:
 await generateSpeech({
@@ -359,7 +358,7 @@ Factory functions give you custom API keys, base URLs, or `fetch` implementation
 
 ```ts
 import { generateSpeech } from '@speech-sdk/core';
-import { createOpenAI } from '@speech-sdk/core/openai';
+import { createOpenAI } from '@speech-sdk/core/providers';
 
 const myOpenAI = createOpenAI({
   apiKey: 'sk-...',
@@ -373,6 +372,44 @@ await generateSpeech({
 });
 ```
 
+## Public imports
+
+The root package exports the main runtime APIs:
+
+```ts
+import {
+  generateSpeech,
+  streamSpeech,
+  generateConversation,
+  timestampsToCaptions,
+  ApiError,
+} from '@speech-sdk/core';
+```
+
+Provider and STT factories live under `@speech-sdk/core/providers`:
+
+```ts
+import {
+  createOpenAI,
+  createElevenLabs,
+  createCartesia,
+  createSpeechGateway,
+  createOpenAISTT,
+} from '@speech-sdk/core/providers';
+```
+
+Public types live under `@speech-sdk/core/types`:
+
+```ts
+import type {
+  GenerateSpeechOptions,
+  SpeechResult,
+  ConversationResult,
+  Voice,
+  WordTimestamp,
+} from '@speech-sdk/core/types';
+```
+
 ## API reference
 
 ```ts
@@ -382,7 +419,7 @@ generateSpeech({
   voice: Voice,                           // required — string | { url } | { audio }
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
-  timestamps?: "on" | "auto" | "off",     // default "auto"
+  timestamps?: "on" | "off",              // default "off"
   timestampProvider?: ResolvedSTTModel,   // override the STT fallback
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,

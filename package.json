@@ -11,73 +11,13 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./conversation": {
-      "types": "./dist/generate-conversation.d.ts",
-      "default": "./dist/generate-conversation.js"
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "default": "./dist/providers.js"
     },
-    "./conversation/errors": {
-      "types": "./dist/conversation/errors.d.ts",
-      "default": "./dist/conversation/errors.js"
-    },
-    "./openai": {
-      "types": "./dist/providers/openai/index.d.ts",
-      "default": "./dist/providers/openai/index.js"
-    },
-    "./elevenlabs": {
-      "types": "./dist/providers/elevenlabs/index.d.ts",
-      "default": "./dist/providers/elevenlabs/index.js"
-    },
-    "./deepgram": {
-      "types": "./dist/providers/deepgram/index.d.ts",
-      "default": "./dist/providers/deepgram/index.js"
-    },
-    "./cartesia": {
-      "types": "./dist/providers/cartesia/index.d.ts",
-      "default": "./dist/providers/cartesia/index.js"
-    },
-    "./hume": {
-      "types": "./dist/providers/hume/index.d.ts",
-      "default": "./dist/providers/hume/index.js"
-    },
-    "./inworld": {
-      "types": "./dist/providers/inworld/index.d.ts",
-      "default": "./dist/providers/inworld/index.js"
-    },
-    "./google": {
-      "types": "./dist/providers/google/index.d.ts",
-      "default": "./dist/providers/google/index.js"
-    },
-    "./fish-audio": {
-      "types": "./dist/providers/fish-audio/index.d.ts",
-      "default": "./dist/providers/fish-audio/index.js"
-    },
-    "./murf": {
-      "types": "./dist/providers/murf/index.d.ts",
-      "default": "./dist/providers/murf/index.js"
-    },
-    "./resemble": {
-      "types": "./dist/providers/resemble/index.d.ts",
-      "default": "./dist/providers/resemble/index.js"
-    },
-    "./fal-ai": {
-      "types": "./dist/providers/fal/index.d.ts",
-      "default": "./dist/providers/fal/index.js"
-    },
-    "./mistral": {
-      "types": "./dist/providers/mistral/index.d.ts",
-      "default": "./dist/providers/mistral/index.js"
-    },
-    "./xai": {
-      "types": "./dist/providers/xai/index.d.ts",
-      "default": "./dist/providers/xai/index.js"
-    },
-    "./gateway": {
-      "types": "./dist/providers/gateway/index.d.ts",
-      "default": "./dist/providers/gateway/index.js"
-    },
-    "./stt/openai": {
-      "types": "./dist/stt-providers/openai/index.d.ts",
-      "default": "./dist/stt-providers/openai/index.js"
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
     }
   },
   "files": [
