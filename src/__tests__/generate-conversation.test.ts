@@ -271,17 +271,32 @@ describe("generateConversation", () => {
     }
   });
 
-  it('derives timestamps via STT when timestamps:"on" and conversation endpoint has no wire alignment', async () => {
-    // The gateway conversation endpoint returns raw audio bytes only — no
-    // per-turn alignment on the wire today. When the caller asks for word
-    // timestamps, the SDK must derive them via STT over the mixed audio and
-    // attribute them back to turns[].
-    const bytes = new Uint8Array([65]);
+  it('routes timestamps:"on" to /with-timestamps and uses server-attributed words', async () => {
+    // The gateway's /v1/audio/conversation/with-timestamps endpoint returns a
+    // JSON envelope with base64 audio + per-word timestamps already attributed
+    // to turns via `turnIndex`. The SDK must hit that URL, send
+    // `timestamps: "on"` in the body, and surface those timestamps directly —
+    // no client-side STT.
+    const audioBytes = new Uint8Array([65]);
+    const audioBase64 =
+      typeof btoa === "function"
+        ? btoa(String.fromCharCode(...audioBytes))
+        : Buffer.from(audioBytes).toString("base64");
+    const wirePayload = {
+      audio: audioBase64,
+      mediaType: "audio/wav",
+      warnings: [],
+      timestamps: [
+        { text: "Hi", start: 0, end: 0.1, turnIndex: 0 },
+        { text: "there.", start: 0.1, end: 0.3, turnIndex: 0 },
+        { text: "Hello!", start: 0.4, end: 0.6, turnIndex: 1 },
+      ],
+    };
     const fetchFn = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "audio/wav" }),
-      arrayBuffer: async () => bytes.buffer,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => wirePayload,
     });
     const gateway = createSpeechGateway({
       apiKey: "gw-key",
@@ -289,16 +304,10 @@ describe("generateConversation", () => {
     });
     const resolved = gateway("openai/gpt-4o-mini-tts");
 
-    // STT stub that returns a token-per-word alignment for the input transcript.
-    const transcribe = vi.fn().mockResolvedValue({
-      timestamps: [
-        { text: "Hi", start: 0, end: 0.1 },
-        { text: "there.", start: 0.1, end: 0.3 },
-        { text: "Hello!", start: 0.4, end: 0.6 },
-      ],
-    });
+    // STT stub — must NOT be called when going through the gateway.
+    const transcribe = vi.fn();
 
-    await generateConversation({
+    const result = await generateConversation({
       model: resolved,
       turns: [
         { voice: "alloy", text: "Hi there." },
@@ -316,12 +325,22 @@ describe("generateConversation", () => {
       },
     });
 
-    // No `timestamps` field on the wire anymore.
-    const [, init] = fetchFn.mock.calls[0];
+    expect(transcribe).not.toHaveBeenCalled();
+
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
+    );
+    expect(init.headers.Accept).toBe("application/json");
     const body = JSON.parse(init.body);
+    // URL split signals timestamps; no body field needed (defaults to "on" server-side).
     expect(body.timestamps).toBeUndefined();
-    // STT fallback ran because the caller asked for timestamps: "on".
-    expect(transcribe).toHaveBeenCalledTimes(1);
+
+    expect(result.timestamps).toEqual([
+      { text: "Hi", start: 0, end: 0.1, turnIndex: 0 },
+      { text: "there.", start: 0.1, end: 0.3, turnIndex: 0 },
+      { text: "Hello!", start: 0.4, end: 0.6, turnIndex: 1 },
+    ]);
   });
 
   it("does not retry on 501 Not Implemented in the native path", async () => {

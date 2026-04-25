@@ -7,7 +7,10 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
-import type { WordTimestamp } from "../../timestamps.js";
+import type {
+  ConversationWordTimestamp,
+  WordTimestamp,
+} from "../../timestamps.js";
 import { CARTESIA_MODELS, CARTESIA_PROVIDER_ID } from "../cartesia/index.js";
 import { DEEPGRAM_MODELS, DEEPGRAM_PROVIDER_ID } from "../deepgram/index.js";
 import {
@@ -292,7 +295,8 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
   }
 
-  // Server stitches and normalizes; callers needing timestamps derive via STT.
+  // Server stitches, normalizes, and (when includeTimestamps) handles
+  // alignment — callers never need their own STT key.
   async generateConversation(options: {
     modelId: string;
     turns: readonly {
@@ -306,9 +310,12 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
+    timestamps?: ConversationWordTimestamp[];
+    warnings?: string[];
   }> {
     if (options.turns.length === 0) {
       throw new Error(
@@ -339,13 +346,16 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       body.providerOptions = options.providerOptions;
     }
 
-    const url = `${this.baseURL}/audio/conversation`;
+    const url = options.includeTimestamps
+      ? `${this.baseURL}/audio/conversation/with-timestamps`
+      : `${this.baseURL}/audio/conversation`;
+    const accept = options.includeTimestamps ? "application/json" : "audio/*";
 
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
         ...options.headers,
-        Accept: "audio/*",
+        Accept: accept,
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -361,6 +371,24 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       });
     }
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
+
+    if (options.includeTimestamps) {
+      const contentType = response.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        throw new Error(
+          `speech-gateway/${options.modelId}: requested JSON response for conversation timestamps but server returned content-type "${contentType}"`
+        );
+      }
+      const payload = parseGatewayConversationJsonResponse(
+        await response.json()
+      );
+      return {
+        audio: decodeBase64(payload.audio),
+        mediaType: payload.mediaType,
+        timestamps: payload.timestamps,
+        warnings: payload.warnings,
+      };
+    }
 
     const arrayBuffer = await response.arrayBuffer();
 
@@ -399,6 +427,63 @@ function parseGatewayJsonResponse(payload: unknown): GatewayJsonResponse {
     timestamps: parseTimestamps(payload.timestamps),
     warnings: parseWarnings(payload.warnings),
   };
+}
+
+function parseGatewayConversationJsonResponse(payload: unknown): {
+  audio: string;
+  mediaType: string;
+  timestamps: ConversationWordTimestamp[];
+  warnings: string[];
+} {
+  if (!isRecord(payload)) {
+    throw new Error("speech-gateway: expected JSON response object");
+  }
+  if (typeof payload.audio !== "string") {
+    throw new Error("speech-gateway: JSON response missing base64 audio");
+  }
+  if (typeof payload.mediaType !== "string") {
+    throw new Error("speech-gateway: JSON response missing mediaType");
+  }
+  return {
+    audio: payload.audio,
+    mediaType: payload.mediaType,
+    timestamps: parseConversationTimestamps(payload.timestamps),
+    warnings: parseWarnings(payload.warnings),
+  };
+}
+
+function parseConversationTimestamps(
+  value: unknown
+): ConversationWordTimestamp[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(
+      "speech-gateway: JSON response timestamps must be an array"
+    );
+  }
+  const timestamps: ConversationWordTimestamp[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      typeof item.text !== "string" ||
+      typeof item.start !== "number" ||
+      typeof item.end !== "number" ||
+      typeof item.turnIndex !== "number"
+    ) {
+      throw new Error(
+        "speech-gateway: JSON response contains an invalid conversation timestamp"
+      );
+    }
+    timestamps.push({
+      text: item.text,
+      start: item.start,
+      end: item.end,
+      turnIndex: item.turnIndex,
+    });
+  }
+  return timestamps;
 }
 
 function parseTimestamps(value: unknown): WordTimestamp[] {

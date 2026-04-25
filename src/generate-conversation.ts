@@ -185,9 +185,8 @@ async function runGateway<V extends Voice>(args: {
   const provider = resolved.provider as unknown as SpeechGatewayProvider;
   const modelLabel = `${provider.id}/${resolved.modelId}`;
 
-  // Gateway conversation has no on-wire alignment yet — fall back to STT + text-match.
   const requestedMode: TimestampMode = options.timestamps ?? "off";
-  const sttFallbackNeeded = requestedMode === "on";
+  const includeTimestamps = requestedMode === "on";
 
   // Object-shaped voices aren't supported on the gateway conversation path.
   const wireTurns = options.turns.map((t, i) => {
@@ -214,6 +213,7 @@ async function runGateway<V extends Voice>(args: {
         providerOptions: options.providerOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
+        includeTimestamps,
       }),
     {
       retries: maxRetries,
@@ -242,24 +242,9 @@ async function runGateway<V extends Voice>(args: {
     result.mediaType
   );
 
-  let timestamps: readonly ConversationWordTimestamp[] | undefined;
-  if (sttFallbackNeeded) {
-    info(
-      `${modelLabel} (conversation): timestamps: "on" — gateway conversation endpoint has no on-wire alignment yet; will transcribe mixed audio via STT and attribute words back to turns (adds a round-trip).`
-    );
-    const derived = await deriveTimestampsViaSTT({
-      ttsModel: modelLabel,
-      audio: audio.uint8Array,
-      mediaType: result.mediaType,
-      timestampProvider: options.timestampProvider,
-      abortSignal: options.abortSignal,
-    });
-    timestamps = attributeTimestampsToTurns({
-      timestamps: derived,
-      turns: options.turns,
-      modelId: modelLabel,
-    });
-  }
+  const timestamps: readonly ConversationWordTimestamp[] | undefined =
+    includeTimestamps ? (result.timestamps ?? []) : undefined;
+  const warnings = result.warnings;
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
@@ -288,6 +273,7 @@ async function runGateway<V extends Voice>(args: {
     metadata,
     providerMetadata: { turns: perTurn },
     timestamps,
+    warnings: warnings && warnings.length > 0 ? warnings : undefined,
   };
 }
 
