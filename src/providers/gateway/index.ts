@@ -107,15 +107,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     const url = options.includeTimestamps
       ? `${this.baseURL}/audio/speech/with-timestamps`
       : `${this.baseURL}/audio/speech`;
-    const accept = options.includeTimestamps
-      ? "application/json"
-      : "audio/mpeg";
 
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
         ...options.headers,
-        Accept: accept,
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -133,12 +129,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
     if (options.includeTimestamps) {
-      const contentType = response.headers.get("content-type");
-      if (!contentType?.includes("application/json")) {
-        throw new Error(
-          `speech-gateway/${options.modelId}: requested JSON response for timestamps but server returned content-type "${contentType}"`
-        );
-      }
       const payload = parseGatewayJsonResponse(await response.json());
       return {
         audio: decodeBase64(payload.audio),
@@ -190,7 +180,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       method: "POST",
       headers: {
         ...options.headers,
-        Accept: "audio/mpeg",
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -273,13 +262,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     const url = options.includeTimestamps
       ? `${this.baseURL}/audio/conversation/with-timestamps`
       : `${this.baseURL}/audio/conversation`;
-    const accept = options.includeTimestamps ? "application/json" : "audio/*";
 
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
         ...options.headers,
-        Accept: accept,
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.resolveKey()}`,
         "X-User-Agent": SDK_USER_AGENT,
@@ -297,12 +284,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
 
     if (options.includeTimestamps) {
-      const contentType = response.headers.get("content-type");
-      if (!contentType?.includes("application/json")) {
-        throw new Error(
-          `speech-gateway/${options.modelId}: requested JSON response for conversation timestamps but server returned content-type "${contentType}"`
-        );
-      }
       const payload = parseGatewayConversationJsonResponse(
         await response.json()
       );

@@ -8,8 +8,6 @@ import { isSpeechGatewayModel } from "../speech-provider.js";
 
 const VOICE_REQUIRED_RE = /"voice" is required/;
 const SIGNUP_RE = /https:\/\/wavform\.ai\//;
-const JSON_TIMESTAMPS_BINARY_RE =
-  /requested JSON response for timestamps but server returned content-type/;
 const GATEWAY_401_RE = /Speech Gateway rejected your API key/;
 const TIMESTAMPS_UNSUPPORTED_RE = /timestamps: "on" is not supported/;
 const BAD_REQUEST_RE = /bad request/;
@@ -69,7 +67,6 @@ describe("SpeechGatewayProvider", () => {
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("https://api.speechgateway.com/v1/audio/speech");
-    expect(init.headers.Accept).toBe("audio/mpeg");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(JSON.parse(init.body)).toEqual({
       mode: "inline",
@@ -108,7 +105,6 @@ describe("SpeechGatewayProvider", () => {
     expect(url).toBe(
       "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
     );
-    expect(init.headers.Accept).toBe("application/json");
     // Body carries no `timestamps` field — the URL split is the switch now.
     expect(JSON.parse(init.body)).toEqual({
       mode: "inline",
@@ -169,32 +165,8 @@ describe("SpeechGatewayProvider", () => {
     });
 
     const [, init] = fetchFn.mock.calls[0];
-    expect(init.headers.Accept).toBe("application/json");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
-  });
-
-  it("throws when the with-timestamps endpoint returns binary", async () => {
-    const fetchFn = mockFetchOk();
-    const provider = new SpeechGatewayProvider({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    await expect(
-      provider.generate({
-        modelId: "openai/tts-1",
-        text: "Hello",
-        voice: "alloy",
-        includeTimestamps: true,
-      })
-    ).rejects.toThrow(JSON_TIMESTAMPS_BINARY_RE);
-
-    const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe(
-      "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
-    );
-    expect(init.headers.Accept).toBe("application/json");
   });
 
   it("respects a custom baseURL", async () => {
@@ -272,34 +244,6 @@ describe("SpeechGatewayProvider", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     const resolved = gateway("elevenlabs/eleven_flash_v2_5");
     expect(resolved.modelId).toBe("elevenlabs/eleven_flash_v2_5");
-  });
-
-  it("forces Accept: audio/mpeg on stream() even when caller overrides it", async () => {
-    const body = new ReadableStream<Uint8Array>();
-    const fetchFn = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      body,
-      headers: new Headers({
-        "content-type": "audio/mpeg",
-      }),
-    });
-    const provider = new SpeechGatewayProvider({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    await provider.stream({
-      modelId: "openai/tts-1",
-      text: "Hello",
-      voice: "alloy",
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    const [, init] = fetchFn.mock.calls[0];
-    expect(init.headers.Accept).toBe("audio/mpeg");
   });
 
   it("throws a signup-friendly 401 error when the gateway rejects the key", async () => {
@@ -463,7 +407,6 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
-    expect(init.headers.Accept).toBe("audio/*");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
 
@@ -484,29 +427,6 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));
     expect(result.mediaType).toBe("audio/wav");
-  });
-
-  it("does not let caller Accept header override audio/* on conversation", async () => {
-    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
-    const provider = new SpeechGatewayProvider({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    await provider.generateConversation({
-      modelId: "openai/gpt-4o-mini-tts",
-      turns: [{ voice: "alloy", text: "Hi." }],
-      headers: {
-        Accept: "application/json",
-        Authorization: "Bearer caller-key",
-        "Content-Type": "text/plain",
-      },
-    });
-
-    const [, init] = fetchFn.mock.calls[0];
-    expect(init.headers.Accept).toBe("audio/*");
-    expect(init.headers.Authorization).toBe("Bearer gw-key");
-    expect(init.headers["Content-Type"]).toBe("application/json");
   });
 
   it("surfaces problem+json `code` on error responses", async () => {

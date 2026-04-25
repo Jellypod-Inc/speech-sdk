@@ -322,7 +322,6 @@ describe("generateConversation", () => {
     expect(url).toBe(
       "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
     );
-    expect(init.headers.Accept).toBe("application/json");
     const body = JSON.parse(init.body);
     // URL split signals timestamps; no body field needed (defaults to "on" server-side).
     expect(body.timestamps).toBeUndefined();
