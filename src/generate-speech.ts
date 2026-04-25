@@ -8,7 +8,7 @@ import {
   NoSpeechGeneratedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
-import { debug } from "./logger.js";
+import { debug, info } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -32,33 +32,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  /**
-   * RMS-normalize the returned audio to this dBFS level. Must be ≤ 0.
-   *
-   * Gateway-routed string models pass this value through to Speech Gateway
-   * for server-side normalization. Direct provider factories use the local
-   * stitch path: generateSpeech requests decodable PCM/WAV output via
-   * `getStitchOptions`, normalizes locally, and returns `audio/wav`.
-   * Direct providers throw `VolumeAdjustmentUnsupportedError` if they do not
-   * expose a decodable output mode.
-   */
+  // Must be ≤ 0. Direct providers without a decodable output mode throw
+  // VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
-  /**
-   * Controls whether the returned `SpeechResult` includes word-level
-   * timestamps. Default `"off"`. `"on"` forces word timestamps — native
-   * alignment when the TTS provider supplies it, STT fallback otherwise.
-   *
-   * Gateway-routed string models ask Speech Gateway for timestamps and do not
-   * run a client-side STT fallback. Direct providers fall back to STT locally
-   * when they cannot return timestamps natively.
-   */
   timestamps?: TimestampMode;
-  /**
-   * Override the STT provider used for the derived-timestamps path. Construct
-   * via a factory (e.g. `createOpenAISTT({ apiKey })("whisper-1")`). Only
-   * consulted when timestamps are requested AND the TTS provider can't supply
-   * them natively. Defaults to OpenAI Whisper read from `OPENAI_API_KEY`.
-   */
+  // Defaults to OpenAI Whisper via OPENAI_API_KEY. Only used when the TTS
+  // provider can't return timestamps natively.
   timestampProvider?: ResolvedSTTModel;
 }): Promise<SpeechResult> {
   const {
@@ -83,9 +62,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     if (!stitchOpts) {
       throw new VolumeAdjustmentUnsupportedError(modelIdentifier);
     }
-    // Stitch-mode options are applied last so they win over user-supplied
-    // providerOptions — otherwise a caller could silently break the decoder
-    // by e.g. passing `response_format: "mp3"` alongside `volumeDbfs`.
+    // Stitch options must win — caller-supplied response_format would break the decoder.
     providerOptions = {
       ...options.providerOptions,
       ...stitchOpts.providerOptions,
@@ -126,9 +103,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
         ? resolved.provider.generate({
             modelId: resolved.modelId,
             text: processedText,
-            // Gateway inline mode only accepts string voice IDs. The runtime
-            // check in SpeechGatewayProvider.generate() surfaces a clear
-            // error if the caller passed a non-string voice.
+            // Gateway inline mode only accepts string voice IDs.
             voice: voice as unknown as string,
             providerOptions,
             abortSignal,
@@ -284,11 +259,7 @@ function preprocessText(
   return { text: rawText, warnings: [] };
 }
 
-/**
- * Logs the timestamp routing decision at debug level so developers can see
- * why they are / aren't getting alignment data. Silent unless `DEBUG`
- * includes `speech-sdk` (or `*`).
- */
+// STT-fallback branch is info-level because it changes billing.
 function logTimestampDecision(args: {
   modelIdentifier: string;
   mode: TimestampMode;
@@ -308,7 +279,7 @@ function logTimestampDecision(args: {
     return;
   }
   // mode === "on" and no native support → will fall back to STT
-  debug(
+  info(
     `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampProvider)} for word timestamps (adds a round-trip).`
   );
 }

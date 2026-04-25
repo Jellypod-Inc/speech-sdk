@@ -1,12 +1,6 @@
 import type { WordTimestamp } from "../../timestamps.js";
 
-/**
- * Shape of the `alignment` / `normalized_alignment` object ElevenLabs returns
- * from `/v1/text-to-speech/{voice_id}/with-timestamps`.
- *
- * Three parallel arrays — `characters[i]` was spoken from
- * `character_start_times_seconds[i]` to `character_end_times_seconds[i]`.
- */
+// ElevenLabs `/with-timestamps` `alignment` / `normalized_alignment`.
 export interface ElevenLabsAlignment {
   readonly character_end_times_seconds: readonly number[];
   readonly character_start_times_seconds: readonly number[];
@@ -15,15 +9,8 @@ export interface ElevenLabsAlignment {
 
 const WHITESPACE_CHAR = /^\s$/;
 
-/**
- * Aggregates ElevenLabs character-level alignment into word-level timestamps
- * by splitting on whitespace. Non-whitespace runs become words; the word's
- * start is the first char's start time, the end is the last char's end time.
- *
- * Prefer `normalized_alignment` when the input contains numbers or
- * abbreviations — ElevenLabs expands those during synthesis ("$5" → "five
- * dollars"), and normalized alignment matches what was actually spoken.
- */
+// Prefer normalized_alignment for inputs with numbers/abbreviations — ElevenLabs
+// expands those during synthesis ("$5" → "five dollars").
 export function alignmentToWordTimestamps(
   alignment: ElevenLabsAlignment
 ): WordTimestamp[] {

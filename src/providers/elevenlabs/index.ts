@@ -511,14 +511,7 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   };
 }
 
-/**
- * Map an ElevenLabs `output_format` identifier (e.g. `"pcm_24000"`,
- * `"mp3_44100_128"`, `"ulaw_8000"`, `"opus_48000_32"`) to a standard media
- * type. Used when decoding base64 audio from `/with-timestamps`, which
- * delivers the bytes inside a JSON body with no Content-Type hint for the
- * audio itself. Unknown or missing formats fall back to the endpoint's
- * default, which is mp3.
- */
+// Unknown formats fall back to mp3 (the endpoint's default).
 function elevenLabsFormatToMediaType(format: string | undefined): string {
   if (!format) {
     return "audio/mpeg";

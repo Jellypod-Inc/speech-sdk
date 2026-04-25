@@ -52,10 +52,6 @@ interface StitchOutput {
 
 const TARGET_SAMPLE_RATE = 24_000;
 
-/**
- * Run `worker(items[i], i)` for each item, capping in-flight executions at
- * `concurrency`. Preserves input ordering in the returned array.
- */
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
   concurrency: number,
@@ -107,11 +103,7 @@ export async function runStitch<V extends Voice>(
         timestamps: input.timestamps,
         timestampProvider: input.timestampProvider,
       });
-      // Prefer the mediaType from getStitchOptions over the response
-      // content-type: providers' response headers often omit the sample
-      // rate (e.g. Hume sends `audio/pcm` for what is actually 48 kHz),
-      // and getStitchOptions is the authoritative declaration of what
-      // the provider returns for the requested format.
+      // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(
         result.audio.uint8Array,
         stitchOpts.mediaType
@@ -151,12 +143,7 @@ export async function runStitch<V extends Voice>(
   const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
   const providerMetadataPerTurn = perTurn.map((p) => p.result.providerMetadata);
 
-  // Compose per-turn word timestamps into a single flat list, offset by the
-  // cumulative duration of prior turns + (gapMs * number of preceding gaps).
-  // Uses each segment's *source* duration (pcm.length / sampleRate) rather
-  // than the resampled target, because the offsets must match the audio the
-  // per-turn STT/native path actually saw — resampling is a constant-duration
-  // transform but rounding differences can drift by a sample or two.
+  // Use source duration (pre-resample) so offsets match what the per-turn STT/native saw.
   const gapSeconds = input.gapMs / 1000;
   const turnDurations = perTurn.map(
     (p) => p.segment.pcm.length / p.segment.sampleRate

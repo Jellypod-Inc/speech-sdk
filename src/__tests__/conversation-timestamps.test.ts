@@ -13,9 +13,7 @@ const ATTRIBUTION_FAILED_RE = /Failed to attribute timestamps/;
 
 function stitchTTS(options: {
   id: string;
-  /** Word timestamps this provider returns when asked. */
   timestamps?: WordTimestamp[];
-  /** Declare this model as native or derived in the feature list. */
   feature?: "native" | "derived";
 }): SpeechProvider {
   const pcm = new Int16Array(TURN_SAMPLES);

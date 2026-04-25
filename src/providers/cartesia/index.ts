@@ -427,13 +427,7 @@ interface CartesiaSseEvent {
 
 const SSE_LEADING_SPACE = /^ /;
 
-/**
- * Drain a Cartesia `/tts/sse` response body into a single audio buffer plus
- * a flat `WordTimestamp[]`. Buffers are collected separately because the
- * server may interleave `chunk` and `timestamps` events in any order — we
- * concatenate audio chunks in arrival order and flatten timestamp messages
- * the same way at end-of-stream (`type: "done"`).
- */
+// Server interleaves chunk + timestamps events; collect both in arrival order.
 async function collectCartesiaSse(
   body: ReadableStream<Uint8Array>,
   modelLabel: string

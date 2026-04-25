@@ -9,12 +9,8 @@ import type {
   SpeechProvider,
 } from "../../speech-provider.js";
 
-/**
- * Deepgram's /v1/speak endpoint takes audio-shaping parameters (model,
- * encoding, sample_rate, container, bit_rate, ...) as query-string params.
- * Only `text` (or `url`) belongs in the JSON body — putting anything else
- * there causes a PAYLOAD_ERROR.
- */
+// Deepgram /v1/speak takes audio-shaping params on the query string;
+// only `text` belongs in the body or it returns PAYLOAD_ERROR.
 function buildSpeakUrl(
   baseURL: string,
   options: {

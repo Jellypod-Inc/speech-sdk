@@ -8,18 +8,13 @@ import {
 
 const PARAM_REGEX_CACHE = new Map<string, RegExp>();
 
-/**
- * Parse a numeric parameter from a mediaType string (e.g. "audio/pcm;rate=24000").
- * Returns undefined if missing or non-positive.
- */
 export function parseMediaTypeParam(
   mediaType: string,
   name: string
 ): number | undefined {
   let re = PARAM_REGEX_CACHE.get(name);
   if (!re) {
-    // End boundary required: digits must be followed by ;, whitespace, or
-    // end-of-string. Rejects values like "rate=24000x".
+    // End boundary rejects values like "rate=24000x".
     re = new RegExp(`(?:^|;)\\s*${name}=(\\d+)(?=$|;|\\s)`, "i");
     PARAM_REGEX_CACHE.set(name, re);
   }
@@ -31,11 +26,6 @@ export function parseMediaTypeParam(
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
-/**
- * Wrap raw 16-bit little-endian mono PCM bytes in a WAV container.
- * Cross-platform (browser, Node, edge) via mediabunny's container ops —
- * does not require the WebCodecs encoder.
- */
 export async function wrapPcm16Mono(
   pcm: Uint8Array,
   sampleRate: number
@@ -48,7 +38,6 @@ export async function wrapPcm16Mono(
   output.addAudioTrack(source);
   await output.start();
 
-  // 2 bytes per sample, mono.
   const numSamples = pcm.length / 2;
   const durationSeconds = numSamples / sampleRate;
   const packet = new EncodedPacket(pcm, "key", 0, durationSeconds, 0);
@@ -68,7 +57,6 @@ export async function wrapPcm16Mono(
   return new Uint8Array(buffer);
 }
 
-/** Decode a base64 string into raw bytes. */
 export function base64ToUint8Array(b64: string): Uint8Array {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);

@@ -16,8 +16,7 @@ export interface OpenAISpeechToTextProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-// OpenAI Whisper is advertised as 50+ languages; we list the ISO-639-1 codes
-// the API's `language` parameter accepts. Matches the TTS provider's list.
+// ISO-639-1 codes accepted by Whisper's `language` parameter.
 const OPENAI_STT_LANGUAGES = [
   "af",
   "ar",
@@ -79,22 +78,11 @@ const OPENAI_STT_LANGUAGES = [
   "zh",
 ] as const;
 
-/**
- * OpenAI Whisper / gpt-4o-transcribe adapter for the SDK's derived-timestamps
- * path. Uses `/v1/audio/transcriptions` with `timestamp_granularities: ["word"]`
- * and `response_format: "verbose_json"`.
- *
- * Note: `gpt-4o-transcribe-diarize` is intentionally not listed — that
- * variant does not support `timestamp_granularities`.
- */
+// Only whisper-1 supports timestamp_granularities — gpt-4o-transcribe variants don't.
 export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
   readonly id = "openai";
   readonly defaultModel = "whisper-1";
 
-  // Only whisper-1 supports word-level timestamps. The newer
-  // gpt-4o-transcribe / gpt-4o-mini-transcribe models accept `json` /
-  // `text` response formats only and don't expose `timestamp_granularities`,
-  // so they can't satisfy this provider's contract.
   readonly models = [
     {
       id: "whisper-1",
@@ -132,8 +120,7 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
 
     const form = new FormData();
     const filename = `audio.${mediaTypeToExtension(mediaType)}`;
-    // Cast via BlobPart: TS narrowing of Uint8Array<ArrayBufferLike> vs
-    // Blob's required ArrayBuffer-backed view is stricter than runtime.
+    // BlobPart cast — TS narrowing is stricter than runtime here.
     form.append(
       "file",
       new Blob([audio as BlobPart], { type: mediaType }),
@@ -191,13 +178,8 @@ export function createOpenAISTT(config: OpenAISpeechToTextProviderConfig = {}) {
   };
 }
 
-// OpenAI transcription accepts mp3/mp4/mpeg/mpga/m4a/wav/webm/flac/ogg/opus
-// but rejects raw PCM. When a TTS provider hands us raw little-endian PCM
-// (stitch mode), we wrap it with a WAV header so the STT endpoint will
-// parse it. `audio/l16` is intentionally NOT handled: RFC 2586 defines it
-// as big-endian and `wrapPcm16Mono` writes little-endian — silently mis-
-// wrapping would corrupt audio. No current provider emits L16; add an
-// explicit byte-swap branch here if one does.
+// OpenAI transcription rejects raw PCM; wrap as WAV. audio/l16 (RFC 2586,
+// big-endian) is intentionally unsupported — wrapPcm16Mono is little-endian.
 async function normalizeAudioForOpenAI(
   audio: Uint8Array,
   mediaType: string

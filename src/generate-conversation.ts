@@ -13,7 +13,7 @@ import {
   ConversationTimestampAttributionError,
   NoSpeechGeneratedError,
 } from "./errors.js";
-import { debug } from "./logger.js";
+import { debug, info } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
@@ -49,8 +49,6 @@ const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_CONCURRENCY = 6;
 const DEFAULT_MAX_RETRIES = 2;
 
-// Regexes used by `attributeTimestampsToTurns`. Top-level so they aren't
-// recompiled on every word.
 const NORMALIZE_LEAD_RE = /^[^\p{L}\p{N}'-]+/u;
 const NORMALIZE_TRAIL_RE = /[^\p{L}\p{N}'-]+$/u;
 const WHITESPACE_SPLIT_RE = /\s+/;
@@ -109,12 +107,8 @@ export async function generateConversation<V extends Voice = Voice>(
   }
 
   if (path.kind === "native") {
-    // The native-dialogue path renders the entire script in a single provider
-    // API call, so per-turn providerOptions have no well-defined meaning —
-    // silently collapsing them to a single blob would lie to the caller. Fail
-    // loudly and let them move providerOptions to the top level (where it's
-    // forwarded once to the dialogue call) or pick a model that routes
-    // through the stitch path.
+    // Native-dialogue renders all turns in one API call, so per-turn
+    // providerOptions can't be honored — fail loudly instead of silently merging.
     const turnWithOpts = options.turns.findIndex(
       (t) => t.providerOptions !== undefined
     );
@@ -130,9 +124,7 @@ export async function generateConversation<V extends Voice = Voice>(
     });
   }
 
-  // Lazy-load the stitch pipeline so callers whose dispatch always picks
-  // native (e.g. a Jellypod gateway provider that handles concatenation
-  // server-side) never bundle pcm-concat / audio-utils / mediabunny WAV mux.
+  // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
   const stitched = await runStitch({
     resolvedPerTurn,
@@ -193,18 +185,11 @@ async function runGateway<V extends Voice>(args: {
   const provider = resolved.provider as unknown as SpeechGatewayProvider;
   const modelLabel = `${provider.id}/${resolved.modelId}`;
 
-  // The conversation endpoint returns raw mixed audio only — no per-turn
-  // alignment on the wire today. When `timestamps: "on"` is requested, the
-  // SDK runs STT over the mixed audio and attributes each word back to a
-  // turn via text-matching. This mirrors what `/v1/audio/conversation/with-
-  // timestamps` will do server-side once it ships; at that point the SDK
-  // switches to hitting that endpoint and this local fallback goes away.
+  // Gateway conversation has no on-wire alignment yet — fall back to STT + text-match.
   const requestedMode: TimestampMode = options.timestamps ?? "off";
   const sttFallbackNeeded = requestedMode === "on";
 
-  // Each turn's voice must be a string over the wire. Object-shaped voices
-  // (URL / inline audio) aren't supported by the gateway conversation path
-  // today.
+  // Object-shaped voices aren't supported on the gateway conversation path.
   const wireTurns = options.turns.map((t, i) => {
     if (typeof t.voice !== "string") {
       throw new Error(
@@ -257,11 +242,11 @@ async function runGateway<V extends Voice>(args: {
     result.mediaType
   );
 
-  // Resolve timestamps:
-  //   - "off"  → undefined
-  //   - "on"   → STT over mixed audio + text-match-attribute to turns[]
   let timestamps: readonly ConversationWordTimestamp[] | undefined;
   if (sttFallbackNeeded) {
+    info(
+      `${modelLabel} (conversation): timestamps: "on" — gateway conversation endpoint has no on-wire alignment yet; will transcribe mixed audio via STT and attribute words back to turns (adds a round-trip).`
+    );
     const derived = await deriveTimestampsViaSTT({
       ttsModel: modelLabel,
       audio: audio.uint8Array,
@@ -286,10 +271,7 @@ async function runGateway<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
-  // Rebuild per-turn attribution from caller input: the gateway's conversation
-  // endpoint no longer carries it on the wire (server-side only in
-  // `speech_requests`). The model id is `<provider>/<model>` on the gateway
-  // path, so split it for the public shape.
+  // Rebuild per-turn attribution from caller input — the gateway no longer carries it on the wire.
   const slashIdx = resolved.modelId.indexOf("/");
   const wireProvider =
     slashIdx === -1 ? resolved.modelId : resolved.modelId.slice(0, slashIdx);
@@ -327,11 +309,8 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
-  // When normalization is requested and the provider exposes a decodable
-  // PCM/WAV mode via getStitchOptions, force the dialogue request into that
-  // mode so we can re-RMS-level the output. Otherwise the dialogue runs
-  // unchanged and emerges in whatever format the provider mixes natively
-  // (often MP3) — we surface that via a warning.
+  // Force decodable PCM/WAV via getStitchOptions when normalizing; otherwise
+  // emit the provider's native mixed format (often MP3) and warn.
   const normalize = options.normalizeVolume ?? true;
   const stitchOpts = normalize
     ? resolved.provider.getStitchOptions?.(resolved.modelId)
@@ -343,10 +322,7 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
-  // Stitch-mode options are applied last so they override user-supplied
-  // providerOptions that would otherwise break the decoder (e.g. a caller
-  // requesting `response_format: "mp3"` while normalization is on). Same
-  // precedence as the stitch path's per-turn merge.
+  // Stitch options must win — caller-supplied response_format would break the decoder.
   const dialogueProviderOptions = stitchOpts
     ? { ...options.providerOptions, ...stitchOpts.providerOptions }
     : options.providerOptions;
@@ -364,7 +340,7 @@ async function runNative<V extends Voice>(args: {
       `${dialogueId} (dialogue): timestamps: "on" — requesting native dialogue alignment.`
     );
   } else {
-    debug(
+    info(
       `${dialogueId} (dialogue): timestamps: "on" but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
     );
   }
@@ -398,8 +374,7 @@ async function runNative<V extends Voice>(args: {
   }
 
   let audioBytes: string | Uint8Array = result.audio;
-  // Prefer the stitch-mode mediaType over the provider's response header;
-  // some providers (e.g. Hume) omit the sample rate from content-type.
+  // Hume and others omit sample rate from content-type; prefer stitch mediaType.
   let outputMediaType = stitchOpts?.mediaType ?? result.mediaType;
 
   if (stitchOpts) {
@@ -453,16 +428,6 @@ async function runNative<V extends Voice>(args: {
   };
 }
 
-// Resolves timestamps for the native dialogue path:
-//   - "off"                       → undefined
-//   - native alignment returned   → attribute words to turns and pass through
-//   - "on" without native         → STT fallback, then attribute to turns
-//
-// On both alignment-bearing branches the flat word list is split back across
-// `turns[]` by greedy text-matching (case-insensitive, punctuation-insensitive)
-// against the input transcripts. If matching diverges
-// (`ConversationTimestampAttributionError`), we surface it loudly rather than
-// silently emit a wrong `turnIndex`.
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   timestampMode: TimestampMode;
   nativeTimestamps: readonly WordTimestamp[] | undefined;
@@ -497,21 +462,15 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   });
 }
 
-/**
- * Normalize a word for matching: lowercase + strip leading/trailing
- * punctuation. Keeps internal apostrophes, hyphens, etc. so contractions and
- * hyphenated words match across providers ("don't" ↔ "don't.").
- */
+// Lowercase and strip leading/trailing non-word chars; keep internal
+// apostrophes/hyphens so "don't" ↔ "don't." match.
 function normalizeWord(s: string): string {
-  // Strip leading/trailing characters that aren't letters, digits, apostrophes,
-  // or hyphens. Internal punctuation is preserved.
   return s
     .toLowerCase()
     .replace(NORMALIZE_LEAD_RE, "")
     .replace(NORMALIZE_TRAIL_RE, "");
 }
 
-/** Split a turn's text into match-tokens (word forms used for attribution). */
 function tokenizeTurn(text: string): string[] {
   return text
     .split(WHITESPACE_SPLIT_RE)
@@ -519,17 +478,6 @@ function tokenizeTurn(text: string): string[] {
     .filter((t) => t.length > 0);
 }
 
-/**
- * Attribute a flat list of provider word timestamps back to the `turns[]`
- * they came from by greedy text-matching. Walks the timestamps in order,
- * consuming words from `turns[0]` first, advancing to the next turn when
- * the current turn's tokens are exhausted.
- *
- * Throws `ConversationTimestampAttributionError` when (a) a timestamp word
- * doesn't match the next expected turn token (with a small slack budget for
- * provider drift), (b) timestamps run out before all turns are consumed, or
- * (c) all turns are consumed before timestamps are exhausted.
- */
 function attributeTimestampsToTurns<V extends Voice>(args: {
   timestamps: readonly WordTimestamp[];
   turns: readonly ConversationTurn<V>[];
@@ -539,9 +487,7 @@ function attributeTimestampsToTurns<V extends Voice>(args: {
   const turnTokens = turns.map((t) => tokenizeTurn(t.text));
   const totalExpected = turnTokens.reduce((n, t) => n + t.length, 0);
 
-  // Allow up to 20% mismatched words across the whole transcript before we
-  // bail. Keeps minor TTS quirks (e.g. "okay" → "OK") from blowing up an
-  // otherwise-correct attribution.
+  // 20% slack for provider drift (e.g. "okay" → "OK").
   const maxMismatches = Math.max(1, Math.floor(timestamps.length * 0.2));
 
   const out: ConversationWordTimestamp[] = [];
@@ -552,8 +498,6 @@ function attributeTimestampsToTurns<V extends Voice>(args: {
   for (const ts of timestamps) {
     const observed = normalizeWord(ts.text);
 
-    // Skip empty/whitespace-only words from the provider — they carry no
-    // attribution signal.
     if (observed.length === 0) {
       out.push({
         text: ts.text,
@@ -564,7 +508,6 @@ function attributeTimestampsToTurns<V extends Voice>(args: {
       continue;
     }
 
-    // Advance past any turns whose tokens are exhausted.
     while (
       turnIndex < turnTokens.length &&
       tokenIndex >= (turnTokens[turnIndex]?.length ?? 0)
@@ -595,9 +538,7 @@ function attributeTimestampsToTurns<V extends Voice>(args: {
       continue;
     }
 
-    // Mismatch: tolerate up to `maxMismatches` total. Attribute to the
-    // current turn (best guess) and advance our token cursor so we don't
-    // get permanently stuck on a single bad word.
+    // Tolerate up to maxMismatches; attribute to current turn and advance.
     mismatches++;
     if (mismatches > maxMismatches) {
       throw new ConversationTimestampAttributionError({
@@ -616,9 +557,7 @@ function attributeTimestampsToTurns<V extends Voice>(args: {
     tokenIndex++;
   }
 
-  // Verify we consumed at least most of the expected words. If we ended
-  // far short of the input transcript, attribution probably skipped an
-  // entire turn.
+  // If we ended far short of the input transcript, an entire turn was likely skipped.
   const consumedExpected =
     turnTokens.slice(0, turnIndex).reduce((n, t) => n + t.length, 0) +
     tokenIndex;

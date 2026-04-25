@@ -6,11 +6,7 @@ export interface Pcm16Segment {
   readonly sampleRate: number;
 }
 
-/**
- * View 16-bit little-endian PCM bytes as an Int16Array. Reuses the existing
- * buffer when `byteOffset` is 2-aligned; otherwise copies into a fresh,
- * aligned buffer (Int16Array's buffer view requires 2-byte alignment).
- */
+// Int16Array views require 2-byte alignment; copy on misalignment.
 function pcmBytesToInt16(bytes: Uint8Array): Int16Array {
   if (bytes.byteOffset % 2 === 0 && bytes.byteLength % 2 === 0) {
     return new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
@@ -36,11 +32,7 @@ function downmixToMono(interleaved: Int16Array, channels: number): Int16Array {
   return out;
 }
 
-/**
- * View 32-bit little-endian float PCM bytes as a Float32Array. Reuses the
- * existing buffer when 4-aligned; otherwise copies into a fresh, aligned
- * buffer (Float32Array's view requires 4-byte alignment).
- */
+// Float32Array views require 4-byte alignment; copy on misalignment.
 function pcmBytesToFloat32(bytes: Uint8Array): Float32Array {
   if (bytes.byteOffset % 4 === 0 && bytes.byteLength % 4 === 0) {
     return new Float32Array(
@@ -57,7 +49,6 @@ function pcmBytesToFloat32(bytes: Uint8Array): Float32Array {
 const INT16_MAX = 32_767;
 const INT16_MIN = -32_768;
 
-/** Convert normalized [-1,1] float32 samples to int16 with clamping. */
 function float32ToInt16(f32: Float32Array): Int16Array {
   const out = new Int16Array(f32.length);
   for (let i = 0; i < f32.length; i++) {
@@ -73,10 +64,8 @@ function float32ToInt16(f32: Float32Array): Int16Array {
   return out;
 }
 
-/** Match `encoding=<value>` (string) in a mediaType param list. */
 const ENCODING_PARAM_RE = /(?:^|;)\s*encoding=([a-z0-9_-]+)(?=$|;|\s)/i;
 
-/** Decode a provider response to mono 16-bit PCM + its native sample rate. */
 export function decodeToPcm16(
   data: Uint8Array,
   mediaType: string
@@ -84,10 +73,7 @@ export function decodeToPcm16(
   const lower = mediaType.toLowerCase();
 
   if (lower.startsWith("audio/pcm") || lower.startsWith("audio/x-pcm")) {
-    // NOTE: `audio/l16` (RFC 2586) is intentionally NOT handled here. The
-    // standard mandates network byte order (big-endian) but no provider in
-    // this SDK currently emits it. If support is added later, byte-swap on
-    // little-endian hosts before constructing the Int16Array.
+    // audio/l16 (RFC 2586, big-endian) intentionally unsupported.
     const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
     const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
     const encoding = lower.match(ENCODING_PARAM_RE)?.[1];
@@ -128,7 +114,6 @@ function decodeWav(bytes: Uint8Array): Pcm16Segment {
     throw new Error("conversation.pcm-concat: not a RIFF/WAVE file");
   }
 
-  // Scan chunks for "fmt " and "data".
   let offset = 12;
   let sampleRate = 0;
   let channels = 0;
@@ -173,7 +158,6 @@ function decodeWav(bytes: Uint8Array): Pcm16Segment {
   };
 }
 
-/** Simple linear interpolation resampler for mono Int16 PCM. */
 function resamplePcm16LinearMono(
   input: Int16Array,
   fromRate: number,
@@ -200,7 +184,6 @@ function silencePcm16(ms: number, sampleRate: number): Int16Array {
   return new Int16Array(samples);
 }
 
-/** Root-mean-square amplitude of a PCM segment. */
 function rmsPcm16(pcm: Int16Array): number {
   if (pcm.length === 0) {
     return 0;
@@ -222,7 +205,6 @@ function clampInt16(value: number): number {
   return value;
 }
 
-/** Multiply each sample by `gain`, clamping to int16 range. */
 function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
   const out = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) {
@@ -231,32 +213,16 @@ function scaleClamp(pcm: Int16Array, gain: number): Int16Array {
   return out;
 }
 
-/**
- * Default RMS target: −20 dBFS — broadcast/podcast voice loudness convention
- * with ~20 dB peak headroom. Comfortable to listen to and leaves room for
- * typical TTS peaks not to clip.
- */
+// −20 dBFS: broadcast/podcast voice loudness with ~20 dB peak headroom.
 export const DEFAULT_VOLUME_DBFS = -20;
 
-/** Convert a dBFS level (≤ 0) to the equivalent int16 RMS amplitude. */
 export function dbfsToInt16Rms(dbfs: number): number {
   return Math.round(INT16_MAX * 10 ** (dbfs / 20));
 }
 
 const DEFAULT_TARGET_RMS_INT16 = dbfsToInt16Rms(DEFAULT_VOLUME_DBFS);
 
-/**
- * RMS-normalize each segment to an absolute target amplitude. Each segment
- * is processed independently — no cross-segment dependency — so:
- *   - The output level is the same across runs regardless of input mix.
- *   - Two `generateConversation` calls produce comparable loudness even
- *     with completely different content.
- *
- * Silent segments pass through unchanged. Output is clamped to int16
- * range, so a quiet segment with rare peaks may clip slightly when
- * boosted; the default target leaves ~20 dB headroom to make this rare
- * for typical TTS content.
- */
+// Per-segment, no cross-segment coupling — gives consistent loudness across runs.
 export function normalizeRms(
   segments: readonly Pcm16Segment[],
   targetRmsAmplitude = DEFAULT_TARGET_RMS_INT16
@@ -270,10 +236,6 @@ export function normalizeRms(
   });
 }
 
-/**
- * Resample each segment to `targetSampleRate` mono, interleave with `gapMs`
- * silence, and mux the result as a WAV file via mediabunny.
- */
 export async function concatPcmToWav(
   segments: readonly Pcm16Segment[],
   options: { gapMs: number; targetSampleRate: number }

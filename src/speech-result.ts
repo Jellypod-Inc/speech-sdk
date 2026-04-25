@@ -11,25 +11,10 @@ export interface SpeechResult {
   readonly audio: GeneratedAudioFile;
   readonly metadata: SpeechMetadata;
   readonly providerMetadata?: Record<string, unknown>;
-  /**
-   * Word-level alignment data. Populated when `timestamps: "on"` is passed —
-   * native alignment when the TTS provider returns it, otherwise derived via
-   * an STT round-trip. Undefined when timestamps are off (the default).
-   *
-   * Timestamps are always word-granularity with start/end in seconds.
-   * Character- or phoneme-level native data is aggregated internally.
-   */
   readonly timestamps?: readonly WordTimestamp[];
   readonly warnings?: string[];
 }
 
-/**
- * Result returned by `generateConversation()`. Identical to `SpeechResult`
- * except that every word timestamp also carries a `turnIndex` pointing back
- * into the input `turns[]` array. Because `ConversationWordTimestamp`
- * extends `WordTimestamp`, callers that previously read `.text/.start/.end`
- * keep working unchanged.
- */
 export interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
   readonly timestamps?: readonly ConversationWordTimestamp[];
 }

@@ -346,12 +346,7 @@ export function createHume(config: HumeSpeechProviderConfig = {}) {
   };
 }
 
-/**
- * Map a Hume `format.type` value to a standard media type. Used when decoding
- * base64 audio from `/v0/tts`, which delivers bytes inside a JSON body with
- * no Content-Type hint for the audio itself. PCM is always 48 kHz mono s16
- * (Hume's only documented PCM mode).
- */
+// Hume's PCM mode is always 48 kHz mono s16.
 function humeFormatToMediaType(formatType: string | undefined): string {
   if (!formatType) {
     return "audio/mpeg";

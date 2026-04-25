@@ -9,12 +9,7 @@ export class ApiError extends SpeechSDKError {
   readonly statusCode: number;
   readonly responseBody?: unknown;
   readonly model: string;
-  /**
-   * Stable machine-readable error code from RFC 7807 `application/problem+json`
-   * responses (the `code` extension). Optional — only populated when the
-   * provider emits it (currently Speech Gateway). Callers can match on this
-   * instead of parsing error messages.
-   */
+  // RFC 7807 `code` extension; only Speech Gateway populates it today.
   readonly code?: string;
 
   constructor(
@@ -61,11 +56,6 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
-/**
- * Thrown by `resolveApiKey` when neither the `apiKey` option nor the provider's
- * env var is set. Carries the provider name + env var so callers can build
- * their own actionable error (see `TimestampKeyMissingError`).
- */
 export class MissingApiKeyError extends SpeechSDKError {
   readonly providerName: string;
   readonly envVar: string;
@@ -80,11 +70,6 @@ export class MissingApiKeyError extends SpeechSDKError {
   }
 }
 
-/**
- * Thrown when `timestamps: "on"` is requested but the SDK can't obtain word
- * timestamps because the required API key for the fallback STT provider is
- * missing. Message names the env vars that would unblock the request.
- */
 export class TimestampKeyMissingError extends SpeechSDKError {
   constructor(options: {
     ttsModel: string;
@@ -100,17 +85,6 @@ export class TimestampKeyMissingError extends SpeechSDKError {
   }
 }
 
-/**
- * Thrown by the native-dialogue conversation path when the SDK cannot
- * reliably attribute the provider's flat word timestamps back to the input
- * `turns[]`. Happens when the TTS provider inserts, drops, or substantially
- * reorders words such that text-matching against the input transcript fails.
- *
- * The error names the turn index where matching diverged, plus the expected
- * vs. observed word, so callers can decide whether to retry, downgrade to
- * `timestamps: "off"`, or switch to the stitch path (different model per
- * turn) where attribution is exact by construction.
- */
 export class ConversationTimestampAttributionError extends SpeechSDKError {
   readonly turnIndex: number;
   readonly observed: string;

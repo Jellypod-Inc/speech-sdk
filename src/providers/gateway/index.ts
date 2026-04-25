@@ -292,18 +292,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
   }
 
-  /**
-   * Conversation fast-path through the gateway. Sends every turn in a single
-   * `POST /v1/audio/conversation` call; the server renders, stitches,
-   * normalizes, and returns one mixed audio file as raw bytes. Avoids the
-   * N-round-trip stitch path and keeps audio-mux code out of caller bundles.
-   *
-   * The conversation endpoint carries no per-turn attribution or timestamps
-   * on the wire today — attribution is server-side only (logged into the
-   * `speech_requests` table), and per-turn alignment is deferred until
-   * `/v1/audio/conversation/with-timestamps` ships. Callers that need word
-   * timestamps must derive them via STT over the returned mixed audio.
-   */
+  // Server stitches and normalizes; callers needing timestamps derive via STT.
   async generateConversation(options: {
     modelId: string;
     turns: readonly {

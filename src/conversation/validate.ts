@@ -1,12 +1,7 @@
 import { ConversationInputError } from "./errors.js";
 import type { ConversationTurn, GenerateConversationOptions } from "./types.js";
 
-/**
- * Stable key for a voice so we can count unique voices across turns within
- * one call. String voices and URL voices use their value; binary
- * `Uint8Array` audio voices use object-reference identity (two distinct
- * buffers with the same length/endpoints would otherwise collide).
- */
+// Object voices key by reference — distinct buffers with identical content must not collide.
 export function voiceKey(
   voice: ConversationTurn["voice"],
   refIds: WeakMap<object, number>,
@@ -21,7 +16,6 @@ export function voiceKey(
   if ("audio" in voice && typeof voice.audio === "string") {
     return `a:${voice.audio}`;
   }
-  // Object voice (Uint8Array audio, or any other shape) — key by reference.
   let id = refIds.get(voice);
   if (id === undefined) {
     id = refCounter.next++;
@@ -30,7 +24,6 @@ export function voiceKey(
   return `o:${id}`;
 }
 
-/** Build a fresh ref-id context for a single conversation. */
 export function newVoiceKeyContext(): {
   refIds: WeakMap<object, number>;
   refCounter: { next: number };
