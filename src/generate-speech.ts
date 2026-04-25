@@ -6,6 +6,7 @@ import {
   ApiError,
   GatewayTimestampsUnavailableError,
   NoSpeechGeneratedError,
+  TimestampFallbackNotConfiguredError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 import { debug, info } from "./logger.js";
@@ -87,12 +88,13 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const shouldRequestNative =
     timestampMode === "on" && (hasNativeTimestamps || isGateway);
 
+  const effectiveFallback = timestampFallback ?? resolved.fallbackSTT;
   logTimestampDecision({
     modelIdentifier,
     mode: timestampMode,
     hasNative: hasNativeTimestamps,
     willRequestNative: shouldRequestNative,
-    timestampFallback,
+    effectiveFallback,
   });
 
   const startTime = performance.now();
@@ -169,6 +171,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const timestamps = await resolveTimestamps({
     timestampMode,
     modelIdentifier,
+    resolved,
     resultTimestamps: result.timestamps,
     audio: audio.uint8Array,
     mediaType: outputMediaType,
@@ -204,42 +207,43 @@ function mergeWarnings(
 async function resolveTimestamps(args: {
   timestampMode: TimestampMode;
   modelIdentifier: string;
+  resolved: ResolvedModel;
   resultTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
   timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
-  const {
-    timestampMode,
-    modelIdentifier,
-    resultTimestamps,
-    audio,
-    mediaType,
-    timestampFallback,
-    abortSignal,
-  } = args;
-
-  if (timestampMode === "off") {
+  if (args.timestampMode === "off") {
     return undefined;
   }
-
-  if (resultTimestamps?.length) {
+  if (args.resultTimestamps?.length) {
     debug(
-      `${modelIdentifier}: returned ${resultTimestamps.length} native word timestamps.`
+      `${args.modelIdentifier}: returned ${args.resultTimestamps.length} native word timestamps.`
     );
-    return resultTimestamps;
+    return args.resultTimestamps;
   }
-
+  if (isSpeechGatewayModel(args.resolved)) {
+    // Gateway server owns fallback; if it returned no timestamps, the
+    // existing GatewayTimestampsUnavailableError contract handles it
+    // upstream of this helper.
+    return undefined;
+  }
+  const fallback = args.timestampFallback ?? args.resolved.fallbackSTT;
+  if (!fallback) {
+    throw new TimestampFallbackNotConfiguredError({
+      ttsModel: args.modelIdentifier,
+    });
+  }
   const timestamps = await deriveTimestampsViaSTT({
-    ttsModel: modelIdentifier,
-    audio,
-    mediaType,
-    timestampFallback,
-    abortSignal,
+    ttsModel: args.modelIdentifier,
+    audio: args.audio,
+    mediaType: args.mediaType,
+    timestampFallback: fallback,
+    abortSignal: args.abortSignal,
   });
   debug(
-    `${modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
+    `${args.modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
   );
   return timestamps;
 }
@@ -265,7 +269,7 @@ function logTimestampDecision(args: {
   mode: TimestampMode;
   hasNative: boolean;
   willRequestNative: boolean;
-  timestampFallback: ResolvedSTTModel | undefined;
+  effectiveFallback: ResolvedSTTModel | undefined;
 }): void {
   const { modelIdentifier, mode, willRequestNative } = args;
   if (mode === "off") {
@@ -280,13 +284,13 @@ function logTimestampDecision(args: {
   }
   // mode === "on" and no native support → will fall back to STT
   info(
-    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampFallback)} for word timestamps (adds a round-trip).`
+    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.effectiveFallback)} for word timestamps (adds a round-trip).`
   );
 }
 
-function describeSTTTarget(provider: ResolvedSTTModel | undefined): string {
-  if (provider) {
-    return `${provider.provider.id}/${provider.modelId}`;
+function describeSTTTarget(fallback: ResolvedSTTModel | undefined): string {
+  if (fallback) {
+    return `${fallback.provider.id}/${fallback.modelId}`;
   }
-  return "openai/whisper-1 (default)";
+  return "unconfigured STT fallback";
 }

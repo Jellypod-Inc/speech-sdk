@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   GatewayTimestampsUnavailableError,
+  TimestampFallbackNotConfiguredError,
   TimestampKeyMissingError,
 } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
@@ -183,26 +184,109 @@ describe("generateSpeech timestamps option", () => {
     expect(stt.transcribe).not.toHaveBeenCalled();
   });
 
-  it("on mode without override: tries default openai/whisper-1 and errors with actionable message when OPENAI_API_KEY is unset", async () => {
-    const provider = createTTSProvider({});
-    const originalKey = process.env.OPENAI_API_KEY;
-    process.env.OPENAI_API_KEY = undefined;
-    delete process.env.OPENAI_API_KEY;
+  it('throws TimestampFallbackNotConfiguredError when timestamps:"on" and no fallback configured', async () => {
+    const fakeBytes = new Uint8Array([65]);
+    const provider: SpeechProvider = {
+      id: "stub",
+      defaultModel: "m",
+      models: [
+        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
+      ],
+      generate: vi.fn().mockResolvedValue({
+        audio: fakeBytes,
+        mediaType: "audio/wav",
+      }),
+    };
 
-    try {
-      await expect(
-        generateSpeech({
-          model: { provider, modelId: "t-model" },
-          text: "Hello",
-          voice: "v",
-          timestamps: "on",
-        })
-      ).rejects.toThrow(TimestampKeyMissingError);
-    } finally {
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
-    }
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "m" },
+        voice: "v",
+        text: "hi",
+        timestamps: "on",
+      })
+    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
+  });
+
+  it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
+    const transcribe = vi.fn().mockResolvedValue({
+      timestamps: [{ text: "hi", start: 0, end: 0.1 }],
+    });
+    const sttProvider: SpeechToTextProvider = {
+      id: "stub-stt",
+      defaultModel: "stub",
+      models: [],
+      transcribe,
+    };
+
+    const ttsProvider: SpeechProvider = {
+      id: "stub-tts",
+      defaultModel: "m",
+      models: [
+        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
+      ],
+      generate: vi.fn().mockResolvedValue({
+        audio: new Uint8Array([65]),
+        mediaType: "audio/wav",
+      }),
+    };
+
+    const result = await generateSpeech({
+      model: {
+        provider: ttsProvider,
+        modelId: "m",
+        fallbackSTT: { provider: sttProvider, modelId: "stub" },
+      },
+      voice: "v",
+      text: "hi",
+      timestamps: "on",
+    });
+
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(result.timestamps).toEqual([{ text: "hi", start: 0, end: 0.1 }]);
+  });
+
+  it("per-call timestampFallback overrides factory-level fallbackSTT", async () => {
+    const factoryTranscribe = vi.fn();
+    const perCallTranscribe = vi.fn().mockResolvedValue({
+      timestamps: [{ text: "ok", start: 0, end: 0.1 }],
+    });
+
+    const make = (
+      transcribeFn: ReturnType<typeof vi.fn>
+    ): SpeechToTextProvider => ({
+      id: "stub-stt",
+      defaultModel: "stub",
+      models: [],
+      transcribe: transcribeFn,
+    });
+
+    const ttsProvider: SpeechProvider = {
+      id: "stub-tts",
+      defaultModel: "m",
+      models: [
+        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
+      ],
+      generate: vi.fn().mockResolvedValue({
+        audio: new Uint8Array([65]),
+        mediaType: "audio/wav",
+      }),
+    };
+
+    await generateSpeech({
+      model: {
+        provider: ttsProvider,
+        modelId: "m",
+        fallbackSTT: { provider: make(factoryTranscribe), modelId: "stub" },
+      },
+      voice: "v",
+      text: "hi",
+      timestamps: "on",
+      timestampFallback: { provider: make(perCallTranscribe), modelId: "stub" },
+    });
+
+    expect(factoryTranscribe).not.toHaveBeenCalled();
+    expect(perCallTranscribe).toHaveBeenCalledTimes(1);
   });
 });
 

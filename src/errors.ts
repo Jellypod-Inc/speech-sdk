@@ -117,3 +117,17 @@ export class GatewayTimestampsUnavailableError extends SpeechSDKError {
     this.name = "GatewayTimestampsUnavailableError";
   }
 }
+
+export class TimestampFallbackNotConfiguredError extends SpeechSDKError {
+  readonly ttsModel: string;
+
+  constructor(options: { ttsModel: string }) {
+    super(
+      `${options.ttsModel} does not return word timestamps natively, and no fallback STT is configured. ` +
+        "Pass `fallbackSTT` to the provider factory (e.g. createOpenAI({ apiKey, fallbackSTT: { provider: createOpenAISTT(), modelId: 'gpt-4o-transcribe' } })) " +
+        "or pass `timestampFallback` per call, or use timestamps: 'off'."
+    );
+    this.name = "TimestampFallbackNotConfiguredError";
+    this.ttsModel = options.ttsModel;
+  }
+}

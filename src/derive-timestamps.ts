@@ -1,12 +1,6 @@
 import { MissingApiKeyError, TimestampKeyMissingError } from "./errors.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
-import { OpenAISpeechToTextProvider } from "./stt-providers/openai/index.js";
 import type { WordTimestamp } from "./timestamps.js";
-
-function defaultTimestampProvider(): ResolvedSTTModel {
-  const provider = new OpenAISpeechToTextProvider();
-  return { provider, modelId: provider.defaultModel };
-}
 
 export async function deriveTimestampsViaSTT(args: {
   ttsModel: string;
@@ -15,7 +9,14 @@ export async function deriveTimestampsViaSTT(args: {
   timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[]> {
-  const sttModel = args.timestampFallback ?? defaultTimestampProvider();
+  if (!args.timestampFallback) {
+    // Callers (resolveTimestamps in generate-speech, conversation path in Task 5)
+    // must gate on a configured fallback before calling this function.
+    throw new Error(
+      `deriveTimestampsViaSTT called without a configured timestampFallback for ${args.ttsModel}. This is a bug.`
+    );
+  }
+  const sttModel = args.timestampFallback;
 
   try {
     const { timestamps } = await sttModel.provider.transcribe({
