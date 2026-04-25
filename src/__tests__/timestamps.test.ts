@@ -15,7 +15,7 @@ function createTTSProvider(
     id: string;
     mediaType: string;
     timestamps: WordTimestamp[];
-    feature: { id: "timestamps"; mode: "native" | "derived" };
+    feature: "timestamps" | undefined;
     captureIncludeTimestamps: (v: boolean | undefined) => void;
   }> = {}
 ): SpeechProvider {
@@ -67,7 +67,7 @@ describe("generateSpeech timestamps option", () => {
   it('default ("off"): never asks the provider for timestamps, even when the model is native', async () => {
     let captured: boolean | undefined;
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
       captureIncludeTimestamps: (v) => {
         captured = v;
@@ -86,7 +86,7 @@ describe("generateSpeech timestamps option", () => {
   it("off mode: never passes includeTimestamps and never returns timestamps", async () => {
     let captured: boolean | undefined;
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
       captureIncludeTimestamps: (v) => {
         captured = v;
@@ -105,7 +105,7 @@ describe("generateSpeech timestamps option", () => {
 
   it("on mode: native provider returns timestamps without calling STT", async () => {
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
+      feature: "timestamps",
       timestamps: [{ text: "Yo", start: 0, end: 0.1 }],
     });
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
@@ -122,10 +122,8 @@ describe("generateSpeech timestamps option", () => {
     expect(result.timestamps).toEqual([{ text: "Yo", start: 0, end: 0.1 }]);
   });
 
-  it("on mode: derived provider falls back to user-supplied STT", async () => {
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
-    });
+  it("on mode: provider without native timestamps falls back to user-supplied STT", async () => {
+    const provider = createTTSProvider({});
     const stt = createSTTProvider([
       { text: "Hello", start: 0, end: 0.4 },
       { text: "world", start: 0.45, end: 0.9 },
@@ -186,9 +184,7 @@ describe("generateSpeech timestamps option", () => {
   });
 
   it("on mode without override: tries default openai/whisper-1 and errors with actionable message when OPENAI_API_KEY is unset", async () => {
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
-    });
+    const provider = createTTSProvider({});
     const originalKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = undefined;
     delete process.env.OPENAI_API_KEY;

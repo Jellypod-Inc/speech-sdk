@@ -61,7 +61,7 @@ export const MURF_MODELS: readonly ModelInfo[] = [
       "sk",
       "bg",
     ],
-    features: ["streaming", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "timestamps"],
   },
   {
     id: "FALCON",

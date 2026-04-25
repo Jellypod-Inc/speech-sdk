@@ -27,7 +27,6 @@ export type {
   ModelInfo,
   ResolvedModel,
   SpeechProvider,
-  TimestampsFeature,
   Voice,
 } from "./speech-provider.js";
 export type {

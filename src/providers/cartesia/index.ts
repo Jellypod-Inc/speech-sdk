@@ -74,18 +74,13 @@ export const CARTESIA_MODELS: readonly ModelInfo[] = [
       "mr",
       "pa",
     ],
-    features: [
-      "streaming",
-      "audio-tags",
-      "inline-voice-cloning",
-      { id: "timestamps", mode: "native" },
-    ],
+    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
   },
   {
     id: "sonic-2",
     releaseDate: "2025-03-13",
     languages: ["en"],
-    features: ["streaming", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "timestamps"],
   },
 ] as const;
 

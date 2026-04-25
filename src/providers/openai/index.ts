@@ -95,23 +95,19 @@ export const OPENAI_MODELS: readonly ModelInfo[] = [
     id: "gpt-4o-mini-tts",
     releaseDate: "2025-03-20",
     languages: OPENAI_LANGUAGES,
-    features: [
-      "streaming",
-      "audio-tags",
-      { id: "timestamps", mode: "derived" },
-    ],
+    features: ["streaming", "audio-tags"],
   },
   {
     id: "tts-1",
     releaseDate: "2023-11-06",
     languages: OPENAI_LANGUAGES,
-    features: ["streaming", { id: "timestamps", mode: "derived" }],
+    features: ["streaming"],
   },
   {
     id: "tts-1-hd",
     releaseDate: "2023-11-06",
     languages: OPENAI_LANGUAGES,
-    features: ["streaming", { id: "timestamps", mode: "derived" }],
+    features: ["streaming"],
   },
 ] as const;
 

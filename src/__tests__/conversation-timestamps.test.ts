@@ -14,7 +14,7 @@ const ATTRIBUTION_FAILED_RE = /Failed to attribute timestamps/;
 function stitchTTS(options: {
   id: string;
   timestamps?: WordTimestamp[];
-  feature?: "native" | "derived";
+  feature?: "timestamps";
 }): SpeechProvider {
   const pcm = new Int16Array(TURN_SAMPLES);
   const bytes = new Uint8Array(pcm.buffer);
@@ -26,9 +26,7 @@ function stitchTTS(options: {
         id: "m",
         releaseDate: "2025-01-01",
         languages: ["en"],
-        features: options.feature
-          ? [{ id: "timestamps", mode: options.feature }]
-          : [],
+        features: options.feature ? [options.feature] : [],
       },
     ],
     generate: vi
@@ -51,7 +49,7 @@ function stitchTTS(options: {
 
 function nativeTTS(options: {
   timestamps?: WordTimestamp[];
-  feature?: "native" | "derived";
+  feature?: "timestamps";
 }): SpeechProvider {
   return {
     id: "native",
@@ -61,9 +59,7 @@ function nativeTTS(options: {
         id: "m",
         releaseDate: "2025-01-01",
         languages: ["en"],
-        features: options.feature
-          ? [{ id: "timestamps", mode: options.feature }]
-          : [],
+        features: options.feature ? [options.feature] : [],
       },
     ],
     generate: vi.fn(),
@@ -103,12 +99,12 @@ describe("generateConversation timestamps — stitch path", () => {
     // Turn 0 starts at 0s, Turn 1 starts at 0.1s + 0.2s = 0.3s.
     const providerA = stitchTTS({
       id: "a",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.05 }],
     });
     const providerB = stitchTTS({
       id: "b",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [{ text: "yo", start: 0.01, end: 0.08 }],
     });
 
@@ -151,7 +147,7 @@ describe("generateConversation timestamps — stitch path", () => {
   it("off mode: does not request timestamps and returns undefined", async () => {
     const provider = stitchTTS({
       id: "a",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.05 }],
     });
 
@@ -172,7 +168,7 @@ describe("generateConversation timestamps — stitch path", () => {
   });
 
   it("on mode: derives timestamps via user-supplied STT for providers without native support", async () => {
-    const providerDerived = stitchTTS({ id: "d", feature: "derived" });
+    const providerDerived = stitchTTS({ id: "d" });
     const stt = mockSTT([{ text: "hello", start: 0, end: 0.05 }]);
 
     const result = await generateConversation({
@@ -213,7 +209,7 @@ describe("generateConversation timestamps — stitch path", () => {
   it("3-turn conversation: emits correct turnIndex for each word", async () => {
     const providerA = stitchTTS({
       id: "a",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "Hi", start: 0, end: 0.05 },
         { text: "there", start: 0.06, end: 0.09 },
@@ -221,12 +217,12 @@ describe("generateConversation timestamps — stitch path", () => {
     });
     const providerB = stitchTTS({
       id: "b",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [{ text: "Hello!", start: 0.01, end: 0.05 }],
     });
     const providerC = stitchTTS({
       id: "c",
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "How", start: 0, end: 0.03 },
         { text: "are", start: 0.04, end: 0.06 },
@@ -272,7 +268,7 @@ describe("generateConversation timestamps — stitch path", () => {
 describe("generateConversation timestamps — native path", () => {
   it("passthrough when the dialogue provider returns native alignment", async () => {
     const provider = nativeTTS({
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "Hello", start: 0, end: 0.3 },
         { text: "there", start: 0.35, end: 0.7 },
@@ -296,7 +292,7 @@ describe("generateConversation timestamps — native path", () => {
   });
 
   it("on mode: falls back to STT on the mixed audio when the dialogue provider doesn't return alignment", async () => {
-    const provider = nativeTTS({ feature: "derived" });
+    const provider = nativeTTS({});
     const stt = mockSTT([
       { text: "Hello", start: 0, end: 0.3 },
       { text: "there", start: 0.35, end: 0.7 },
@@ -320,7 +316,7 @@ describe("generateConversation timestamps — native path", () => {
 
   it("off mode: never populates timestamps even when native is available", async () => {
     const provider = nativeTTS({
-      feature: "native",
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.1 }],
     });
 
@@ -342,7 +338,7 @@ describe("generateConversation timestamps — native path", () => {
 
   it("attribution: text-matches a multi-word native dialogue alignment back to turns", async () => {
     const provider = nativeTTS({
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "Hello", start: 0, end: 0.3 },
         { text: "there,", start: 0.35, end: 0.6 },
@@ -376,7 +372,7 @@ describe("generateConversation timestamps — native path", () => {
     // Provider returns "Hello," with capital H + comma; input is "hello".
     // Provider also returns "WORLD!" for input "world".
     const provider = nativeTTS({
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "Hello,", start: 0, end: 0.3 },
         { text: "WORLD!", start: 0.35, end: 0.7 },
@@ -401,7 +397,7 @@ describe("generateConversation timestamps — native path", () => {
   it("attribution: throws ConversationTimestampAttributionError when provider words don't match input transcript", async () => {
     // Provider returns words completely unrelated to the input transcript.
     const provider = nativeTTS({
-      feature: "native",
+      feature: "timestamps",
       timestamps: [
         { text: "completely", start: 0, end: 0.3 },
         { text: "wrong", start: 0.35, end: 0.6 },

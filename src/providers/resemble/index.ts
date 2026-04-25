@@ -55,7 +55,7 @@ export const RESEMBLE_MODELS: readonly ModelInfo[] = [
       "streaming",
       "open-source",
       "inline-voice-cloning",
-      { id: "timestamps", mode: "native" },
+      "timestamps",
     ],
   },
 ] as const;

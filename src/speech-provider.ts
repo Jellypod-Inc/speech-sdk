@@ -4,12 +4,7 @@ import type { WordTimestamp } from "./timestamps.js";
 
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
 
-export type Feature = string | TimestampsFeature | { readonly id: string };
-
-export interface TimestampsFeature {
-  readonly id: "timestamps";
-  readonly mode: "native" | "derived";
-}
+export type Feature = string | { readonly id: string };
 
 export interface ModelInfo {
   readonly features: readonly Feature[];
@@ -33,18 +28,6 @@ export function hasFeature(model: ModelInfo, id: string): boolean {
     }
   }
   return false;
-}
-
-export function getFeature<T extends { id: string }>(
-  model: ModelInfo,
-  id: string
-): T | undefined {
-  for (const f of model.features) {
-    if (typeof f !== "string" && f.id === id) {
-      return f as T;
-    }
-  }
-  return undefined;
 }
 
 export interface SpeechProvider<
@@ -143,6 +126,5 @@ export function modelDeclaresNativeTimestamps(
   if (!modelInfo) {
     return false;
   }
-  const feature = getFeature<TimestampsFeature>(modelInfo, "timestamps");
-  return feature?.mode === "native";
+  return hasFeature(modelInfo, "timestamps");
 }

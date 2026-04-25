@@ -147,25 +147,25 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
     id: "eleven_v3",
     releaseDate: "2025-06-08",
     languages: ELEVENLABS_V3_LANGUAGES,
-    features: ["streaming", "audio-tags", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "audio-tags", "timestamps"],
   },
   {
     id: "eleven_multilingual_v2",
     releaseDate: "2023-08-22",
     languages: ELEVENLABS_V2_LANGUAGES,
-    features: ["streaming", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "timestamps"],
   },
   {
     id: "eleven_flash_v2_5",
     releaseDate: "2024-12-01",
     languages: ELEVENLABS_FLASH_V2_5_LANGUAGES,
-    features: ["streaming", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "timestamps"],
   },
   {
     id: "eleven_flash_v2",
     releaseDate: "2024-12-01",
     languages: ["en"] as const,
-    features: ["streaming", { id: "timestamps", mode: "native" }],
+    features: ["streaming", "timestamps"],
   },
 ] as const;
 
