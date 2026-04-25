@@ -1,0 +1,31 @@
+src/index.ts
+  8a3ab4cf342abbee 16
+src/__tests__/timestamps.test.ts
+  8a3ab4cf342abbee 4,187-192,194-225,227-267,269-289
+src/generate-speech.ts
+  8a3ab4cf342abbee 9,91,97,174,210,217,220,222,224-236,239-243,246,272,287,291-293,295
+src/derive-timestamps.ts
+  8a3ab4cf342abbee 12-19
+src/errors.ts
+  8a3ab4cf342abbee 120-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "59ef34c5621126b1e82af198eead00fd857a655e",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 154,
+      "total_deletions": 58,
+      "accepted_lines": 158,
+      "overriden_lines": 3
+    }
+  }
+}
