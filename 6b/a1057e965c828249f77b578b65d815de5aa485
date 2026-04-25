@@ -1,0 +1,27 @@
+skills/speech-sdk/references/timestamps.md
+  e9c43f466d9c330d 207
+skills/speech-sdk/references/providers/inworld.md
+  e9c43f466d9c330d 21
+skills/speech-sdk/references/providers/hume.md
+  e9c43f466d9c330d 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6ba1057e965c828249f77b578b65d815de5aa485",
+  "prompts": {
+    "e9c43f466d9c330d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7501889-027a-43ce-8ccf-76ae47a59d40",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
