@@ -170,25 +170,32 @@ describe("generateConversation timestamps — stitch path", () => {
     }
   });
 
-  it("on mode: derives timestamps via user-supplied STT for providers without native support", async () => {
-    const providerDerived = stitchTTS({ id: "d" });
+  it("on mode: derives timestamps via factory-configured STT for providers without native support", async () => {
     const stt = mockSTT([{ text: "hello", start: 0, end: 0.05 }]);
+    const providerDerived = stitchTTS({ id: "d" });
 
     const result = await generateConversation({
       turns: [
         {
-          model: { provider: providerDerived, modelId: "m" },
+          model: {
+            provider: providerDerived,
+            modelId: "m",
+            fallbackSTT: { provider: stt, modelId: "m" },
+          },
           voice: "v1",
           text: "hi",
         },
         {
-          model: { provider: providerDerived, modelId: "m" },
+          model: {
+            provider: providerDerived,
+            modelId: "m",
+            fallbackSTT: { provider: stt, modelId: "m" },
+          },
           voice: "v2",
           text: "yo",
         },
       ],
       timestamps: "on",
-      timestampFallback: { provider: stt, modelId: "m" },
       gapMs: 100,
     });
 
@@ -313,20 +320,23 @@ describe("generateConversation timestamps — native path", () => {
   });
 
   it("on mode: falls back to STT on the mixed audio when the dialogue provider doesn't return alignment", async () => {
-    const provider = nativeTTS({});
     const stt = mockSTT([
       { text: "Hello", start: 0, end: 0.3 },
       { text: "there", start: 0.35, end: 0.7 },
     ]);
+    const provider = nativeTTS({});
 
     const result = await generateConversation({
-      model: { provider, modelId: "m" },
+      model: {
+        provider,
+        modelId: "m",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       turns: [
         { voice: "a", text: "Hello" },
         { voice: "b", text: "there" },
       ],
       timestamps: "on",
-      timestampFallback: { provider: stt, modelId: "m" },
       normalizeVolume: false,
     });
 

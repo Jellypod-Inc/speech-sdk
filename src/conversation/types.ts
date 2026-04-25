@@ -1,5 +1,4 @@
 import type { ResolvedModel, Voice } from "../speech-provider.js";
-import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
 import type { TimestampMode } from "../timestamps.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
@@ -20,8 +19,6 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   // Default true. Default target -20 dBFS (broadcast/podcast standard).
   readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
-  // Defaults to OpenAI Whisper via OPENAI_API_KEY.
-  readonly timestampFallback?: ResolvedSTTModel;
   readonly timestamps?: TimestampMode;
   readonly turns: readonly ConversationTurn<V>[];
   // dBFS, must be ≤ 0. Default -20.

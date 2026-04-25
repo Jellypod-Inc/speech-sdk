@@ -1,5 +1,4 @@
 import type { ResolvedModel, Voice } from "./speech-provider.js";
-import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { TimestampMode } from "./timestamps.js";
 
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
@@ -55,7 +54,6 @@ export interface GenerateSpeechOptions<V extends Voice = Voice> {
   model: string | ResolvedModel<V>;
   providerOptions?: Record<string, unknown>;
   text: string;
-  timestampFallback?: ResolvedSTTModel;
   timestamps?: TimestampMode;
   voice: V;
   volumeDbfs?: number;

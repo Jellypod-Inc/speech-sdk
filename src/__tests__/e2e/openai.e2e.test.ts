@@ -157,19 +157,5 @@ describe("OpenAI e2e", () => {
         );
       }
     });
-
-    it("honors per-call timestampFallback override (explicit openai/whisper-1)", async () => {
-      const openai = createOpenAI();
-      const result = await generateSpeech({
-        model: openai("tts-1"),
-        text: TEST_TEXT,
-        voice: VOICE,
-        timestamps: "on",
-        timestampFallback: createOpenAISTT()("whisper-1"),
-      });
-
-      expect(result.timestamps).toBeDefined();
-      expect((result.timestamps ?? []).length).toBeGreaterThan(0);
-    });
   });
 });

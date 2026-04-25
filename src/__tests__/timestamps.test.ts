@@ -111,18 +111,21 @@ describe("generateSpeech timestamps option", () => {
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
 
     const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       text: "Yo",
       voice: "v",
       timestamps: "on",
-      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(stt.transcribe).not.toHaveBeenCalled();
     expect(result.timestamps).toEqual([{ text: "Yo", start: 0, end: 0.1 }]);
   });
 
-  it("on mode: provider without native timestamps falls back to user-supplied STT", async () => {
+  it("on mode: provider without native timestamps falls back to factory-configured STT", async () => {
     const provider = createTTSProvider({});
     const stt = createSTTProvider([
       { text: "Hello", start: 0, end: 0.4 },
@@ -130,11 +133,14 @@ describe("generateSpeech timestamps option", () => {
     ]);
 
     const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       text: "Hello world",
       voice: "v",
       timestamps: "on",
-      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(stt.transcribe).toHaveBeenCalledOnce();
@@ -154,11 +160,14 @@ describe("generateSpeech timestamps option", () => {
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
 
     const result = await generateSpeech({
-      model: { provider, modelId: "openai/tts-1" },
+      model: {
+        provider,
+        modelId: "openai/tts-1",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       text: "Hello",
       voice: "v",
       timestamps: "on",
-      timestampFallback: { provider: stt, modelId: "m" },
     });
 
     expect(captured).toBe(true);
@@ -172,11 +181,14 @@ describe("generateSpeech timestamps option", () => {
 
     await expect(
       generateSpeech({
-        model: { provider, modelId: "openai/tts-1" },
+        model: {
+          provider,
+          modelId: "openai/tts-1",
+          fallbackSTT: { provider: stt, modelId: "m" },
+        },
         text: "Hello",
         voice: "v",
         timestamps: "on",
-        timestampFallback: { provider: stt, modelId: "m" },
       })
     ).rejects.toThrow(GatewayTimestampsUnavailableError);
 
@@ -243,49 +255,6 @@ describe("generateSpeech timestamps option", () => {
 
     expect(transcribe).toHaveBeenCalledTimes(1);
     expect(result.timestamps).toEqual([{ text: "hi", start: 0, end: 0.1 }]);
-  });
-
-  it("per-call timestampFallback overrides factory-level fallbackSTT", async () => {
-    const factoryTranscribe = vi.fn();
-    const perCallTranscribe = vi.fn().mockResolvedValue({
-      timestamps: [{ text: "ok", start: 0, end: 0.1 }],
-    });
-
-    const make = (
-      transcribeFn: ReturnType<typeof vi.fn>
-    ): SpeechToTextProvider => ({
-      id: "stub-stt",
-      defaultModel: "stub",
-      models: [],
-      transcribe: transcribeFn,
-    });
-
-    const ttsProvider: SpeechProvider = {
-      id: "stub-tts",
-      defaultModel: "m",
-      models: [
-        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
-      ],
-      generate: vi.fn().mockResolvedValue({
-        audio: new Uint8Array([65]),
-        mediaType: "audio/wav",
-      }),
-    };
-
-    await generateSpeech({
-      model: {
-        provider: ttsProvider,
-        modelId: "m",
-        fallbackSTT: { provider: make(factoryTranscribe), modelId: "stub" },
-      },
-      voice: "v",
-      text: "hi",
-      timestamps: "on",
-      timestampFallback: { provider: make(perCallTranscribe), modelId: "stub" },
-    });
-
-    expect(factoryTranscribe).not.toHaveBeenCalled();
-    expect(perCallTranscribe).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -37,9 +37,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   // VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
   timestamps?: TimestampMode;
-  // Defaults to OpenAI Whisper via OPENAI_API_KEY. Only used when the TTS
-  // provider can't return timestamps natively.
-  timestampFallback?: ResolvedSTTModel;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -48,7 +45,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     headers,
     volumeDbfs,
     timestamps: timestampMode = "off",
-    timestampFallback,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
@@ -88,7 +84,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const shouldRequestNative =
     timestampMode === "on" && (hasNativeTimestamps || isGateway);
 
-  const effectiveFallback = timestampFallback ?? resolved.fallbackSTT;
+  const effectiveFallback = resolved.fallbackSTT;
   logTimestampDecision({
     modelIdentifier,
     mode: timestampMode,
@@ -175,7 +171,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     resultTimestamps: result.timestamps,
     audio: audio.uint8Array,
     mediaType: outputMediaType,
-    timestampFallback,
     abortSignal,
   });
 
@@ -211,7 +206,6 @@ async function resolveTimestamps(args: {
   resultTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
-  timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
   if (args.timestampMode === "off") {
@@ -229,7 +223,7 @@ async function resolveTimestamps(args: {
     // upstream of this helper.
     return undefined;
   }
-  const fallback = args.timestampFallback ?? args.resolved.fallbackSTT;
+  const fallback = args.resolved.fallbackSTT;
   if (!fallback) {
     throw new TimestampFallbackNotConfiguredError({
       ttsModel: args.modelIdentifier,

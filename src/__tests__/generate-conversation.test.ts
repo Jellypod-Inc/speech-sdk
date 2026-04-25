@@ -314,15 +314,6 @@ describe("generateConversation", () => {
         { voice: "nova", text: "Hello!" },
       ],
       timestamps: "on",
-      timestampFallback: {
-        provider: {
-          id: "stub-stt",
-          defaultModel: "stub",
-          models: [],
-          transcribe,
-        },
-        modelId: "stub",
-      },
     });
 
     expect(transcribe).not.toHaveBeenCalled();

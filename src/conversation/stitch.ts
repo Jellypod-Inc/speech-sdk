@@ -101,7 +101,6 @@ export async function runStitch<V extends Voice>(
         abortSignal: input.abortSignal,
         headers: input.headers,
         timestamps: input.timestamps,
-        timestampFallback: input.timestampFallback,
       });
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(

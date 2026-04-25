@@ -26,7 +26,6 @@ import {
 } from "./speech-provider.js";
 import type { ConversationResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
-import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type {
   ConversationWordTimestamp,
   TimestampMode,
@@ -141,8 +140,7 @@ export async function generateConversation<V extends Voice = Voice>(
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? "off",
-    timestampFallback:
-      options.timestampFallback ?? resolvedPerTurn[0]?.fallbackSTT,
+    timestampFallback: resolvedPerTurn[0]?.fallbackSTT,
   });
 
   if (stitched.audio.length === 0) {
@@ -393,7 +391,6 @@ async function runNative<V extends Voice>(args: {
     mediaType: outputMediaType,
     ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
     resolved,
-    timestampFallback: options.timestampFallback,
     abortSignal: options.abortSignal,
     turns: options.turns,
   });
@@ -424,7 +421,6 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   mediaType: string;
   ttsModel: string;
   resolved: ResolvedModel<V>;
-  timestampFallback: ResolvedSTTModel | undefined;
   abortSignal: AbortSignal | undefined;
   turns: readonly ConversationTurn<V>[];
 }): Promise<readonly ConversationWordTimestamp[] | undefined> {
@@ -438,7 +434,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       modelId: args.ttsModel,
     });
   }
-  const fallback = args.timestampFallback ?? args.resolved.fallbackSTT;
+  const fallback = args.resolved.fallbackSTT;
   if (!fallback) {
     throw new TimestampFallbackNotConfiguredError({
       ttsModel: args.ttsModel,
