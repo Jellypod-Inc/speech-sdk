@@ -253,6 +253,10 @@ function preprocessText(
   rawText: string,
   modelIdentifier: string
 ): { text: string; warnings: string[] } {
+  // Gateway server handles audio-tag normalization itself — pass raw text through.
+  if (isSpeechGatewayModel(resolved)) {
+    return { text: rawText, warnings: [] };
+  }
   if (resolved.provider.processAudioTags) {
     return resolved.provider.processAudioTags(rawText, resolved.modelId);
   }

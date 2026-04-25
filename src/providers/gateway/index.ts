@@ -1,35 +1,14 @@
-import { stripAudioTags } from "../../audio-tags.js";
 import { ApiError, MissingApiKeyError } from "../../errors.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
-import {
-  hasFeature,
-  type ModelInfo,
-  type ResolvedModel,
-  type SpeechProvider,
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
 } from "../../speech-provider.js";
 import type {
   ConversationWordTimestamp,
   WordTimestamp,
 } from "../../timestamps.js";
-import { CARTESIA_MODELS, CARTESIA_PROVIDER_ID } from "../cartesia/index.js";
-import { DEEPGRAM_MODELS, DEEPGRAM_PROVIDER_ID } from "../deepgram/index.js";
-import {
-  ELEVENLABS_MODELS,
-  ELEVENLABS_PROVIDER_ID,
-} from "../elevenlabs/index.js";
-import { FAL_MODELS, FAL_PROVIDER_ID } from "../fal/index.js";
-import {
-  FISH_AUDIO_MODELS,
-  FISH_AUDIO_PROVIDER_ID,
-} from "../fish-audio/index.js";
-import { GOOGLE_MODELS, GOOGLE_PROVIDER_ID } from "../google/index.js";
-import { HUME_MODELS, HUME_PROVIDER_ID } from "../hume/index.js";
-import { INWORLD_MODELS, INWORLD_PROVIDER_ID } from "../inworld/index.js";
-import { MISTRAL_MODELS, MISTRAL_PROVIDER_ID } from "../mistral/index.js";
-import { MURF_MODELS, MURF_PROVIDER_ID } from "../murf/index.js";
-import { OPENAI_MODELS, OPENAI_PROVIDER_ID } from "../openai/index.js";
-import { RESEMBLE_MODELS, RESEMBLE_PROVIDER_ID } from "../resemble/index.js";
-import { XAI_MODELS, XAI_PROVIDER_ID } from "../xai/index.js";
 
 export const SPEECH_GATEWAY_PROVIDER_ID = "speech-gateway" as const;
 
@@ -52,58 +31,14 @@ interface GatewayJsonResponse {
 const GATEWAY_401_MESSAGE =
   "Speech Gateway rejected your API key (401). Get a key at https://wavform.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
 
-// Aggregates every built-in provider's model list under `<provider>/<model>`
-// ids so capability checks (e.g. native timestamps) keep working when the
-// user routes through the gateway.
-//
-// Evaluated lazily on first access: `speech-provider.ts` imports
-// `SPEECH_GATEWAY_PROVIDER_ID` from this module, which means the providers
-// we re-import here may not yet be fully initialized at module-load time
-// (the provider modules import `speech-provider.ts` too). By deferring the
-// aggregation until the first call we sidestep that circular-init ordering
-// without instantiating any provider classes.
-let aggregatedModelsCache: readonly ModelInfo[] | undefined;
-
-function aggregatedModels(): readonly ModelInfo[] {
-  if (aggregatedModelsCache) {
-    return aggregatedModelsCache;
-  }
-  const sources: readonly {
-    id: string;
-    models: readonly ModelInfo[];
-  }[] = [
-    { id: OPENAI_PROVIDER_ID, models: OPENAI_MODELS },
-    { id: ELEVENLABS_PROVIDER_ID, models: ELEVENLABS_MODELS },
-    { id: DEEPGRAM_PROVIDER_ID, models: DEEPGRAM_MODELS },
-    { id: CARTESIA_PROVIDER_ID, models: CARTESIA_MODELS },
-    { id: HUME_PROVIDER_ID, models: HUME_MODELS },
-    { id: INWORLD_PROVIDER_ID, models: INWORLD_MODELS },
-    { id: GOOGLE_PROVIDER_ID, models: GOOGLE_MODELS },
-    { id: FISH_AUDIO_PROVIDER_ID, models: FISH_AUDIO_MODELS },
-    { id: MURF_PROVIDER_ID, models: MURF_MODELS },
-    { id: RESEMBLE_PROVIDER_ID, models: RESEMBLE_MODELS },
-    { id: FAL_PROVIDER_ID, models: FAL_MODELS },
-    { id: MISTRAL_PROVIDER_ID, models: MISTRAL_MODELS },
-    { id: XAI_PROVIDER_ID, models: XAI_MODELS },
-  ];
-  aggregatedModelsCache = sources.flatMap((src) =>
-    src.models.map((model) => ({
-      id: `${src.id}/${model.id}`,
-      releaseDate: model.releaseDate,
-      languages: model.languages,
-      features: model.features,
-    }))
-  );
-  return aggregatedModelsCache;
-}
-
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
   readonly defaultModel = "openai/gpt-4o-mini-tts";
-
-  get models(): readonly ModelInfo[] {
-    return aggregatedModels();
-  }
+  // The gateway server is the source of truth for model capabilities.
+  // Client-side model declarations are intentionally empty; feature checks
+  // are deferred to the wire — if the gateway can't honor a request it
+  // returns an error.
+  readonly models: readonly ModelInfo[] = [];
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -131,17 +66,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       throw err;
     }
     return key;
-  }
-
-  processAudioTags(
-    text: string,
-    modelId: string
-  ): { text: string; warnings: string[] } {
-    const model = this.models.find((m) => m.id === modelId);
-    if (model && hasFeature(model, "audio-tags")) {
-      return { text, warnings: [] };
-    }
-    return stripAudioTags(text, `speech-gateway/${modelId}`);
   }
 
   async generate(options: {

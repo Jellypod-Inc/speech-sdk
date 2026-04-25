@@ -251,34 +251,14 @@ describe("SpeechGatewayProvider", () => {
     expect(result.providerMetadata).toBeUndefined();
   });
 
-  it("aggregates built-in provider models under namespaced ids", () => {
+  it("has an empty models array — gateway server is the source of truth for model capabilities", () => {
     const provider = new SpeechGatewayProvider({});
-    const ids = provider.models.map((m) => m.id);
-    expect(ids).toContain("openai/tts-1");
-    expect(ids).toContain("elevenlabs/eleven_flash_v2_5");
+    expect(provider.models).toEqual([]);
   });
 
-  it("preserves audio tags for gateway-routed models that support them", () => {
+  it("does not expose a processAudioTags method — gateway server handles tag normalization", () => {
     const provider = new SpeechGatewayProvider({});
-    const result = provider.processAudioTags(
-      "[laugh] Hello.",
-      "openai/gpt-4o-mini-tts"
-    );
-
-    expect(result).toEqual({ text: "[laugh] Hello.", warnings: [] });
-  });
-
-  it("strips audio tags for gateway-routed models that do not support them", () => {
-    const provider = new SpeechGatewayProvider({});
-    const result = provider.processAudioTags(
-      "[laugh] Hello.",
-      "deepgram/aura-2"
-    );
-
-    expect(result.text).toBe("Hello.");
-    expect(result.warnings).toEqual([
-      "Audio tag [laugh] is not supported by speech-gateway/deepgram/aura-2 and was removed.",
-    ]);
+    expect(provider.processAudioTags).toBeUndefined();
   });
 
   it("factory createSpeechGateway returns a ResolvedModel with the default model", () => {
