@@ -132,8 +132,12 @@ describe("OpenAI e2e", () => {
 
   describe("timestamps (derived via Whisper fallback)", () => {
     it("on mode pipes synthesized audio through Whisper and returns word timestamps", async () => {
+      const stt = createOpenAISTT();
+      const openai = createOpenAI({
+        fallbackSTT: stt("whisper-1"),
+      });
       const result = await generateSpeech({
-        model: "openai/tts-1",
+        model: openai("tts-1"),
         text: TEST_TEXT,
         voice: VOICE,
         timestamps: "on",
@@ -154,13 +158,14 @@ describe("OpenAI e2e", () => {
       }
     });
 
-    it("honors timestampProvider override (explicit openai/whisper-1)", async () => {
+    it("honors per-call timestampFallback override (explicit openai/whisper-1)", async () => {
+      const openai = createOpenAI();
       const result = await generateSpeech({
-        model: "openai/tts-1",
+        model: openai("tts-1"),
         text: TEST_TEXT,
         voice: VOICE,
         timestamps: "on",
-        timestampProvider: createOpenAISTT()("whisper-1"),
+        timestampFallback: createOpenAISTT()("whisper-1"),
       });
 
       expect(result.timestamps).toBeDefined();

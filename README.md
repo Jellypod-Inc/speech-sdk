@@ -141,7 +141,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `normalizeVolume` (default `true`), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
+Options: `gapMs` (default 300), `normalizeVolume` (default `true`), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `timestampFallback`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
 
 **Native dialogue caps:**
 
@@ -177,17 +177,41 @@ result.timestamps;
 | `"on"` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
 | `"off"` *(default)* | Never return timestamps. |
 
-On `"on"`, the fallback defaults to OpenAI Whisper (`openai/whisper-1`, needs `OPENAI_API_KEY`). Override by constructing a `ResolvedSTTModel` via a factory and passing it as `timestampProvider`:
+On `"on"`, models without native alignment require an STT fallback — there is no implicit default. Configure it once on the factory (`fallbackSTT`) or override it per call (`timestampFallback`). Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
+
+**Resolution order:** per-call `timestampFallback` → factory `fallbackSTT` → throws `TimestampFallbackNotConfiguredError`.
+
+Configure `fallbackSTT` on the factory (recommended — set it once):
+
+```ts
+import { generateSpeech } from '@speech-sdk/core';
+import { createOpenAI, createOpenAISTT } from '@speech-sdk/core/providers';
+
+const stt = createOpenAISTT({ apiKey: process.env.OPENAI_API_KEY });
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  fallbackSTT: stt('whisper-1'),
+});
+
+const result = await generateSpeech({
+  model: openai('tts-1'),
+  voice: 'alloy',
+  text: 'Hello, world.',
+  timestamps: 'on',
+});
+```
+
+Or override per call via `timestampFallback`:
 
 ```ts
 import { createOpenAISTT } from '@speech-sdk/core/providers';
 
 await generateSpeech({
-  model: 'cartesia/sonic-3',
+  model: openai('tts-1'),
+  voice: 'alloy',
   text: 'Hello!',
-  voice: 'voice-id',
   timestamps: 'on',
-  timestampProvider: createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })('whisper-1'),
+  timestampFallback: createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })('whisper-1'),
 });
 ```
 
@@ -420,7 +444,7 @@ generateSpeech({
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
   timestamps?: "on" | "off",              // default "off"
-  timestampProvider?: ResolvedSTTModel,   // override the STT fallback
+  timestampFallback?: ResolvedSTTModel,   // per-call STT fallback override
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,
@@ -467,7 +491,8 @@ try {
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |
-| `TimestampKeyMissingError` | `timestamps: "on"` fallback key missing |
+| `TimestampFallbackNotConfiguredError` | `timestamps: "on"` with no native support and no `fallbackSTT`/`timestampFallback` configured |
+| `TimestampKeyMissingError` | STT fallback configured but its API key is missing |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
 

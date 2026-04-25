@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   GatewayTimestampsUnavailableError,
   TimestampFallbackNotConfiguredError,
-  TimestampKeyMissingError,
 } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
