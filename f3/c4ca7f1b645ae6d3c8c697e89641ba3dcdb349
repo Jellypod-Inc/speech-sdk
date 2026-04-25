@@ -1,0 +1,41 @@
+src/types.ts
+  8a3ab4cf342abbee 59
+src/generate-conversation.ts
+  8a3ab4cf342abbee 143,393,423,441
+src/generate-speech.ts
+  8a3ab4cf342abbee 41,50,95,175,210,219,238,268,283
+src/derive-timestamps.ts
+  8a3ab4cf342abbee 15,18
+src/errors.ts
+  8a3ab4cf342abbee 82
+src/__tests__/timestamps.test.ts
+  8a3ab4cf342abbee 118,139,163,181
+src/conversation/types.ts
+  8a3ab4cf342abbee 24
+src/conversation/stitch.ts
+  8a3ab4cf342abbee 30,104
+src/__tests__/conversation-timestamps.test.ts
+  8a3ab4cf342abbee 192,312
+src/__tests__/generate-conversation.test.ts
+  8a3ab4cf342abbee 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f3c4ca7f1b645ae6d3c8c697e89641ba3dcdb349",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 27,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    }
+  }
+}
