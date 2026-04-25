@@ -1,6 +1,6 @@
 ---
 name: speech-sdk
-description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across 13 providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI). Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, get word-level timestamps / alignment for TTS, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
+description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI). Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, get word-level timestamps / alignment for TTS, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
 ---
 
 # @speech-sdk/core
@@ -31,7 +31,7 @@ result.audio.base64     // string — lazy-computed base64
 result.audio.mediaType  // "audio/mpeg"
 ```
 
-Pass `provider/model` strings (e.g. `"elevenlabs/eleven_v3"`) to use Speech Gateway. String models use `SPEECH_GATEWAY_API_KEY` or the `apiKey` option and send the SDK request body to the gateway. Use provider factories such as `createOpenAI()` or `createElevenLabs()` to call the upstream provider directly with its own API key.
+Pass `provider/model` strings (e.g. `"elevenlabs/eleven_v3"`) to dispatch via `SPEECH_GATEWAY_API_KEY` (or the `apiKey` option). Use provider factories such as `createOpenAI()` or `createElevenLabs()` to call the upstream provider directly with its own API key.
 
 ## Streaming
 
@@ -77,7 +77,7 @@ See `references/conversation.md` for the full API, cross-provider mixing, and na
 
 ## Word-Level Timestamps
 
-Pass `timestamps: "on"` to force word-level alignment alongside the audio. Default is `"off"`. With direct provider factories, `"on"` uses native alignment when available and falls back to an STT round-trip when the provider has no native alignment. Gateway routing: `generateSpeech` hits `/v1/audio/speech/with-timestamps` when mode is `"on"` and relies on the gateway (no client-side STT). `generateConversation` returns mixed audio from `/v1/audio/conversation`; `"on"` runs STT locally over the mixed audio and attributes words back to turns.
+Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default is `"off"`. The SDK uses the provider's native alignment when available and falls back to an STT round-trip otherwise — `result.timestamps` always populates when mode is `"on"`.
 
 ```ts
 const result = await generateSpeech({
@@ -90,7 +90,7 @@ const result = await generateSpeech({
 result.timestamps // [{ text, start, end }, ...] — seconds, word granularity
 ```
 
-See `references/timestamps.md` for gateway behavior, direct-provider fallback behavior, custom STT providers, conversation behavior, gateway routing checks, and timestamp errors.
+See `references/timestamps.md` for the native-vs-STT cascade, custom STT providers, conversation behavior, and timestamp errors.
 
 ## Progressive Disclosure
 
@@ -98,7 +98,7 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 
 ### SpeechSDK
 
-- `references/providers.md` — all 13 providers, prefixes, env vars, capability matrix
+- `references/providers.md` — all providers, prefixes, env vars, capability matrix
 - `references/providers/<name>.md` — per-provider page (models, voices, audio tags, `providerOptions`, factory). One of: `openai`, `elevenlabs`, `deepgram`, `cartesia`, `hume`, `google`, `fish-audio`, `inworld`, `murf`, `resemble`, `fal`, `mistral`, `xai`
 
 ### Features
@@ -123,7 +123,7 @@ generateSpeech({
   text: string,
   voice: Voice,                     // string | { url } | { audio }
   providerOptions?: object,         // pass-through to provider API (no transformation)
-  volumeDbfs?: number,              // RMS target loudness (≤ 0); gateway does server-side, direct providers use local WAV normalization
+  volumeDbfs?: number,              // RMS target loudness (≤ 0)
   timestamps?: "on" | "off",        // word-level alignment, default "off"
   timestampProvider?: ResolvedSTTModel, // override the STT fallback (e.g. createOpenAISTT({ apiKey })("whisper-1"))
   maxRetries?: number,              // default 2; retries 5xx/network only
@@ -132,6 +132,4 @@ generateSpeech({
 })
 ```
 
-For string models, `providerOptions` are sent inside the Speech Gateway JSON body and gateway-owned transport headers (`Accept`, `Content-Type`, `Authorization`) cannot be overridden by caller headers. For direct provider factories, `providerOptions` use each upstream provider's own field names; some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape.
-
-String model inputs are gateway-routed. Factory-created `ResolvedModel` inputs call direct providers. Current gateway-specific `generateSpeech` behavior sends `volumeDbfs` to Speech Gateway and selects a timestamp endpoint when `timestamps` is `"on"` instead of doing local STT or local WAV normalization.
+`providerOptions` use each upstream provider's own field names; some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape. The SDK reserves the `Accept`, `Content-Type`, and `Authorization` request headers — caller-supplied `headers` cannot override them.

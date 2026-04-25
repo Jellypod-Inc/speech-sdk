@@ -17,7 +17,7 @@ import {
 | `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
 | `TimestampKeyMissingError`         | `timestamps: "on"` fallback STT key missing (message names env var)  |
-| `GatewayTimestampsUnavailableError` | Gateway-routed `timestamps: "on"` response has no word timestamps   |
+| `GatewayTimestampsUnavailableError` | A `provider/model` string `timestamps: "on"` response had no word timestamps |
 | `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
 ## Catching
@@ -47,7 +47,7 @@ class ApiError extends SpeechSDKError {
 }
 ```
 
-`code` is populated when the upstream sets a problem+json `code` extension (Speech Gateway does; direct providers typically don't). Match on `err.code` over parsing `err.message`.
+`code` is populated when the upstream sets a problem+json `code` extension. Match on `err.code` over parsing `err.message`.
 
 ## NoSpeechGeneratedError
 

@@ -15,7 +15,7 @@
 
 ## Timestamps
 
-`/synthesize` always returns `audio_timestamps` (no opt-in flag), so when `timestamps: "on"` or `"on"` is set, the SDK aggregates Resemble's grapheme-level alignment (`graph_chars[]` + `graph_times[][start, end]`, in seconds) into the SDK's word list. Mirrors the ElevenLabs aggregator: split on whitespace, keep punctuation attached to the adjacent word.
+`/synthesize` always returns `audio_timestamps` (no opt-in flag), so when `timestamps: "on"` is set, the SDK aggregates Resemble's grapheme-level alignment (`graph_chars[]` + `graph_times[][start, end]`, in seconds) into the SDK's word list. Mirrors the ElevenLabs aggregator: split on whitespace, keep punctuation attached to the adjacent word.
 
 ```ts
 const result = await generateSpeech({

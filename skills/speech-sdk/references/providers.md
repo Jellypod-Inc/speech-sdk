@@ -1,27 +1,6 @@
 # All Providers
 
-SpeechSDK supports 13 upstream providers through Speech Gateway by default. `provider/model` strings use Speech Gateway. Provider factories call upstream providers directly. (fal has no default model — pass a specific `fal-ai/<model>` path.)
-
-## Speech Gateway Routing
-
-String models such as `"openai/gpt-4o-mini-tts"` and `"elevenlabs/eleven_v3"` are Speech Gateway requests. They call `https://api.speechgateway.com/v1/audio/speech` with `SPEECH_GATEWAY_API_KEY` or the `apiKey` option. The JSON body is the SDK request body:
-
-```json
-{
-  "mode": "inline",
-  "model": "openai/gpt-4o-mini-tts",
-  "voice": "alloy",
-  "text": "Hello!",
-  "volumeDbfs": -20,
-  "providerOptions": {}
-}
-```
-
-Use direct factories (`createOpenAI()`, `createElevenLabs()`, etc.) to bypass Speech Gateway and hit upstream APIs directly with provider-specific keys.
-
-## Gateway-Specific Branches
-
-String models are gateway requests. Factory-created models are direct provider requests. Gateway routing is request-level behavior, not model metadata. Current gateway-specific `generateSpeech` behavior sends `volumeDbfs` to Speech Gateway and selects a timestamp endpoint when `timestamps` is `"on"`. Direct provider models keep native-provider behavior and local fallbacks.
+SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"openai/gpt-4o-mini-tts"`) read `SPEECH_GATEWAY_API_KEY` and dispatch to the hosted backend. Provider factories (`createOpenAI()`, `createElevenLabs()`, etc.) call upstream providers directly with provider-specific keys. (fal has no default model — pass a specific `fal-ai/<model>` path.)
 
 ## Provider Table
 
@@ -103,4 +82,4 @@ await generateSpeech({
 
 ## API Key Resolution
 
-String models read `SPEECH_GATEWAY_API_KEY` or use the `apiKey` option as the gateway bearer token. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.
+String models read `SPEECH_GATEWAY_API_KEY` or use the `apiKey` option. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.

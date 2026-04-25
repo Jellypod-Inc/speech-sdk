@@ -1,8 +1,8 @@
 # Configuration
 
-String models use Speech Gateway and read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models bypass Speech Gateway and call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+String models read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
 
-## String Models: Speech Gateway
+## String Models
 
 ```ts
 await generateSpeech({
@@ -15,7 +15,7 @@ await generateSpeech({
 })
 ```
 
-String-model requests route through Speech Gateway. `model`, `voice`, `text`, `volumeDbfs`, and `providerOptions` are JSON body fields; `timestamps` selects the gateway endpoint. Transport/control fields (`apiKey`, `headers`, `abortSignal`, `maxRetries`) are not JSON body fields. Gateway-owned headers (`Accept`, `Content-Type`, `Authorization`) are set by the SDK and cannot be overridden by caller headers.
+`apiKey`, `headers`, `abortSignal`, and `maxRetries` are transport/control fields, not request payload. The SDK reserves the `Accept`, `Content-Type`, and `Authorization` request headers — caller-supplied `headers` cannot override them.
 
 ## Factory Functions
 
@@ -35,7 +35,7 @@ await generateSpeech({
 })
 ```
 
-Factory-created `ResolvedModel`s call the upstream provider directly and do not use Speech Gateway.
+Factory-created `ResolvedModel`s call the upstream provider directly.
 
 Call the factory with no arg to use the provider's default model:
 
@@ -79,8 +79,8 @@ interface GenerateSpeechOptions {
   text: string
   voice: Voice
   providerOptions?: object          // provider-specific, passed through
-  volumeDbfs?: number               // gateway: server-side; direct providers: local WAV normalization
-  timestamps?: "on" | "off"          // default "off"; gateway: server-side; direct providers: native or STT fallback
+  volumeDbfs?: number               // RMS target loudness (≤ 0)
+  timestamps?: "on" | "off"          // default "off"; "on" returns word-level alignment
   maxRetries?: number               // default 2
   abortSignal?: AbortSignal
   headers?: Record<string, string>

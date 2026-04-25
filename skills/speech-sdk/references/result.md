@@ -24,7 +24,7 @@ interface WordTimestamp {
 }
 ```
 
-`timestamps` is populated from the provider or Speech Gateway response. Gateway-routed `generateSpeech` with `timestamps: "on"` never runs client-side STT — if the gateway response lacks timestamps, the SDK throws `GatewayTimestampsUnavailableError`. Gateway-routed `generateConversation` with `timestamps: "on"` runs STT locally over the mixed audio and attributes words back to turns (the gateway will move this server-side once `/v1/audio/conversation/with-timestamps` ships). See `timestamps.md`.
+`timestamps` is populated when `timestamps: "on"`. The SDK uses the provider's native alignment when available and falls back to STT otherwise. See `timestamps.md`.
 
 `base64` is lazy-computed from `uint8Array` on first access — no overhead if unused.
 
@@ -54,7 +54,7 @@ new Audio(URL.createObjectURL(blob)).play()
 
 ## Provider Metadata
 
-Some providers return extras (e.g. ElevenLabs `requestId` for stitching). Speech Gateway only returns `providerMetadata` when the gateway JSON body includes it; the SDK does not derive provider metadata from response headers.
+Some providers return extras (e.g. ElevenLabs `requestId` for stitching). `providerMetadata` is populated only when the response payload includes it; the SDK does not derive provider metadata from response headers.
 
 ```ts
 const first = await generateSpeech({ model: "elevenlabs/eleven_multilingual_v2", ... })

@@ -18,7 +18,7 @@ Default output is `audio/wav` at 44.1 kHz.
 
 ## Timestamps
 
-When `timestamps: "on"` or `"on"` is set, the SDK routes through Cartesia's `/tts/sse` endpoint with `add_timestamps: true`, accumulates the interleaved `chunk` and `timestamps` events, and returns the merged audio + word alignment.
+When `timestamps: "on"` is set, the SDK routes through Cartesia's `/tts/sse` endpoint with `add_timestamps: true`, accumulates the interleaved `chunk` and `timestamps` events, and returns the merged audio + word alignment.
 
 ```ts
 const result = await generateSpeech({
