@@ -1,0 +1,51 @@
+src/speech-provider.ts
+  8a3ab4cf342abbee 3,110
+src/providers/openai/index.ts
+  8a3ab4cf342abbee 19,297,303
+src/providers/deepgram/index.ts
+  8a3ab4cf342abbee 11,39,162,168
+src/__tests__/factory-fallback.test.ts
+  8a3ab4cf342abbee 1-12,14-26
+src/providers/hume/index.ts
+  8a3ab4cf342abbee 13,20,338,344
+src/providers/inworld/index.ts
+  8a3ab4cf342abbee 11,21,364,370
+src/providers/google/index.ts
+  8a3ab4cf342abbee 15,31,427,433
+src/providers/fal/index.ts
+  8a3ab4cf342abbee 12,17,165,173
+src/providers/murf/index.ts
+  8a3ab4cf342abbee 11,21,229,235
+src/providers/mistral/index.ts
+  8a3ab4cf342abbee 11,25,248,252-256
+src/providers/resemble/index.ts
+  8a3ab4cf342abbee 11,21,204,210
+src/providers/xai/index.ts
+  8a3ab4cf342abbee 11,16,205,210
+src/providers/elevenlabs/index.ts
+  8a3ab4cf342abbee 15,25,507,513
+src/providers/fish-audio/index.ts
+  8a3ab4cf342abbee 13,18,237,243
+src/providers/cartesia/index.ts
+  8a3ab4cf342abbee 15,25,409,415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "53c86f988d461a559afceca10c6910a732ea89f6",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 82,
+      "total_deletions": 2,
+      "accepted_lines": 82,
+      "overriden_lines": 2
+    }
+  }
+}
