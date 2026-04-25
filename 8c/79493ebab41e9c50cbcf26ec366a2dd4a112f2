@@ -1,0 +1,23 @@
+src/generate-conversation.ts
+  e9c43f466d9c330d 63-70,72-84,86,88,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8c79493ebab41e9c50cbcf26ec366a2dd4a112f2",
+  "prompts": {
+    "e9c43f466d9c330d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7501889-027a-43ce-8ccf-76ae47a59d40",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 29,
+      "total_deletions": 11,
+      "accepted_lines": 27,
+      "overriden_lines": 1
+    }
+  }
+}
