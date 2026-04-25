@@ -1,0 +1,51 @@
+src/__tests__/conversation-exports.test.ts
+  a5d36208b52eb847 1,10-43,54-61
+package.json
+  a5d36208b52eb847 18-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0c3fc14adb03cac0540e08f359f395b5971755d2",
+  "prompts": {
+    "0f69590e2e54295b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abae513-8606-46c7-bc17-cc6a1d310a69",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 66,
+      "total_deletions": 86,
+      "accepted_lines": 61,
+      "overriden_lines": 0
+    },
+    "a5d36208b52eb847": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc561-a7d8-7bf3-8e16-6e977f7b76e7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 108,
+      "total_deletions": 0,
+      "accepted_lines": 108,
+      "overriden_lines": 0
+    },
+    "e2a9c3d00f251d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0977ba6-d642-4087-b8c3-5a1e443f449f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 191,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    }
+  }
+}
