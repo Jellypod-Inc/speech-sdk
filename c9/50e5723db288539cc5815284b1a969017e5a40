@@ -1,0 +1,25 @@
+src/providers/gateway/index.ts
+  8a3ab4cf342abbee 37-41
+src/__tests__/gateway.test.ts
+  8a3ab4cf342abbee 254,256,259,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c950e5723db288539cc5815284b1a969017e5a40",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 208,
+      "accepted_lines": 56,
+      "overriden_lines": 1
+    }
+  }
+}
