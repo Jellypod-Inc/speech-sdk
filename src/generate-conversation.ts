@@ -60,21 +60,39 @@ export async function generateConversation<V extends Voice = Voice>(
 ): Promise<ConversationResult> {
   validateConversationInput(options);
 
+  // Cache string-model resolutions per call so two turns referencing the same
+  // model string share a single provider instance — the dispatch fast-path
+  // compares providers by reference, and a fresh instance per turn would
+  // silently disable the gateway path.
+  const stringResolutionCache = new Map<string, ResolvedModel<V>>();
+  const resolveOnce = (model: string | ResolvedModel<V>): ResolvedModel<V> => {
+    if (typeof model !== "string") {
+      return resolveModel(model, {
+        apiKey: options.apiKey,
+      }) as ResolvedModel<V>;
+    }
+    const cached = stringResolutionCache.get(model);
+    if (cached) {
+      return cached;
+    }
+    const fresh = resolveModel(model, {
+      apiKey: options.apiKey,
+    }) as ResolvedModel<V>;
+    stringResolutionCache.set(model, fresh);
+    return fresh;
+  };
+
   const topLevelResolved =
-    options.model === undefined
-      ? undefined
-      : (resolveModel(options.model, {
-          apiKey: options.apiKey,
-        }) as ResolvedModel<V>);
+    options.model == null ? undefined : resolveOnce(options.model);
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
-    if (turn.model === undefined && topLevelResolved) {
+    if (turn.model == null && topLevelResolved) {
       return topLevelResolved;
     }
     const model = turn.model;
     if (!model) {
       throw new Error("generateConversation: model is required");
     }
-    return resolveModel(model, { apiKey: options.apiKey }) as ResolvedModel<V>;
+    return resolveOnce(model);
   });
 
   const path = chooseConversationPath({
