@@ -1,7 +1,6 @@
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
-import type { ResolvedSTTModel } from "../speech-to-text-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
   concatPcmToWav,
@@ -24,7 +23,6 @@ interface StitchInput<V extends Voice = Voice> {
     providerOptions: Record<string, unknown>;
     mediaType: string;
   }[];
-  readonly timestampFallback?: ResolvedSTTModel;
   readonly timestamps: boolean;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];

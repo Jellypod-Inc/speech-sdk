@@ -61,20 +61,21 @@ const feat = modelInfo.features.find(
 
 ## Custom STT Provider
 
-`timestampProvider` accepts a `ResolvedSTTModel`. Construct one via a factory from `@speech-sdk/core/providers`:
+To use a different STT key or model, configure `fallbackSTT` on the factory. Construct a `ResolvedSTTModel` via the `.stt()` method on a provider factory from `@speech-sdk/core/providers`:
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createOpenAISTT } from "@speech-sdk/core/providers"
+import { createOpenAI, createCartesia } from "@speech-sdk/core/providers"
 
-const whisper = createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })
+const cartesia = createCartesia({
+  fallbackSTT: createOpenAI({ apiKey: process.env.MY_WHISPER_KEY }).stt("whisper-1"),
+})
 
 await generateSpeech({
-  model: "cartesia/sonic-3",
+  model: cartesia("sonic-3"),
   text: "...",
   voice: "voice-id",
   timestamps: "on",
-  timestampProvider: whisper("whisper-1"),
 })
 ```
 
@@ -172,7 +173,7 @@ Errors are exported from `@speech-sdk/core`:
 
 From `@speech-sdk/core/providers`:
 
-- `createOpenAISTT`
+- `createOpenAI` (use `.stt("whisper-1")` to construct a `ResolvedSTTModel` for the STT fallback)
 
 ## Errors
 

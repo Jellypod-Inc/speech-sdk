@@ -48,7 +48,7 @@ await generateSpeech({ model: openai(), text: "...", voice: "alloy" })
 
 | Import | Functions |
 | --- | --- |
-| `@speech-sdk/core/providers` | `createOpenAI()`, `createElevenLabs()`, `createDeepgram()`, `createCartesia()`, `createHume()`, `createGoogle()`, `createFishAudio()`, `createInworld()`, `createMurf()`, `createResemble()`, `createFal()`, `createMistral()`, `createXai()`, `createSpeechGateway()`, `createOpenAISTT()` |
+| `@speech-sdk/core/providers` | `createOpenAI()`, `createElevenLabs()`, `createDeepgram()`, `createCartesia()`, `createHume()`, `createGoogle()`, `createFishAudio()`, `createInworld()`, `createMurf()`, `createResemble()`, `createFal()`, `createMistral()`, `createXai()`, `createSpeechGateway()` |
 
 ## Configuration Options
 

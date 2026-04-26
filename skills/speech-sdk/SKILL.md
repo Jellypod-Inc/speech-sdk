@@ -125,7 +125,6 @@ generateSpeech({
   providerOptions?: object,         // pass-through to provider API (no transformation)
   volumeDbfs?: number,              // RMS target loudness (≤ 0)
   timestamps?: "on" | "off",        // word-level alignment, default "off"
-  timestampProvider?: ResolvedSTTModel, // override the STT fallback (e.g. createOpenAISTT({ apiKey })("whisper-1"))
   maxRetries?: number,              // default 2; retries 5xx/network only
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,

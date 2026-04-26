@@ -55,10 +55,7 @@ export async function generateConversation<V extends Voice = Voice>(
 ): Promise<ConversationResult> {
   validateConversationInput(options);
 
-  // Cache string-model resolutions per call so two turns referencing the same
-  // model string share a single provider instance — the dispatch fast-path
-  // compares providers by reference, and a fresh instance per turn would
-  // silently disable the gateway path.
+  // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
   const stringResolutionCache = new Map<string, ResolvedModel<V>>();
   const resolveOnce = (model: string | ResolvedModel<V>): ResolvedModel<V> => {
     if (typeof model !== "string") {
@@ -104,8 +101,7 @@ export async function generateConversation<V extends Voice = Voice>(
   }
 
   if (path.kind === "native") {
-    // Native-dialogue renders all turns in one API call, so per-turn
-    // providerOptions can't be honored — fail loudly instead of silently merging.
+    // Native-dialogue is one API call; per-turn providerOptions can't be honored — fail loudly.
     const turnWithOpts = options.turns.findIndex(
       (t) => t.providerOptions !== undefined
     );
@@ -137,7 +133,6 @@ export async function generateConversation<V extends Voice = Voice>(
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? false,
-    timestampFallback: resolvedPerTurn[0]?.fallbackSTT,
   });
 
   if (stitched.audio.length === 0) {
@@ -291,8 +286,7 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
-  // Force decodable PCM/WAV via getStitchOptions when normalizing; otherwise
-  // emit the provider's native mixed format (often MP3) and warn.
+  // Force decodable PCM/WAV via getStitchOptions when normalizing; otherwise emit native mixed format and warn.
   const normalize = options.normalizeVolume ?? true;
   const stitchOpts = normalize
     ? resolved.provider.getStitchOptions?.(resolved.modelId)
@@ -444,8 +438,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   });
 }
 
-// Lowercase and strip leading/trailing non-word chars; keep internal
-// apostrophes/hyphens so "don't" ↔ "don't." match.
+// Keep internal apostrophes/hyphens so "don't" ↔ "don't." match.
 function normalizeWord(s: string): string {
   return s
     .toLowerCase()
