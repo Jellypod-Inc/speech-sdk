@@ -1,0 +1,38 @@
+src/__tests__/timestamps.test.ts
+  438cdbebfba5778c 4,198-218,220-232
+src/generate-speech.ts
+  438cdbebfba5778c 4,86-89,228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "af6d4e67509147974302c6a46c38c99280b01932",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 39,
+      "total_deletions": 36,
+      "accepted_lines": 668,
+      "overriden_lines": 0
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 194,
+      "total_deletions": 241,
+      "accepted_lines": 216,
+      "overriden_lines": 0
+    }
+  }
+}
