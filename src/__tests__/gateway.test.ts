@@ -224,16 +224,17 @@ describe("SpeechGatewayProvider", () => {
     expect(provider.processAudioTags).toBeUndefined();
   });
 
-  it("factory createSpeechGateway returns a ResolvedModel with the default model", () => {
+  it("factory createSpeechGateway requires an explicit modelId", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
-    const resolved = gateway();
-    expect(resolved.provider.id).toBe("speech-gateway");
-    expect(resolved.modelId).toBe("openai/gpt-4o-mini-tts");
+    expect(() => (gateway as (m?: string) => unknown)()).toThrow(
+      /Speech Gateway requires a model ID/
+    );
   });
 
   it("factory createSpeechGateway accepts an explicit modelId", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     const resolved = gateway("elevenlabs/eleven_flash_v2_5");
+    expect(resolved.provider.id).toBe("speech-gateway");
     expect(resolved.modelId).toBe("elevenlabs/eleven_flash_v2_5");
   });
 

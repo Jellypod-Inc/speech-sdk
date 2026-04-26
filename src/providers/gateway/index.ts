@@ -53,7 +53,7 @@ const GATEWAY_401_MESSAGE =
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
-  readonly defaultModel = "openai/gpt-4o-mini-tts";
+  readonly defaultModel = "";
   // Gateway server is the source of truth for model capabilities; feature checks deferred to the wire.
   readonly models: readonly ModelInfo[] = [];
 
@@ -314,8 +314,13 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
 
 export function createSpeechGateway(config: SpeechGatewayProviderConfig = {}) {
   const provider = new SpeechGatewayProvider(config);
-  return function speechGateway(modelId?: string): ResolvedModel<string> {
-    return { provider, modelId: modelId ?? provider.defaultModel };
+  return function speechGateway(modelId: string): ResolvedModel<string> {
+    if (!modelId) {
+      throw new Error(
+        'Speech Gateway requires a model ID (e.g., "openai/gpt-4o-mini-tts"). The gateway routes to upstream providers and has no default model.'
+      );
+    }
+    return { provider, modelId };
   };
 }
 

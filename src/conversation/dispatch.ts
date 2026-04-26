@@ -1,6 +1,7 @@
 import {
   isSpeechGatewayModel,
   type ResolvedModel,
+  type StitchTurnOptions,
   type Voice,
 } from "../speech-provider.js";
 import {
@@ -9,18 +10,12 @@ import {
   StitchUnsupportedError,
 } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
-import { newVoiceKeyContext, voiceKey } from "./validate.js";
+import { newVoiceKeyer } from "./validate.js";
 
 export type ConversationPath =
   | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
   | { kind: "native"; resolved: ResolvedModel<Voice> }
-  | {
-      kind: "stitch";
-      stitchOptionsPerTurn: readonly {
-        providerOptions: Record<string, unknown>;
-        mediaType: string;
-      }[];
-    };
+  | { kind: "stitch"; stitchOptionsPerTurn: readonly StitchTurnOptions[] };
 
 export function chooseConversationPath(input: {
   resolvedPerTurn: readonly ResolvedModel<Voice>[];
@@ -34,7 +29,7 @@ export function chooseConversationPath(input: {
     throw new MixedDispatchError();
   }
 
-  // Voice clones (`{url}`/`{audio}`) fall through to stitch — gateway turn wire takes string voices only.
+  // Gateway wire takes string voices only; clone voices (`{url}`/`{audio}`) on gateway models fall past every other branch and throw StitchUnsupportedError below.
   if (gatewayCount === resolvedPerTurn.length) {
     const allVoicesString = turns.every((t) => typeof t.voice === "string");
     if (allVoicesString) {
@@ -80,10 +75,8 @@ function assertNativeConstraints(args: {
 }): void {
   const { provider, modelId, caps, turns } = args;
 
-  const ctx = newVoiceKeyContext();
-  const unique = new Set(
-    turns.map((t) => voiceKey(t.voice, ctx.refIds, ctx.refCounter))
-  ).size;
+  const keyOf = newVoiceKeyer();
+  const unique = new Set(turns.map((t) => keyOf(t.voice))).size;
 
   if (unique < caps.minVoices || unique > caps.maxVoices) {
     const rule =

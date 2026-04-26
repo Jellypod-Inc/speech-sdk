@@ -9,7 +9,7 @@ import {
   NoSpeechGeneratedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
-import { debug, info } from "./logger.js";
+import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -255,7 +255,6 @@ function preprocessText(
   return { text: rawText, warnings: [] };
 }
 
-// STT-fallback branch is info-level because it changes billing.
 function logTimestampDecision(args: {
   modelIdentifier: string;
   enabled: boolean;
@@ -274,14 +273,10 @@ function logTimestampDecision(args: {
     );
     return;
   }
-  info(
-    `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.effectiveFallback)} for word timestamps (adds a round-trip).`
+  const target = args.effectiveFallback
+    ? `${args.effectiveFallback.provider.id}/${args.effectiveFallback.modelId}`
+    : "unconfigured STT fallback";
+  debug(
+    `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${target} for word timestamps (adds a round-trip).`
   );
-}
-
-function describeSTTTarget(fallback: ResolvedSTTModel | undefined): string {
-  if (fallback) {
-    return `${fallback.provider.id}/${fallback.modelId}`;
-  }
-  return "unconfigured STT fallback";
 }

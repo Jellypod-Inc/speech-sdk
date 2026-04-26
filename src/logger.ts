@@ -31,8 +31,3 @@ export function debug(message: string): void {
   }
   console.debug(`[${NAMESPACE}] ${message}`);
 }
-
-// Reserve for events that change billing or observable latency.
-export function info(message: string): void {
-  console.info(`[${NAMESPACE}] ${message}`);
-}

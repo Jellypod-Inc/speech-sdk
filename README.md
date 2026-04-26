@@ -13,12 +13,12 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 
 ## Features
 
-- **Universal** — `generateSpeech()` works across OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini TTS, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, and xAI.
+- **Universal** — one `generateSpeech()` call across every supported provider.
 - **Streaming** — `streamSpeech()` returns a standard `ReadableStream<Uint8Array>`.
-- **Conversations** — `generateConversation()` produces multi-speaker audio, routing through the Speech Gateway fast-path when every turn uses the same gateway-routed model, using native dialogue endpoints where available, and stitching locally when neither applies.
+- **Conversations** — `generateConversation()` produces multi-speaker audio, picking a gateway, native-dialogue, or local-stitch path automatically.
 - **Word-level timestamps** — `timestamps: true` returns alignment, using the provider's native data or falling back to STT.
 - **Volume normalization** — RMS-level outputs to an absolute loudness target.
-- **Audio tags & voice cloning** — `[laugh]`, `[sigh]`, emotion cues; reference-audio cloning where supported.
+- **Audio tags & voice cloning** — bracket cues like `[laugh]` and reference-audio cloning where supported.
 
 ## Contents
 
@@ -61,7 +61,6 @@ The SDK has two ways to reach a provider, and the choice is made by **how you pa
 ```ts
 // 1. String → routes through Speech Gateway (https://api.speechgateway.com)
 //    Needs SPEECH_GATEWAY_API_KEY (sign up at https://speechgateway.com).
-//    One key, one bill, no per-vendor accounts.
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
 // 2. Factory → calls the provider directly (no proxy hop)
@@ -72,7 +71,7 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 
 | | Speech Gateway (string) | Direct provider (factory) |
 |---|---|---|
-| When to use | You want one bill, one key, easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
+| When to use | You want a single endpoint and easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
 | Setup | `SPEECH_GATEWAY_API_KEY` only | One env var per provider you use |
 | Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
 | Endpoint | `api.speechgateway.com` | Provider's own API |
@@ -81,23 +80,23 @@ The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want 
 
 ## Supported providers
 
-| Provider | Prefix | Default model | Env var |
-|---|---|---|---|
-| [OpenAI](https://platform.openai.com/docs/guides/text-to-speech) | `openai` | `gpt-4o-mini-tts` | `OPENAI_API_KEY` |
-| [ElevenLabs](https://elevenlabs.io/docs) | `elevenlabs` | `eleven_multilingual_v2` | `ELEVENLABS_API_KEY` |
-| [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `aura-2` | `DEEPGRAM_API_KEY` |
-| [Cartesia](https://docs.cartesia.ai) | `cartesia` | `sonic-3` | `CARTESIA_API_KEY` |
-| [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `octave-2` | `HUME_API_KEY` |
-| [Inworld](https://docs.inworld.ai/tts) | `inworld` | `inworld-tts-1.5-max` | `INWORLD_API_KEY` |
-| [Google Gemini TTS](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `gemini-2.5-flash-preview-tts` | `GOOGLE_API_KEY` |
-| [Fish Audio](https://docs.fish.audio) | `fish-audio` | `s2-pro` | `FISH_AUDIO_API_KEY` |
-| [Murf](https://murf.ai/api/docs) | `murf` | `GEN2` | `MURF_API_KEY` |
-| [Resemble](https://docs.resemble.ai) | `resemble` | `default` | `RESEMBLE_API_KEY` |
-| [fal](https://fal.ai/models) | `fal-ai` | *(user-specified)* | `FAL_API_KEY` |
-| [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `voxtral-mini-tts-2603` | `MISTRAL_API_KEY` |
-| [xAI](https://docs.x.ai/docs/models) | `xai` | `grok-tts` | `XAI_API_KEY` |
+| Provider | Prefix | Env var |
+|---|---|---|
+| [OpenAI](https://platform.openai.com/docs/guides/text-to-speech) | `openai` | `OPENAI_API_KEY` |
+| [ElevenLabs](https://elevenlabs.io/docs) | `elevenlabs` | `ELEVENLABS_API_KEY` |
+| [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `DEEPGRAM_API_KEY` |
+| [Cartesia](https://docs.cartesia.ai) | `cartesia` | `CARTESIA_API_KEY` |
+| [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `HUME_API_KEY` |
+| [Inworld](https://docs.inworld.ai/tts) | `inworld` | `INWORLD_API_KEY` |
+| [Google Gemini TTS](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `GOOGLE_API_KEY` |
+| [Fish Audio](https://docs.fish.audio) | `fish-audio` | `FISH_AUDIO_API_KEY` |
+| [Murf](https://murf.ai/api/docs) | `murf` | `MURF_API_KEY` |
+| [Resemble](https://docs.resemble.ai) | `resemble` | `RESEMBLE_API_KEY` |
+| [fal](https://fal.ai/models) | `fal-ai` | `FAL_API_KEY` |
+| [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `MISTRAL_API_KEY` |
+| [xAI](https://docs.x.ai/docs/models) | `xai` | `XAI_API_KEY` |
 
-The "Env var" column applies when you call the provider **directly** via its factory (`createOpenAI()`, `createElevenLabs()`, etc.). Import provider factories from `@speech-sdk/core/providers`. When you pass a string `model` like `"openai/tts-1"`, the request goes through Speech Gateway and reads `SPEECH_GATEWAY_API_KEY` instead — see [Gateway vs direct provider](#gateway-vs-direct-provider).
+The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECH_GATEWAY_API_KEY` — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 
@@ -125,9 +124,9 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 
 `generateConversation()` produces a single multi-voice clip from an ordered array of turns, picking the best path automatically:
 
-- **Gateway fast-path** — every turn uses the same gateway-routed string model (e.g. `"elevenlabs/eleven_v3"`). The SDK sends one HTTP request to the Speech Gateway and the server handles rendering, stitching, and normalization. Faster than local stitch, and gateway users don't pay for the audio-mux code in their bundle. Allow-by-default for any gateway-routed model; voice-clone voices (`{url}` / `{audio}` shapes) still take the stitch path.
-- **Native dialogue** — one direct provider with a multi-speaker endpoint (ElevenLabs v3, Gemini TTS, Hume Octave, Fish Audio S2-Pro, fal Dia). One API call, natural mix.
-- **Stitch fallback** — multi-provider, voice clones, or no dialogue endpoint. Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
+- **Gateway fast-path** — every turn uses a gateway-routed string model. One request to Speech Gateway; the server handles rendering, stitching, and normalization.
+- **Native dialogue** — every turn uses the same direct-provider model and that model exposes a multi-speaker endpoint. One API call, naturally mixed.
+- **Stitch fallback** — anything else (multi-provider, voice clones, or no dialogue endpoint). Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
 
 ```ts
 import { generateConversation } from '@speech-sdk/core';
@@ -141,16 +140,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
-
-**Native dialogue caps:**
-
-| Provider | Models | Voice constraints |
-|---|---|---|
-| ElevenLabs | `eleven_v3` | 1–10 voices, ≤ 2,000 chars |
-| Google | `gemini-2.5-{flash,pro}-preview-tts`, `gemini-3.1-flash-tts-preview` | **Exactly 2 voices** |
-| Hume | `octave-1`, `octave-2` | 1–4 voices |
-| Fish Audio | `s2-pro` | 1–4 voices |
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
 ## Timestamps
 
@@ -200,54 +190,29 @@ const result = await generateSpeech({
 });
 ```
 
-**Per-provider support:**
+Whether a given model returns native alignment or transcribes via the STT fallback is a provider detail — both paths produce the same `WordTimestamp[]` shape.
 
-| Provider | Timestamps |
-|---|---|
-| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Native** — returned in the TTS response, no STT round-trip on `true` |
-| Murf (`GEN2`) | **Native** — `wordDurations` returned in the TTS response, no STT round-trip on `true` (FALCON streaming model has no native alignment) |
-| Hume (`octave-2`) | **Native** — word alignment from the JSON `/v0/tts` endpoint, no STT round-trip on `true` (`octave-1` has no native alignment) |
-| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`) | **Native** — `timestampInfo.wordAlignment` returned in the TTS response, no STT round-trip on `true` (best on English/Spanish) |
-| Cartesia (`sonic-3`, `sonic-2`) | **Native** — routed through `/tts/sse` with `add_timestamps: true`; merges interleaved chunk + timestamps events into audio + `WordTimestamp[]` |
-| Resemble (`default`) | **Native** — `audio_timestamps` always returned by `/synthesize`; SDK aggregates grapheme-level timing into words (mirrors ElevenLabs aggregator) |
-| All others (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) | No native alignment; `true` transcribes via the STT fallback |
-
-`generateConversation` accepts the same options and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`. Stitch-path timings are offset by cumulative turn duration + gap; gateway and native-dialogue paths derive `turnIndex` from the server-attributed word sequence.
-
-`turnIndex` is why conversation timestamps are a different type from speech. It is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback — without re-deriving turn boundaries from `gapMs` and per-turn durations.
+`generateConversation` accepts the same options and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`. This is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback without re-deriving turn boundaries.
 
 ```ts
 import { generateConversation, timestampsToTurns } from '@speech-sdk/core';
 
-const turns = [
-  { voice: 'rachel', text: 'Hi there.' },
-  { voice: 'adam',   text: 'Hello!' },
-];
-
 const result = await generateConversation({
   model: 'elevenlabs/eleven_v3',
-  turns,
+  turns: [
+    { voice: 'rachel', text: 'Hi there.' },
+    { voice: 'adam',   text: 'Hello!' },
+  ],
   timestamps: true,
 });
 
-// result.timestamps is ConversationWordTimestamp[]: { text, start, end, turnIndex }[]
 // Collapse consecutive words from the same turn into per-turn timings:
 const turnTimestamps = timestampsToTurns(result.timestamps ?? []);
-// [
-//   { turnIndex: 0, start: 0.00, end: 0.42, text: 'Hi there.' },
-//   { turnIndex: 1, start: 0.72, end: 1.05, text: 'Hello!' },
-// ]
-
-// Look the speaking voice up by turnIndex against the input turns:
-const annotated = turnTimestamps.map((t) => ({ ...t, voice: turns[t.turnIndex].voice }));
-
-// Natural input for chat-bubble UIs, speaker-attributed captions, or
-// karaoke-style highlighting during playback.
 ```
 
 ### Captions (SRT / WebVTT)
 
-Convert word-level timestamps into a caption file. SRT is the default; pass `format: 'vtt'` for WebVTT (required for HTML `<track>`).
+`timestampsToCaptions()` converts word-level timestamps into a caption file. SRT is the default; pass `format: 'vtt'` for WebVTT.
 
 ```ts
 import { generateSpeech, timestampsToCaptions } from '@speech-sdk/core';
@@ -260,29 +225,10 @@ const { timestamps } = await generateSpeech({
 });
 
 const srt = timestampsToCaptions(timestamps ?? []);
-// 1
-// 00:00:00,000 --> 00:00:01,200
-// Hello world.
-//
-// 2
-// 00:00:01,300 --> 00:00:02,800
-// This is a test.
-
 const vtt = timestampsToCaptions(timestamps ?? [], { format: 'vtt' });
-// WEBVTT
-//
-// 1
-// 00:00:00.000 --> 00:00:01.200
-// Hello world.
-//
-// 2
-// 00:00:01.300 --> 00:00:02.800
-// This is a test.
 ```
 
-Output follows the SubRip and [W3C WebVTT](https://www.w3.org/TR/webvtt1/) conventions: comma-decimal (SRT) vs period-decimal (VTT) timestamps, sequential numeric cue IDs, blank-line cue separators with a trailing blank line, and HTML-escaped body text (`&`, `<`, `>`) on the VTT path.
-
-Cues break on sentence boundaries (`.`, `!`, `?`), then subdivide long sentences by character count, cue duration, and soft comma breaks. Pass `CaptionsOptions` to customize `format`, `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, or `longPhraseCommaBreakChars`.
+Cues break on sentence boundaries, then subdivide long sentences by character count, cue duration, and soft comma breaks. Pass `CaptionsOptions` to customize `format`, `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, or `longPhraseCommaBreakChars`.
 
 ## Volume normalization
 
@@ -303,7 +249,7 @@ result.audio.mediaType;  // "audio/wav" — re-encoded after normalization
 
 ## Audio tags
 
-Bracket syntax `[tag]` adds expressive cues. Unsupported tags are stripped with warnings in `result.warnings`.
+Bracket syntax `[tag]` adds expressive cues. Each provider handles tags natively where supported, maps them to its closest equivalent, or strips them and surfaces a warning in `result.warnings`.
 
 ```ts
 await generateSpeech({
@@ -312,14 +258,6 @@ await generateSpeech({
   voice: 'voice-id',
 });
 ```
-
-| Provider | Behavior |
-|---|---|
-| OpenAI (`gpt-4o-mini-tts`) | Mapped to the `instructions` field |
-| ElevenLabs (`eleven_v3`) | Passed through natively |
-| Google (`gemini-3.1-flash-tts-preview`) | Passed through natively |
-| Cartesia (`sonic-3`) | Emotion tags → SSML; `[laughter]` passed through; unknown stripped |
-| All others | Stripped with warnings |
 
 ## Voice cloning
 
@@ -452,6 +390,7 @@ try {
 | Error | When |
 |---|---|
 | `ApiError` | Provider returned non-2xx |
+| `MissingApiKeyError` | No `apiKey` passed and the provider's env var is unset |
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |

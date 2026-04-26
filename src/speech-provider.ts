@@ -1,9 +1,16 @@
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
-import { SPEECH_GATEWAY_PROVIDER_ID } from "./providers/gateway/index.js";
+import {
+  SPEECH_GATEWAY_PROVIDER_ID,
+  type SpeechGatewayProvider,
+} from "./providers/gateway/index.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
 export type Voice = string | { url: string } | { audio: string | Uint8Array };
+
+export interface StitchTurnOptions {
+  mediaType: string;
+  providerOptions: Record<string, unknown>;
+}
 
 export type Feature = string | { readonly id: string };
 
@@ -23,12 +30,9 @@ export const FEATURES = {
 } as const;
 
 export function hasFeature(model: ModelInfo, id: string): boolean {
-  for (const f of model.features) {
-    if (typeof f === "string" ? f === id : f.id === id) {
-      return true;
-    }
-  }
-  return false;
+  return model.features.some((f) =>
+    typeof f === "string" ? f === id : f.id === id
+  );
 }
 
 export interface SpeechProvider<
@@ -77,12 +81,7 @@ export interface SpeechProvider<
     timestamps?: WordTimestamp[];
   }>;
 
-  getStitchOptions?(modelId: string):
-    | {
-        providerOptions: Record<string, unknown>;
-        mediaType: string;
-      }
-    | undefined;
+  getStitchOptions?(modelId: string): StitchTurnOptions | undefined;
   id: string;
   models: readonly ModelInfo[];
 
@@ -121,12 +120,8 @@ export function isSpeechGatewayModel<V extends Voice>(
 export function modelDeclaresNativeTimestamps(
   resolved: ResolvedModel
 ): boolean {
-  // Optional-chained so test mocks without .models don't crash.
   const modelInfo = resolved.provider.models?.find(
     (m) => m.id === resolved.modelId
   );
-  if (!modelInfo) {
-    return false;
-  }
-  return hasFeature(modelInfo, "timestamps");
+  return modelInfo != null && hasFeature(modelInfo, FEATURES.TIMESTAMPS);
 }

@@ -2,33 +2,26 @@ import { ConversationInputError } from "./errors.js";
 import type { ConversationTurn, GenerateConversationOptions } from "./types.js";
 
 // Object voices key by reference — distinct buffers with identical content must not collide.
-export function voiceKey(
-  voice: ConversationTurn["voice"],
-  refIds: WeakMap<object, number>,
-  refCounter: { next: number }
-): string {
-  if (typeof voice === "string") {
-    return `s:${voice}`;
-  }
-  if ("url" in voice) {
-    return `u:${voice.url}`;
-  }
-  if ("audio" in voice && typeof voice.audio === "string") {
-    return `a:${voice.audio}`;
-  }
-  let id = refIds.get(voice);
-  if (id === undefined) {
-    id = refCounter.next++;
-    refIds.set(voice, id);
-  }
-  return `o:${id}`;
-}
-
-export function newVoiceKeyContext(): {
-  refIds: WeakMap<object, number>;
-  refCounter: { next: number };
-} {
-  return { refIds: new WeakMap(), refCounter: { next: 0 } };
+export function newVoiceKeyer(): (voice: ConversationTurn["voice"]) => string {
+  const refIds = new WeakMap<object, number>();
+  let nextId = 0;
+  return (voice) => {
+    if (typeof voice === "string") {
+      return `s:${voice}`;
+    }
+    if ("url" in voice) {
+      return `u:${voice.url}`;
+    }
+    if ("audio" in voice && typeof voice.audio === "string") {
+      return `a:${voice.audio}`;
+    }
+    let id = refIds.get(voice);
+    if (id === undefined) {
+      id = nextId++;
+      refIds.set(voice, id);
+    }
+    return `o:${id}`;
+  };
 }
 
 export function validateConversationInput(

@@ -14,7 +14,7 @@ import {
   ConversationTimestampAttributionError,
   NoSpeechGeneratedError,
 } from "./errors.js";
-import { debug, info } from "./logger.js";
+import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
@@ -310,7 +310,7 @@ async function runNative<V extends Voice>(args: {
       `${dialogueId} (dialogue): timestamps: true — requesting native dialogue alignment.`
     );
   } else {
-    info(
+    debug(
       `${dialogueId} (dialogue): timestamps: true but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
     );
   }
