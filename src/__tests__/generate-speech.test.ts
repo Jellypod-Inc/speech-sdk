@@ -14,7 +14,7 @@ function createMockProvider(
     id: "mock",
     defaultModel: "mock-model",
     generate: vi.fn().mockResolvedValue({
-      audio: new Uint8Array([72, 101, 108, 108, 111]), // "Hello"
+      audio: new Uint8Array([72, 101, 108, 108, 111]),
       mediaType: "audio/mpeg",
       ...overrides,
     }),
@@ -301,10 +301,8 @@ describe("generateSpeech", () => {
   });
 
   it("works with browser-like fetch that requires correct this context", async () => {
-    // Simulates browser fetch which throws "Illegal invocation" when
-    // called without the correct `this` binding (Window/globalThis context).
-    // The mock is assigned unbound so the provider's .bind(globalThis) is
-    // what makes `this === globalThis` true at call time.
+    // Browser fetch throws "Illegal invocation" without correct `this` binding;
+    // provider's .bind(globalThis) is what makes the call legal.
     const browserFetch = vi.fn(function (this: unknown) {
       if (this !== globalThis) {
         throw new TypeError(
@@ -358,8 +356,6 @@ describe("generateSpeech", () => {
 
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
-      // `timestamps: true` routes through the JSON-with-timestamps URL on the
-      // gateway; the default `false` hits `/v1/audio/speech` for raw bytes.
       expect(url).toBe(
         "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
       );
@@ -423,7 +419,6 @@ describe("generateSpeech", () => {
       apiKey: "sk-should-be-ignored",
     });
 
-    // The mock provider is used directly, apiKey does not affect it
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
@@ -475,8 +470,7 @@ describe("generateSpeech", () => {
   });
 
   it("does not retry on 501 Not Implemented", async () => {
-    // 501 is how the gateway surfaces "this capability will never work"
-    // (e.g. timestamps unsupported). Retrying just wastes round-trips.
+    // 501 = gateway's "this capability will never work" signal; retrying wastes round-trips.
     const error = new ApiError("Not implemented", {
       statusCode: 501,
       code: "timestamps_unsupported",

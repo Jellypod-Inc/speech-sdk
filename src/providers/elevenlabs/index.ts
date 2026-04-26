@@ -277,10 +277,7 @@ export class ElevenLabsSpeechProvider
       options.providerOptions
     );
 
-    // When timestamps are requested, ElevenLabs exposes a dedicated endpoint
-    // that returns base64 audio + character-level alignment in a JSON body
-    // (rather than raw audio bytes). We post the same body/query, then
-    // aggregate characters → words before returning.
+    // /with-timestamps returns base64 audio + character-level alignment in JSON; we aggregate characters → words before returning.
     const path = options.includeTimestamps
       ? `/v1/text-to-speech/${options.voice}/with-timestamps`
       : `/v1/text-to-speech/${options.voice}`;
@@ -325,9 +322,7 @@ export class ElevenLabsSpeechProvider
       }
 
       const audio = base64ToUint8Array(payload.audio_base64);
-      // `normalized_alignment` matches what was actually spoken (e.g.,
-      // expanded numbers/abbreviations), so it's the right source for
-      // user-facing word timings.
+      // normalized_alignment matches what was actually spoken (expanded numbers/abbreviations).
       const alignment =
         payload.normalized_alignment ?? payload.alignment ?? null;
       const timestamps = alignment
@@ -337,9 +332,7 @@ export class ElevenLabsSpeechProvider
       return {
         audio,
         audioDurationMs: headerDurationMs,
-        // /with-timestamps returns the audio as base64 inside a JSON body,
-        // so there's no Content-Type hint for the audio bytes themselves —
-        // we derive it from the requested output_format.
+        // No Content-Type for base64-in-JSON audio bytes; derive from output_format.
         mediaType: elevenLabsFormatToMediaType(outputFormat),
         providerMetadata: requestId ? { requestId } : undefined,
         timestamps,

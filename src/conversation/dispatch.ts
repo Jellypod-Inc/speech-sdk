@@ -28,21 +28,13 @@ export function chooseConversationPath(input: {
 }): ConversationPath {
   const { resolvedPerTurn, turns } = input;
 
-  // All-or-nothing: gateway and direct-provider routing can't be combined in
-  // a single conversation. The gateway path is one HTTP call; the direct path
-  // is per-turn provider calls. Mixing them would require splitting one
-  // conversation across both, which has no coherent ordering or stitching
-  // semantics — fail loudly instead.
+  // Gateway and direct-provider routing can't be combined in one conversation — no coherent ordering/stitching exists across both paths.
   const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
   if (gatewayCount > 0 && gatewayCount < resolvedPerTurn.length) {
     throw new MixedDispatchError();
   }
 
-  // All-gateway: one HTTP call to `/v1/audio/conversation`, server does
-  // render + stitch + normalize across heterogeneous models. The wire is
-  // per-turn `{model, voice, text}`, so different models per turn are fine.
-  // Voice clones (`{url}`/`{audio}`) still fall through to stitch — the flat
-  // turn wire shape takes string voices only.
+  // Voice clones (`{url}`/`{audio}`) fall through to stitch — gateway turn wire takes string voices only.
   if (gatewayCount === resolvedPerTurn.length) {
     const allVoicesString = turns.every((t) => typeof t.voice === "string");
     if (allVoicesString) {
@@ -50,9 +42,7 @@ export function chooseConversationPath(input: {
     }
   }
 
-  // Compare by provider instance reference, not just provider id, so two
-  // factories of the same provider with different apiKey/baseURL/fetch
-  // configs are not silently merged into one.
+  // Compare by provider instance reference so two factories with different apiKey/baseURL/fetch configs aren't silently merged.
   const first = resolvedPerTurn[0];
   const allSame = resolvedPerTurn.every(
     (r) => r.provider === first.provider && r.modelId === first.modelId
@@ -69,7 +59,6 @@ export function chooseConversationPath(input: {
     }
   }
 
-  // Stitch path — every resolved (provider, modelId) must support getStitchOptions.
   const stitchOptionsPerTurn = resolvedPerTurn.map((r) => {
     const opts = r.provider.getStitchOptions?.(r.modelId);
     if (!opts) {

@@ -155,8 +155,6 @@ describe("chooseConversationPath", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     const resolvedA = gateway("openai/gpt-4o-mini-tts");
     const resolvedB = gateway("elevenlabs/eleven_v3");
-    // The wire is per-turn `{model, voice, text}`, so the server handles
-    // mixed-provider conversations in one call. No more allSame gate.
     const result = chooseConversationPath({
       resolvedPerTurn: [resolvedA, resolvedB],
       turns: [
@@ -175,11 +173,7 @@ describe("chooseConversationPath", () => {
 
   it("returns gateway for arbitrary aggregated models (no per-model gate)", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
-    // Allow-by-default: every gateway-routed model should take the gateway
-    // branch regardless of whether the upstream provider supports native
-    // multi-speaker — the server handles per-turn rendering. This test uses
-    // cartesia/sonic-3 (a model that was NOT in the old 3-entry capability
-    // table) to prove there's no SDK-side allowlist left.
+    // cartesia/sonic-3 was not in the old 3-entry capability table; proves no SDK-side allowlist.
     const resolved = gateway("cartesia/sonic-3");
     const result = chooseConversationPath({
       resolvedPerTurn: [resolved, resolved],
@@ -220,9 +214,7 @@ describe("chooseConversationPath", () => {
 
   it("falls through past gateway when any turn uses an object-shaped voice (clone ref)", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
-    // Gateway conversation wire contract accepts string voices only on the
-    // flat turn shape; voice clones (`{url}` / `{audio}`) go through stitch.
-    // StitchUnsupportedError confirms dispatch left the gateway branch.
+    // Gateway wire contract accepts string voices only; clones go through stitch.
     const resolved = gateway("openai/gpt-4o-mini-tts");
     expect(() =>
       chooseConversationPath({

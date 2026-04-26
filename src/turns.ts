@@ -14,11 +14,7 @@ interface MutableTurnTimestamp {
   turnIndex: number;
 }
 
-// Collapse a flat ConversationWordTimestamp[] into one entry per turn —
-// merging consecutive words that share the same turnIndex into a single
-// { turnIndex, start, end, text }. Assumes timestamps are monotonic across
-// turns (the order generateConversation returns them in); two non-adjacent
-// runs of the same turnIndex would produce two entries.
+// Assumes turnIndex runs are monotonic; non-adjacent runs of the same turnIndex would produce duplicate entries.
 export function timestampsToTurns(
   timestamps: readonly ConversationWordTimestamp[]
 ): readonly TurnTimestamp[] {

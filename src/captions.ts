@@ -67,8 +67,7 @@ export function formatVttTime(seconds: number): string {
 const SENTENCE_TERMINATOR =
   /[.!?\u3002\uFF01\uFF1F\u0964\u0965\u061F\u06D4]["'\u2018\u2019\u201C\u201D\u300D\u300F]?$/;
 
-// Limitations: "Dr."/"e.g." are treated as sentence ends; Thai etc. fall
-// through to char/duration breaks.
+// Limitations: "Dr."/"e.g." are treated as sentence ends; Thai etc. fall through to char/duration breaks.
 export function groupIntoSentences(
   words: readonly WordTimestamp[]
 ): WordTimestamp[][] {

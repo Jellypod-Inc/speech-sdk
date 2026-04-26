@@ -215,9 +215,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Murf GEN2 returns base64 WAV (PCM s16) by default; FALCON streams WAV.
-      // Both paths already yield audio/wav so no provider-side overrides are
-      // required.
+      // GEN2 base64 WAV and FALCON streamed WAV both yield audio/wav with no overrides needed.
       return {
         providerOptions: {},
         mediaType: "audio/wav",

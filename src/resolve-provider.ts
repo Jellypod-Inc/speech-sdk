@@ -18,10 +18,7 @@ export function resolveModel(
     return model;
   }
 
-  // Bare `"provider/model"` strings route through the speech gateway, which
-  // proxies to the upstream provider. Users who want direct provider access
-  // should construct a `ResolvedModel` via the built-in factory (e.g.
-  // `createOpenAI()("tts-1")`).
+  // Bare `"provider/model"` strings route through the speech gateway; direct provider access requires a ResolvedModel from the factory.
   const config = options?.apiKey ? { apiKey: options.apiKey } : {};
   const provider = new SpeechGatewayProvider(config);
   return {

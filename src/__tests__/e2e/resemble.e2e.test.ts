@@ -89,8 +89,7 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
       const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
       const durMs = result.metadata.audioDurationMs ?? 0;
       if (durMs > 0) {
-        // Last word's end must not exceed the audio; generous lower bound
-        // because Resemble appends trailing silence after the final word.
+        // Generous lower bound: Resemble appends trailing silence after the final word.
         expect(lastEndMs).toBeLessThanOrEqual(durMs + 100);
         expect(lastEndMs).toBeGreaterThan(durMs * 0.5);
       }

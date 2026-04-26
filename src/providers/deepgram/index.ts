@@ -10,8 +10,7 @@ import type {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
-// Deepgram /v1/speak takes audio-shaping params on the query string;
-// only `text` belongs in the body or it returns PAYLOAD_ERROR.
+// Deepgram /v1/speak takes audio-shaping params on the query string; only `text` in body or it returns PAYLOAD_ERROR.
 function buildSpeakUrl(
   baseURL: string,
   options: {

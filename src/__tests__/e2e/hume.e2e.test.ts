@@ -89,8 +89,7 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
       }
       const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
       const durMs = result.metadata.audioDurationMs ?? 0;
-      // Last word's end must not exceed the audio; generous lower bound
-      // because providers often append trailing silence after the final word.
+      // Generous lower bound: providers often append trailing silence after the final word.
       expect(lastEndMs).toBeLessThanOrEqual(durMs + 100);
       expect(lastEndMs).toBeGreaterThan(durMs * 0.5);
     });

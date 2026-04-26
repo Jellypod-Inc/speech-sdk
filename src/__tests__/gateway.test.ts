@@ -96,7 +96,7 @@ describe("SpeechGatewayProvider", () => {
     expect(url).toBe(
       "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
     );
-    // Body carries no `timestamps` field — the URL split is the switch now.
+    // URL split is the timestamps switch; body carries no `timestamps` field.
     expect(JSON.parse(init.body)).toEqual({
       mode: "inline",
       model: "openai/tts-1",
@@ -388,8 +388,7 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
 
-    // Per-turn `model` on the wire; no top-level model. No `timestamps` field
-    // either — the `/with-timestamps` variant is a separate URL.
+    // Per-turn `model` on the wire, no top-level model; timestamps live on a separate URL.
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       mode: "conversation",

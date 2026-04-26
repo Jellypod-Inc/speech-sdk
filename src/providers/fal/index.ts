@@ -134,9 +134,7 @@ export class FalSpeechProvider
     }
 
     const arrayBuffer = await audioResponse.arrayBuffer();
-    // fal includes the authoritative content_type in its JSON response.
-    // Fall back to the CDN response header, then to audio/wav (the format
-    // every currently-listed model emits).
+    // Authoritative content_type lives in fal's JSON; CDN header and audio/wav are fallbacks.
     const mediaType =
       json.audio.content_type ??
       audioResponse.headers.get("content-type") ??
@@ -152,9 +150,7 @@ export class FalSpeechProvider
   }
 
   getStitchOptions(modelId: string) {
-    // All currently-listed fal models (orpheus-tts, f5-tts, kokoro) return
-    // WAV (16-bit mono PCM in a RIFF container) at fal's CDN URL. Pass
-    // through providerOptions empty — fal exposes no format selector.
+    // fal exposes no format selector — listed models all return WAV.
     if (this.models.some((m) => m.id === modelId)) {
       return {
         providerOptions: {},

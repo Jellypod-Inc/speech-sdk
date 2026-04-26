@@ -23,9 +23,7 @@ export interface SpeechGatewayProviderConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-// audioDurationMs is intentionally not extracted — the SDK computes audio
-// duration client-side via mediabunny so all paths (gateway + direct
-// providers) behave identically.
+// audioDurationMs computed client-side via mediabunny for path consistency across gateway + direct providers.
 const wordTimestampSchema = z.object({
   text: z.string(),
   start: z.number(),
@@ -56,10 +54,7 @@ const GATEWAY_401_MESSAGE =
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
   readonly defaultModel = "openai/gpt-4o-mini-tts";
-  // The gateway server is the source of truth for model capabilities.
-  // Client-side model declarations are intentionally empty; feature checks
-  // are deferred to the wire — if the gateway can't honor a request it
-  // returns an error.
+  // Gateway server is the source of truth for model capabilities; feature checks deferred to the wire.
   readonly models: readonly ModelInfo[] = [];
 
   private readonly apiKey: string | undefined;
@@ -124,8 +119,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       body.providerOptions = options.providerOptions;
     }
 
-    // Endpoint split: binary vs JSON-with-timestamps lives at two URLs now;
-    // Accept-header content negotiation is gone.
+    // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
     const url = options.includeTimestamps
       ? `${this.baseURL}/audio/speech/with-timestamps`
       : `${this.baseURL}/audio/speech`;
@@ -224,9 +218,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
   }
 
-  // Server stitches, normalizes, and (when includeTimestamps) handles
-  // alignment — callers never need their own STT key. Per-turn `model` lets
-  // a single conversation span heterogeneous providers in one HTTP call.
+  // Server handles stitching/normalization/alignment so callers never need their own STT key.
   async generateConversation(options: {
     turns: readonly {
       model: string;
@@ -263,9 +255,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       );
     }
 
-    // Per-turn `model` on the wire; no top-level model. Send
-    // gapMs/volumeDbfs/normalizeVolume explicitly every call — don't rely on
-    // server defaults (spec).
+    // Per-spec: per-turn `model` on the wire (no top-level), and gapMs/volumeDbfs/normalizeVolume sent explicitly each call.
     const body: Record<string, unknown> = {
       mode: "conversation",
       turns: options.turns.map((t) => ({

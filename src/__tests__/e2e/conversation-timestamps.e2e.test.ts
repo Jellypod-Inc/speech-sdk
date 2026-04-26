@@ -30,7 +30,6 @@ describe("Conversation timestamps e2e — stitch path", () => {
     const words = result.timestamps ?? [];
     expect(words.length).toBeGreaterThan(0);
 
-    // Monotonic + valid word shape.
     for (const w of words) {
       expect(w.text.length).toBeGreaterThan(0);
       expect(w.end).toBeGreaterThanOrEqual(w.start);
@@ -39,11 +38,9 @@ describe("Conversation timestamps e2e — stitch path", () => {
       expect(words[i]?.start).toBeGreaterThanOrEqual(words[i - 1]?.start ?? 0);
     }
 
-    // Last word should end near the total audio duration.
     const durSec = (result.metadata.audioDurationMs ?? 0) / 1000;
     const lastEnd = words.at(-1)?.end ?? 0;
-    // Generous tolerance because Whisper timestamps drift slightly past
-    // the end of the synthesized region.
+    // Generous tolerance: Whisper timestamps can drift past the synthesized region.
     expect(lastEnd).toBeLessThanOrEqual(durSec + 1);
     expect(lastEnd).toBeGreaterThan(durSec * 0.5);
   });
@@ -75,15 +72,12 @@ describe("Conversation timestamps e2e — stitch path", () => {
 
     expect(result.timestamps).toBeDefined();
     const words = result.timestamps ?? [];
-    // Every word from every turn should be represented.
     expect(words.length).toBeGreaterThanOrEqual(8);
 
-    // Offsets are monotonically non-decreasing across turn boundaries.
     for (let i = 1; i < words.length; i++) {
       expect(words[i]?.start).toBeGreaterThanOrEqual(words[i - 1]?.start ?? 0);
     }
 
-    // No word should land past the concatenated audio duration.
     const durSec = (result.metadata.audioDurationMs ?? 0) / 1000;
     expect(words.at(-1)?.end ?? 0).toBeLessThanOrEqual(durSec + 1);
   });
@@ -110,10 +104,8 @@ describe("Conversation timestamps e2e — stitch path", () => {
 
     expect(result.timestamps).toBeDefined();
     const words = result.timestamps ?? [];
-    // Both turns are native, so each contributes word timestamps directly.
     expect(words.length).toBeGreaterThanOrEqual(8);
 
-    // Offsets are monotonically non-decreasing across turn boundaries.
     for (let i = 1; i < words.length; i++) {
       const cur = words[i];
       const prev = words[i - 1];
@@ -122,7 +114,6 @@ describe("Conversation timestamps e2e — stitch path", () => {
       }
     }
 
-    // No word should land past the concatenated audio duration.
     const durSec = (result.metadata.audioDurationMs ?? 0) / 1000;
     expect(words.at(-1)?.end ?? 0).toBeLessThanOrEqual(durSec + 1);
   });

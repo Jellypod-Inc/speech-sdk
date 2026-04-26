@@ -54,8 +54,7 @@ describe("generateConversation", () => {
     expect(result.metadata.provider).toBe("native");
     expect(result.metadata.model).toBe("m");
     expect(result.metadata.inputChars).toBe("Hi.".length + "Hello.".length);
-    // Native provider with no getStitchOptions ⇒ normalization can't run, so
-    // a warning surfaces (but the audio passes through untouched).
+    // Native provider lacks getStitchOptions, so normalization can't run and emits a warning.
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
   });
 
@@ -87,8 +86,6 @@ describe("generateConversation", () => {
       ],
     });
 
-    // generateDialogue must have received the stitch-mode providerOptions
-    // so the model returns decodable PCM.
     const dialogueCallArgs = (
       provider.generateDialogue as ReturnType<typeof vi.fn>
     ).mock.calls[0][0];
@@ -96,7 +93,6 @@ describe("generateConversation", () => {
       response_format: "pcm",
     });
 
-    // Output is the re-encoded WAV at the default -20 dBFS RMS target.
     expect(result.audio.mediaType).toBe("audio/wav");
     const wav = result.audio.uint8Array;
     const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
@@ -114,7 +110,6 @@ describe("generateConversation", () => {
       ],
       normalizeVolume: false,
     });
-    // No warning when the user explicitly opted out.
     expect(result.warnings).toBeUndefined();
     expect(result.audio.mediaType).toBe("audio/mpeg");
   });
@@ -162,8 +157,7 @@ describe("generateConversation", () => {
 
     const calls = (provider.generate as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls).toHaveLength(2);
-    // stitchProvider().getStitchOptions declares { response_format: "pcm" },
-    // which is merged last so it always wins over caller-supplied keys.
+    // stitchProvider's response_format: "pcm" is merged last and wins over caller keys.
     expect(calls[0][0].providerOptions).toEqual({
       speed: 0.9,
       response_format: "pcm",
@@ -211,13 +205,11 @@ describe("generateConversation", () => {
       ],
     });
 
-    // Exactly one HTTP call — no N-trip stitch path.
     expect(fetchFn).toHaveBeenCalledTimes(1);
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
     const body = JSON.parse(init.body);
     expect(body.mode).toBe("conversation");
-    // Per-turn `model` on the wire; no top-level model.
     expect(body.model).toBeUndefined();
     expect(body.turns).toEqual([
       { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
@@ -229,8 +221,7 @@ describe("generateConversation", () => {
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.metadata.provider).toBe("speech-gateway");
     expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
-    // Per-turn attribution is reconstructed from the caller's input (server
-    // no longer returns it on the wire — it's logged server-side only).
+    // Per-turn attribution is reconstructed from caller input; server doesn't return it on the wire.
     expect(result.providerMetadata).toEqual({
       turns: [
         { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
@@ -277,11 +268,6 @@ describe("generateConversation", () => {
   });
 
   it("routes timestamps:true to /with-timestamps and uses server-attributed words", async () => {
-    // The gateway's /v1/audio/conversation/with-timestamps endpoint returns a
-    // JSON envelope with base64 audio + per-word timestamps already attributed
-    // to turns via `turnIndex`. The SDK must hit that URL, send
-    // `timestamps: "on"` in the body, and surface those timestamps directly —
-    // no client-side STT.
     const audioBytes = new Uint8Array([65]);
     const audioBase64 =
       typeof btoa === "function"
@@ -309,7 +295,6 @@ describe("generateConversation", () => {
     });
     const resolved = gateway("openai/gpt-4o-mini-tts");
 
-    // STT stub — must NOT be called when going through the gateway.
     const transcribe = vi.fn();
 
     const result = await generateConversation({
@@ -328,7 +313,6 @@ describe("generateConversation", () => {
       "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
     );
     const body = JSON.parse(init.body);
-    // URL split signals timestamps; no body field needed (defaults to "on" server-side).
     expect(body.timestamps).toBeUndefined();
 
     expect(result.timestamps).toEqual([
@@ -339,8 +323,7 @@ describe("generateConversation", () => {
   });
 
   it("does not retry on 501 Not Implemented in the native path", async () => {
-    // 501 is the gateway's "this capability will never work" signal (e.g.
-    // timestamps: "on" on conversation). Retrying wastes round-trips.
+    // 501 = gateway's "this capability will never work" signal; retrying wastes round-trips.
     const error = new ApiError("Not implemented", {
       statusCode: 501,
       code: "timestamps_unsupported",

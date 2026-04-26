@@ -56,7 +56,6 @@ function mediaTypeForEncoding(encoding: string | undefined): string {
 
 export const INWORLD_PROVIDER_ID = "inworld" as const;
 
-// Inworld TTS supports 11 languages out of the box.
 // https://docs.inworld.ai/tts/overview#supported-languages
 const INWORLD_LANGUAGES = [
   "en",
@@ -348,8 +347,7 @@ function parseInworldNdjsonStream(
       } catch (err) {
         const error =
           err instanceof Error ? err : new Error(`${model}: ${String(err)}`);
-        // Cancel the upstream reader so the underlying fetch body isn't left
-        // locked / hanging. Swallow cancel errors — we already have `error`.
+        // Cancel upstream so the fetch body isn't left locked; swallow cancel errors.
         reader.cancel(error).catch(() => {
           /* noop */
         });
@@ -357,8 +355,7 @@ function parseInworldNdjsonStream(
       }
     },
     cancel(reason) {
-      // Consumer cancelled the parsed stream — propagate to the upstream fetch
-      // body so the HTTP connection can be released.
+      // Propagate cancel to upstream fetch so the HTTP connection is released.
       return reader.cancel(reason);
     },
   });

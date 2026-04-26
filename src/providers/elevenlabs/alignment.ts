@@ -11,8 +11,7 @@ export type ElevenLabsAlignment = z.infer<typeof elevenLabsAlignmentSchema>;
 
 const WHITESPACE_CHAR = /^\s$/;
 
-// Prefer normalized_alignment for inputs with numbers/abbreviations — ElevenLabs
-// expands those during synthesis ("$5" → "five dollars").
+// Prefer normalized_alignment for inputs with numbers/abbreviations — ElevenLabs expands those during synthesis.
 export function alignmentToWordTimestamps(
   alignment: ElevenLabsAlignment
 ): WordTimestamp[] {

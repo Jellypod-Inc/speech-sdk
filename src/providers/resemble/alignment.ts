@@ -1,8 +1,7 @@
 import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
-// Resemble `/synthesize` `audio_timestamps`. graph_chars/times are per-grapheme,
-// times in seconds; phoneme arrays are typed but unused.
+// Resemble `/synthesize` `audio_timestamps`: per-grapheme arrays, times in seconds; phoneme arrays unused.
 export const resembleAudioTimestampsSchema = z.object({
   graph_chars: z.array(z.string()),
   graph_times: z.array(z.array(z.number())),

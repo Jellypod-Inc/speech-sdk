@@ -40,10 +40,7 @@ export function validateConversationInput(
     );
   }
 
-  // Model placement is all-or-nothing: either set `options.model` for every
-  // turn, or set `model` on every turn — but never mix. A partial mix
-  // (top-level + per-turn override on some turns) makes the dispatch surface
-  // ambiguous and hides which model actually ran where.
+  // Model placement must be all-or-nothing — partial mix hides which model actually ran where.
   const hasTopLevel = options.model != null;
 
   for (let i = 0; i < options.turns.length; i++) {

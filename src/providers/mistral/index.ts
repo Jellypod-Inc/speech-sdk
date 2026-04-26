@@ -215,9 +215,7 @@ export class MistralSpeechProvider
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // voxtral's `pcm` format is headerless float32 little-endian, mono,
-      // 24 kHz — declared via the `encoding=float32` mediaType param so the
-      // stitch decoder converts to int16 before concatenation.
+      // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the stitch decoder to convert to int16.
       return {
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000;encoding=float32",

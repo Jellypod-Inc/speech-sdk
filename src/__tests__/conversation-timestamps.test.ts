@@ -8,7 +8,7 @@ import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
 import type { WordTimestamp } from "../timestamps.js";
 
-// A turn of length 2400 int16 samples at 24 kHz = 0.1s of silence.
+// 2400 int16 samples at 24 kHz = 0.1s of silence.
 const TURN_SAMPLES = 2400;
 const TURN_DURATION_SEC = TURN_SAMPLES / 24_000;
 
@@ -96,8 +96,6 @@ function mockSTT(
 
 describe("generateConversation timestamps — stitch path", () => {
   it("offsets per-turn timestamps by cumulative duration + gaps", async () => {
-    // Two turns, each 0.1s, gap of 200ms between them.
-    // Turn 0 starts at 0s, Turn 1 starts at 0.1s + 0.2s = 0.3s.
     const providerA = stitchTTS({
       id: "a",
       feature: "timestamps",
@@ -161,7 +159,6 @@ describe("generateConversation timestamps — stitch path", () => {
     });
 
     expect(result.timestamps).toBeUndefined();
-    // Both generate() calls passed includeTimestamps: false.
     for (const call of (provider.generate as ReturnType<typeof vi.fn>).mock
       .calls) {
       expect(call[0].includeTimestamps).toBe(false);
@@ -197,9 +194,7 @@ describe("generateConversation timestamps — stitch path", () => {
       gapMs: 100,
     });
 
-    // Each turn is transcribed once (two turns, two STT calls).
     expect(stt.transcribe).toHaveBeenCalledTimes(2);
-    // Flat concat with offsetting: turn 0 word + turn 1 word at offset.
     expect(result.timestamps).toHaveLength(2);
     expect(result.timestamps?.[0]).toEqual({
       text: "hello",
@@ -261,12 +256,9 @@ describe("generateConversation timestamps — stitch path", () => {
     });
 
     expect(result.timestamps).toHaveLength(6);
-    // Turn 0 — two words.
     expect(result.timestamps?.[0]?.turnIndex).toBe(0);
     expect(result.timestamps?.[1]?.turnIndex).toBe(0);
-    // Turn 1 — one word.
     expect(result.timestamps?.[2]?.turnIndex).toBe(1);
-    // Turn 2 — three words.
     expect(result.timestamps?.[3]?.turnIndex).toBe(2);
     expect(result.timestamps?.[4]?.turnIndex).toBe(2);
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
@@ -276,10 +268,6 @@ describe("generateConversation timestamps — stitch path", () => {
     const previousKey = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     try {
-      // Use the existing stitchTTS helper — features:[] means no native timestamps,
-      // so the stitch path will need STT to derive them. With no override, the
-      // SDK falls back to OpenAI Whisper; without OPENAI_API_KEY, that produces
-      // a TimestampKeyMissingError.
       const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
 
       await expect(
@@ -317,7 +305,7 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "there" },
       ],
       timestamps: true,
-      normalizeVolume: false, // skip the decode path for MP3 response
+      normalizeVolume: false,
     });
 
     expect(result.timestamps).toEqual([
@@ -407,8 +395,6 @@ describe("generateConversation timestamps — native path", () => {
   });
 
   it("attribution: tolerates minor casing/punctuation differences", async () => {
-    // Provider returns "Hello," with capital H + comma; input is "hello".
-    // Provider also returns "WORLD!" for input "world".
     const provider = nativeTTS({
       feature: "timestamps",
       timestamps: [
@@ -457,7 +443,6 @@ describe("generateConversation timestamps — native path", () => {
   });
 
   it("attribution: throws ConversationTimestampAttributionError when provider words don't match input transcript", async () => {
-    // Provider returns words completely unrelated to the input transcript.
     const provider = nativeTTS({
       feature: "timestamps",
       timestamps: [

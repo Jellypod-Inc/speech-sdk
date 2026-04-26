@@ -281,10 +281,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
   }> {
-    // Force raw pcm_s16le @ 24kHz: the SDK concatenates chunks directly and
-    // wraps them in a WAV header at end-of-stream. Allowing a caller to
-    // override the container would corrupt the merged audio since Cartesia
-    // SSE's wav/mp3 chunks are not safely concat-able.
+    // Force raw pcm_s16le @ 24kHz — Cartesia SSE wav/mp3 chunks aren't safely concat-able.
     const sampleRate = 24_000;
     const body: Record<string, unknown> = {
       ...options.providerOptions,
@@ -326,8 +323,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       `cartesia/${options.modelId}`
     );
 
-    // Concatenated PCM → standard WAV file, so callers don't need to know
-    // sample rate / encoding out-of-band to decode.
     const audio = await wrapPcm16Mono(pcmAudio, sampleRate);
     return {
       audio,

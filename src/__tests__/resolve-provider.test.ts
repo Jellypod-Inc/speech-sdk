@@ -39,8 +39,6 @@ describe("resolveModel", () => {
     const result = resolveModel("openai/tts-1", { apiKey: "gw-key-123" });
     expect(result.provider.id).toBe("speech-gateway");
     expect(result.modelId).toBe("openai/tts-1");
-    // apiKey is stored privately on the provider; the generate-speech tests
-    // verify it is forwarded as a Bearer token on the outgoing request.
   });
 
   it("ignores apiKey when model is a ResolvedModel", () => {

@@ -67,7 +67,6 @@ function providerBucket(testPath: string | undefined): string {
   return slugify(base) || "unknown";
 }
 
-// Counter so multiple saves in one test don't overwrite each other.
 const callCounts = new Map<string, number>();
 
 function nextStem(bucket: string, slug: string): string {
@@ -82,7 +81,6 @@ async function writeAndLog(file: string, data: string | Uint8Array) {
   console.log(`[e2e-save] wrote ${file}`);
 }
 
-// No-op unless SPEECH_SDK_E2E_OUTPUT_DIR is set.
 export async function maybeSaveAudio(
   name: string,
   audio: { uint8Array: Uint8Array; mediaType: string }

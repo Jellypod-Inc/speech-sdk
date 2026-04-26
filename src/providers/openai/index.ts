@@ -176,9 +176,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     text: string,
     modelId: string
   ): { text: string; warnings: string[] } {
-    // Models with audioTags flag support the SDK audio tag syntax.
-    // Leave raw tags in place so `generate()` can extract them and
-    // build the instructions string in a single pass.
+    // Leave raw tags in place so generate() can extract them and build instructions in one pass.
     if (
       this.models.some((m) => m.id === modelId && hasFeature(m, "audio-tags"))
     ) {
@@ -453,8 +451,7 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
   }
 }
 
-// OpenAI transcription rejects raw PCM; wrap as WAV. audio/l16 (RFC 2586,
-// big-endian) is intentionally unsupported — wrapPcm16Mono is little-endian.
+// OpenAI transcription rejects raw PCM; wrap as WAV. audio/l16 (RFC 2586, big-endian) intentionally unsupported.
 async function normalizeAudioForOpenAI(
   audio: Uint8Array,
   mediaType: string

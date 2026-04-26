@@ -73,7 +73,6 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
     expect(result.metadata.provider).toBe("speech-gateway");
     expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
 
-    // Default mode is "off", so the SDK doesn't even ask for timestamps.
     expect(result.timestamps).toBeUndefined();
 
     expect(result.providerMetadata).toBeDefined();
@@ -91,9 +90,7 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
     expect(turns).toBeDefined();
     expect(turns?.length).toBe(3);
 
-    // Phase 1 server behavior: empty warnings array is always present on
-    // the wire, which the SDK collapses to undefined when there's nothing
-    // to surface.
+    // Server always sends empty warnings array; SDK collapses it to undefined.
     expect(result.warnings).toBeUndefined();
   });
 
@@ -125,7 +122,6 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
       expect(w.turnIndex).toBeLessThanOrEqual(2);
       observedTurnIndices.add(w.turnIndex);
     }
-    // Every turn should have contributed at least one word.
     expect(observedTurnIndices.size).toBe(3);
   });
 });

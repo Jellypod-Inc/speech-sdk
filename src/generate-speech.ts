@@ -33,8 +33,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  // Must be ≤ 0. Direct providers without a decodable output mode throw
-  // VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
+  // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
   timestamps?: boolean;
 }): Promise<SpeechResult> {
@@ -220,9 +219,7 @@ async function resolveTimestamps(args: {
     return args.resultTimestamps;
   }
   if (isSpeechGatewayModel(args.resolved)) {
-    // Gateway server owns fallback; if it returned no timestamps, the
-    // existing GatewayTimestampsUnavailableError contract handles it
-    // upstream of this helper.
+    // Gateway server owns fallback; missing timestamps are surfaced upstream via GatewayTimestampsUnavailableError.
     return undefined;
   }
   const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
@@ -277,7 +274,6 @@ function logTimestampDecision(args: {
     );
     return;
   }
-  // enabled and no native support → will fall back to STT
   info(
     `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.effectiveFallback)} for word timestamps (adds a round-trip).`
   );

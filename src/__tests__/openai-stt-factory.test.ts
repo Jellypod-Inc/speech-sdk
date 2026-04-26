@@ -39,7 +39,6 @@ describe("createOpenAI factory shape", () => {
       fetch: fakeFetch,
     });
 
-    // Best-effort transcribe; we just want the URL captured.
     const stt = openai.stt("whisper-1");
     await expect(
       stt.provider.transcribe({

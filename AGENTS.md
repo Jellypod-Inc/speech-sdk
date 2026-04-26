@@ -61,6 +61,13 @@ Formatting and linting enforced by Biome via ultracite. Husky pre-commit hook ru
 - Use `async/await` over promise chains
 - Prefer `for...of` over `.forEach()`
 
+### Comments
+
+- Default to no comments. Add one only when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround, or a spec/RFC reference
+- Single-line only. Never write multi-line `//` blocks or block comments outside of JSDoc on exported APIs
+- Don't explain WHAT the code does — well-named identifiers already do that
+- Don't reference the current task, PR, fix, or callers ("added for X", "used by Y") — that rots; put it in the PR description
+
 ### Error Handling
 
 - Throw `Error` objects with descriptive messages, not strings

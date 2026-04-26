@@ -15,9 +15,7 @@ import {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
-// Both /generateContent endpoints (single-speaker and multi-speaker) return the
-// same shape; differences in upstream nullability are handled by tolerating
-// missing intermediate fields.
+// Both /generateContent endpoints share the same shape; tolerate missing intermediate fields for nullability differences.
 const generateContentResponseSchema = z.object({
   candidates: z
     .array(
@@ -206,9 +204,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
-  // Gemini 3.1 Flash TTS supports inline audio tags (e.g. [whispers],
-  // [shouting], [sighs], [laugh]) natively — pass them through verbatim.
-  // Older Gemini TTS models do not, so strip them with a warning.
+  // Gemini 3.1 Flash TTS supports inline audio tags natively; older models don't and need stripping.
   processAudioTags(
     text: string,
     modelId: string
@@ -285,8 +281,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error("No audio data in Gemini TTS response");
     }
 
-    // Gemini returns raw 16-bit mono PCM. Wrap in a WAV container so
-    // the audio is directly playable by any client.
+    // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
     const sampleRate =
       parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
@@ -299,15 +294,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  // Gemini's `streamGenerateContent` endpoint does not actually stream TTS
-  // audio progressively — the server synthesizes the full clip, then flushes
-  // it in a single burst. Time-to-first-byte matches `generateContent`, and
-  // the user-perceived behavior is identical. Rather than duplicate the
-  // request logic and deal with SSE parsing + chunked WAV assembly, we
-  // delegate to `generate()` and wrap the result in a single-chunk
-  // ReadableStream. True progressive Gemini TTS is only available via the
-  // Live API (`bidiGenerateContent`, WebSocket) on native-audio models,
-  // which is a separate integration not wired up in this SDK.
+  // streamGenerateContent flushes the full clip in one burst; we wrap generate() output as a single-chunk stream. Progressive Gemini TTS requires the Live API (not wired up here).
   async stream(options: {
     modelId: string;
     text: string;
@@ -332,8 +319,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Gemini TTS returns raw PCM that this provider wraps into WAV before
-      // returning to callers, so stitch decoding uses the WAV codepath.
+      // Provider wraps Gemini's raw PCM as WAV before returning; stitch decoding uses the WAV codepath.
       return {
         providerOptions: {},
         mediaType: "audio/wav",
@@ -344,8 +330,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
   dialogueCapabilities(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Gemini multi-speaker TTS requires exactly 2 unique voices
-      // (empirically verified — API validator: "enabled_voices must equal 2").
+      // Gemini multi-speaker TTS requires exactly 2 unique voices (API validator: "enabled_voices must equal 2").
       return { minVoices: 2, maxVoices: 2 };
     }
     return undefined;

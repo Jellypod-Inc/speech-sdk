@@ -19,9 +19,7 @@ export interface XaiSpeechProviderConfig {
 
 export const XAI_PROVIDER_ID = "xai" as const;
 
-// ISO 639-1 codes, matching the rest of the SDK. xAI's API also accepts
-// region-qualified BCP-47 codes (e.g. `pt-BR`, `es-MX`) and `auto` for
-// detection — callers can pass either via `providerOptions.language`.
+// ISO 639-1 codes; xAI also accepts BCP-47 (e.g. pt-BR) and "auto" via providerOptions.language.
 const XAI_LANGUAGES = [
   "en",
   "ar",
@@ -66,9 +64,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
-  // xAI natively supports bracket inline tags (`[pause]`, `[laugh]`) and
-  // angle-bracket wrapping tags (`<whisper>...</whisper>`), so we pass text
-  // through unchanged.
+  // xAI natively supports bracket and angle-bracket audio tags, so passthrough is safe.
   processAudioTags(text: string): { text: string; warnings: string[] } {
     return { text, warnings: [] };
   }
@@ -78,8 +74,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     voice?: string;
     providerOptions?: Record<string, unknown>;
   }): Record<string, unknown> {
-    // `language` is required by xAI. Default to "auto" for language detection;
-    // users can override via providerOptions.language with a BCP-47 code.
+    // `language` is required by xAI; default to "auto" so detection runs unless caller overrides.
     const body: Record<string, unknown> = {
       language: "auto",
       ...options.providerOptions,
@@ -189,8 +184,6 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // xAI Grok TTS accepts output_format.codec and its mediaTypeForCodec
-      // helper maps "wav" → "audio/wav", which the stitch layer can decode.
       return {
         providerOptions: { output_format: { codec: "wav" } },
         mediaType: "audio/wav",
