@@ -14,7 +14,7 @@ A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, 
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/xcTQMU3nCV)
 [![Stars](https://img.shields.io/github/stars/Jellypod-Inc/speech-sdk?style=flat-square&logo=github&label=stars)](https://github.com/Jellypod-Inc/speech-sdk/stargazers)
 
-**[Quick start](#quick-start)** · **[Providers](#supported-providers)** · **[Streaming](#streaming)** · **[Conversations](#conversations)** · **[Timestamps](#timestamps)** · **[API reference](#api-reference)**
+**[Quick start](#quick-start)** · **[Providers](#supported-providers)** · **[Streaming](#streaming)** · **[Multi-Speaker Conversations](#conversations)** · **[Timestamps](#timestamps)**
 
 </div>
 
