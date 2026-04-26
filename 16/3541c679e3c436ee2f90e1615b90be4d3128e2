@@ -1,0 +1,43 @@
+skills/speech-sdk/references/configuration.md
+  438cdbebfba5778c 51
+skills/speech-sdk/references/timestamps.md
+  438cdbebfba5778c 64,68,70-72,75,176
+README.md
+  438cdbebfba5778c 144,182,458
+src/generate-conversation.ts
+  438cdbebfba5778c 289
+  b59f673e4c59ab90 58,104,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "163541c679e3c436ee2f90e1615b90be4d3128e2",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 29,
+      "accepted_lines": 617,
+      "overriden_lines": 3
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 35,
+      "total_deletions": 88,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    }
+  }
+}
