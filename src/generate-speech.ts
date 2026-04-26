@@ -1,12 +1,12 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   ApiError,
   GatewayTimestampsUnavailableError,
   NoSpeechGeneratedError,
-  TimestampFallbackNotConfiguredError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 import { debug, info } from "./logger.js";
@@ -83,7 +83,10 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
 
-  const effectiveFallback = resolved.fallbackSTT;
+  const effectiveFallback =
+    !timestamps || shouldRequestNative
+      ? undefined
+      : (resolved.fallbackSTT ?? (await getDefaultSTTFallback()));
   logTimestampDecision({
     modelIdentifier,
     enabled: timestamps,
@@ -222,12 +225,7 @@ async function resolveTimestamps(args: {
     // upstream of this helper.
     return undefined;
   }
-  const fallback = args.resolved.fallbackSTT;
-  if (!fallback) {
-    throw new TimestampFallbackNotConfiguredError({
-      ttsModel: args.modelIdentifier,
-    });
-  }
+  const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
   const timestamps = await deriveTimestampsViaSTT({
     ttsModel: args.modelIdentifier,
     audio: args.audio,

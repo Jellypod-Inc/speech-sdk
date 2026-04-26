@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   GatewayTimestampsUnavailableError,
-  TimestampFallbackNotConfiguredError,
+  TimestampKeyMissingError,
 } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
@@ -195,28 +195,41 @@ describe("generateSpeech timestamps option", () => {
     expect(stt.transcribe).not.toHaveBeenCalled();
   });
 
-  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback configured", async () => {
-    const fakeBytes = new Uint8Array([65]);
-    const provider: SpeechProvider = {
-      id: "stub",
-      defaultModel: "m",
-      models: [
-        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
-      ],
-      generate: vi.fn().mockResolvedValue({
-        audio: fakeBytes,
-        mediaType: "audio/wav",
-      }),
-    };
+  it("throws TimestampKeyMissingError when timestamps:true, no fallback, and OPENAI_API_KEY missing", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const fakeBytes = new Uint8Array([65]);
+      const provider: SpeechProvider = {
+        id: "stub",
+        defaultModel: "m",
+        models: [
+          {
+            id: "m",
+            releaseDate: "2025-01-01",
+            languages: ["en"],
+            features: [],
+          },
+        ],
+        generate: vi.fn().mockResolvedValue({
+          audio: fakeBytes,
+          mediaType: "audio/wav",
+        }),
+      };
 
-    await expect(
-      generateSpeech({
-        model: { provider, modelId: "m" },
-        voice: "v",
-        text: "hi",
-        timestamps: true,
-      })
-    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "m" },
+          voice: "v",
+          text: "hi",
+          timestamps: true,
+        })
+      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
+    } finally {
+      if (previousKey !== undefined) {
+        process.env.OPENAI_API_KEY = previousKey;
+      }
+    }
   });
 
   it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
