@@ -45,6 +45,7 @@ interface StitchOutput {
 }
 
 const TARGET_SAMPLE_RATE = 24_000;
+const WHITESPACE_RE = /\s+/;
 
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -139,34 +140,51 @@ export async function runStitch<V extends Voice>(
   const turnDurations = perTurn.map(
     (p) => p.segment.pcm.length / p.segment.sampleRate
   );
-  const allTurnsHaveTimestamps =
-    input.timestamps && perTurn.every((p) => p.result.timestamps !== undefined);
-
+  const fillWarnings: string[] = [];
   let timestamps: ConversationWordTimestamp[] | undefined;
-  if (allTurnsHaveTimestamps) {
+  if (input.timestamps) {
+    const { fillTurnTimestampsProportional } = await import(
+      "./proportional-fill.js"
+    );
     timestamps = [];
     let offsetSec = 0;
+    const filledTurns: number[] = [];
     for (let i = 0; i < perTurn.length; i++) {
-      const turnTimestamps = perTurn[i]?.result.timestamps ?? [];
-      for (const w of turnTimestamps) {
-        timestamps.push({
-          text: w.text,
-          start: w.start + offsetSec,
-          end: w.end + offsetSec,
+      const turnTimestamps = perTurn[i]?.result.timestamps;
+      if (turnTimestamps && turnTimestamps.length > 0) {
+        for (const w of turnTimestamps) {
+          timestamps.push({
+            text: w.text,
+            start: w.start + offsetSec,
+            end: w.end + offsetSec,
+            turnIndex: i,
+          });
+        }
+      } else {
+        const turnText = input.turns[i]?.text ?? "";
+        const tokens = turnText
+          .split(WHITESPACE_RE)
+          .filter((t) => t.length > 0);
+        const turnSec = turnDurations[i] ?? 0;
+        const filled = fillTurnTimestampsProportional({
           turnIndex: i,
+          tokenCount: tokens.length,
+          startSec: offsetSec,
+          endSec: offsetSec + turnSec,
+          texts: tokens,
         });
+        timestamps.push(...filled);
+        filledTurns.push(i);
       }
       offsetSec += (turnDurations[i] ?? 0) + gapSeconds;
     }
+    if (filledTurns.length > 0) {
+      fillWarnings.push(
+        `speech-sdk: stitch path filled timestamps for turn(s) [${filledTurns.join(",")}] proportionally — provider returned no per-word alignment for those turns.`
+      );
+    }
     debug(
-      `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s).`
-    );
-  } else if (input.timestamps) {
-    const missing = perTurn
-      .map((p, i) => (p.result.timestamps === undefined ? i : -1))
-      .filter((i) => i !== -1);
-    debug(
-      `stitch: returning no timestamps — ${missing.length}/${perTurn.length} turn(s) had no alignment data (turns: ${missing.join(", ")}). Pass timestamps: true and/or mark provider models as native/derived to get full coverage.`
+      `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s); ${filledTurns.length} turn(s) filled proportionally.`
     );
   }
 
@@ -180,6 +198,9 @@ export async function runStitch<V extends Voice>(
     },
     providerMetadataPerTurn,
     timestamps,
-    warnings,
+    warnings:
+      warnings.length > 0 || fillWarnings.length > 0
+        ? [...warnings, ...fillWarnings]
+        : warnings,
   };
 }

@@ -264,6 +264,50 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
   });
 
+  it("fills missing-turn timestamps proportionally with a warning", async () => {
+    const providerWithTimestamps = stitchTTS({
+      id: "with-ts",
+      feature: "timestamps",
+      timestamps: [{ text: "hello", start: 0, end: 0.05 }],
+    });
+    const providerWithoutTimestamps = stitchTTS({ id: "no-ts" });
+    const emptySTT = mockSTT([]);
+
+    const result = await generateConversation({
+      turns: [
+        {
+          model: { provider: providerWithTimestamps, modelId: "m" },
+          voice: "v1",
+          text: "hello",
+        },
+        {
+          model: {
+            provider: providerWithoutTimestamps,
+            modelId: "m",
+            fallbackSTT: { provider: emptySTT, modelId: "m" },
+          },
+          voice: "v2",
+          text: "world friend",
+        },
+      ],
+      gapMs: 100,
+      timestamps: true,
+    });
+
+    expect(result.timestamps).toBeDefined();
+    expect(result.timestamps?.length).toBeGreaterThan(0);
+    expect(
+      result.timestamps?.every((w) => typeof w.turnIndex === "number")
+    ).toBe(true);
+    expect(result.warnings?.some((w) => w.includes("proportionally"))).toBe(
+      true
+    );
+    const filledTurnWords = result.timestamps?.filter((w) => w.turnIndex === 1);
+    expect(filledTurnWords).toHaveLength(2);
+    expect(filledTurnWords?.[0]?.text).toBe("world");
+    expect(filledTurnWords?.[1]?.text).toBe("friend");
+  });
+
   it("throws TimestampKeyMissingError when timestamps:true, no fallback, OPENAI_API_KEY missing (stitch path)", async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
