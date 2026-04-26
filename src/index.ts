@@ -9,7 +9,6 @@ export {
   ApiError,
   ConversationTimestampAttributionError,
   GatewayInputError,
-  GatewayTimestampsUnavailableError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
   SpeechSDKError,

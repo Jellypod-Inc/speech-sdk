@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  GatewayTimestampsUnavailableError,
-  TimestampKeyMissingError,
-} from "../errors.js";
+import { TimestampKeyMissingError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
 import type { SpeechProvider } from "../speech-provider.js";
@@ -179,19 +176,19 @@ describe("generateSpeech timestamps option", () => {
     const provider = createTTSProvider({ id: "speech-gateway" });
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
 
-    await expect(
-      generateSpeech({
-        model: {
-          provider,
-          modelId: "openai/tts-1",
-          fallbackSTT: { provider: stt, modelId: "m" },
-        },
-        text: "Hello",
-        voice: "v",
-        timestamps: true,
-      })
-    ).rejects.toThrow(GatewayTimestampsUnavailableError);
+    const result = await generateSpeech({
+      model: {
+        provider,
+        modelId: "openai/tts-1",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello",
+      voice: "v",
+      timestamps: true,
+    });
 
+    expect(result.audio).toBeDefined();
+    expect(result.timestamps).toBeUndefined();
     expect(stt.transcribe).not.toHaveBeenCalled();
   });
 

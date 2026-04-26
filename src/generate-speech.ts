@@ -5,7 +5,6 @@ import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   ApiError,
-  GatewayTimestampsUnavailableError,
   NoSpeechGeneratedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
@@ -139,10 +138,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     throw new NoSpeechGeneratedError();
   }
 
-  if (isGateway && timestamps && !result.timestamps?.length) {
-    throw new GatewayTimestampsUnavailableError(modelIdentifier);
-  }
-
   let outputBytes: Uint8Array | string = audioData;
   let outputMediaType = result.mediaType;
 
@@ -217,7 +212,6 @@ async function resolveTimestamps(args: {
     return args.resultTimestamps;
   }
   if (isSpeechGatewayModel(args.resolved)) {
-    // Gateway server owns fallback; missing timestamps are surfaced upstream via GatewayTimestampsUnavailableError.
     return undefined;
   }
   const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());

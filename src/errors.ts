@@ -113,12 +113,3 @@ export class ConversationTimestampAttributionError extends SpeechSDKError {
     this.expected = args.expected;
   }
 }
-
-export class GatewayTimestampsUnavailableError extends SpeechSDKError {
-  constructor(model: string) {
-    super(
-      `${model} was routed through Speech Gateway with timestamps: 'on', but the gateway response did not include word timestamps. The SDK will not run a client-side STT fallback for gateway requests.`
-    );
-    this.name = "GatewayTimestampsUnavailableError";
-  }
-}
