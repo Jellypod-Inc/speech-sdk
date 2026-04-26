@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createOpenAI } from "../../providers/openai/index.js";
 import { streamSpeech } from "../../stream-speech.js";
-import { createOpenAISTT } from "../../stt-providers/openai/index.js";
 import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
@@ -132,9 +131,9 @@ describe("OpenAI e2e", () => {
 
   describe("timestamps (derived via Whisper fallback)", () => {
     it("on mode pipes synthesized audio through Whisper and returns word timestamps", async () => {
-      const stt = createOpenAISTT();
+      const stt = createOpenAI().stt();
       const openai = createOpenAI({
-        fallbackSTT: stt("whisper-1"),
+        fallbackSTT: stt,
       });
       const result = await generateSpeech({
         model: openai("tts-1"),

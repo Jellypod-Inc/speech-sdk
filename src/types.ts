@@ -38,7 +38,6 @@ export type {
   STTModelInfo,
 } from "./speech-to-text-provider.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
-export type { OpenAISpeechToTextProviderConfig } from "./stt-providers/openai/index.js";
 export type {
   ConversationWordTimestamp,
   WordTimestamp,

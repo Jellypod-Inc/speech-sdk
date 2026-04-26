@@ -27,5 +27,3 @@ export type { ResembleSpeechProviderConfig } from "./providers/resemble/index.js
 export { createResemble } from "./providers/resemble/index.js";
 export type { XaiSpeechProviderConfig } from "./providers/xai/index.js";
 export { createXai } from "./providers/xai/index.js";
-export type { OpenAISpeechToTextProviderConfig } from "./stt-providers/openai/index.js";
-export { createOpenAISTT } from "./stt-providers/openai/index.js";

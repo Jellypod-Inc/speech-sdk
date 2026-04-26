@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createOpenAI } from "../providers/openai/index.js";
-import { createOpenAISTT } from "../stt-providers/openai/index.js";
 
 describe("provider factory fallbackSTT", () => {
   it("createOpenAI stamps fallbackSTT onto the returned ResolvedModel", () => {
-    const sttFactory = createOpenAISTT({ apiKey: "stt-key" });
-    const sttResolved = sttFactory();
+    const sttFactory = createOpenAI({ apiKey: "stt-key" });
+    const sttResolved = sttFactory.stt();
     const openai = createOpenAI({
       apiKey: "tts-key",
       fallbackSTT: {
