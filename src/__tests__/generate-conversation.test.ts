@@ -343,7 +343,6 @@ describe("generateConversation", () => {
     // timestamps: "on" on conversation). Retrying wastes round-trips.
     const error = new ApiError("Not implemented", {
       statusCode: 501,
-      model: "native/m",
       code: "timestamps_unsupported",
     });
     const provider: SpeechProvider = {

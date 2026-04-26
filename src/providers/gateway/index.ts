@@ -125,12 +125,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, {
-        statusCode: 401,
-        model: `speech-gateway/${options.modelId}`,
-      });
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
     }
-    await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (options.includeTimestamps) {
       const payload = parseGatewayJsonResponse(await response.json());
@@ -193,12 +190,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, {
-        statusCode: 401,
-        model: `speech-gateway/${options.modelId}`,
-      });
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
     }
-    await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(
@@ -274,8 +268,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       ? `${this.baseURL}/audio/conversation/with-timestamps`
       : `${this.baseURL}/audio/conversation`;
 
-    const errorLabel = "speech-gateway/conversation";
-
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
@@ -289,12 +281,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     });
 
     if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, {
-        statusCode: 401,
-        model: errorLabel,
-      });
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
     }
-    await handleErrorResponse(response, errorLabel);
+    await handleErrorResponse(response);
 
     if (options.includeTimestamps) {
       const payload = parseGatewayConversationJsonResponse(

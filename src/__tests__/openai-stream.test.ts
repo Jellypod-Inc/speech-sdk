@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 
-const ERROR_PATTERN = /openai\/tts-1.*401/;
+const ERROR_PATTERN = /API error 401.*nope/;
 
 function bodyStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
   return new ReadableStream({

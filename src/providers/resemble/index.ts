@@ -116,7 +116,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `resemble/${options.modelId}`);
+    await handleErrorResponse(response);
 
     // Resemble always returns `audio_timestamps`; gate the projection on
     // the caller's opt-in rather than the presence of the field.
@@ -173,7 +173,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `resemble/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`resemble/${options.modelId}: response has no body`);

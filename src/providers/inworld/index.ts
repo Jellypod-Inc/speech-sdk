@@ -162,7 +162,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `inworld/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const json = (await response.json()) as {
       audioContent?: string;
@@ -220,7 +220,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `inworld/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`inworld/${options.modelId}: response has no body`);

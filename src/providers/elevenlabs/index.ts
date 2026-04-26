@@ -298,7 +298,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
@@ -400,7 +400,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`elevenlabs/${options.modelId}: response has no body`);
@@ -488,7 +488,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";

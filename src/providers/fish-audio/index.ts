@@ -99,7 +99,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -145,7 +145,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`fish-audio/${options.modelId}: response has no body`);
@@ -223,7 +223,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     return {
       audio: new Uint8Array(await response.arrayBuffer()),

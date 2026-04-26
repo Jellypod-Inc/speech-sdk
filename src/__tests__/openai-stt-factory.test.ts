@@ -29,9 +29,9 @@ describe("createOpenAI factory shape", () => {
 
   it("STT and TTS providers share apiKey/baseURL/fetch from one config", async () => {
     const calls: string[] = [];
-    const fakeFetch = (async (url: string) => {
+    const fakeFetch = ((url: string) => {
       calls.push(url);
-      return new Response("err", { status: 500 });
+      return Promise.resolve(new Response("err", { status: 500 }));
     }) as unknown as typeof fetch;
     const openai = createOpenAI({
       apiKey: "k",

@@ -121,7 +121,6 @@ describe("generateSpeech", () => {
   it("retries on 5xx errors", async () => {
     const error = new ApiError("Server error", {
       statusCode: 500,
-      model: "mock/test-model",
     });
 
     const provider: SpeechProvider = {
@@ -431,7 +430,6 @@ describe("generateSpeech", () => {
   it("does not retry on 4xx errors", async () => {
     const error = new ApiError("Auth error", {
       statusCode: 401,
-      model: "mock/test-model",
     });
 
     const provider: SpeechProvider = {
@@ -481,7 +479,6 @@ describe("generateSpeech", () => {
     // (e.g. timestamps unsupported). Retrying just wastes round-trips.
     const error = new ApiError("Not implemented", {
       statusCode: 501,
-      model: "mock/test-model",
       code: "timestamps_unsupported",
     });
 

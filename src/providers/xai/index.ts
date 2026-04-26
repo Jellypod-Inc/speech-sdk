@@ -136,7 +136,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `xai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType =
@@ -173,7 +173,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `xai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`xai/${options.modelId}: response has no body`);

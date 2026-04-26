@@ -147,7 +147,7 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
       }
     );
 
-    await handleErrorResponse(response, `openai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const data = (await response.json()) as {
       text?: string;

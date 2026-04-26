@@ -247,7 +247,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `google/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const json = (await response.json()) as {
       candidates: Array<{
@@ -391,7 +391,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `google/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const json = (await response.json()) as {
       candidates?: {

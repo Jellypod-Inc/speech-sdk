@@ -104,7 +104,7 @@ export class FalSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fal-ai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const json = (await response.json()) as {
       audio: { url: string; content_type?: string };
@@ -114,7 +114,7 @@ export class FalSpeechProvider
 
   private async fetchAudio(
     json: { audio: { url: string; content_type?: string } },
-    options: { modelId: string; abortSignal?: AbortSignal }
+    options: { abortSignal?: AbortSignal }
   ): Promise<{ audio: Uint8Array; mediaType: string }> {
     const audioResponse = await this.fetchFn(json.audio.url, {
       signal: options.abortSignal,
@@ -123,7 +123,6 @@ export class FalSpeechProvider
     if (!audioResponse.ok) {
       throw new ApiError(`API error: ${audioResponse.status}`, {
         statusCode: audioResponse.status,
-        model: `fal-ai/${options.modelId}`,
         responseBody: await audioResponse.text().catch(() => undefined),
       });
     }

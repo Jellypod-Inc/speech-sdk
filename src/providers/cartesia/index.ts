@@ -257,7 +257,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/wav";
@@ -313,7 +313,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new SpeechSDKError(
@@ -375,7 +375,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`cartesia/${options.modelId}: response has no body`);

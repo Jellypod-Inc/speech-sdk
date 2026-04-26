@@ -86,9 +86,7 @@ describe("streamSpeech", () => {
   it("retries stream() on retryable errors", async () => {
     const streamFn = vi
       .fn()
-      .mockRejectedValueOnce(
-        new ApiError("boom", { statusCode: 500, model: "test/m1" })
-      )
+      .mockRejectedValueOnce(new ApiError("boom", { statusCode: 500 }))
       .mockResolvedValueOnce({
         stream: bytesStream(new Uint8Array([9])),
         mediaType: "audio/mpeg",
@@ -109,9 +107,7 @@ describe("streamSpeech", () => {
   it("does not retry on 4xx errors", async () => {
     const streamFn = vi
       .fn()
-      .mockRejectedValue(
-        new ApiError("bad", { statusCode: 400, model: "test/m1" })
-      );
+      .mockRejectedValue(new ApiError("bad", { statusCode: 400 }));
     const provider = makeProvider({ stream: streamFn });
 
     await expect(

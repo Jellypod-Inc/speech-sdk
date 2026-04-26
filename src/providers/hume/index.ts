@@ -128,7 +128,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -177,7 +177,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const payload = (await response.json()) as {
       generations?: {
@@ -248,7 +248,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`hume/${options.modelId}: response has no body`);
@@ -323,7 +323,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     return {

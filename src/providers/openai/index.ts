@@ -11,6 +11,7 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+import { OpenAISpeechToTextProvider } from "../../stt-providers/openai/index.js";
 import { buildOpenAIInstructionsFromTags } from "./instructions.js";
 
 export interface OpenAISpeechProviderConfig {
@@ -216,7 +217,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `openai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -269,7 +270,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `openai/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`openai/${options.modelId}: response has no body`);
@@ -291,8 +292,6 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     return undefined;
   }
 }
-
-import { OpenAISpeechToTextProvider } from "../../stt-providers/openai/index.js";
 
 export function createOpenAI(config: OpenAISpeechProviderConfig = {}) {
   const ttsProvider = new OpenAISpeechProvider(config);

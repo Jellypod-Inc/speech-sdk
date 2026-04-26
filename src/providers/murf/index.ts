@@ -133,7 +133,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `murf/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (isFalcon) {
       const arrayBuffer = await response.arrayBuffer();
@@ -198,7 +198,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `murf/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`murf/${options.modelId}: response has no body`);

@@ -104,7 +104,7 @@ export class MistralSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `mistral/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const json = (await response.json()) as {
       audio_data: string;
@@ -175,7 +175,7 @@ export class MistralSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `mistral/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`mistral/${options.modelId}: response has no body`);

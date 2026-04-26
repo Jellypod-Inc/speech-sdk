@@ -8,7 +8,6 @@ export class SpeechSDKError extends Error {
 export class ApiError extends SpeechSDKError {
   readonly statusCode: number;
   readonly responseBody?: unknown;
-  readonly model: string;
   // RFC 7807 `code` extension; only Speech Gateway populates it today.
   readonly code?: string;
 
@@ -16,7 +15,6 @@ export class ApiError extends SpeechSDKError {
     message: string,
     options: {
       statusCode: number;
-      model: string;
       responseBody?: unknown;
       cause?: unknown;
       code?: string;
@@ -25,7 +23,6 @@ export class ApiError extends SpeechSDKError {
     super(message, { cause: options.cause });
     this.name = "ApiError";
     this.statusCode = options.statusCode;
-    this.model = options.model;
     this.responseBody = options.responseBody;
     this.code = options.code;
   }

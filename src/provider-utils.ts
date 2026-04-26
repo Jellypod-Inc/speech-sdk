@@ -71,20 +71,16 @@ export function isRetriableApiError(error: ApiError): boolean {
   return true;
 }
 
-export async function handleErrorResponse(
-  response: Response,
-  model: string
-): Promise<void> {
+export async function handleErrorResponse(response: Response): Promise<void> {
   if (!response.ok) {
     const responseBody = await response.text().catch(() => undefined);
     const { message: detail, code } = parseErrorJson(responseBody);
     const message = detail
-      ? `${model} API error ${response.status}: ${detail}`
-      : `${model} API error ${response.status}`;
+      ? `API error ${response.status}: ${detail}`
+      : `API error ${response.status}`;
 
     throw new ApiError(message, {
       statusCode: response.status,
-      model,
       responseBody,
       code,
     });

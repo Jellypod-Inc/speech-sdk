@@ -458,7 +458,6 @@ try {
 } catch (error) {
   if (error instanceof ApiError) {
     error.statusCode;    // 401, 429, 500, ...
-    error.model;         // "openai/gpt-4o-mini-tts"
     error.responseBody;
     error.code;          // stable machine-readable code (optional)
   }
