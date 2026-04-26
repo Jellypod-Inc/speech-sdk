@@ -32,6 +32,7 @@ import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 export {
   ConversationInputError,
   DialogueConstraintError,
+  MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
 export type {
@@ -97,7 +98,7 @@ export async function generateConversation<V extends Voice = Voice>(
   if (path.kind === "gateway") {
     return await runGateway({
       options,
-      resolved: path.resolved,
+      resolvedPerTurn: path.resolvedPerTurn,
       maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     });
   }
@@ -172,14 +173,14 @@ export async function generateConversation<V extends Voice = Voice>(
 
 async function runGateway<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
-  resolved: ResolvedModel<V>;
+  resolvedPerTurn: readonly ResolvedModel<V>[];
   maxRetries: number;
 }): Promise<ConversationResult> {
-  const { options, resolved, maxRetries } = args;
+  const { options, resolvedPerTurn, maxRetries } = args;
   const start = performance.now();
 
-  const provider = resolved.provider as unknown as SpeechGatewayProvider;
-  const modelLabel = `${provider.id}/${resolved.modelId}`;
+  const provider = resolvedPerTurn[0]
+    .provider as unknown as SpeechGatewayProvider;
 
   const includeTimestamps = options.timestamps ?? false;
 
@@ -187,10 +188,11 @@ async function runGateway<V extends Voice>(args: {
   const wireTurns = options.turns.map((t, i) => {
     if (typeof t.voice !== "string") {
       throw new Error(
-        `${modelLabel}: gateway conversation path requires string voices; turns[${i}].voice is an object.`
+        `speech-gateway/conversation: gateway conversation path requires string voices; turns[${i}].voice is an object.`
       );
     }
     return {
+      model: resolvedPerTurn[i].modelId,
       voice: t.voice,
       text: t.text,
       ...(t.providerOptions && { providerOptions: t.providerOptions }),
@@ -200,7 +202,6 @@ async function runGateway<V extends Voice>(args: {
   const result = await pRetry(
     () =>
       provider.generateConversation({
-        modelId: resolved.modelId,
         turns: wireTurns,
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,
@@ -243,25 +244,25 @@ async function runGateway<V extends Voice>(args: {
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
+  const models = Array.from(new Set(resolvedPerTurn.map((r) => r.modelId)));
+
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars,
     provider: provider.id,
-    model: resolved.modelId,
+    model: models.length === 1 ? models[0] : models.join(","),
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
   // Rebuild per-turn attribution from caller input — the gateway no longer carries it on the wire.
-  const slashIdx = resolved.modelId.indexOf("/");
-  const wireProvider =
-    slashIdx === -1 ? resolved.modelId : resolved.modelId.slice(0, slashIdx);
-  const wireModel =
-    slashIdx === -1 ? resolved.modelId : resolved.modelId.slice(slashIdx + 1);
-  const perTurn = wireTurns.map((t) => ({
-    provider: wireProvider,
-    model: wireModel,
-    voice: t.voice,
-  }));
+  const perTurn = wireTurns.map((t) => {
+    const slashIdx = t.model.indexOf("/");
+    return {
+      provider: slashIdx === -1 ? t.model : t.model.slice(0, slashIdx),
+      model: slashIdx === -1 ? t.model : t.model.slice(slashIdx + 1),
+      voice: t.voice,
+    };
+  });
 
   return {
     audio,

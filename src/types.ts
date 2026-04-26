@@ -43,6 +43,7 @@ export type {
   ConversationWordTimestamp,
   WordTimestamp,
 } from "./timestamps.js";
+export type { TurnTimestamp } from "./turns.js";
 
 export interface GenerateSpeechOptions<V extends Voice = Voice> {
   abortSignal?: AbortSignal;

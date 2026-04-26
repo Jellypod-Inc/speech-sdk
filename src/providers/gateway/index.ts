@@ -1,4 +1,8 @@
-import { ApiError, MissingApiKeyError } from "../../errors.js";
+import {
+  ApiError,
+  GatewayInputError,
+  MissingApiKeyError,
+} from "../../errors.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
 import type {
   ModelInfo,
@@ -84,7 +88,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     warnings?: string[];
   }> {
     if (!options.voice) {
-      throw new Error(
+      throw new GatewayInputError(
         `speech-gateway/${options.modelId}: "voice" is required when routing through the speech gateway in inline mode.`
       );
     }
@@ -159,7 +163,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
   }> {
     if (!options.voice) {
-      throw new Error(
+      throw new GatewayInputError(
         `speech-gateway/${options.modelId}: "voice" is required when routing through the speech gateway in inline mode.`
       );
     }
@@ -209,10 +213,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   }
 
   // Server stitches, normalizes, and (when includeTimestamps) handles
-  // alignment — callers never need their own STT key.
+  // alignment — callers never need their own STT key. Per-turn `model` lets
+  // a single conversation span heterogeneous providers in one HTTP call.
   async generateConversation(options: {
-    modelId: string;
     turns: readonly {
+      model: string;
       voice: string;
       text: string;
       providerOptions?: Record<string, unknown>;
@@ -231,22 +236,28 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     warnings?: string[];
   }> {
     if (options.turns.length === 0) {
-      throw new Error(
-        `speech-gateway/${options.modelId}: at least one turn is required.`
+      throw new GatewayInputError(
+        "speech-gateway/conversation: at least one turn is required."
       );
     }
     if (!options.turns.every((t) => t.voice)) {
-      throw new Error(
-        `speech-gateway/${options.modelId}: every turn must specify a "voice" when routing through the speech gateway.`
+      throw new GatewayInputError(
+        'speech-gateway/conversation: every turn must specify a "voice" when routing through the speech gateway.'
+      );
+    }
+    if (!options.turns.every((t) => t.model)) {
+      throw new GatewayInputError(
+        'speech-gateway/conversation: every turn must specify a "model" when routing through the speech gateway.'
       );
     }
 
-    // Send gapMs/volumeDbfs/normalizeVolume explicitly every call — don't rely
-    // on server defaults (spec). Keep turns flat (voice/text/providerOptions).
+    // Per-turn `model` on the wire; no top-level model. Send
+    // gapMs/volumeDbfs/normalizeVolume explicitly every call — don't rely on
+    // server defaults (spec).
     const body: Record<string, unknown> = {
       mode: "conversation",
-      model: options.modelId,
       turns: options.turns.map((t) => ({
+        model: t.model,
         voice: t.voice,
         text: t.text,
         ...(t.providerOptions && { providerOptions: t.providerOptions }),
@@ -263,6 +274,8 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       ? `${this.baseURL}/audio/conversation/with-timestamps`
       : `${this.baseURL}/audio/conversation`;
 
+    const errorLabel = "speech-gateway/conversation";
+
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
@@ -278,10 +291,10 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     if (response.status === 401) {
       throw new ApiError(GATEWAY_401_MESSAGE, {
         statusCode: 401,
-        model: `speech-gateway/${options.modelId}`,
+        model: errorLabel,
       });
     }
-    await handleErrorResponse(response, `speech-gateway/${options.modelId}`);
+    await handleErrorResponse(response, errorLabel);
 
     if (options.includeTimestamps) {
       const payload = parseGatewayConversationJsonResponse(

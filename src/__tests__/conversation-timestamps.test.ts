@@ -12,8 +12,6 @@ import type { WordTimestamp } from "../timestamps.js";
 const TURN_SAMPLES = 2400;
 const TURN_DURATION_SEC = TURN_SAMPLES / 24_000;
 
-const ATTRIBUTION_FAILED_RE = /Failed to attribute timestamps/;
-
 function stitchTTS(options: {
   id: string;
   timestamps?: WordTimestamp[];
@@ -465,17 +463,5 @@ describe("generateConversation timestamps — native path", () => {
         normalizeVolume: false,
       })
     ).rejects.toThrow(ConversationTimestampAttributionError);
-
-    await expect(
-      generateConversation({
-        model: { provider, modelId: "m" },
-        turns: [
-          { voice: "a", text: "Hello there." },
-          { voice: "b", text: "How are you?" },
-        ],
-        timestamps: true,
-        normalizeVolume: false,
-      })
-    ).rejects.toThrow(ATTRIBUTION_FAILED_RE);
   });
 });

@@ -56,6 +56,13 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class GatewayInputError extends SpeechSDKError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GatewayInputError";
+  }
+}
+
 export class MissingApiKeyError extends SpeechSDKError {
   readonly providerName: string;
   readonly envVar: string;

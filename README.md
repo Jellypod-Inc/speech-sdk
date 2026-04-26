@@ -232,48 +232,30 @@ await generateSpeech({
 `turnIndex` is why conversation timestamps are a different type from speech. It is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback — without re-deriving turn boundaries from `gapMs` and per-turn durations.
 
 ```ts
-import { generateConversation } from '@speech-sdk/core';
-import type { ConversationWordTimestamp } from '@speech-sdk/core/types';
+import { generateConversation, timestampsToTurns } from '@speech-sdk/core';
+
+const turns = [
+  { voice: 'rachel', text: 'Hi there.' },
+  { voice: 'adam',   text: 'Hello!' },
+];
 
 const result = await generateConversation({
   model: 'elevenlabs/eleven_v3',
-  turns: [
-    { voice: 'rachel', text: 'Hi there.' },
-    { voice: 'adam',   text: 'Hello!' },
-  ],
+  turns,
   timestamps: true,
 });
 
-// result.timestamps is ConversationWordTimestamp[]:
-//   { text, start, end, turnIndex }[]
+// result.timestamps is ConversationWordTimestamp[]: { text, start, end, turnIndex }[]
+// Collapse consecutive words from the same turn into per-turn timings:
+const turnTimestamps = timestampsToTurns(result.timestamps ?? []);
+// [
+//   { turnIndex: 0, start: 0.00, end: 0.42, text: 'Hi there.' },
+//   { turnIndex: 1, start: 0.72, end: 1.05, text: 'Hello!' },
+// ]
 
-// Collapse consecutive words from the same turn into per-turn spans:
-function toTurnSpans(
-  timestamps: readonly ConversationWordTimestamp[],
-  turns: readonly { voice: string }[],
-) {
-  type Span = { turnIndex: number; voice: string; start: number; end: number; text: string };
-  const spans: Span[] = [];
-  for (const word of timestamps) {
-    const last = spans.at(-1);
-    if (last?.turnIndex === word.turnIndex) {
-      last.end = word.end;
-      last.text += ' ' + word.text;
-    } else {
-      spans.push({
-        turnIndex: word.turnIndex,
-        voice: turns[word.turnIndex].voice,
-        start: word.start,
-        end: word.end,
-        text: word.text,
-      });
-    }
-  }
-  return spans;
-}
+// Look the speaking voice up by turnIndex against the input turns:
+const annotated = turnTimestamps.map((t) => ({ ...t, voice: turns[t.turnIndex].voice }));
 
-// Each span: { voice, start, end, text } — answers
-// "voice X plays from t=0.00 to t=0.42, voice Y from t=0.72 to t=1.05, ..."
 // Natural input for chat-bubble UIs, speaker-attributed captions, or
 // karaoke-style highlighting during playback.
 ```

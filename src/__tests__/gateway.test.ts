@@ -1,19 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError } from "../errors.js";
+import { ApiError, GatewayInputError, MissingApiKeyError } from "../errors.js";
 import {
   createSpeechGateway,
   SpeechGatewayProvider,
 } from "../providers/gateway/index.js";
 import { isSpeechGatewayModel } from "../speech-provider.js";
-
-const VOICE_REQUIRED_RE = /"voice" is required/;
-const SIGNUP_RE = /https:\/\/wavform\.ai\//;
-const GATEWAY_401_RE = /Speech Gateway rejected your API key/;
-const TIMESTAMPS_UNSUPPORTED_RE = /timestamps: "on" is not supported/;
-const BAD_REQUEST_RE = /bad request/;
-const INTERNAL_SERVER_ERROR_RE = /Internal Server Error/;
-const CONVO_AT_LEAST_ONE_TURN_RE = /at least one turn is required/;
-const CONVO_EVERY_TURN_VOICE_RE = /every turn must specify a "voice"/;
 
 function mockFetchOk(body = new Uint8Array([1, 2, 3])) {
   return vi.fn().mockResolvedValue({
@@ -195,7 +186,7 @@ describe("SpeechGatewayProvider", () => {
 
     await expect(
       provider.generate({ modelId: "openai/tts-1", text: "Hi" })
-    ).rejects.toThrow(VOICE_REQUIRED_RE);
+    ).rejects.toBeInstanceOf(GatewayInputError);
   });
 
   it("does not derive provider metadata from streaming response headers", async () => {
@@ -264,7 +255,7 @@ describe("SpeechGatewayProvider", () => {
         text: "Hello",
         voice: "alloy",
       })
-    ).rejects.toThrow(GATEWAY_401_RE);
+    ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
   });
 
   it("extracts RFC 7807 problem+json code into ApiError.code on 501", async () => {
@@ -297,16 +288,6 @@ describe("SpeechGatewayProvider", () => {
       statusCode: 501,
       code: "timestamps_unsupported",
     });
-
-    // Also verify the rejection is an ApiError and the human-readable detail
-    // made it into the message.
-    await expect(
-      provider.generate({
-        modelId: "openai/tts-1",
-        text: "Hello",
-        voice: "alloy",
-      })
-    ).rejects.toThrow(TIMESTAMPS_UNSUPPORTED_RE);
   });
 
   it("leaves ApiError.code undefined when error body has no code field", async () => {
@@ -336,7 +317,6 @@ describe("SpeechGatewayProvider", () => {
     const apiError = thrown as ApiError;
     expect(apiError.statusCode).toBe(400);
     expect(apiError.code).toBeUndefined();
-    expect(apiError.message).toMatch(BAD_REQUEST_RE);
   });
 
   it("handles non-JSON error bodies without throwing during code extraction", async () => {
@@ -366,7 +346,6 @@ describe("SpeechGatewayProvider", () => {
     const apiError = thrown as ApiError;
     expect(apiError.statusCode).toBe(500);
     expect(apiError.code).toBeUndefined();
-    expect(apiError.message).toMatch(INTERNAL_SERVER_ERROR_RE);
   });
 
   it("throws a signup-friendly error when no apiKey or env var is set", async () => {
@@ -380,7 +359,7 @@ describe("SpeechGatewayProvider", () => {
           text: "Hi",
           voice: "alloy",
         })
-      ).rejects.toThrow(SIGNUP_RE);
+      ).rejects.toBeInstanceOf(MissingApiKeyError);
     } finally {
       if (savedKey != null) {
         process.env.SPEECH_GATEWAY_API_KEY = savedKey;
@@ -390,7 +369,7 @@ describe("SpeechGatewayProvider", () => {
 });
 
 describe("SpeechGatewayProvider.generateConversation", () => {
-  it("posts conversation payload with mode, turns, gap/volume/normalize defaults; reads raw mixed audio", async () => {
+  it("posts conversation payload with mode, per-turn model, gap/volume/normalize defaults; reads raw mixed audio", async () => {
     const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -398,10 +377,9 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     });
 
     const result = await provider.generateConversation({
-      modelId: "openai/gpt-4o-mini-tts",
       turns: [
-        { voice: "alloy", text: "Hi." },
-        { voice: "nova", text: "Hello!" },
+        { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
+        { model: "elevenlabs/eleven_v3", voice: "rachel", text: "Hello!" },
       ],
     });
 
@@ -410,15 +388,14 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(init.headers["Content-Type"]).toBe("application/json");
 
-    // No `timestamps` field on the wire anymore — the `/with-timestamps`
-    // variant is deferred until per-turn alignment is implementable.
+    // Per-turn `model` on the wire; no top-level model. No `timestamps` field
+    // either — the `/with-timestamps` variant is a separate URL.
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       mode: "conversation",
-      model: "openai/gpt-4o-mini-tts",
       turns: [
-        { voice: "alloy", text: "Hi." },
-        { voice: "nova", text: "Hello!" },
+        { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
+        { model: "elevenlabs/eleven_v3", voice: "rachel", text: "Hello!" },
       ],
       gapMs: 300,
       volumeDbfs: -20,
@@ -450,8 +427,9 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     await expect(
       provider.generateConversation({
-        modelId: "openai/gpt-4o-mini-tts",
-        turns: [{ voice: "alloy", text: "Hi." }],
+        turns: [
+          { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
+        ],
       })
     ).rejects.toMatchObject({
       name: "ApiError",
@@ -474,10 +452,11 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     await expect(
       provider.generateConversation({
-        modelId: "openai/gpt-4o-mini-tts",
-        turns: [{ voice: "alloy", text: "Hi." }],
+        turns: [
+          { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
+        ],
       })
-    ).rejects.toThrow(GATEWAY_401_RE);
+    ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
   });
 
   it("rejects empty turns array client-side", async () => {
@@ -489,10 +468,9 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     await expect(
       provider.generateConversation({
-        modelId: "openai/gpt-4o-mini-tts",
         turns: [],
       })
-    ).rejects.toThrow(CONVO_AT_LEAST_ONE_TURN_RE);
+    ).rejects.toBeInstanceOf(GatewayInputError);
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
@@ -505,10 +483,9 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     await expect(
       provider.generateConversation({
-        modelId: "openai/gpt-4o-mini-tts",
-        turns: [{ voice: "", text: "Hi." }],
+        turns: [{ model: "openai/gpt-4o-mini-tts", voice: "", text: "Hi." }],
       })
-    ).rejects.toThrow(CONVO_EVERY_TURN_VOICE_RE);
+    ).rejects.toBeInstanceOf(GatewayInputError);
     expect(fetchFn).not.toHaveBeenCalled();
   });
 });

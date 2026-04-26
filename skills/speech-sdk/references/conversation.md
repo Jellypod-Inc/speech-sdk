@@ -41,7 +41,7 @@ result.audio.mediaType // "audio/wav" when stitched/normalized
 ```ts
 interface GenerateConversationOptions {
   turns: ConversationTurn[]           // required
-  model?: string | ResolvedModel      // default for turns that don't specify one
+  model?: string | ResolvedModel      // applies to every turn (all-or-nothing with per-turn `model`)
   providerOptions?: object            // top-level; merged with per-turn
   apiKey?: string
   gapMs?: number                      // silence between turns (stitch path), default 300
@@ -56,10 +56,12 @@ interface GenerateConversationOptions {
 interface ConversationTurn {
   voice: Voice
   text: string
-  model?: string | ResolvedModel      // override per turn
+  model?: string | ResolvedModel      // required if `options.model` is not set; forbidden if it is
   providerOptions?: object            // merged over top-level
 }
 ```
+
+Model placement is all-or-nothing: set `options.model` (applied to every turn) or set `model` on every turn, but not both. Mixing is rejected with `ConversationInputError`.
 
 ## Cross-Provider Mixing
 
@@ -118,7 +120,7 @@ interface ConversationWordTimestamp extends WordTimestamp {
 }
 ```
 
-Every word carries a `turnIndex` pointing back into the input `turns[]`. On the stitch path the index is exact (each turn renders separately and timestamps are offset by cumulative duration + gap). On the fast and native-dialogue paths the index is derived by text-matching the flat word stream against the input transcripts; if matching diverges on the native path, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. See `references/timestamps.md` for the worked aggregation example that collapses flat timestamps into per-turn spans.
+Every word carries a `turnIndex` pointing back into the input `turns[]`. On the stitch path the index is exact (each turn renders separately and timestamps are offset by cumulative duration + gap). On the fast and native-dialogue paths the index is derived by text-matching the flat word stream against the input transcripts; if matching diverges on the native path, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. Use the top-level `timestampsToTurns` helper to collapse the flat per-word list into one entry per turn — see `references/timestamps.md`.
 
 ## Errors
 

@@ -111,54 +111,38 @@ const result = await generateConversation({
 result.timestamps // ConversationWordTimestamp[] — monotonic across both turns, each with turnIndex
 ```
 
-### Collapsing flat timestamps into per-turn spans
+### Collapsing flat timestamps into per-turn timings
 
-The common UI pattern is to reduce the flat per-word list into one span per turn — the start / end / combined text of each turn — so you can drive chat-bubble UIs or speaker-attributed captions. Walk the list and merge consecutive words with the same `turnIndex`:
+The common UI pattern is to reduce the flat per-word list into one entry per turn — the start / end / combined text of each turn — so you can drive chat-bubble UIs or speaker-attributed captions. Use the top-level `timestampsToTurns` helper:
 
 ```ts
-import { generateConversation, type ConversationWordTimestamp } from "@speech-sdk/core"
+import { generateConversation, timestampsToTurns } from "@speech-sdk/core"
+
+const turns = [
+  { voice: "rachel", text: "Hi there." },
+  { voice: "adam",   text: "Hello!" },
+]
 
 const result = await generateConversation({
   model: "elevenlabs/eleven_v3",
-  turns: [
-    { voice: "rachel", text: "Hi there." },
-    { voice: "adam",   text: "Hello!" },
-  ],
+  turns,
   timestamps: "on",
 })
 
-// result.timestamps is ConversationWordTimestamp[]:
-//   { text, start, end, turnIndex }[]
-
-function toTurnSpans(
-  timestamps: readonly ConversationWordTimestamp[],
-  turns: readonly { voice: string }[],
-) {
-  type Span = { turnIndex: number; voice: string; start: number; end: number; text: string }
-  const spans: Span[] = []
-  for (const word of timestamps) {
-    const last = spans.at(-1)
-    if (last?.turnIndex === word.turnIndex) {
-      last.end = word.end
-      last.text += " " + word.text
-    } else {
-      spans.push({
-        turnIndex: word.turnIndex,
-        voice: turns[word.turnIndex].voice,
-        start: word.start,
-        end: word.end,
-        text: word.text,
-      })
-    }
-  }
-  return spans
-}
-
-// Each span: { voice, start, end, text } — answers
-// "voice X plays from t=0.00 to t=0.42, voice Y from t=0.72 to t=1.05, ..."
-// Natural input for chat-bubble UIs, speaker-attributed captions, or
-// karaoke-style highlighting during playback.
+const turnTimestamps = timestampsToTurns(result.timestamps ?? [])
+// [
+//   { turnIndex: 0, start: 0.00, end: 0.42, text: "Hi there." },
+//   { turnIndex: 1, start: 0.72, end: 1.05, text: "Hello!" },
+// ]
 ```
+
+Each entry covers one turn's worth of words. To attach the speaking voice (or anything else from the input turns), look it up by `turnIndex` against the `turns[]` you passed in:
+
+```ts
+const annotated = turnTimestamps.map((t) => ({ ...t, voice: turns[t.turnIndex].voice }))
+```
+
+Natural input for chat-bubble UIs, speaker-attributed captions, or karaoke-style highlighting during playback. Import `TurnTimestamp` from `@speech-sdk/core/types` if you need the return type.
 
 ## Types
 
@@ -177,7 +161,7 @@ interface ConversationWordTimestamp extends WordTimestamp {
 
 Types are exported from `@speech-sdk/core/types`:
 
-- `TimestampMode`, `WordTimestamp`, `ConversationWordTimestamp`
+- `TimestampMode`, `WordTimestamp`, `ConversationWordTimestamp`, `TurnTimestamp`
 - `TimestampsFeature`
 - `SpeechToTextProvider`, `STTModelInfo`, `ResolvedSTTModel`
 

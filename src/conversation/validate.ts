@@ -40,14 +40,26 @@ export function validateConversationInput(
     );
   }
 
+  // Model placement is all-or-nothing: either set `options.model` for every
+  // turn, or set `model` on every turn — but never mix. A partial mix
+  // (top-level + per-turn override on some turns) makes the dispatch surface
+  // ambiguous and hides which model actually ran where.
+  const hasTopLevel = options.model != null;
+
   for (let i = 0; i < options.turns.length; i++) {
     const turn = options.turns[i];
     if (turn.text.trim().length === 0) {
       throw new ConversationInputError(`turns[${i}].text must not be empty.`);
     }
-    if (options.model == null && turn.model == null) {
+    const hasTurnModel = turn.model != null;
+    if (hasTopLevel && hasTurnModel) {
       throw new ConversationInputError(
-        `turns[${i}]: model must be set, either at top-level or on the turn.`
+        `turns[${i}].model is set, but options.model is also set. Set the model either at the top level for all turns, or on every turn — not both.`
+      );
+    }
+    if (!(hasTopLevel || hasTurnModel)) {
+      throw new ConversationInputError(
+        `turns[${i}].model is required because options.model is not set. Either set options.model for all turns, or set model on every turn.`
       );
     }
   }

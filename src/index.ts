@@ -8,6 +8,7 @@ export {
 export {
   ApiError,
   ConversationTimestampAttributionError,
+  GatewayInputError,
   GatewayTimestampsUnavailableError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
@@ -20,3 +21,4 @@ export {
 export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
 export { streamSpeech } from "./stream-speech.js";
+export { timestampsToTurns } from "./turns.js";

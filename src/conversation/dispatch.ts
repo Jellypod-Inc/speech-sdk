@@ -3,12 +3,16 @@ import {
   type ResolvedModel,
   type Voice,
 } from "../speech-provider.js";
-import { DialogueConstraintError, StitchUnsupportedError } from "./errors.js";
+import {
+  DialogueConstraintError,
+  MixedDispatchError,
+  StitchUnsupportedError,
+} from "./errors.js";
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyContext, voiceKey } from "./validate.js";
 
 export type ConversationPath =
-  | { kind: "gateway"; resolved: ResolvedModel<Voice> }
+  | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
   | { kind: "native"; resolved: ResolvedModel<Voice> }
   | {
       kind: "stitch";
@@ -24,6 +28,28 @@ export function chooseConversationPath(input: {
 }): ConversationPath {
   const { resolvedPerTurn, turns } = input;
 
+  // All-or-nothing: gateway and direct-provider routing can't be combined in
+  // a single conversation. The gateway path is one HTTP call; the direct path
+  // is per-turn provider calls. Mixing them would require splitting one
+  // conversation across both, which has no coherent ordering or stitching
+  // semantics — fail loudly instead.
+  const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
+  if (gatewayCount > 0 && gatewayCount < resolvedPerTurn.length) {
+    throw new MixedDispatchError();
+  }
+
+  // All-gateway: one HTTP call to `/v1/audio/conversation`, server does
+  // render + stitch + normalize across heterogeneous models. The wire is
+  // per-turn `{model, voice, text}`, so different models per turn are fine.
+  // Voice clones (`{url}`/`{audio}`) still fall through to stitch — the flat
+  // turn wire shape takes string voices only.
+  if (gatewayCount === resolvedPerTurn.length) {
+    const allVoicesString = turns.every((t) => typeof t.voice === "string");
+    if (allVoicesString) {
+      return { kind: "gateway", resolvedPerTurn };
+    }
+  }
+
   // Compare by provider instance reference, not just provider id, so two
   // factories of the same provider with different apiKey/baseURL/fetch
   // configs are not silently merged into one.
@@ -33,21 +59,6 @@ export function chooseConversationPath(input: {
   );
 
   if (allSame) {
-    // Gateway fast-path: one HTTP call to `/v1/audio/conversation`, server
-    // does render + stitch + normalize. Preferred when every turn routes to
-    // the same gateway-served model. Heterogeneous gateway models (different
-    // modelIds) fall through to native → stitch below.
-    if (isSpeechGatewayModel(first)) {
-      // Gateway accepts every aggregated model on `/v1/audio/conversation`;
-      // server handles per-turn rendering for providers without native
-      // multi-speaker. Voice clones (`{url}`/`{audio}`) still require stitch
-      // — the flat turn wire shape takes string voices only.
-      const allVoicesString = turns.every((t) => typeof t.voice === "string");
-      if (allVoicesString) {
-        return { kind: "gateway", resolved: first };
-      }
-    }
-
     const { provider, modelId } = first;
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);

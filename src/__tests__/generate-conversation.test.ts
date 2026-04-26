@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { ConversationInputError } from "../conversation/errors.js";
 import { ApiError } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
-
-const AT_LEAST_ONE_TURN_RE = /at least one turn/i;
-const NATIVE_PROVIDER_OPTIONS_RE =
-  /turns\[1\]\.providerOptions.*native dialogue path/;
 
 function nativeProvider(): SpeechProvider {
   return {
@@ -143,7 +140,7 @@ describe("generateConversation", () => {
         model: { provider, modelId: "m" },
         turns: [],
       })
-    ).rejects.toThrow(AT_LEAST_ONE_TURN_RE);
+    ).rejects.toBeInstanceOf(ConversationInputError);
     expect(provider.generate).not.toHaveBeenCalled();
   });
 
@@ -188,7 +185,7 @@ describe("generateConversation", () => {
           { voice: "b", text: "Hello.", providerOptions: { style: "casual" } },
         ],
       })
-    ).rejects.toThrow(NATIVE_PROVIDER_OPTIONS_RE);
+    ).rejects.toBeInstanceOf(ConversationInputError);
     expect(provider.generateDialogue).not.toHaveBeenCalled();
   });
 
@@ -220,9 +217,12 @@ describe("generateConversation", () => {
     expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
     const body = JSON.parse(init.body);
     expect(body.mode).toBe("conversation");
-    expect(body.model).toBe("openai/gpt-4o-mini-tts");
-    expect(body.turns).toHaveLength(2);
-    // No `timestamps` field on the wire.
+    // Per-turn `model` on the wire; no top-level model.
+    expect(body.model).toBeUndefined();
+    expect(body.turns).toEqual([
+      { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
+      { model: "openai/gpt-4o-mini-tts", voice: "nova", text: "Hello!" },
+    ]);
     expect(body.timestamps).toBeUndefined();
 
     expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
@@ -264,7 +264,12 @@ describe("generateConversation", () => {
       expect(fetchFn).toHaveBeenCalledTimes(1);
       const [url, init] = fetchFn.mock.calls[0];
       expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
-      expect(JSON.parse(init.body).model).toBe("openai/gpt-4o-mini-tts");
+      const body = JSON.parse(init.body);
+      expect(body.model).toBeUndefined();
+      expect(body.turns).toEqual([
+        { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
+        { model: "openai/gpt-4o-mini-tts", voice: "nova", text: "Hello!" },
+      ]);
       expect(result.metadata.provider).toBe("speech-gateway");
     } finally {
       globalThis.fetch = savedFetch;

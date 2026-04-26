@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { chooseConversationPath } from "../conversation/dispatch.js";
 import {
   DialogueConstraintError,
+  MixedDispatchError,
   StitchUnsupportedError,
 } from "../conversation/errors.js";
 import { createSpeechGateway } from "../providers/gateway/index.js";
@@ -143,27 +144,33 @@ describe("chooseConversationPath", () => {
     });
     expect(result.kind).toBe("gateway");
     if (result.kind === "gateway") {
-      expect(result.resolved.modelId).toBe("openai/gpt-4o-mini-tts");
+      expect(result.resolvedPerTurn.map((r) => r.modelId)).toEqual([
+        "openai/gpt-4o-mini-tts",
+        "openai/gpt-4o-mini-tts",
+      ]);
     }
   });
 
-  it("falls through past gateway when gateway models are heterogeneous", () => {
+  it("returns gateway when gateway models are heterogeneous", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     const resolvedA = gateway("openai/gpt-4o-mini-tts");
     const resolvedB = gateway("elevenlabs/eleven_v3");
-    // Heterogeneous modelIds → allSame is false → no gateway fast-path. The
-    // speech-gateway provider has no getStitchOptions, so the stitch fallback
-    // throws StitchUnsupportedError — proving we didn't stay on the gateway
-    // branch (which would have returned a ConversationPath without throwing).
-    expect(() =>
-      chooseConversationPath({
-        resolvedPerTurn: [resolvedA, resolvedB],
-        turns: [
-          { voice: "alloy", text: "Hi." },
-          { voice: "rachel", text: "Hello." },
-        ],
-      })
-    ).toThrow(StitchUnsupportedError);
+    // The wire is per-turn `{model, voice, text}`, so the server handles
+    // mixed-provider conversations in one call. No more allSame gate.
+    const result = chooseConversationPath({
+      resolvedPerTurn: [resolvedA, resolvedB],
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "rachel", text: "Hello." },
+      ],
+    });
+    expect(result.kind).toBe("gateway");
+    if (result.kind === "gateway") {
+      expect(result.resolvedPerTurn.map((r) => r.modelId)).toEqual([
+        "openai/gpt-4o-mini-tts",
+        "elevenlabs/eleven_v3",
+      ]);
+    }
   });
 
   it("returns gateway for arbitrary aggregated models (no per-model gate)", () => {
@@ -183,8 +190,32 @@ describe("chooseConversationPath", () => {
     });
     expect(result.kind).toBe("gateway");
     if (result.kind === "gateway") {
-      expect(result.resolved.modelId).toBe("cartesia/sonic-3");
+      expect(result.resolvedPerTurn[0].modelId).toBe("cartesia/sonic-3");
     }
+  });
+
+  it("throws MixedDispatchError when one turn is gateway and another is direct", () => {
+    const gateway = createSpeechGateway({ apiKey: "k" });
+    const gatewayResolved = gateway("openai/gpt-4o-mini-tts");
+    const direct = mockProvider({
+      id: "openai",
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+    expect(() =>
+      chooseConversationPath({
+        resolvedPerTurn: [
+          gatewayResolved,
+          { provider: direct, modelId: "tts-1" },
+        ],
+        turns: [
+          { voice: "alloy", text: "Hi." },
+          { voice: "nova", text: "Hello." },
+        ],
+      })
+    ).toThrow(MixedDispatchError);
   });
 
   it("falls through past gateway when any turn uses an object-shaped voice (clone ref)", () => {

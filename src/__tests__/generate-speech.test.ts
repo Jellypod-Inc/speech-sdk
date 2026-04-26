@@ -4,8 +4,6 @@ import { generateSpeech } from "../generate-speech.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
-const SPEECH_GATEWAY_RE = /Speech Gateway rejected your API key/;
-
 function createMockProvider(
   overrides?: Partial<
     ReturnType<SpeechProvider["generate"]> extends Promise<infer T> ? T : never
@@ -471,7 +469,7 @@ describe("generateSpeech", () => {
           apiKey: "bad-gw-key",
           maxRetries: 2,
         })
-      ).rejects.toThrow(SPEECH_GATEWAY_RE);
+      ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
       expect(mockFetch).toHaveBeenCalledTimes(1);
     } finally {
       globalThis.fetch = savedFetch;
