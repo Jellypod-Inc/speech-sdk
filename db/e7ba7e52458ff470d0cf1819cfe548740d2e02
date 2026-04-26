@@ -1,0 +1,27 @@
+src/generate-conversation.ts
+  b2eb2def7b440f3e 242-244
+src/__tests__/generate-conversation.test.ts
+  b2eb2def7b440f3e 205
+src/providers/gateway/index.ts
+  b2eb2def7b440f3e 49,241,305-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "dbe7ba7e52458ff470d0cf1819cfe548740d2e02",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 20,
+      "accepted_lines": 424,
+      "overriden_lines": 0
+    }
+  }
+}
