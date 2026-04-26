@@ -7,18 +7,13 @@ export interface TurnTimestamp {
   readonly turnIndex: number;
 }
 
-interface MutableTurnTimestamp {
-  end: number;
-  start: number;
-  text: string;
-  turnIndex: number;
-}
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 // Assumes turnIndex runs are monotonic; non-adjacent runs of the same turnIndex would produce duplicate entries.
 export function timestampsToTurns(
   timestamps: readonly ConversationWordTimestamp[]
 ): readonly TurnTimestamp[] {
-  const turns: MutableTurnTimestamp[] = [];
+  const turns: Mutable<TurnTimestamp>[] = [];
   for (const word of timestamps) {
     const last = turns.at(-1);
     if (last && last.turnIndex === word.turnIndex) {
