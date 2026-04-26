@@ -292,15 +292,23 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   }
 }
 
+import { OpenAISpeechToTextProvider } from "../../stt-providers/openai/index.js";
+
 export function createOpenAI(config: OpenAISpeechProviderConfig = {}) {
-  const provider = new OpenAISpeechProvider(config);
+  const ttsProvider = new OpenAISpeechProvider(config);
+  const sttProvider = new OpenAISpeechToTextProvider(config);
   const fallbackSTT = config.fallbackSTT;
 
-  return function openai(modelId?: string): ResolvedModel<string> {
-    return {
-      provider,
-      modelId: modelId ?? provider.defaultModel,
-      ...(fallbackSTT && { fallbackSTT }),
-    };
-  };
+  const factory = (modelId?: string): ResolvedModel<string> => ({
+    provider: ttsProvider,
+    modelId: modelId ?? ttsProvider.defaultModel,
+    ...(fallbackSTT && { fallbackSTT }),
+  });
+
+  return Object.assign(factory, {
+    stt: (modelId?: string): ResolvedSTTModel => ({
+      provider: sttProvider,
+      modelId: modelId ?? sttProvider.defaultModel,
+    }),
+  });
 }
