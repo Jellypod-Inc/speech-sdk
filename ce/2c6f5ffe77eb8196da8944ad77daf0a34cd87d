@@ -1,0 +1,63 @@
+src/__tests__/gateway.test.ts
+  36ffbffe71b01400 372
+src/conversation/stitch.ts
+  36ffbffe71b01400 109-112
+src/conversation/types.ts
+  36ffbffe71b01400 21
+skills/speech-sdk/SKILL.md
+  36ffbffe71b01400 71
+skills/speech-sdk/references/conversation.md
+  36ffbffe71b01400 44,67,69
+src/generate-conversation.ts
+  36ffbffe71b01400 287-288,290,292
+src/providers/gateway/index.ts
+  36ffbffe71b01400 257
+README.md
+  36ffbffe71b01400 144,302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ce2c6f5ffe77eb8196da8944ad77daf0a34cd87d",
+  "prompts": {
+    "36ffbffe71b01400": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe4adc0f-73af-4a25-b3c0-4a0e827d6762",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 55,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    },
+    "cf45629c5b76fc96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269d9ad2-d762-4d91-9469-83c6439aaaad",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "dbd88af23b369141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a705ea7d-36c1-49b8-bccb-107d7d3290ba",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
