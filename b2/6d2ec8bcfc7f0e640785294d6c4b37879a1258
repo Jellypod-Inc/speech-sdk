@@ -1,0 +1,23 @@
+skills/speech-sdk/references/timestamps.md
+  b2eb2def7b440f3e 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b26d2ec8bcfc7f0e640785294d6c4b37879a1258",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 2,
+      "accepted_lines": 416,
+      "overriden_lines": 0
+    }
+  }
+}
