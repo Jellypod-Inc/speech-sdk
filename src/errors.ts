@@ -82,8 +82,9 @@ export class TimestampKeyMissingError extends SpeechSDKError {
   }) {
     super(
       `${options.ttsModel} does not return word timestamps natively. ` +
-        `Set ${options.envVar} to enable the ${options.sttProvider} fallback, ` +
-        `pass a configured timestampFallback, or use timestamps: 'off'.`
+        `Set ${options.envVar} to use the default ${options.sttProvider} fallback, ` +
+        "or pass an explicit fallbackSTT to your provider factory " +
+        "(e.g. createElevenLabs({ apiKey, fallbackSTT: createOpenAI({ apiKey: '...' }).stt('whisper-1') }))."
     );
     this.name = "TimestampKeyMissingError";
   }
