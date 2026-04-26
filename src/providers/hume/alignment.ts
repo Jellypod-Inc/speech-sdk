@@ -1,18 +1,21 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
 // Hume Octave-2 timestamp entry. time.begin/end are integer ms.
-export interface HumeTimestamp {
-  readonly text: string;
-  readonly time: { readonly begin: number; readonly end: number };
-  readonly type: "word" | "phoneme";
-}
+export const humeTimestampSchema = z.object({
+  text: z.string(),
+  time: z.object({ begin: z.number(), end: z.number() }),
+  type: z.enum(["word", "phoneme"]),
+});
+export type HumeTimestamp = z.infer<typeof humeTimestampSchema>;
 
-export interface HumeSnippet {
-  readonly audio?: string;
-  readonly id?: string;
-  readonly text?: string;
-  readonly timestamps?: readonly HumeTimestamp[];
-}
+export const humeSnippetSchema = z.object({
+  audio: z.string().optional(),
+  id: z.string().optional(),
+  text: z.string().optional(),
+  timestamps: z.array(humeTimestampSchema).optional(),
+});
+export type HumeSnippet = z.infer<typeof humeSnippetSchema>;
 
 // Assumes split_utterances: false so timestamps are relative to the full audio.
 export function snippetsToWordTimestamps(

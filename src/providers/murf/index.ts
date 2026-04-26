@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -11,9 +12,15 @@ import type {
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
-  type MurfWordDuration,
+  murfWordDurationSchema,
   wordDurationsToWordTimestamps,
 } from "./alignment.js";
+
+const speechResponseSchema = z.object({
+  encodedAudio: z.string(),
+  audioLengthInSeconds: z.number().optional(),
+  wordDurations: z.array(murfWordDurationSchema).optional(),
+});
 
 export interface MurfSpeechProviderConfig {
   apiKey?: string;
@@ -144,11 +151,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       };
     }
 
-    const json = (await response.json()) as {
-      encodedAudio: string;
-      audioLengthInSeconds?: number;
-      wordDurations?: MurfWordDuration[];
-    };
+    const json = speechResponseSchema.parse(await response.json());
     const audioDurationMs =
       typeof json.audioLengthInSeconds === "number"
         ? Math.round(json.audioLengthInSeconds * 1000)

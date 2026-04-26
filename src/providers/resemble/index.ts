@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -12,8 +13,13 @@ import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   audioTimestampsToWordTimestamps,
-  type ResembleAudioTimestamps,
+  resembleAudioTimestampsSchema,
 } from "./alignment.js";
+
+const synthesizeResponseSchema = z.object({
+  audio_content: z.string(),
+  audio_timestamps: resembleAudioTimestampsSchema.optional(),
+});
 
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
@@ -120,10 +126,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
     // Resemble always returns `audio_timestamps`; gate the projection on
     // the caller's opt-in rather than the presence of the field.
-    const json = (await response.json()) as {
-      audio_content: string;
-      audio_timestamps?: ResembleAudioTimestamps;
-    };
+    const json = synthesizeResponseSchema.parse(await response.json());
 
     const timestamps =
       options.includeTimestamps && json.audio_timestamps

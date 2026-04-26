@@ -1,12 +1,14 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
 // Inworld `timestampInfo.wordAlignment` (timestamp_type: "WORD"). Times in seconds.
-export interface InworldWordAlignment {
-  readonly phoneticDetails?: readonly unknown[];
-  readonly wordEndTimeSeconds: readonly number[];
-  readonly wordStartTimeSeconds: readonly number[];
-  readonly words: readonly string[];
-}
+export const inworldWordAlignmentSchema = z.object({
+  phoneticDetails: z.array(z.unknown()).optional(),
+  wordEndTimeSeconds: z.array(z.number()),
+  wordStartTimeSeconds: z.array(z.number()),
+  words: z.array(z.string()),
+});
+export type InworldWordAlignment = z.infer<typeof inworldWordAlignmentSchema>;
 
 export function wordAlignmentToWordTimestamps(
   alignment: InworldWordAlignment

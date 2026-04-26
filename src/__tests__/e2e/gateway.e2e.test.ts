@@ -24,10 +24,6 @@ describe.skipIf(!hasKey)("Speech Gateway e2e", () => {
     const words = result.timestamps ?? [];
     expect(words.length).toBeGreaterThan(0);
     for (const w of words) {
-      expect(typeof w.text).toBe("string");
-      expect(w.text.length).toBeGreaterThan(0);
-      expect(typeof w.start).toBe("number");
-      expect(typeof w.end).toBe("number");
       expect(w.end).toBeGreaterThanOrEqual(w.start);
     }
   });
@@ -124,12 +120,7 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
 
     const observedTurnIndices = new Set<number>();
     for (const w of words) {
-      expect(typeof w.text).toBe("string");
-      expect(w.text.length).toBeGreaterThan(0);
-      expect(typeof w.start).toBe("number");
-      expect(typeof w.end).toBe("number");
       expect(w.end).toBeGreaterThanOrEqual(w.start);
-      expect(typeof w.turnIndex).toBe("number");
       expect(w.turnIndex).toBeGreaterThanOrEqual(0);
       expect(w.turnIndex).toBeLessThanOrEqual(2);
       observedTurnIndices.add(w.turnIndex);

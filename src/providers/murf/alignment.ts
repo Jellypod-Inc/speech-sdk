@@ -1,14 +1,16 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
 // Murf `/v1/speech/generate` `wordDurations` entry. Times are integer ms.
-export interface MurfWordDuration {
-  readonly endMs: number;
-  readonly pitchScaleMaximum?: number;
-  readonly pitchScaleMinimum?: number;
-  readonly sourceWordIndex?: number;
-  readonly startMs: number;
-  readonly word: string;
-}
+export const murfWordDurationSchema = z.object({
+  endMs: z.number(),
+  pitchScaleMaximum: z.number().optional(),
+  pitchScaleMinimum: z.number().optional(),
+  sourceWordIndex: z.number().optional(),
+  startMs: z.number(),
+  word: z.string(),
+});
+export type MurfWordDuration = z.infer<typeof murfWordDurationSchema>;
 
 export function wordDurationsToWordTimestamps(
   durations: readonly MurfWordDuration[]

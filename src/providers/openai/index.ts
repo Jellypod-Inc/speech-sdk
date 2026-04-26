@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { stripAudioTags } from "../../audio-tags.js";
 import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import {
@@ -17,6 +18,13 @@ import type {
 } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import { buildOpenAIInstructionsFromTags } from "./instructions.js";
+
+const transcriptionResponseSchema = z.object({
+  text: z.string().optional(),
+  words: z
+    .array(z.object({ word: z.string(), start: z.number(), end: z.number() }))
+    .optional(),
+});
 
 export interface OpenAISpeechProviderConfig {
   apiKey?: string;
@@ -430,10 +438,7 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
 
     await handleErrorResponse(response);
 
-    const data = (await response.json()) as {
-      text?: string;
-      words?: { word: string; start: number; end: number }[];
-    };
+    const data = transcriptionResponseSchema.parse(await response.json());
 
     const timestamps: WordTimestamp[] = (data.words ?? []).map((w) => ({
       text: w.word,

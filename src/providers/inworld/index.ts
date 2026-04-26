@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -11,9 +12,16 @@ import type {
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
-  type InworldWordAlignment,
+  inworldWordAlignmentSchema,
   wordAlignmentToWordTimestamps,
 } from "./alignment.js";
+
+const ttsResponseSchema = z.object({
+  audioContent: z.string().optional(),
+  timestampInfo: z
+    .object({ wordAlignment: inworldWordAlignmentSchema.optional() })
+    .optional(),
+});
 
 export interface InworldSpeechProviderConfig {
   apiKey?: string;
@@ -164,10 +172,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audioContent?: string;
-      timestampInfo?: { wordAlignment?: InworldWordAlignment };
-    };
+    const json = ttsResponseSchema.parse(await response.json());
     if (!json.audioContent) {
       throw new Error(
         `inworld/${options.modelId}: response missing audioContent`

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -16,8 +17,14 @@ import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   alignmentToWordTimestamps,
-  type ElevenLabsAlignment,
+  elevenLabsAlignmentSchema,
 } from "./alignment.js";
+
+const withTimestampsResponseSchema = z.object({
+  audio_base64: z.string().optional(),
+  alignment: elevenLabsAlignmentSchema.optional(),
+  normalized_alignment: elevenLabsAlignmentSchema.optional(),
+});
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -309,11 +316,7 @@ export class ElevenLabsSpeechProvider
       : undefined;
 
     if (options.includeTimestamps) {
-      const payload = (await response.json()) as {
-        audio_base64?: string;
-        alignment?: ElevenLabsAlignment;
-        normalized_alignment?: ElevenLabsAlignment;
-      };
+      const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
         throw new SpeechSDKError(

@@ -1,11 +1,13 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
 // ElevenLabs `/with-timestamps` `alignment` / `normalized_alignment`.
-export interface ElevenLabsAlignment {
-  readonly character_end_times_seconds: readonly number[];
-  readonly character_start_times_seconds: readonly number[];
-  readonly characters: readonly string[];
-}
+export const elevenLabsAlignmentSchema = z.object({
+  character_end_times_seconds: z.array(z.number()),
+  character_start_times_seconds: z.array(z.number()),
+  characters: z.array(z.string()),
+});
+export type ElevenLabsAlignment = z.infer<typeof elevenLabsAlignmentSchema>;
 
 const WHITESPACE_CHAR = /^\s$/;
 

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { ApiError, StreamingNotSupportedError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -10,6 +11,13 @@ import type {
   SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+const falJobResponseSchema = z.object({
+  audio: z.object({
+    url: z.string(),
+    content_type: z.string().optional(),
+  }),
+});
 
 export interface FalSpeechProviderConfig {
   apiKey?: string;
@@ -106,14 +114,12 @@ export class FalSpeechProvider
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audio: { url: string; content_type?: string };
-    };
+    const json = falJobResponseSchema.parse(await response.json());
     return await this.fetchAudio(json, options);
   }
 
   private async fetchAudio(
-    json: { audio: { url: string; content_type?: string } },
+    json: z.infer<typeof falJobResponseSchema>,
     options: { abortSignal?: AbortSignal }
   ): Promise<{ audio: Uint8Array; mediaType: string }> {
     const audioResponse = await this.fetchFn(json.audio.url, {

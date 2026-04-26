@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { stripAudioTags } from "../../audio-tags.js";
 import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -13,6 +14,31 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+// Both /generateContent endpoints (single-speaker and multi-speaker) return the
+// same shape; differences in upstream nullability are handled by tolerating
+// missing intermediate fields.
+const generateContentResponseSchema = z.object({
+  candidates: z
+    .array(
+      z.object({
+        content: z
+          .object({
+            parts: z
+              .array(
+                z.object({
+                  inlineData: z
+                    .object({ data: z.string(), mimeType: z.string() })
+                    .optional(),
+                })
+              )
+              .optional(),
+          })
+          .optional(),
+      })
+    )
+    .optional(),
+});
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
@@ -249,13 +275,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      candidates: Array<{
-        content: {
-          parts: Array<{ inlineData?: { mimeType: string; data: string } }>;
-        };
-      }>;
-    };
+    const json = generateContentResponseSchema.parse(await response.json());
 
     const part = json.candidates?.[0]?.content?.parts?.find(
       (p) => p.inlineData != null
@@ -393,13 +413,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      candidates?: {
-        content?: {
-          parts?: { inlineData?: { data: string; mimeType: string } }[];
-        };
-      }[];
-    };
+    const json = generateContentResponseSchema.parse(await response.json());
     const part = json.candidates?.[0]?.content?.parts?.find(
       (p) => p.inlineData?.data
     );

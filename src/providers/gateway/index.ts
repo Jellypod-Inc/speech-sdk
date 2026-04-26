@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   ApiError,
   GatewayInputError,
@@ -25,12 +26,29 @@ export interface SpeechGatewayProviderConfig {
 // audioDurationMs is intentionally not extracted — the SDK computes audio
 // duration client-side via mediabunny so all paths (gateway + direct
 // providers) behave identically.
-interface GatewayJsonResponse {
-  audio: string;
-  mediaType: string;
-  timestamps: WordTimestamp[];
-  warnings: string[];
-}
+const wordTimestampSchema = z.object({
+  text: z.string(),
+  start: z.number(),
+  end: z.number(),
+});
+
+const conversationWordTimestampSchema = wordTimestampSchema.extend({
+  turnIndex: z.number(),
+});
+
+const gatewayJsonResponseSchema = z.object({
+  audio: z.string(),
+  mediaType: z.string(),
+  timestamps: z.array(wordTimestampSchema).default([]),
+  warnings: z.array(z.string()).default([]),
+});
+
+const gatewayConversationJsonResponseSchema = z.object({
+  audio: z.string(),
+  mediaType: z.string(),
+  timestamps: z.array(conversationWordTimestampSchema).default([]),
+  warnings: z.array(z.string()).default([]),
+});
 
 const GATEWAY_401_MESSAGE =
   "Speech Gateway rejected your API key (401). Get a key at https://wavform.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
@@ -130,7 +148,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     if (options.includeTimestamps) {
-      const payload = parseGatewayJsonResponse(await response.json());
+      const payload = gatewayJsonResponseSchema.parse(await response.json());
       return {
         audio: decodeBase64(payload.audio),
         mediaType: payload.mediaType,
@@ -286,7 +304,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     if (options.includeTimestamps) {
-      const payload = parseGatewayConversationJsonResponse(
+      const payload = gatewayConversationJsonResponseSchema.parse(
         await response.json()
       );
       return {
@@ -317,120 +335,6 @@ function mediaTypeFromHeaders(headers: Headers): string {
   return headers.get("content-type") ?? "audio/mpeg";
 }
 
-function parseGatewayJsonResponse(payload: unknown): GatewayJsonResponse {
-  if (!isRecord(payload)) {
-    throw new Error("speech-gateway: expected JSON response object");
-  }
-  if (typeof payload.audio !== "string") {
-    throw new Error("speech-gateway: JSON response missing base64 audio");
-  }
-  if (typeof payload.mediaType !== "string") {
-    throw new Error("speech-gateway: JSON response missing mediaType");
-  }
-
-  return {
-    audio: payload.audio,
-    mediaType: payload.mediaType,
-    timestamps: parseTimestamps(payload.timestamps),
-    warnings: parseWarnings(payload.warnings),
-  };
-}
-
-function parseGatewayConversationJsonResponse(payload: unknown): {
-  audio: string;
-  mediaType: string;
-  timestamps: ConversationWordTimestamp[];
-  warnings: string[];
-} {
-  if (!isRecord(payload)) {
-    throw new Error("speech-gateway: expected JSON response object");
-  }
-  if (typeof payload.audio !== "string") {
-    throw new Error("speech-gateway: JSON response missing base64 audio");
-  }
-  if (typeof payload.mediaType !== "string") {
-    throw new Error("speech-gateway: JSON response missing mediaType");
-  }
-  return {
-    audio: payload.audio,
-    mediaType: payload.mediaType,
-    timestamps: parseConversationTimestamps(payload.timestamps),
-    warnings: parseWarnings(payload.warnings),
-  };
-}
-
-function parseConversationTimestamps(
-  value: unknown
-): ConversationWordTimestamp[] {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  if (!Array.isArray(value)) {
-    throw new Error(
-      "speech-gateway: JSON response timestamps must be an array"
-    );
-  }
-  const timestamps: ConversationWordTimestamp[] = [];
-  for (const item of value) {
-    if (
-      !isRecord(item) ||
-      typeof item.text !== "string" ||
-      typeof item.start !== "number" ||
-      typeof item.end !== "number" ||
-      typeof item.turnIndex !== "number"
-    ) {
-      throw new Error(
-        "speech-gateway: JSON response contains an invalid conversation timestamp"
-      );
-    }
-    timestamps.push({
-      text: item.text,
-      start: item.start,
-      end: item.end,
-      turnIndex: item.turnIndex,
-    });
-  }
-  return timestamps;
-}
-
-function parseTimestamps(value: unknown): WordTimestamp[] {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  if (!Array.isArray(value)) {
-    throw new Error(
-      "speech-gateway: JSON response timestamps must be an array"
-    );
-  }
-  const timestamps: WordTimestamp[] = [];
-  for (const item of value) {
-    if (
-      !isRecord(item) ||
-      typeof item.text !== "string" ||
-      typeof item.start !== "number" ||
-      typeof item.end !== "number"
-    ) {
-      throw new Error(
-        "speech-gateway: JSON response contains an invalid timestamp"
-      );
-    }
-    timestamps.push({ text: item.text, start: item.start, end: item.end });
-  }
-  return timestamps;
-}
-
-function parseWarnings(value: unknown): string[] {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  if (
-    !(Array.isArray(value) && value.every((item) => typeof item === "string"))
-  ) {
-    throw new Error("speech-gateway: JSON response warnings must be strings");
-  }
-  return value;
-}
-
 function decodeBase64(value: string): Uint8Array {
   const binaryString = atob(value);
   const bytes = new Uint8Array(binaryString.length);
@@ -438,8 +342,4 @@ function decodeBase64(value: string): Uint8Array {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

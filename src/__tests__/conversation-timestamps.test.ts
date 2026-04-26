@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   ConversationTimestampAttributionError,
-  TimestampFallbackNotConfiguredError,
+  TimestampKeyMissingError,
 } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
@@ -272,22 +272,31 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
   });
 
-  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback (stitch path)", async () => {
-    // Use the existing stitchTTS helper — features:[] means no native timestamps,
-    // so the stitch path will need STT to derive them. No timestampFallback
-    // configured → should throw TimestampFallbackNotConfiguredError.
-    const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
+  it("throws TimestampKeyMissingError when timestamps:true, no fallback, OPENAI_API_KEY missing (stitch path)", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      // Use the existing stitchTTS helper — features:[] means no native timestamps,
+      // so the stitch path will need STT to derive them. With no override, the
+      // SDK falls back to OpenAI Whisper; without OPENAI_API_KEY, that produces
+      // a TimestampKeyMissingError.
+      const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
 
-    await expect(
-      generateConversation({
-        model: { provider: ttsProvider, modelId: "m" },
-        turns: [
-          { voice: "a", text: "Hi." },
-          { voice: "b", text: "Hello." },
-        ],
-        timestamps: true,
-      })
-    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
+      await expect(
+        generateConversation({
+          model: { provider: ttsProvider, modelId: "m" },
+          turns: [
+            { voice: "a", text: "Hi." },
+            { voice: "b", text: "Hello." },
+          ],
+          timestamps: true,
+        })
+      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
+    } finally {
+      if (previousKey !== undefined) {
+        process.env.OPENAI_API_KEY = previousKey;
+      }
+    }
   });
 });
 
@@ -423,20 +432,28 @@ describe("generateConversation timestamps — native path", () => {
     expect(result.timestamps?.[1]?.turnIndex).toBe(1);
   });
 
-  it("throws TimestampFallbackNotConfiguredError when timestamps:true and no fallback (native path)", async () => {
-    const provider = nativeTTS({});
+  it("throws TimestampKeyMissingError when timestamps:true, no fallback, OPENAI_API_KEY missing (native path)", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const provider = nativeTTS({});
 
-    await expect(
-      generateConversation({
-        model: { provider, modelId: "m" },
-        turns: [
-          { voice: "a", text: "Hi." },
-          { voice: "b", text: "Hello." },
-        ],
-        timestamps: true,
-        normalizeVolume: false,
-      })
-    ).rejects.toBeInstanceOf(TimestampFallbackNotConfiguredError);
+      await expect(
+        generateConversation({
+          model: { provider, modelId: "m" },
+          turns: [
+            { voice: "a", text: "Hi." },
+            { voice: "b", text: "Hello." },
+          ],
+          timestamps: true,
+          normalizeVolume: false,
+        })
+      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
+    } finally {
+      if (previousKey !== undefined) {
+        process.env.OPENAI_API_KEY = previousKey;
+      }
+    }
   });
 
   it("attribution: throws ConversationTimestampAttributionError when provider words don't match input transcript", async () => {

@@ -1,13 +1,17 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
 // Resemble `/synthesize` `audio_timestamps`. graph_chars/times are per-grapheme,
 // times in seconds; phoneme arrays are typed but unused.
-export interface ResembleAudioTimestamps {
-  readonly graph_chars: readonly string[];
-  readonly graph_times: readonly (readonly number[])[];
-  readonly phon_chars?: readonly string[];
-  readonly phon_times?: readonly (readonly number[])[];
-}
+export const resembleAudioTimestampsSchema = z.object({
+  graph_chars: z.array(z.string()),
+  graph_times: z.array(z.array(z.number())),
+  phon_chars: z.array(z.string()).optional(),
+  phon_times: z.array(z.array(z.number())).optional(),
+});
+export type ResembleAudioTimestamps = z.infer<
+  typeof resembleAudioTimestampsSchema
+>;
 
 const WHITESPACE_CHAR = /^\s$/;
 

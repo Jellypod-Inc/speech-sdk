@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -18,6 +19,21 @@ function safeParseJson(input: string): unknown {
     return null;
   }
 }
+
+const speechResponseSchema = z.object({
+  audio_data: z.string(),
+  usage: z.object({ audio_duration_seconds: z.number().optional() }).optional(),
+});
+
+const audioDeltaEventSchema = z.object({
+  type: z.literal("speech.audio.delta"),
+  audio_data: z.string(),
+});
+
+const audioDoneEventSchema = z.object({
+  type: z.literal("speech.audio.done"),
+  usage: z.record(z.string(), z.unknown()),
+});
 
 export interface MistralSpeechProviderConfig {
   apiKey?: string;
@@ -106,10 +122,7 @@ export class MistralSpeechProvider
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audio_data: string;
-      usage?: { audio_duration_seconds?: number };
-    };
+    const json = speechResponseSchema.parse(await response.json());
 
     const audioDurationMs =
       json.usage?.audio_duration_seconds == null
@@ -183,27 +196,14 @@ export class MistralSpeechProvider
 
     const { stream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
-        const json = safeParseJson(eventData) as {
-          type?: string;
-          audio_data?: unknown;
-        } | null;
-        if (
-          json?.type === "speech.audio.delta" &&
-          typeof json.audio_data === "string"
-        ) {
-          return json.audio_data;
-        }
-        return null;
+        const result = audioDeltaEventSchema.safeParse(
+          safeParseJson(eventData)
+        );
+        return result.success ? result.data.audio_data : null;
       },
       extractMetadata(eventData) {
-        const json = safeParseJson(eventData) as {
-          type?: string;
-          usage?: Record<string, unknown>;
-        } | null;
-        if (json?.type === "speech.audio.done" && json.usage) {
-          return { usage: json.usage };
-        }
-        return null;
+        const result = audioDoneEventSchema.safeParse(safeParseJson(eventData));
+        return result.success ? { usage: result.data.usage } : null;
       },
     });
 

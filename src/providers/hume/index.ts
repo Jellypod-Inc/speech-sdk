@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -12,7 +13,18 @@ import type {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
-import { type HumeSnippet, snippetsToWordTimestamps } from "./alignment.js";
+import { humeSnippetSchema, snippetsToWordTimestamps } from "./alignment.js";
+
+const ttsResponseSchema = z.object({
+  generations: z
+    .array(
+      z.object({
+        audio: z.string().optional(),
+        snippets: z.array(z.array(humeSnippetSchema)).optional(),
+      })
+    )
+    .optional(),
+});
 
 export interface HumeSpeechProviderConfig {
   apiKey?: string;
@@ -179,12 +191,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
     await handleErrorResponse(response);
 
-    const payload = (await response.json()) as {
-      generations?: {
-        audio?: string;
-        snippets?: HumeSnippet[][];
-      }[];
-    };
+    const payload = ttsResponseSchema.parse(await response.json());
     const gen = payload.generations?.[0];
     if (!gen?.audio) {
       throw new SpeechSDKError(

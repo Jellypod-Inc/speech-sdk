@@ -7,12 +7,12 @@ import type {
   GenerateConversationOptions,
 } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
+import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   ApiError,
   ConversationTimestampAttributionError,
   NoSpeechGeneratedError,
-  TimestampFallbackNotConfiguredError,
 } from "./errors.js";
 import { debug, info } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
@@ -429,12 +429,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       modelId: args.ttsModel,
     });
   }
-  const fallback = args.resolved.fallbackSTT;
-  if (!fallback) {
-    throw new TimestampFallbackNotConfiguredError({
-      ttsModel: args.ttsModel,
-    });
-  }
+  const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
   const derived = await deriveTimestampsViaSTT({
     ttsModel: args.ttsModel,
     audio: args.audio,

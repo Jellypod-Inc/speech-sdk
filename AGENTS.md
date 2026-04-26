@@ -44,7 +44,6 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 
 - ESM-only (`"type": "module"` in package.json); use `.js` extensions in imports
 - TypeScript strict mode, target ES2022
-- Zero runtime dependencies besides `p-retry`
 - `providerOptions` are passed through to provider APIs untransformed
 - Tests use vitest with globals enabled
 - Run `pnpm fix` before committing to ensure formatting compliance
