@@ -1,0 +1,71 @@
+src/providers/deepgram/index.ts
+  b59f673e4c59ab90 96,133
+src/providers/cartesia/index.ts
+  b59f673e4c59ab90 260,316,378
+src/providers/google/index.ts
+  b59f673e4c59ab90 250,394
+src/providers/xai/index.ts
+  b59f673e4c59ab90 139,176
+src/providers/openai/index.ts
+  438cdbebfba5778c 14
+  b59f673e4c59ab90 220,273
+src/stt-providers/openai/index.ts
+  b59f673e4c59ab90 150
+src/providers/murf/index.ts
+  b59f673e4c59ab90 136,201
+src/providers/mistral/index.ts
+  b59f673e4c59ab90 107,178
+src/__tests__/stream-speech.test.ts
+  b59f673e4c59ab90 89,110
+src/provider-utils.ts
+  b59f673e4c59ab90 74,79-80
+src/providers/resemble/index.ts
+  b59f673e4c59ab90 119,176
+src/providers/inworld/index.ts
+  b59f673e4c59ab90 165,223
+src/__tests__/openai-stream.test.ts
+  b59f673e4c59ab90 4
+src/providers/elevenlabs/index.ts
+  b59f673e4c59ab90 301,403,491
+src/providers/hume/index.ts
+  b59f673e4c59ab90 131,180,251,326
+src/providers/fish-audio/index.ts
+  b59f673e4c59ab90 102,148,226
+src/providers/gateway/index.ts
+  b59f673e4c59ab90 128,130,193,195,284,286
+src/providers/fal/index.ts
+  b59f673e4c59ab90 107,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e9d042e64224a1d04581874ff03aca67041083ad",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 630,
+      "total_deletions": 4,
+      "accepted_lines": 630,
+      "overriden_lines": 0
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 70,
+      "accepted_lines": 44,
+      "overriden_lines": 0
+    }
+  }
+}
