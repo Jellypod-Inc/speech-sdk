@@ -16,14 +16,16 @@ result.warnings // undefined — eleven_v3 supports all tags
 
 ## Provider Behavior
 
-| Provider                  | Behavior                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| ElevenLabs (`eleven_v3`)  | All `[tag]` passed through                                                                                          |
-| Cartesia (`sonic-3`)      | Emotion tags (`[happy]`, `[sad]`, `[angry]`, …) → SSML `<emotion>`; `[laughter]` passed through; unknown stripped   |
-| Fish Audio (`s2-pro`)     | All `[tag]` passed through — S2 accepts free-form natural-language descriptions                                     |
-| xAI (`grok-tts`)          | Inline tags (`[laugh]`, `[pause]`, `[long-pause]`) and wrapping tags (`<whisper>`, `<soft>`, `<slow>`) passed through |
-| OpenAI (`gpt-4o-mini-tts`) | Tags mapped to the `instructions` field                                                                            |
-| All others                | Tags stripped, warnings returned                                                                                    |
+| Provider   | Behavior                                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| ElevenLabs | All `[tag]` passed through                                                                                            |
+| Cartesia   | Emotion tags (`[happy]`, `[sad]`, `[angry]`, …) → SSML `<emotion>`; `[laughter]` passed through; unknown stripped     |
+| Fish Audio | All `[tag]` passed through — accepts free-form natural-language descriptions                                          |
+| xAI        | Inline tags (`[laugh]`, `[pause]`, `[long-pause]`) and wrapping tags (`<whisper>`, `<soft>`, `<slow>`) passed through |
+| OpenAI     | Tags mapped to the `instructions` field                                                                               |
+| All others | Tags stripped, warnings returned                                                                                      |
+
+Tag support is per-model — see `providers/<name>.md` for which models within a provider honor `[tag]` syntax.
 
 ## Warnings
 

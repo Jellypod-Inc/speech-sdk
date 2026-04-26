@@ -58,13 +58,13 @@ type Voice =
 
 ## Providers with Voice Cloning
 
-| Provider             | Cloning | Method     |
-| -------------------- | ------- | ---------- |
-| Cartesia (`sonic-3`) | Yes     | Audio data |
-| Mistral              | Yes     | Audio data |
-| fal (select models)  | Yes     | URL / data |
-| Hume (`octave-2`)    | Yes     | Named voice from Hume account |
-| Resemble             | Yes     | `voice_uuid` (created in Resemble dashboard) |
-| Fish Audio           | Yes     | `reference_id` or inline |
+| Provider   | Cloning        | Method     |
+| ---------- | -------------- | ---------- |
+| Cartesia   | Yes            | Audio data |
+| Mistral    | Yes            | Audio data |
+| fal        | Model-specific | URL / data |
+| Hume       | Yes            | Named voice from Hume account |
+| Resemble   | Yes            | `voice_uuid` (created in Resemble dashboard) |
+| Fish Audio | Yes            | `reference_id` or inline |
 
 Not every model within a provider supports cloning — check `providers/<name>.md`.

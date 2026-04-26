@@ -45,16 +45,7 @@ When `timestamps: "on"`, the SDK resolves alignment in this order:
 
 ## Per-Provider Support
 
-Models with **native** alignment return timestamps in the TTS response, no STT round-trip:
-
-- **ElevenLabs** — `eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`
-- **Murf** — `GEN2`
-- **Hume** — `octave-2`
-- **Inworld** — `inworld-tts-1.5-max`, `inworld-tts-1.5-mini`
-- **Cartesia** — `sonic-3`, `sonic-2`
-- **Resemble** — `default`
-
-Other models (OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI) have no native alignment. `timestamps: "on"` derives them via the default `timestampProvider` (OpenAI Whisper `openai/whisper-1`) or the caller's override.
+Native alignment is a per-model capability. The set of models with native alignment evolves — see each `providers/<name>.md` reference for which of that provider's models carry it. Models without native alignment go through the STT fallback.
 
 Check a specific model's public metadata at runtime:
 
