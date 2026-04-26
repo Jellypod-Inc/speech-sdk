@@ -1,0 +1,99 @@
+src/providers/cartesia/index.ts
+  b59f673e4c59ab90 284
+src/turns.ts
+  b59f673e4c59ab90 17
+src/providers/mistral/index.ts
+  b59f673e4c59ab90 218
+src/__tests__/e2e/conversation-timestamps.e2e.test.ts
+  b59f673e4c59ab90 43
+src/__tests__/conversation-timestamps.test.ts
+  b59f673e4c59ab90 11,308
+src/conversation/dispatch.ts
+  b59f673e4c59ab90 31,37,45
+src/providers/xai/index.ts
+  b59f673e4c59ab90 22,67,77
+src/resolve-provider.ts
+  b59f673e4c59ab90 21
+src/__tests__/gateway.test.ts
+  438cdbebfba5778c 391
+  b59f673e4c59ab90 99
+src/generate-speech.ts
+  b59f673e4c59ab90 36,222
+src/providers/resemble/index.ts
+  b59f673e4c59ab90 127,192
+AGENTS.md
+  b59f673e4c59ab90 64-70
+src/conversation/validate.ts
+  b59f673e4c59ab90 43
+src/providers/elevenlabs/index.ts
+  b59f673e4c59ab90 280,325,335
+src/__tests__/e2e/gateway.e2e.test.ts
+  b59f673e4c59ab90 93
+src/providers/google/index.ts
+  b59f673e4c59ab90 18,207,284,297,322,333
+src/captions.ts
+  b59f673e4c59ab90 70
+src/default-stt-fallback.ts
+  b59f673e4c59ab90 5
+src/providers/murf/index.ts
+  b59f673e4c59ab90 218
+src/__tests__/generate-conversation.test.ts
+  b59f673e4c59ab90 57,160,224,326
+src/__tests__/conversation-dispatch.test.ts
+  b59f673e4c59ab90 176,217
+src/providers/hume/index.ts
+  b59f673e4c59ab90 121,165,200,264,275
+src/providers/gateway/index.ts
+  b59f673e4c59ab90 26,57,122,221,258
+src/providers/inworld/index.ts
+  b59f673e4c59ab90 350,358
+src/providers/fal/index.ts
+  b59f673e4c59ab90 137,153
+src/providers/openai/index.ts
+  b59f673e4c59ab90 179,454
+src/providers/elevenlabs/alignment.ts
+  b59f673e4c59ab90 14
+src/__tests__/generate-speech.test.ts
+  b59f673e4c59ab90 17,304-305,473
+src/__tests__/e2e/hume.e2e.test.ts
+  b59f673e4c59ab90 92
+src/providers/resemble/alignment.ts
+  b59f673e4c59ab90 4
+src/__tests__/e2e/resemble.e2e.test.ts
+  b59f673e4c59ab90 92
+src/providers/deepgram/index.ts
+  b59f673e4c59ab90 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9fa7263c052ce9775d43fe392adbc89801675e63",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 9,
+      "accepted_lines": 615,
+      "overriden_lines": 0
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 145,
+      "overriden_lines": 0
+    }
+  }
+}
