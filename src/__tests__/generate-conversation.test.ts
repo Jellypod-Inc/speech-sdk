@@ -202,13 +202,7 @@ describe("generateConversation", () => {
 
     expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
     expect(result.audio.mediaType).toBe("audio/wav");
-    // Per-turn attribution is reconstructed from caller input; server doesn't return it on the wire.
-    expect(result.providerMetadata).toEqual({
-      turns: [
-        { provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy" },
-        { provider: "openai", model: "gpt-4o-mini-tts", voice: "nova" },
-      ],
-    });
+    expect(result.providerMetadata).toBeUndefined();
     expect(result.warnings).toBeUndefined();
   });
 

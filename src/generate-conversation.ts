@@ -236,20 +236,12 @@ async function runGateway<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
-  // Rebuild per-turn attribution from caller input — the gateway no longer carries it on the wire.
-  const perTurn = wireTurns.map((t) => {
-    const slashIdx = t.model.indexOf("/");
-    return {
-      provider: slashIdx === -1 ? t.model : t.model.slice(0, slashIdx),
-      model: slashIdx === -1 ? t.model : t.model.slice(slashIdx + 1),
-      voice: t.voice,
-    };
-  });
-
   return {
     audio,
     metadata,
-    providerMetadata: { turns: perTurn },
+    ...(result.providerMetadata !== undefined && {
+      providerMetadata: result.providerMetadata,
+    }),
     timestamps,
     warnings: warnings && warnings.length > 0 ? warnings : undefined,
   };

@@ -46,6 +46,7 @@ const gatewayConversationJsonResponseSchema = z.object({
   mediaType: z.string(),
   timestamps: z.array(conversationWordTimestampSchema).default([]),
   warnings: z.array(z.string()).default([]),
+  providerMetadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const GATEWAY_401_MESSAGE =
@@ -237,6 +238,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     mediaType: string;
     timestamps?: ConversationWordTimestamp[];
     warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
   }> {
     if (options.turns.length === 0) {
       throw new GatewayInputError(
@@ -300,6 +302,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         mediaType: payload.mediaType,
         timestamps: payload.timestamps,
         warnings: payload.warnings,
+        ...(payload.providerMetadata !== undefined && {
+          providerMetadata: payload.providerMetadata,
+        }),
       };
     }
 
