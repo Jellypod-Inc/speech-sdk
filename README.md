@@ -177,25 +177,24 @@ result.timestamps;
 | `true` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
 | `false` *(default)* | Never return timestamps. |
 
-With `timestamps: true`, models without native alignment require an STT fallback — there is no implicit default. Configure it once on the factory (`fallbackSTT`) or override it per call (`timestampFallback`). Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
+With `timestamps: true`, models without native alignment require an STT fallback. The SDK automatically uses OpenAI Whisper when `OPENAI_API_KEY` is set in the environment — no extra configuration needed. Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
 
-**Resolution order:** per-call `timestampFallback` → factory `fallbackSTT` → throws `TimestampFallbackNotConfiguredError`.
+**Resolution order:** per-call `timestampFallback` → factory `fallbackSTT` → `OPENAI_API_KEY` env var (automatic Whisper fallback) → throws `TimestampKeyMissingError`.
 
-Configure `fallbackSTT` on the factory (recommended — set it once):
+Configure `fallbackSTT` on the factory to use a different key or STT model (set it once, applies to all calls):
 
 ```ts
 import { generateSpeech } from '@speech-sdk/core';
-import { createOpenAI, createOpenAISTT } from '@speech-sdk/core/providers';
+import { createOpenAI, createElevenLabs } from '@speech-sdk/core/providers';
 
-const stt = createOpenAISTT({ apiKey: process.env.OPENAI_API_KEY });
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  fallbackSTT: stt('whisper-1'),
+const elevenlabs = createElevenLabs({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+  fallbackSTT: createOpenAI({ apiKey: process.env.MY_OPENAI_KEY }).stt('whisper-1'),
 });
 
 const result = await generateSpeech({
-  model: openai('tts-1'),
-  voice: 'alloy',
+  model: elevenlabs('eleven_flash_v2'),
+  voice: 'JBFqnCBsd6RMkjVDRZzb',
   text: 'Hello, world.',
   timestamps: true,
 });
@@ -204,14 +203,14 @@ const result = await generateSpeech({
 Or override per call via `timestampFallback`:
 
 ```ts
-import { createOpenAISTT } from '@speech-sdk/core/providers';
+import { createOpenAI } from '@speech-sdk/core/providers';
 
 await generateSpeech({
   model: openai('tts-1'),
   voice: 'alloy',
   text: 'Hello!',
   timestamps: true,
-  timestampFallback: createOpenAISTT({ apiKey: process.env.MY_WHISPER_KEY })('whisper-1'),
+  timestampFallback: createOpenAI({ apiKey: process.env.MY_WHISPER_KEY }).stt('whisper-1'),
 });
 ```
 
@@ -400,7 +399,6 @@ import {
   createElevenLabs,
   createCartesia,
   createSpeechGateway,
-  createOpenAISTT,
 } from '@speech-sdk/core/providers';
 ```
 
@@ -472,8 +470,7 @@ try {
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |
-| `TimestampFallbackNotConfiguredError` | `timestamps: true` with no native support and no `fallbackSTT`/`timestampFallback` configured |
-| `TimestampKeyMissingError` | STT fallback configured but its API key is missing |
+| `TimestampKeyMissingError` | `timestamps: true` with no native support, no `fallbackSTT`/`timestampFallback` configured, and `OPENAI_API_KEY` not set |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
 
