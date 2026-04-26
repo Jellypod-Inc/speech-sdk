@@ -1,4 +1,5 @@
 import { stripAudioTags } from "../../audio-tags.js";
+import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -10,8 +11,11 @@ import {
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
-import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
-import { OpenAISpeechToTextProvider } from "../../stt-providers/openai/index.js";
+import type {
+  ResolvedSTTModel,
+  SpeechToTextProvider,
+} from "../../speech-to-text-provider.js";
+import type { WordTimestamp } from "../../timestamps.js";
 import { buildOpenAIInstructionsFromTags } from "./instructions.js";
 
 export interface OpenAISpeechProviderConfig {
@@ -290,6 +294,202 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return undefined;
+  }
+}
+
+// ISO-639-1 codes accepted by Whisper's `language` parameter.
+const OPENAI_STT_LANGUAGES = [
+  "af",
+  "ar",
+  "az",
+  "be",
+  "bg",
+  "bn",
+  "bs",
+  "ca",
+  "cs",
+  "cy",
+  "da",
+  "de",
+  "el",
+  "en",
+  "es",
+  "et",
+  "fa",
+  "fi",
+  "fr",
+  "gl",
+  "he",
+  "hi",
+  "hr",
+  "hu",
+  "hy",
+  "id",
+  "is",
+  "it",
+  "ja",
+  "kk",
+  "kn",
+  "ko",
+  "lt",
+  "lv",
+  "mi",
+  "mk",
+  "mr",
+  "ms",
+  "ne",
+  "nl",
+  "no",
+  "pl",
+  "pt",
+  "ro",
+  "ru",
+  "sk",
+  "sl",
+  "sr",
+  "sv",
+  "sw",
+  "ta",
+  "th",
+  "tl",
+  "tr",
+  "uk",
+  "ur",
+  "vi",
+  "zh",
+] as const;
+
+// Only whisper-1 supports timestamp_granularities — gpt-4o-transcribe variants don't.
+export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
+  readonly id = OPENAI_PROVIDER_ID;
+  readonly defaultModel = "whisper-1";
+
+  readonly models = [
+    {
+      id: "whisper-1",
+      releaseDate: "2023-03-01",
+      languages: OPENAI_STT_LANGUAGES,
+    },
+  ] as const;
+
+  private readonly apiKey: string | undefined;
+  private readonly baseURL: string;
+  private readonly fetchFn: typeof globalThis.fetch;
+
+  constructor(config: OpenAISpeechProviderConfig = {}) {
+    this.apiKey = config.apiKey;
+    this.baseURL = config.baseURL ?? "https://api.openai.com/v1";
+    this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+  }
+
+  async transcribe(options: {
+    modelId: string;
+    audio: Uint8Array;
+    mediaType: string;
+    language?: string;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    timestamps: WordTimestamp[];
+    text?: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const { audio, mediaType } = await normalizeAudioForOpenAI(
+      options.audio,
+      options.mediaType
+    );
+
+    const form = new FormData();
+    const filename = `audio.${mediaTypeToExtension(mediaType)}`;
+    // BlobPart cast — TS narrowing is stricter than runtime here.
+    form.append(
+      "file",
+      new Blob([audio as BlobPart], { type: mediaType }),
+      filename
+    );
+    form.append("model", options.modelId);
+    form.append("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "word");
+    if (options.language) {
+      form.append("language", options.language);
+    }
+
+    const response = await this.fetchFn(
+      `${this.baseURL}/audio/transcriptions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resolveApiKey(this.apiKey, "OPENAI_API_KEY", "OpenAI")}`,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: form,
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(response);
+
+    const data = (await response.json()) as {
+      text?: string;
+      words?: { word: string; start: number; end: number }[];
+    };
+
+    const timestamps: WordTimestamp[] = (data.words ?? []).map((w) => ({
+      text: w.word,
+      start: w.start,
+      end: w.end,
+    }));
+
+    return {
+      timestamps,
+      text: data.text,
+    };
+  }
+}
+
+// OpenAI transcription rejects raw PCM; wrap as WAV. audio/l16 (RFC 2586,
+// big-endian) is intentionally unsupported — wrapPcm16Mono is little-endian.
+async function normalizeAudioForOpenAI(
+  audio: Uint8Array,
+  mediaType: string
+): Promise<{ audio: Uint8Array; mediaType: string }> {
+  if (mediaTypeBase(mediaType) === "audio/pcm") {
+    const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
+    return {
+      audio: await wrapPcm16Mono(audio, sampleRate),
+      mediaType: "audio/wav",
+    };
+  }
+  return { audio, mediaType };
+}
+
+function mediaTypeBase(mediaType: string): string {
+  return mediaType.split(";")[0]?.trim().toLowerCase() ?? "";
+}
+
+function mediaTypeToExtension(mediaType: string): string {
+  switch (mediaTypeBase(mediaType)) {
+    case "audio/mpeg":
+    case "audio/mp3":
+      return "mp3";
+    case "audio/wav":
+    case "audio/x-wav":
+      return "wav";
+    case "audio/ogg":
+      return "ogg";
+    case "audio/opus":
+      return "opus";
+    case "audio/flac":
+      return "flac";
+    case "audio/webm":
+      return "webm";
+    case "audio/mp4":
+    case "audio/m4a":
+    case "audio/x-m4a":
+      return "m4a";
+    default:
+      return "mp3";
   }
 }
 
