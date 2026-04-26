@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/logo.png" alt="Speech SDK" width="140" />
+<img src="https://github.com/user-attachments/assets/42d9b528-e507-4162-8120-338bb0c92650" alt="Speech SDK" width="140" />
 
 # Speech SDK
 
