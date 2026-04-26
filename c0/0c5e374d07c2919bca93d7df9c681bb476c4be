@@ -1,0 +1,25 @@
+src/__tests__/silence-detection.test.ts
+  b2eb2def7b440f3e 1-93,95-98,100-103
+src/conversation/silence-detection.ts
+  b2eb2def7b440f3e 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c00c5e374d07c2919bca93d7df9c681bb476c4be",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 190,
+      "total_deletions": 0,
+      "accepted_lines": 598,
+      "overriden_lines": 2
+    }
+  }
+}
