@@ -1,0 +1,38 @@
+src/__tests__/openai-stt-factory.test.ts
+  438cdbebfba5778c 1-54
+src/providers/openai/index.ts
+  438cdbebfba5778c 295-296,298-299,302-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "afb8bd6bb6de0f016147493d323df7b9b782082d",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 8,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    },
+    "a55b19ee079d059a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08dcef49-7078-47c5-8ff4-2d7e6d07893d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
