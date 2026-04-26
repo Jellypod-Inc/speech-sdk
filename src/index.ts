@@ -14,7 +14,6 @@ export {
   NoSpeechGeneratedError,
   SpeechSDKError,
   StreamingNotSupportedError,
-  TimestampFallbackNotConfiguredError,
   TimestampKeyMissingError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
