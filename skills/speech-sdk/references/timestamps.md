@@ -27,7 +27,7 @@ result.timestamps
 - `"on"` — always return timestamps. Native alignment when the provider supplies it; STT fallback otherwise.
 - `"off"` *(default)* — never return timestamps.
 
-`result.timestamps` is always populated when mode is `"on"` — the cascade resolves transparently.
+`result.timestamps` is populated when mode is `"on"` and the underlying transport surfaces alignment. On gateway-routed calls the SDK is a thin REST wrapper — if the wire response lacks timestamps, `result.timestamps` is `undefined` rather than thrown.
 
 ## Cascade
 
@@ -123,7 +123,6 @@ Natural input for chat-bubble UIs, speaker-attributed captions, or karaoke-style
 | Error                                | When                                                                 |
 | ------------------------------------ | -------------------------------------------------------------------- |
 | `TimestampKeyMissingError`           | STT fallback triggered but no key is configured — message names the env var |
-| `GatewayTimestampsUnavailableError`  | A `provider/model` string `timestamps: "on"` request returned without alignment |
 | `ConversationTimestampAttributionError` | Provider's flat word stream couldn't be unambiguously attributed to input turns |
 
 Other errors (`ApiError`, etc.) propagate from the underlying STT call on the derived path.
