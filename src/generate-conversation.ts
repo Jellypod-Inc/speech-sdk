@@ -128,7 +128,6 @@ export async function generateConversation<V extends Voice = Voice>(
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
-    normalizeVolume: options.normalizeVolume ?? true,
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
@@ -200,7 +199,6 @@ async function runGateway<V extends Voice>(args: {
         turns: wireTurns,
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,
-        normalizeVolume: options.normalizeVolume,
         providerOptions: options.providerOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
@@ -286,15 +284,12 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
-  // Force decodable PCM/WAV via getStitchOptions when normalizing; otherwise emit native mixed format and warn.
-  const normalize = options.normalizeVolume ?? true;
-  const stitchOpts = normalize
-    ? resolved.provider.getStitchOptions?.(resolved.modelId)
-    : undefined;
+  // Force decodable PCM/WAV via getStitchOptions for normalization; if unavailable, emit the provider's mixed audio and warn.
+  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId);
   const warnings: string[] = [];
-  if (normalize && !stitchOpts) {
+  if (!stitchOpts) {
     warnings.push(
-      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization. Pass normalizeVolume:false to silence this warning.`
+      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization (no decodable PCM/WAV mode).`
     );
   }
 

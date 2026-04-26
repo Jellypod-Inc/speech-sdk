@@ -100,20 +100,6 @@ describe("generateConversation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
-  it("skips native-path normalization when normalizeVolume:false", async () => {
-    const provider = nativeProvider();
-    const result = await generateConversation({
-      model: { provider, modelId: "m" },
-      turns: [
-        { voice: "a", text: "Hi" },
-        { voice: "b", text: "Hello" },
-      ],
-      normalizeVolume: false,
-    });
-    expect(result.warnings).toBeUndefined();
-    expect(result.audio.mediaType).toBe("audio/mpeg");
-  });
-
   it("routes to stitch path when dialogue unsupported", async () => {
     const provider = stitchProvider();
     const result = await generateConversation({
@@ -152,7 +138,6 @@ describe("generateConversation", () => {
         },
       ],
       gapMs: 0,
-      normalizeVolume: false,
     });
 
     const calls = (provider.generate as ReturnType<typeof vi.fn>).mock.calls;

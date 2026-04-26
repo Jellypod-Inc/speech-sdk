@@ -57,7 +57,6 @@ describe("runStitch", () => {
       gapMs: 0,
       maxConcurrency: 1,
       maxRetries: 0,
-      normalizeVolume: true,
       volumeDbfs: -14,
     });
 
@@ -94,7 +93,6 @@ describe("runStitch", () => {
       gapMs: 300,
       maxConcurrency: 2,
       maxRetries: 0,
-      normalizeVolume: false,
     });
 
     expect(result.audio.length).toBeGreaterThan(44);

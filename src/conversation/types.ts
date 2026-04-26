@@ -15,11 +15,9 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   readonly maxConcurrency?: number;
   readonly maxRetries?: number;
   readonly model?: string | ResolvedModel<V>;
-  // Default true. Default target -20 dBFS (broadcast/podcast standard).
-  readonly normalizeVolume?: boolean;
   readonly providerOptions?: Record<string, unknown>;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];
-  // dBFS, must be ≤ 0. Default -20.
+  // dBFS, must be ≤ 0. Default -20 (broadcast/podcast standard).
   readonly volumeDbfs?: number;
 }

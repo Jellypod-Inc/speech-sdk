@@ -228,7 +228,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }[];
     gapMs?: number;
     volumeDbfs?: number;
-    normalizeVolume?: boolean;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -255,7 +254,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       );
     }
 
-    // Per-spec: per-turn `model` on the wire (no top-level), and gapMs/volumeDbfs/normalizeVolume sent explicitly each call.
+    // Per-spec: per-turn `model` on the wire (no top-level), and gapMs/volumeDbfs sent explicitly each call.
     const body: Record<string, unknown> = {
       mode: "conversation",
       turns: options.turns.map((t) => ({
@@ -266,7 +265,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       })),
       gapMs: options.gapMs ?? 300,
       volumeDbfs: options.volumeDbfs ?? -20,
-      normalizeVolume: options.normalizeVolume ?? true,
     };
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;

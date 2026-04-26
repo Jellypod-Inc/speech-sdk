@@ -141,7 +141,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `normalizeVolume` (default `true`), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native).
 
 **Native dialogue caps:**
 
@@ -299,7 +299,7 @@ const result = await generateSpeech({
 result.audio.mediaType;  // "audio/wav" — re-encoded after normalization
 ```
 
-`generateConversation` normalizes by default. Pass `normalizeVolume: false` to skip. Throws `VolumeAdjustmentUnsupportedError` if the provider has no decodable PCM/WAV mode.
+`generateConversation` always normalizes; override the target with `volumeDbfs`. A warning is surfaced (and the raw mix passes through) if the provider has no decodable PCM/WAV mode.
 
 ## Audio tags
 

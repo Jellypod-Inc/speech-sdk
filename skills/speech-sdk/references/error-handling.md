@@ -29,7 +29,6 @@ try {
 } catch (error) {
   if (error instanceof ApiError) {
     error.statusCode    // 401, 429, 500, ...
-    error.model         // "provider/model"
     error.responseBody  // raw body from the API
     error.code          // optional RFC 7807 problem+json `code`
   } else if (error instanceof SpeechSDKError) {

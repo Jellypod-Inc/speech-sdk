@@ -305,7 +305,6 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "there" },
       ],
       timestamps: true,
-      normalizeVolume: false,
     });
 
     expect(result.timestamps).toEqual([
@@ -332,7 +331,6 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "there" },
       ],
       timestamps: true,
-      normalizeVolume: false,
     });
 
     expect(stt.transcribe).toHaveBeenCalledOnce();
@@ -353,7 +351,6 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "yo" },
       ],
       timestamps: false,
-      normalizeVolume: false,
     });
 
     expect(result.timestamps).toBeUndefined();
@@ -382,7 +379,6 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "How are you?" },
       ],
       timestamps: true,
-      normalizeVolume: false,
     });
 
     expect(result.timestamps).toHaveLength(6);
@@ -410,7 +406,6 @@ describe("generateConversation timestamps — native path", () => {
         { voice: "b", text: "world" },
       ],
       timestamps: true,
-      normalizeVolume: false,
     });
 
     expect(result.timestamps).toHaveLength(2);
@@ -432,7 +427,6 @@ describe("generateConversation timestamps — native path", () => {
             { voice: "b", text: "Hello." },
           ],
           timestamps: true,
-          normalizeVolume: false,
         })
       ).rejects.toBeInstanceOf(TimestampKeyMissingError);
     } finally {
@@ -462,7 +456,6 @@ describe("generateConversation timestamps — native path", () => {
           { voice: "b", text: "How are you?" },
         ],
         timestamps: true,
-        normalizeVolume: false,
       })
     ).rejects.toThrow(ConversationTimestampAttributionError);
   });

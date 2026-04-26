@@ -17,7 +17,6 @@ interface StitchInput<V extends Voice = Voice> {
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
   readonly maxRetries: number;
-  readonly normalizeVolume: boolean;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -107,12 +106,10 @@ export async function runStitch<V extends Voice>(
   );
 
   const segments = perTurn.map((p) => p.segment);
-  const leveledSegments = input.normalizeVolume
-    ? normalizeRms(
-        segments,
-        input.volumeDbfs == null ? undefined : dbfsToInt16Rms(input.volumeDbfs)
-      )
-    : segments;
+  const leveledSegments = normalizeRms(
+    segments,
+    input.volumeDbfs == null ? undefined : dbfsToInt16Rms(input.volumeDbfs)
+  );
 
   const audio = await concatPcmToWav(leveledSegments, {
     gapMs: input.gapMs,

@@ -41,8 +41,7 @@ result.audio.mediaType
 - `gapMs` — silence between turns when stitched, default 300
 - `maxConcurrency` — parallel turn requests when stitched, default 6
 - `maxRetries` — per-turn retries, default 2
-- `normalizeVolume` — RMS-level the output, default `true`
-- `volumeDbfs` — target loudness, default `-20`
+- `volumeDbfs` — target RMS loudness in dBFS (must be ≤ 0), default `-20`
 - `abortSignal`, `headers`, `timestamps`, `timestampProvider`
 
 Model placement is all-or-nothing: set `options.model` (applied to every turn) or set `model` on every turn, but not both. Mixing is rejected with `ConversationInputError`.
@@ -65,9 +64,9 @@ await generateConversation({
 
 ## Volume Normalization
 
-`normalizeVolume: true` (default) RMS-levels the output to `volumeDbfs` (default `-20` dBFS, the podcast voice standard). Two conversations generated independently can be played back-to-back without listener volume adjustments.
+Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podcast voice standard) so two conversations generated independently play back at the same loudness. Override with `volumeDbfs: -18` (must be ≤ 0) to retarget.
 
-- Skipped if set to `false`.
+- Normalization is always on and cannot be disabled.
 - A warning is surfaced when normalization can't be applied (e.g. the chosen provider/model can't expose decodable PCM/WAV) and the raw mix passes through.
 
 ## Result

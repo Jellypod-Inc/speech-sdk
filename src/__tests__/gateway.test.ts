@@ -369,7 +369,7 @@ describe("SpeechGatewayProvider", () => {
 });
 
 describe("SpeechGatewayProvider.generateConversation", () => {
-  it("posts conversation payload with mode, per-turn model, gap/volume/normalize defaults; reads raw mixed audio", async () => {
+  it("posts conversation payload with mode, per-turn model, gap/volume defaults; reads raw mixed audio", async () => {
     const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -398,7 +398,6 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       ],
       gapMs: 300,
       volumeDbfs: -20,
-      normalizeVolume: true,
     });
 
     expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));

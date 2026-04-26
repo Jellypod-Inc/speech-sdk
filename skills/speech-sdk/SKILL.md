@@ -68,7 +68,7 @@ result.audio.mediaType
 ```
 
 - **Per-turn overrides**: `{ voice, text, model?, providerOptions? }` — mix providers across turns.
-- **Volume normalization**: on by default — every conversation is RMS-leveled to ~-20 dBFS so separate outputs play back at the same loudness. Pass `normalizeVolume: false` to skip, or `volumeDbfs: -18` to retarget.
+- **Volume normalization**: always on — every conversation is RMS-leveled to ~-20 dBFS so separate outputs play back at the same loudness. Pass `volumeDbfs: -18` (must be ≤ 0) to retarget.
 - **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn).
 - **Errors**: `ConversationInputError`, `DialogueConstraintError`, `MixedDispatchError`, `StitchUnsupportedError`. Import from `@speech-sdk/core`.
 
