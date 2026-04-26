@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../errors.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
-
-const ERROR_PATTERN = /API error 401.*nope/;
 
 function bodyStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
   return new ReadableStream({
@@ -45,8 +44,9 @@ describe("OpenAISpeechProvider.stream", () => {
   });
 
   it("throws ApiError on non-2xx", async () => {
+    const responseBody = '{"error":{"message":"nope"}}';
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response('{"error":{"message":"nope"}}', {
+      new Response(responseBody, {
         status: 401,
         headers: { "content-type": "application/json" },
       })
@@ -56,8 +56,14 @@ describe("OpenAISpeechProvider.stream", () => {
       fetch: fetchMock as unknown as typeof globalThis.fetch,
     });
 
-    await expect(
-      provider.stream?.({ modelId: "tts-1", text: "hi", voice: "alloy" })
-    ).rejects.toThrow(ERROR_PATTERN);
+    const error = await provider
+      .stream?.({ modelId: "tts-1", text: "hi", voice: "alloy" })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    const apiError = error as ApiError;
+    expect(apiError.statusCode).toBe(401);
+    expect(apiError.responseBody).toBe(responseBody);
+    expect(apiError.message).toContain("nope");
   });
 });
