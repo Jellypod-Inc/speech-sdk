@@ -1,0 +1,23 @@
+README.md
+  1e811e5e76956229 1-4,7-15,17-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7f3df41d15da060cbf85cdc47c26bfe49770ad52",
+  "prompts": {
+    "1e811e5e76956229": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37af53d9-4646-4979-bd60-039baaf9a9bc",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 12,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
