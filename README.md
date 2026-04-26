@@ -122,11 +122,13 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 
 ## Conversations
 
-`generateConversation()` produces a single multi-voice clip from an ordered array of turns, picking the best path automatically:
+`generateConversation()` produces a single multi-voice clip from an ordered array of turns. The path is chosen by what the turns are:
 
-- **Gateway fast-path** — every turn uses a gateway-routed string model. One request to Speech Gateway; the server handles rendering, stitching, and normalization.
+- **Gateway** — every turn uses a gateway-routed string model (e.g. `"openai/tts-1"`). One request to Speech Gateway; the server handles rendering, stitching, and normalization. The SDK never stitches locally on this path — clone voices on gateway models throw `StitchUnsupportedError`.
 - **Native dialogue** — every turn uses the same direct-provider model and that model exposes a multi-speaker endpoint. One API call, naturally mixed.
-- **Stitch fallback** — anything else (multi-provider, voice clones, or no dialogue endpoint). Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
+- **Stitch** — direct-provider conversations that don't qualify for native dialogue (multi-provider, or no dialogue endpoint). Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
+
+Mixing gateway-routed turns with direct-provider turns in one call throws `MixedDispatchError`.
 
 ```ts
 import { generateConversation } from '@speech-sdk/core';

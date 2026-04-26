@@ -224,7 +224,7 @@ describe("generateConversation", () => {
     const savedFetch = globalThis.fetch;
     globalThis.fetch = fetchFn as unknown as typeof globalThis.fetch;
     try {
-      const result = await generateConversation({
+      await generateConversation({
         model: "openai/gpt-4o-mini-tts",
         apiKey: "gw-key",
         turns: [
