@@ -8,6 +8,7 @@ import {
   decodeToPcm16,
   normalizeRms,
 } from "./pcm-concat.js";
+import { fillTurnTimestampsProportional } from "./proportional-fill.js";
 import type { ConversationTurn } from "./types.js";
 
 interface StitchInput<V extends Voice = Voice> {
@@ -143,9 +144,6 @@ export async function runStitch<V extends Voice>(
   const fillWarnings: string[] = [];
   let timestamps: ConversationWordTimestamp[] | undefined;
   if (input.timestamps) {
-    const { fillTurnTimestampsProportional } = await import(
-      "./proportional-fill.js"
-    );
     timestamps = [];
     let offsetSec = 0;
     const filledTurns: number[] = [];
