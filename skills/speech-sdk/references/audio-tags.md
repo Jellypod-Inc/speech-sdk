@@ -1,31 +1,18 @@
 # Standardized Audio Tags
 
-Every TTS provider handles expressive cues differently. SpeechSDK gives you one `[tag]` syntax that works everywhere — passed through natively where supported, converted to SSML where needed, stripped with warnings elsewhere.
+Every TTS provider handles expressive cues differently. SpeechSDK gives you one `[tag]` syntax — passed through natively where supported, converted to SSML where needed, stripped with warnings elsewhere.
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
 
 const result = await generateSpeech({
-  model: "elevenlabs/eleven_v3",
+  model: "provider/model",
   text: "[laugh] Oh that is so funny! [sigh] But seriously though.",
   voice: "voice-id",
 })
-
-result.warnings // undefined — eleven_v3 supports all tags
 ```
 
-## Provider Behavior
-
-| Provider   | Behavior                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| ElevenLabs | All `[tag]` passed through                                                                                            |
-| Cartesia   | Emotion tags (`[happy]`, `[sad]`, `[angry]`, …) → SSML `<emotion>`; `[laughter]` passed through; unknown stripped     |
-| Fish Audio | All `[tag]` passed through — accepts free-form natural-language descriptions                                          |
-| xAI        | Inline tags (`[laugh]`, `[pause]`, `[long-pause]`) and wrapping tags (`<whisper>`, `<soft>`, `<slow>`) passed through |
-| OpenAI     | Tags mapped to the `instructions` field                                                                               |
-| All others | Tags stripped, warnings returned                                                                                      |
-
-Tag support is per-model — see `providers/<name>.md` for which models within a provider honor `[tag]` syntax.
+Tag support is per-model. See `providers/<name>.md` for which models within a provider honor `[tag]` syntax and how they map (passthrough, SSML, instructions, or stripped).
 
 ## Warnings
 
@@ -33,13 +20,13 @@ When a provider doesn't support a tag, it's stripped and a warning is returned:
 
 ```ts
 const result = await generateSpeech({
-  model: "openai/tts-1",
+  model: "provider/model",
   text: "[laugh] Hello world",
-  voice: "alloy",
+  voice: "voice-id",
 })
 
 result.warnings
-// ["Audio tag [laugh] is not supported by openai/tts-1 and was removed."]
+// ["Audio tag [laugh] is not supported by provider/model and was removed."]
 ```
 
 `result.warnings` is `undefined` when there are none.

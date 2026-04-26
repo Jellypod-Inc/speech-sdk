@@ -1,11 +1,12 @@
 # Error Handling
 
+All SDK errors extend `SpeechSDKError`. Catch the base class to catch any SDK-thrown error, or match a specific subclass for finer-grained handling.
+
 ```ts
 import {
   generateSpeech,
   ApiError,
   NoSpeechGeneratedError,
-  GatewayTimestampsUnavailableError,
   SpeechSDKError,
 } from "@speech-sdk/core"
 ```
@@ -16,7 +17,7 @@ import {
 | `NoSpeechGeneratedError`           | Empty input (after tag stripping) or empty provider response         |
 | `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
-| `TimestampKeyMissingError`         | `timestamps: "on"` fallback STT key missing (message names env var)  |
+| `TimestampKeyMissingError`         | `timestamps: "on"` STT fallback triggered but no key configured      |
 | `GatewayTimestampsUnavailableError` | A `provider/model` string `timestamps: "on"` response had no word timestamps |
 | `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
@@ -28,26 +29,16 @@ try {
 } catch (error) {
   if (error instanceof ApiError) {
     error.statusCode    // 401, 429, 500, ...
-    error.model         // "openai/gpt-4o-mini-tts"
+    error.model         // "provider/model"
     error.responseBody  // raw body from the API
+    error.code          // optional RFC 7807 problem+json `code`
   } else if (error instanceof SpeechSDKError) {
     console.log(error.message)
   }
 }
 ```
 
-## ApiError
-
-```ts
-class ApiError extends SpeechSDKError {
-  readonly statusCode: number
-  readonly responseBody?: unknown
-  readonly model: string
-  readonly code?: string   // optional RFC 7807 problem+json `code`
-}
-```
-
-`code` is populated when the upstream sets a problem+json `code` extension. Match on `err.code` over parsing `err.message`.
+`ApiError.code` is populated when the upstream sets a problem+json `code` extension. Match on `err.code` over parsing `err.message`.
 
 ## NoSpeechGeneratedError
 

@@ -1,6 +1,6 @@
 ---
 name: speech-sdk
-description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across providers (OpenAI, ElevenLabs, Deepgram, Cartesia, Hume, Google Gemini, Fish Audio, Inworld, Murf, Resemble, fal, Mistral, xAI). Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, get word-level timestamps / alignment for TTS, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
+description: "How to use @speech-sdk/core for text-to-speech and multi-speaker conversations across providers. Use this skill whenever the user wants to generate speech audio, convert text to speech, stream TTS output, build a multi-speaker podcast or dialogue, get word-level timestamps / alignment for TTS, clone a voice, or integrate @speech-sdk/core. Also trigger on imports from '@speech-sdk/core' or its subpath exports."
 ---
 
 # @speech-sdk/core
@@ -21,17 +21,17 @@ npm install @speech-sdk/core
 import { generateSpeech } from "@speech-sdk/core"
 
 const result = await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello from SpeechSDK!",
-  voice: "alloy",
+  voice: "voice-id",
 })
 
-result.audio.uint8Array // Uint8Array — raw audio bytes
-result.audio.base64     // string — lazy-computed base64
-result.audio.mediaType  // "audio/mpeg"
+result.audio.uint8Array // raw audio bytes
+result.audio.base64     // lazy-computed base64
+result.audio.mediaType
 ```
 
-Pass `provider/model` strings (e.g. `"elevenlabs/eleven_v3"`) to dispatch via `SPEECH_GATEWAY_API_KEY` (or the `apiKey` option). Use provider factories such as `createOpenAI()` or `createElevenLabs()` to call the upstream provider directly with its own API key.
+Pass `provider/model` strings to dispatch via `SPEECH_GATEWAY_API_KEY` (or the `apiKey` option). Use provider factories from `@speech-sdk/core/providers` to call the upstream provider directly with its own API key. See `references/providers.md` for the list of providers and their factories.
 
 ## Streaming
 
@@ -39,7 +39,7 @@ Pass `provider/model` strings (e.g. `"elevenlabs/eleven_v3"`) to dispatch via `S
 import { streamSpeech } from "@speech-sdk/core"
 
 const result = await streamSpeech({
-  model: "elevenlabs/eleven_v3",
+  model: "provider/model",
   text: "...",
   voice: "voice-id",
 })
@@ -49,31 +49,30 @@ for await (const chunk of result.audio) process.stdout.write(chunk)
 
 ## Multi-Speaker Conversations
 
-If you're trying to create speech with multiple speakers (podcasts, dialogues, or any output with multiple voices), this is how you should do it. Use `generateConversation` — it returns a single stitched `SpeechResult` and handles dispatch, concatenation, gaps, and volume normalization. Some providers have native multi-speaker endpoints it will route to.
+If you're trying to create speech with multiple speakers (podcasts, dialogues, or any output with multiple voices), this is how you should do it. Use `generateConversation` — it returns a single stitched result and handles dispatch, concatenation, gaps, and volume normalization.
 
 ```ts
 import { generateConversation } from "@speech-sdk/core"
 
 const result = await generateConversation({
-  model: "openai/gpt-4o-mini-tts", // default for every turn
+  model: "provider/model", // default for every turn
   turns: [
-    { voice: "alloy", text: "Welcome to the show." },
-    { voice: "echo",  text: "Thanks for having me!" },
-    { voice: "alloy", text: "Today we're covering TTS." },
+    { voice: "voice-a", text: "Welcome to the show." },
+    { voice: "voice-b", text: "Thanks for having me!" },
+    { voice: "voice-a", text: "Today we're covering TTS." },
   ],
 })
 
-result.audio.uint8Array // full mixed audio (Uint8Array)
-result.audio.mediaType  // e.g. "audio/wav"
+result.audio.uint8Array
+result.audio.mediaType
 ```
 
-- **Per-turn overrides**: `{ voice, text, model?, providerOptions? }` — mix providers across turns (e.g. `openai/gpt-4o-mini-tts` for host + `elevenlabs/eleven_v3` for guest).
-- **Dispatch**: providers with a native multi-speaker endpoint (e.g. ElevenLabs stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker) take the "native" path; everything else is stitched locally (parallel single-turn calls → PCM concat with inter-turn gap).
+- **Per-turn overrides**: `{ voice, text, model?, providerOptions? }` — mix providers across turns.
 - **Volume normalization**: on by default — every conversation is RMS-leveled to ~-20 dBFS so separate outputs play back at the same loudness. Pass `normalizeVolume: false` to skip, or `volumeDbfs: -18` to retarget.
 - **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn).
-- **Errors**: `ConversationInputError` (bad input), `DialogueConstraintError` (native path can't satisfy turns), `StitchUnsupportedError` (provider can't emit PCM for stitching). Import from `@speech-sdk/core`.
+- **Errors**: `ConversationInputError`, `DialogueConstraintError`, `MixedDispatchError`, `StitchUnsupportedError`. Import from `@speech-sdk/core`.
 
-See `references/conversation.md` for the full API, cross-provider mixing, and native-vs-stitch dispatch details.
+See `references/conversation.md` for the full API and cross-provider mixing.
 
 ## Word-Level Timestamps
 
@@ -81,7 +80,7 @@ Pass `timestamps: "on"` to get word-level alignment alongside the audio. Default
 
 ```ts
 const result = await generateSpeech({
-  model: "elevenlabs/eleven_multilingual_v2",
+  model: "provider/model",
   text: "Hello!",
   voice: "voice-id",
   timestamps: "on",
@@ -99,36 +98,30 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 ### SpeechSDK
 
 - `references/providers.md` — all providers, prefixes, env vars, capability matrix
-- `references/providers/<name>.md` — per-provider page (models, voices, audio tags, `providerOptions`, factory). One of: `openai`, `elevenlabs`, `deepgram`, `cartesia`, `hume`, `google`, `fish-audio`, `inworld`, `murf`, `resemble`, `fal`, `mistral`, `xai`
+- `references/providers/<name>.md` — per-provider page (models, voices, audio tags, `providerOptions`, factory)
 
 ### Features
 
-- `references/streaming.md` — `streamSpeech`, `StreamSpeechResult`, browser playback, `StreamingNotSupportedError`
-- `references/conversation.md` — `generateConversation`, turns, native-vs-stitch dispatch, volume normalization, cross-provider mixing
+- `references/streaming.md` — `streamSpeech`, browser playback, `StreamingNotSupportedError`
+- `references/conversation.md` — `generateConversation`, turns, volume normalization, cross-provider mixing
 - `references/timestamps.md` — `timestamps: "on" | "off"`, native vs derived cascade, `timestampProvider` override, STT fallback, conversation behavior
-- `references/audio-tags.md` — standardized `[tag]` syntax, per-provider passthrough vs SSML vs stripped-with-warning
-- `references/voice-cloning.md` — `{ audio }` / `{ url }` voice forms, which providers support cloning
+- `references/audio-tags.md` — standardized `[tag]` syntax
+- `references/voice-cloning.md` — `{ audio }` / `{ url }` voice forms
 
 ### Usage
 
-- `references/configuration.md` — factory functions (`createOpenAI`, etc.), `apiKey` / `baseURL` / `fetch` overrides, `maxRetries`, `abortSignal`, `headers`
-- `references/result.md` — `SpeechResult`, `GeneratedAudioFile`, `providerMetadata`, `warnings`
+- `references/configuration.md` — factory functions, `apiKey` / `baseURL` / `fetch` overrides, `maxRetries`, `abortSignal`, `headers`
+- `references/result.md` — result shape, `providerMetadata`, `warnings`
 - `references/error-handling.md` — `ApiError`, `NoSpeechGeneratedError`, `SpeechSDKError`, retry behavior
 
 ## Core Signature
 
-```ts
-generateSpeech({
-  model: string | ResolvedModel,    // "openai/tts-1" or factory result
-  text: string,
-  voice: Voice,                     // string | { url } | { audio }
-  providerOptions?: object,         // pass-through to provider API (no transformation)
-  volumeDbfs?: number,              // RMS target loudness (≤ 0)
-  timestamps?: "on" | "off",        // word-level alignment, default "off"
-  maxRetries?: number,              // default 2; retries 5xx/network only
-  abortSignal?: AbortSignal,
-  headers?: Record<string, string>,
-})
-```
+`generateSpeech({ model, text, voice, providerOptions?, volumeDbfs?, timestamps?, maxRetries?, abortSignal?, headers? })`
 
-`providerOptions` use each upstream provider's own field names; some providers remap specific keys (e.g. ElevenLabs extracts `output_format`, `enable_logging`, `optimize_streaming_latency` into query params). See each provider reference for the exact shape. The SDK reserves the `Accept`, `Content-Type`, and `Authorization` request headers — caller-supplied `headers` cannot override them.
+- `model` — `"provider/model"` string or a factory-resolved model
+- `voice` — string voice ID, `{ audio }`, or `{ url }`
+- `providerOptions` — pass-through to the provider API (untransformed; some providers remap specific keys — see `providers/<name>.md`)
+- `timestamps` — `"on"` or `"off"` (default `"off"`)
+- `maxRetries` — default 2; retries 5xx and network only
+
+The SDK reserves the `Accept`, `Content-Type`, and `Authorization` request headers — caller-supplied `headers` cannot override them. Import the exact option / result types from `@speech-sdk/core` / `@speech-sdk/core/types` when you need them; the source is authoritative.

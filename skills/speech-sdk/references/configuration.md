@@ -6,9 +6,9 @@ String models read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models
 
 ```ts
 await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
   apiKey: process.env.SPEECH_GATEWAY_API_KEY,
   timestamps: "on",
   volumeDbfs: -20,
@@ -21,49 +21,47 @@ await generateSpeech({
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createOpenAI } from "@speech-sdk/core/providers"
+import { createProvider } from "@speech-sdk/core/providers"
 
-const myOpenAI = createOpenAI({
-  apiKey: "sk-...",
+const provider = createProvider({
+  apiKey: "...",
   baseURL: "https://my-proxy.com/v1",
 })
 
 await generateSpeech({
-  model: myOpenAI("gpt-4o-mini-tts"),
+  model: provider("model-id"),
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
 })
 ```
 
-Factory-created `ResolvedModel`s call the upstream provider directly.
+Factory-created models call the upstream provider directly. Call the factory with no argument to use the provider's default model.
 
-Call the factory with no arg to use the provider's default model:
+Each factory accepts a config object with these common fields:
 
-```ts
-const openai = createOpenAI({ apiKey: "sk-..." })
-await generateSpeech({ model: openai(), text: "...", voice: "alloy" })
-```
+- `apiKey` — override the env var
+- `baseURL` — custom endpoint (proxy, self-hosted)
+- `fetch` — custom fetch implementation
 
-## Available Factories
+The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config.
 
-| Import | Functions |
-| --- | --- |
-| `@speech-sdk/core/providers` | `createOpenAI()`, `createElevenLabs()`, `createDeepgram()`, `createCartesia()`, `createHume()`, `createGoogle()`, `createFishAudio()`, `createInworld()`, `createMurf()`, `createResemble()`, `createFal()`, `createMistral()`, `createXai()`, `createSpeechGateway()` |
+## Request Options
 
-## Configuration Options
+`generateSpeech` accepts:
 
-```ts
-interface ProviderConfig {
-  apiKey?: string                    // override env var
-  baseURL?: string                   // custom endpoint (proxy, self-hosted)
-  fetch?: typeof globalThis.fetch    // custom fetch
-}
-```
+- `model` — string or factory-resolved model
+- `text` — input text
+- `voice` — string voice ID, `{ audio }`, or `{ url }`
+- `providerOptions` — provider-specific, passed through untransformed
+- `volumeDbfs` — RMS target loudness (≤ 0)
+- `timestamps` — `"on"` or `"off"` (default `"off"`)
+- `maxRetries` — default 2; retries 5xx and network errors only
+- `abortSignal`, `headers`
 
 ### Custom Fetch
 
 ```ts
-const openai = createOpenAI({
+const provider = createProvider({
   fetch: async (url, init) => {
     console.log(`Requesting: ${url}`)
     return globalThis.fetch(url, init)
@@ -71,30 +69,14 @@ const openai = createOpenAI({
 })
 ```
 
-## Request Options
-
-```ts
-interface GenerateSpeechOptions {
-  model: string | ResolvedModel
-  text: string
-  voice: Voice
-  providerOptions?: object          // provider-specific, passed through
-  volumeDbfs?: number               // RMS target loudness (≤ 0)
-  timestamps?: "on" | "off"          // default "off"; "on" returns word-level alignment
-  maxRetries?: number               // default 2
-  abortSignal?: AbortSignal
-  headers?: Record<string, string>
-}
-```
-
 ### Abort
 
 ```ts
 const controller = new AbortController()
 const promise = generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
   abortSignal: controller.signal,
 })
 setTimeout(() => controller.abort(), 5000)
@@ -104,9 +86,9 @@ setTimeout(() => controller.abort(), 5000)
 
 ```ts
 await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
   headers: { "X-Custom-Header": "value" },
 })
 ```
@@ -117,4 +99,5 @@ Retries 5xx and network errors with exponential backoff. Does not retry 4xx. Def
 
 ```ts
 await generateSpeech({ ..., maxRetries: 5 })
+await generateSpeech({ ..., maxRetries: 0 }) // disable
 ```

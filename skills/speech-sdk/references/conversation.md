@@ -4,64 +4,50 @@
 
 **Don't** loop over `generateSpeech` yourself. `generateConversation`:
 
-- Routes to a **fast path** when every turn uses the same `provider/model` string and a string voice (one HTTP call for the whole conversation).
-- Otherwise routes to a provider's **native multi-speaker endpoint** when one exists (ElevenLabs request-stitching, Fish Audio dialogue, Hume dialogue, Gemini multi-speaker, etc.).
-- Otherwise runs turns in parallel and concatenates the decoded PCM locally with a configurable gap.
-- **RMS-normalizes the output** so every conversation plays back at the same loudness.
-- Returns a `ConversationResult`, identical in shape to `SpeechResult` except `timestamps` is `ConversationWordTimestamp[]` (adds `turnIndex`).
+- Picks the most efficient transport for the given turns automatically.
+- RMS-normalizes the output so every conversation plays back at the same loudness.
+- Returns a result identical in shape to `SpeechResult`, except every word in `timestamps` carries a `turnIndex` pointing back into the input `turns[]`.
 
 ## Import
 
 ```ts
 import { generateConversation } from "@speech-sdk/core"
-import type {
-  ConversationTurn,
-  GenerateConversationOptions,
-} from "@speech-sdk/core/types"
 ```
 
 ## Quick Start
 
 ```ts
 const result = await generateConversation({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   turns: [
-    { voice: "alloy", text: "Welcome to the show." },
-    { voice: "echo",  text: "Thanks for having me!" },
-    { voice: "alloy", text: "Today we're covering TTS." },
+    { voice: "voice-a", text: "Welcome to the show." },
+    { voice: "voice-b", text: "Thanks for having me!" },
+    { voice: "voice-a", text: "Today we're covering TTS." },
   ],
 })
 
 result.audio.uint8Array
-result.audio.mediaType // "audio/wav" when stitched/normalized
+result.audio.mediaType
 ```
 
 ## Options
 
-```ts
-interface GenerateConversationOptions {
-  turns: ConversationTurn[]           // required
-  model?: string | ResolvedModel      // applies to every turn (all-or-nothing with per-turn `model`)
-  providerOptions?: object            // top-level; merged with per-turn
-  apiKey?: string
-  gapMs?: number                      // silence between turns (stitch path), default 300
-  maxConcurrency?: number             // parallel turn requests (stitch path), default 6
-  maxRetries?: number                 // per-turn retries, default 2
-  normalizeVolume?: boolean           // RMS-level output, default true
-  volumeDbfs?: number                 // target loudness, default -20
-  abortSignal?: AbortSignal
-  headers?: Record<string, string>
-}
+`generateConversation` accepts:
 
-interface ConversationTurn {
-  voice: Voice
-  text: string
-  model?: string | ResolvedModel      // required if `options.model` is not set; forbidden if it is
-  providerOptions?: object            // merged over top-level
-}
-```
+- `turns` — required array of `{ voice, text, model?, providerOptions? }` entries
+- `model` — applies to every turn (all-or-nothing with per-turn `model`)
+- `providerOptions` — top-level; merged with per-turn provider options
+- `apiKey`
+- `gapMs` — silence between turns when stitched, default 300
+- `maxConcurrency` — parallel turn requests when stitched, default 6
+- `maxRetries` — per-turn retries, default 2
+- `normalizeVolume` — RMS-level the output, default `true`
+- `volumeDbfs` — target loudness, default `-20`
+- `abortSignal`, `headers`, `timestamps`, `timestampProvider`
 
 Model placement is all-or-nothing: set `options.model` (applied to every turn) or set `model` on every turn, but not both. Mixing is rejected with `ConversationInputError`.
+
+Import the exact option / turn / result types from `@speech-sdk/core` / `@speech-sdk/core/types` when needed — the source is authoritative.
 
 ## Cross-Provider Mixing
 
@@ -70,57 +56,31 @@ Each turn can use a different provider/model:
 ```ts
 await generateConversation({
   turns: [
-    { model: "openai/gpt-4o-mini-tts",          voice: "alloy",                text: "Host here." },
-    { model: "elevenlabs/eleven_multilingual_v2", voice: "EXAVITQu4vr4xnSDxMaL", text: "Guest here." },
-    { model: "openai/gpt-4o-mini-tts",          voice: "alloy",                text: "Back to me." },
+    { model: "provider-a/model", voice: "voice-1", text: "Host here." },
+    { model: "provider-b/model", voice: "voice-2", text: "Guest here." },
+    { model: "provider-a/model", voice: "voice-1", text: "Back to me." },
   ],
 })
 ```
 
-Mixed-provider conversations always take the stitch path.
-
-## Dispatch: Fast, Native, Stitch
-
-SpeechSDK picks automatically from three paths:
-
-- **Fast path** — every turn uses the same `provider/model` string and a string voice. One HTTP request handles the whole conversation. Voice clones (`{url}` / `{audio}`) drop to stitch.
-- **Native** — one direct provider with `generateDialogue`, and the turns fit its `dialogueCapabilities` (`minVoices` / `maxVoices`). Provider returns a fully mixed file.
-- **Stitch** — everything else. Turns render in parallel via `generateSpeech`, forced into PCM/WAV via `getStitchOptions`, then concatenated with `gapMs` silence. Throws `StitchUnsupportedError` if any model can't expose a decodable PCM/WAV mode.
-
 ## Volume Normalization
 
-`normalizeVolume: true` (default) RMS-levels the stitched or native-dialogue output to `volumeDbfs` (default `-20` dBFS, the podcast voice standard). Two conversations generated independently can be played back-to-back without listener volume adjustments.
+`normalizeVolume: true` (default) RMS-levels the output to `volumeDbfs` (default `-20` dBFS, the podcast voice standard). Two conversations generated independently can be played back-to-back without listener volume adjustments.
 
 - Skipped if set to `false`.
-- On the native path, only applied when the provider exposes `getStitchOptions` (a decodable PCM/WAV mode). If it doesn't, a warning is surfaced and the raw provider mix passes through.
-- On the stitch path, always applied.
+- A warning is surfaced when normalization can't be applied (e.g. the chosen provider/model can't expose decodable PCM/WAV) and the raw mix passes through.
 
 ## Result
 
-Shape is `ConversationResult`, identical to `SpeechResult` except `timestamps` is narrowed to `ConversationWordTimestamp[]`:
+The result has the same top-level shape as `SpeechResult` (`audio`, `metadata`, `providerMetadata`, `warnings`, `timestamps`). The differences:
 
-```ts
-interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
-  audio: GeneratedAudioFile,         // concatenated / mixed audio
-  metadata: {
-    latencyMs, inputChars,
-    provider,                        // comma-joined when multi-provider
-    model,
-    audioDurationMs?,
-  },
-  providerMetadata?: {
-    turns: [...]                     // per-turn metadata on stitch path
-  } | ProviderNativeMetadata,
-  timestamps?: readonly ConversationWordTimestamp[],
-  warnings?: string[],
-}
+- `metadata.provider` / `metadata.model` are comma-joined when turns span multiple providers/models.
+- `providerMetadata.turns` carries per-turn metadata when the conversation is stitched.
+- Every word in `timestamps` includes `turnIndex` pointing back into the input `turns[]`.
 
-interface ConversationWordTimestamp extends WordTimestamp {
-  turnIndex: number   // index into the input turns[] array
-}
-```
+When the underlying transport renders all turns in one call, `turnIndex` is derived by text-matching the flat word stream against the input transcripts; if matching diverges, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. When turns are rendered separately and stitched, `turnIndex` is exact by construction.
 
-Every word carries a `turnIndex` pointing back into the input `turns[]`. On the stitch path the index is exact (each turn renders separately and timestamps are offset by cumulative duration + gap). On the fast and native-dialogue paths the index is derived by text-matching the flat word stream against the input transcripts; if matching diverges on the native path, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. Use the top-level `timestampsToTurns` helper to collapse the flat per-word list into one entry per turn — see `references/timestamps.md`.
+Use the top-level `timestampsToTurns` helper to collapse the flat per-word list into one entry per turn — see `references/timestamps.md`.
 
 ## Errors
 
@@ -129,13 +89,11 @@ From `@speech-sdk/core`:
 | Error                       | When                                                                                         |
 | --------------------------- | -------------------------------------------------------------------------------------------- |
 | `ConversationInputError`    | Invalid input (no turns, empty text, etc.)                                                   |
-| `DialogueConstraintError`   | Native path selected but provider can't satisfy turns (e.g. too many voices)                 |
-| `StitchUnsupportedError`    | Stitch path selected but a provider/model doesn't expose PCM/WAV — can't be locally mixed    |
-
-Also thrown (imported from `@speech-sdk/core`):
-
-- `NoSpeechGeneratedError` — final concatenated audio is empty
-- `ApiError` — per-turn 4xx. 5xx/network get retried up to `maxRetries`.
+| `DialogueConstraintError`   | Provider/model can't satisfy the requested turns (e.g. too many voices)                      |
+| `MixedDispatchError`        | Conversation mixes gateway (`provider/model` string) turns with direct-factory turns         |
+| `StitchUnsupportedError`    | A provider/model can't expose decodable PCM/WAV, so turns can't be locally mixed             |
+| `NoSpeechGeneratedError`    | Final concatenated audio is empty                                                            |
+| `ApiError`                  | Per-turn 4xx. 5xx/network get retried up to `maxRetries`.                                    |
 
 ## When to Use Which
 

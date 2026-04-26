@@ -1,32 +1,14 @@
 # Speech Result
 
-`generateSpeech` returns `SpeechResult`.
+`generateSpeech` returns a `SpeechResult`. Top-level fields:
 
-```ts
-interface SpeechResult {
-  readonly audio: GeneratedAudioFile
-  readonly metadata: SpeechMetadata
-  readonly timestamps?: readonly WordTimestamp[]   // populated when requested
-  readonly providerMetadata?: Record<string, unknown>
-  readonly warnings?: string[]
-}
+- `audio` — the generated audio file (`uint8Array`, lazy-computed `base64`, `mediaType`)
+- `metadata` — call metadata (latency, input chars, provider id, model id, etc.)
+- `timestamps` — populated only when `timestamps: "on"` is passed (see `timestamps.md`)
+- `providerMetadata` — populated only when the provider response payload includes extras
+- `warnings` — surfaced unsupported-feature warnings; `undefined` when there are none
 
-interface GeneratedAudioFile {
-  readonly uint8Array: Uint8Array   // raw audio bytes
-  readonly base64: string           // base64 (lazy-computed)
-  readonly mediaType: string        // e.g. "audio/mpeg"
-}
-
-interface WordTimestamp {
-  readonly text: string
-  readonly start: number            // seconds from start of audio
-  readonly end: number              // seconds
-}
-```
-
-`timestamps` is populated when `timestamps: "on"`. The SDK uses the provider's native alignment when available and falls back to STT otherwise. See `timestamps.md`.
-
-`base64` is lazy-computed from `uint8Array` on first access — no overhead if unused.
+Import the exact types from `@speech-sdk/core` / `@speech-sdk/core/types` when you need them — the source is authoritative.
 
 ## Writing to a File (Node)
 
@@ -36,6 +18,8 @@ import { writeFileSync } from "fs"
 const result = await generateSpeech({ ... })
 writeFileSync("output.mp3", result.audio.uint8Array)
 ```
+
+`base64` is lazy-computed from `uint8Array` on first access — no overhead if unused.
 
 ## Returning a Response (Edge/Server)
 
@@ -54,22 +38,7 @@ new Audio(URL.createObjectURL(blob)).play()
 
 ## Provider Metadata
 
-Some providers return extras (e.g. ElevenLabs `requestId` for stitching). `providerMetadata` is populated only when the response payload includes it; the SDK does not derive provider metadata from response headers.
-
-```ts
-const first = await generateSpeech({ model: "elevenlabs/eleven_multilingual_v2", ... })
-
-const second = await generateSpeech({
-  model: "elevenlabs/eleven_multilingual_v2",
-  text: "Second paragraph...",
-  voice: "voice-id",
-  providerOptions: {
-    previous_request_ids: [first.providerMetadata?.requestId],
-  },
-})
-```
-
-Shape varies by provider.
+`providerMetadata` shape varies by provider. Some providers attach extras (continuation IDs, language detection, etc.) that you can read back. Inspect it at runtime, or check `providers/<name>.md` for what a given provider returns.
 
 ## Warnings
 
@@ -78,5 +47,3 @@ Unsupported-feature warnings (e.g. stripped audio tags) surface here instead of 
 ```ts
 if (result.warnings) console.log(result.warnings)
 ```
-
-`undefined` when there are none.

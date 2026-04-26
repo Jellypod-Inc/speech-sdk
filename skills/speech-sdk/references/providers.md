@@ -1,6 +1,6 @@
 # All Providers
 
-SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"openai/gpt-4o-mini-tts"`) read `SPEECH_GATEWAY_API_KEY` and dispatch to the hosted backend. Provider factories (`createOpenAI()`, `createElevenLabs()`, etc.) call upstream providers directly with provider-specific keys. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. fal has no default and requires a `fal-ai/<model>` path.
+SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<prefix>/<model>"`) read `SPEECH_GATEWAY_API_KEY` and dispatch to the hosted backend. Provider factories (`create<Name>()`) call upstream providers directly with provider-specific keys. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. Some providers have no default and require an explicit model path.
 
 ## Provider Table
 
@@ -43,7 +43,7 @@ Capabilities are per-model — see each provider file in `providers/<name>.md` f
 **Timestamps column legend:**
 
 - **Native** — TTS response carries word alignment for at least some of this provider's models. `timestamps: "on"` uses the native path with no STT round-trip when the chosen model supports it.
-- **Via STT** — no native alignment. `timestamps: "on"` transcribes the synthesized audio via the default `timestampProvider` (OpenAI Whisper) or the caller's override (extra cost + latency).
+- **Via STT** — no native alignment. `timestamps: "on"` transcribes the synthesized audio via the SDK's default STT fallback or the caller's `timestampProvider` override (extra cost + latency).
 
 See `timestamps.md` for the full cascade and overrides.
 
@@ -54,29 +54,29 @@ import { generateSpeech } from "@speech-sdk/core"
 
 // provider/model string
 await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "<prefix>/<model>",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
 })
 
 // just the provider uses its default model
 await generateSpeech({
-  model: "elevenlabs",
+  model: "<prefix>",
   text: "Hello!",
-  voice: "EXAVITQu4vr4xnSDxMaL",
+  voice: "voice-id",
 })
 ```
 
 ## Provider Options
 
-Each provider accepts provider-specific parameters via `providerOptions`. These are forwarded directly using the provider API's own field names — no transformation.
+Each provider accepts provider-specific parameters via `providerOptions`. These are forwarded directly using the provider API's own field names — no transformation. See `providers/<name>.md` for the exact accepted shape per provider.
 
 ```ts
 await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "<prefix>/<model>",
   text: "Hello!",
-  voice: "alloy",
-  providerOptions: { speed: 1.2, response_format: "opus" },
+  voice: "voice-id",
+  providerOptions: { /* provider-specific fields */ },
 })
 ```
 
