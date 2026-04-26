@@ -1,0 +1,36 @@
+src/errors.ts
+  438cdbebfba5778c 85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "19cd498721b445ba92f64055169fee1437f3b048",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 630,
+      "overriden_lines": 0
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 74,
+      "overriden_lines": 0
+    }
+  }
+}
