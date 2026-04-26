@@ -138,16 +138,9 @@ export async function generateConversation<V extends Voice = Voice>(
     throw new NoSpeechGeneratedError();
   }
 
-  const providers = Array.from(
-    new Set(resolvedPerTurn.map((r) => r.provider.id))
-  );
-  const models = Array.from(new Set(resolvedPerTurn.map((r) => r.modelId)));
-
   const metadata: SpeechMetadata = {
     latencyMs: stitched.metadata.latencyMs,
     inputChars: stitched.metadata.inputChars,
-    provider: providers.length === 1 ? providers[0] : providers.join(","),
-    model: models.length === 1 ? models[0] : models.join(","),
     ...(stitched.metadata.audioDurationMs != null && {
       audioDurationMs: stitched.metadata.audioDurationMs,
     }),
@@ -237,13 +230,9 @@ async function runGateway<V extends Voice>(args: {
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
-  const models = Array.from(new Set(resolvedPerTurn.map((r) => r.modelId)));
-
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars,
-    provider: provider.id,
-    model: models.length === 1 ? models[0] : models.join(","),
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
@@ -384,8 +373,6 @@ async function runNative<V extends Voice>(args: {
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 

@@ -112,8 +112,6 @@ describe.skipIf(!hasKey)("fal e2e", () => {
       voice: "af_heart",
     });
 
-    expect(result.metadata.provider).toBe("fal-ai");
-    expect(result.metadata.model).toBe("kokoro/american-english");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

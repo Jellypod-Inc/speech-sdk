@@ -13,7 +13,5 @@ describe("Google Gemini native dialogue e2e", () => {
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     expect(result.audio.mediaType).toBe("audio/wav");
-    expect(result.metadata.provider).toBe("google");
-    expect(result.metadata.model).toBe("gemini-3.1-flash-tts-preview");
   });
 });

@@ -57,8 +57,6 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
       voice: "Zephyr",
     });
 
-    expect(result.metadata.provider).toBe("google");
-    expect(result.metadata.model).toBe("gemini-2.5-flash-preview-tts");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

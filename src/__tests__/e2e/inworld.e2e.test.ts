@@ -57,8 +57,6 @@ describe.skipIf(!hasKey)("Inworld e2e", () => {
       voice,
     });
 
-    expect(result.metadata.provider).toBe("inworld");
-    expect(result.metadata.model).toBe("inworld-tts-1.5-mini");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
   });

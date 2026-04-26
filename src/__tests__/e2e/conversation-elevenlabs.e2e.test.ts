@@ -17,7 +17,5 @@ describe("ElevenLabs v3 native dialogue e2e", () => {
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.audio.mediaType).toMatch(/^audio\//);
-    expect(result.metadata.provider).toBe("elevenlabs");
-    expect(result.metadata.model).toBe("eleven_v3");
   });
 });

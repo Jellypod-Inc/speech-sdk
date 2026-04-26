@@ -53,8 +53,6 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
       voice: "Kora",
     });
 
-    expect(result.metadata.provider).toBe("hume");
-    expect(result.metadata.model).toBe("octave-2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

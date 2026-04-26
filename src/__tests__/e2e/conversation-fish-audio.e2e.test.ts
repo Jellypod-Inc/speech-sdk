@@ -19,7 +19,5 @@ describe.skipIf(!hasKey)("Fish Audio S2-Pro native dialogue e2e", () => {
       ],
     });
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    expect(result.metadata.provider).toBe("fish-audio");
-    expect(result.metadata.model).toBe("s2-pro");
   });
 });

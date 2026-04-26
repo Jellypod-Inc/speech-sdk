@@ -51,8 +51,6 @@ describe("generateConversation", () => {
     });
     expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
     expect(result.audio.uint8Array).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.metadata.provider).toBe("native");
-    expect(result.metadata.model).toBe("m");
     expect(result.metadata.inputChars).toBe("Hi.".length + "Hello.".length);
     // Native provider lacks getStitchOptions, so normalization can't run and emits a warning.
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
@@ -204,8 +202,6 @@ describe("generateConversation", () => {
 
     expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
     expect(result.audio.mediaType).toBe("audio/wav");
-    expect(result.metadata.provider).toBe("speech-gateway");
-    expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
     // Per-turn attribution is reconstructed from caller input; server doesn't return it on the wire.
     expect(result.providerMetadata).toEqual({
       turns: [
@@ -246,7 +242,6 @@ describe("generateConversation", () => {
         { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
         { model: "openai/gpt-4o-mini-tts", voice: "nova", text: "Hello!" },
       ]);
-      expect(result.metadata.provider).toBe("speech-gateway");
     } finally {
       globalThis.fetch = savedFetch;
     }

@@ -70,8 +70,6 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
     // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
     expect(result.audio.mediaType).toMatch(/^audio\//);
-    expect(result.metadata.provider).toBe("speech-gateway");
-    expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
 
     expect(result.timestamps).toBeUndefined();
 
@@ -108,8 +106,6 @@ describe.skipIf(!hasKey)("generateConversation via gateway e2e", () => {
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    expect(result.metadata.provider).toBe("speech-gateway");
-    expect(result.metadata.model).toBe("openai/gpt-4o-mini-tts");
 
     expect(result.timestamps).toBeDefined();
     const words = result.timestamps ?? [];

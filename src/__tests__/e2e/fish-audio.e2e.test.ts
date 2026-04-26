@@ -55,8 +55,6 @@ describe.skipIf(!hasKey)("Fish Audio e2e", () => {
         process.env.FISH_AUDIO_VOICE_ID ?? "59e9dc1cb20c452584788a2690c80970",
     });
 
-    expect(result.metadata.provider).toBe("fish-audio");
-    expect(result.metadata.model).toBe("s2-pro");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

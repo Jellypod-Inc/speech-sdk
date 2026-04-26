@@ -53,8 +53,6 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
       voice: "en-US-natalie",
     });
 
-    expect(result.metadata.provider).toBe("murf");
-    expect(result.metadata.model).toBe("GEN2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

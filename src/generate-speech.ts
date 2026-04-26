@@ -178,8 +178,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: processedText.length,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 

@@ -24,7 +24,5 @@ describe("Conversation stitch e2e — cross-provider", () => {
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(44);
     // Mixed-provider metadata is comma-joined.
-    expect(result.metadata.provider).toContain("openai");
-    expect(result.metadata.provider).toContain("elevenlabs");
   });
 });

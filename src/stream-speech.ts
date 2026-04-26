@@ -103,8 +103,6 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
     latencyMs: ttfbMs,
     ttfbMs,
     inputChars: processedText.length,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(result.audioDurationMs != null && {
       audioDurationMs: result.audioDurationMs,
     }),

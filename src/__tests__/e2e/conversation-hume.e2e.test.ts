@@ -19,7 +19,5 @@ describe.skipIf(!hasKey)("Hume Octave native dialogue e2e", () => {
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-    expect(result.metadata.provider).toBe("hume");
-    expect(result.metadata.model).toBe("octave-2");
   });
 });

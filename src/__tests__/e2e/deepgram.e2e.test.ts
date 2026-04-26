@@ -51,8 +51,6 @@ describe.skipIf(!hasKey)("Deepgram e2e", () => {
       voice: "thalia-en",
     });
 
-    expect(result.metadata.provider).toBe("deepgram");
-    expect(result.metadata.model).toBe("aura-2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

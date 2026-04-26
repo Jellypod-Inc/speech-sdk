@@ -21,7 +21,5 @@ describe("Conversation stitch e2e — OpenAI (no native dialogue)", () => {
         "And I am Shimmer. Nice to meet you!".length +
         "Likewise!".length
     );
-    expect(result.metadata.provider).toBe("openai");
-    expect(result.metadata.model).toBe("tts-1");
   });
 });

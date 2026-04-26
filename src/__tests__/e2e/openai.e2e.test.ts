@@ -106,8 +106,6 @@ describe("OpenAI e2e", () => {
       voice: VOICE,
     });
 
-    expect(result.metadata.provider).toBe("openai");
-    expect(result.metadata.model).toBe("tts-1");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -122,8 +120,6 @@ describe("OpenAI e2e", () => {
     });
     await collectStreamAndSave(result);
 
-    expect(result.metadata.provider).toBe("openai");
-    expect(result.metadata.model).toBe("tts-1");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.ttfbMs).toBeGreaterThanOrEqual(0);
