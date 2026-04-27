@@ -248,4 +248,17 @@ describe("attributeTimestamps (dispatcher)", () => {
     expect(result.timestamps).toBeUndefined();
     expect(result.warnings.some((w) => w.includes("unavailable"))).toBe(true);
   });
+
+  it("returns no timestamps when turnTexts is empty", () => {
+    const result = attributeTimestamps({
+      timestamps: [
+        { text: "hello", start: 0, end: 0.1 },
+        { text: "world", start: 0.1, end: 0.2 },
+      ],
+      turnTexts: [],
+      silenceGaps: [],
+    });
+    expect(result.timestamps).toBeUndefined();
+    expect(result.warnings.some((w) => w.includes("unavailable"))).toBe(true);
+  });
 });

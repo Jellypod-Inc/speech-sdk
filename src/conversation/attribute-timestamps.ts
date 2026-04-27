@@ -313,7 +313,7 @@ export function attributeTimestamps(args: {
 }): AttributeTimestampsResult {
   const { timestamps, turnTexts, silenceGaps } = args;
   const observed = timestamps.filter((w) => normalizeWord(w.text).length > 0);
-  if (observed.length === 0) {
+  if (observed.length === 0 || turnTexts.length === 0) {
     return {
       timestamps: undefined,
       warnings: [TIMESTAMPS_UNAVAILABLE_WARNING],
