@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "tidepool": {
-      "command": "tidepool-claude-code",
-      "args": ["--agent", "impala"]
-    }
-  }
-}
