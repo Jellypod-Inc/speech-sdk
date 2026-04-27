@@ -277,6 +277,8 @@ Supported explicit formats are `wav`, `mp3`, and `pcm`.
 For direct providers, explicit output conversion requires a provider with a decodable PCM/WAV mode.
 For gateway models, the SDK forwards `output` to the gateway API unchanged.
 
+MP3 encoding uses [`@breezystack/lamejs`](https://www.npmjs.com/package/@breezystack/lamejs) (LGPL-3.0-or-later), loaded dynamically only when MP3 output is requested. See [`NOTICE`](./NOTICE) for attribution and license details.
+
 ## Audio tags
 
 Bracket syntax `[tag]` adds expressive cues. Each provider handles tags natively where supported, maps them to its closest equivalent, or strips them and surfaces a warning in `result.warnings`.
