@@ -255,6 +255,30 @@ result.audio.mediaType;  // "audio/wav" — re-encoded after normalization
 
 `generateConversation` always normalizes; override the target with `volumeDbfs`. A warning is surfaced (and the raw mix passes through) if the provider has no decodable PCM/WAV mode.
 
+### Output format
+
+By default, `generateSpeech` preserves the provider or gateway response format.
+`generateConversation` returns WAV when the SDK stitches direct-provider audio.
+
+Pass `output` to request a specific final format:
+
+```ts
+const result = await generateSpeech({
+  model: createOpenAI()('tts-1'),
+  voice: 'alloy',
+  text: 'Hello',
+  output: { format: 'mp3', bitrate: 96 },
+});
+
+result.audio.mediaType; // "audio/mpeg"
+```
+
+Supported explicit formats are `wav`, `mp3`, and `pcm`.
+For direct providers, explicit output conversion requires a provider with a decodable PCM/WAV mode.
+For gateway models, the SDK forwards `output` to the gateway API unchanged.
+
+MP3 encoding uses [`@breezystack/lamejs`](https://www.npmjs.com/package/@breezystack/lamejs) (LGPL-3.0-or-later), loaded dynamically only when MP3 output is requested. See [`NOTICE`](./NOTICE) for attribution and license details.
+
 ## Audio tags
 
 Bracket syntax `[tag]` adds expressive cues. Each provider handles tags natively where supported, maps them to its closest equivalent, or strips them and surfaces a warning in `result.warnings`.

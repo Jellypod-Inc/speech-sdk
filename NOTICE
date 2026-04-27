@@ -1,0 +1,27 @@
+@speech-sdk/core
+Copyright (c) Jellypod, Inc.
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It uses the following third-party software with separate license terms:
+
+================================================================================
+@breezystack/lamejs (LGPL-3.0-or-later)
+================================================================================
+
+MP3 encoding for `output: { format: "mp3" }` is performed by `@breezystack/lamejs`,
+a JavaScript port of the LAME MP3 encoder.
+
+  - Package:  https://www.npmjs.com/package/@breezystack/lamejs
+  - LAME:     https://lame.sourceforge.net/
+  - License:  GNU Lesser General Public License v3.0 or later
+              https://www.gnu.org/licenses/lgpl-3.0.html
+
+`@speech-sdk/core` does not bundle, statically link, or modify lamejs. It is
+declared as a regular npm dependency and loaded at runtime via dynamic
+`import()` only when the caller requests MP3 output. End users receive lamejs
+as a separate package in their `node_modules` tree and can substitute or
+upgrade it via standard npm overrides.
+
+If you modify the lamejs source you must release those modifications under the
+LGPL, per the upstream license terms.

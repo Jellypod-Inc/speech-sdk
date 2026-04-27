@@ -1,5 +1,11 @@
+import {
+  type AudioOutput,
+  applyOptionalOutputConversion,
+} from "../audio-output.js";
+import { withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
+import type { SpeechMetadata } from "../metadata.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
@@ -18,6 +24,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
   readonly maxRetries: number;
+  readonly output?: AudioOutput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -37,6 +44,7 @@ interface StitchOutput {
     readonly latencyMs: number;
     readonly audioDurationMs?: number;
   };
+  readonly metadataPerTurn: readonly SpeechMetadata[];
   readonly providerMetadataPerTurn: readonly (
     | Record<string, unknown>
     | undefined
@@ -87,17 +95,22 @@ export async function runStitch<V extends Voice>(
         ...turn.providerOptions,
         ...stitchOpts.providerOptions,
       };
-      const result = await generateSpeech({
-        model: resolved,
-        text: turn.text,
-        voice: turn.voice,
-        apiKey: input.apiKey,
-        providerOptions: mergedProviderOptions,
-        maxRetries: input.maxRetries,
-        abortSignal: input.abortSignal,
-        headers: input.headers,
-        timestamps: input.timestamps,
-      });
+      let result: Awaited<ReturnType<typeof generateSpeech>>;
+      try {
+        result = await generateSpeech({
+          model: resolved,
+          text: turn.text,
+          voice: turn.voice,
+          apiKey: input.apiKey,
+          providerOptions: mergedProviderOptions,
+          maxRetries: input.maxRetries,
+          abortSignal: input.abortSignal,
+          headers: input.headers,
+          timestamps: input.timestamps,
+        });
+      } catch (err) {
+        throw withTurnIndex(err, i);
+      }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(
         result.audio.uint8Array,
@@ -118,6 +131,12 @@ export async function runStitch<V extends Voice>(
     targetSampleRate: TARGET_SAMPLE_RATE,
   });
 
+  const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
+    audio,
+    mediaType: "audio/wav",
+    output: input.output,
+  });
+
   const totalSamples =
     perTurn.reduce(
       (n, p) =>
@@ -134,6 +153,7 @@ export async function runStitch<V extends Voice>(
   );
 
   const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
+  const metadataPerTurn = perTurn.map((p) => p.result.metadata);
   const providerMetadataPerTurn = perTurn.map((p) => p.result.providerMetadata);
 
   // Use source duration (pre-resample) so offsets match what the per-turn STT/native saw.
@@ -187,13 +207,14 @@ export async function runStitch<V extends Voice>(
   }
 
   return {
-    audio,
-    mediaType: "audio/wav",
+    audio: finalAudio,
+    mediaType,
     metadata: {
       inputChars: input.turns.reduce((n, t) => n + t.text.length, 0),
       latencyMs: Math.round(performance.now() - start),
       audioDurationMs,
     },
+    metadataPerTurn,
     providerMetadataPerTurn,
     timestamps,
     warnings:
