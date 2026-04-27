@@ -1,0 +1,55 @@
+src/audio-duration.ts
+  b2eb2def7b440f3e 19,24
+src/providers/cartesia/index.ts
+  b2eb2def7b440f3e 398
+src/providers/deepgram/index.ts
+  b2eb2def7b440f3e 155
+src/providers/xai/index.ts
+  b2eb2def7b440f3e 192
+src/providers/murf/index.ts
+  b2eb2def7b440f3e 224
+src/providers/elevenlabs/index.ts
+  b2eb2def7b440f3e 428,435
+src/providers/fal/index.ts
+  b2eb2def7b440f3e 160
+src/providers/google/index.ts
+  b2eb2def7b440f3e 328,336
+src/audio-utils.ts
+  b2eb2def7b440f3e 23
+src/providers/inworld/index.ts
+  b2eb2def7b440f3e 254
+src/providers/resemble/index.ts
+  b2eb2def7b440f3e 198
+src/providers/mistral/index.ts
+  b2eb2def7b440f3e 224
+src/conversation/attribute-timestamps.ts
+  b2eb2def7b440f3e 240,250,281,287,291
+src/generate-speech.ts
+  b2eb2def7b440f3e 206,215
+src/providers/hume/index.ts
+  b2eb2def7b440f3e 88,270,278
+src/providers/openai/index.ts
+  b2eb2def7b440f3e 302
+src/providers/fish-audio/index.ts
+  b2eb2def7b440f3e 167,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7a78dac3f4b7c6a7f497f334cfec5e3b86e19b6f",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 28,
+      "accepted_lines": 784,
+      "overriden_lines": 0
+    }
+  }
+}
