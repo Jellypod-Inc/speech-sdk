@@ -104,4 +104,17 @@ describe("tier2TextMatch", () => {
     });
     expect(result.budgetExceeded).toBe(true);
   });
+
+  it("returns empty timestamps with budgetExceeded when turnTexts is empty", () => {
+    const result = tier2TextMatch({
+      timestamps: [
+        { text: "hello", start: 0, end: 0.1 },
+        { text: "world", start: 0.1, end: 0.2 },
+      ],
+      turnTexts: [],
+    });
+    expect(result.timestamps).toEqual([]);
+    expect(result.budgetExceeded).toBe(true);
+    expect(result.mismatches).toBe(0);
+  });
 });

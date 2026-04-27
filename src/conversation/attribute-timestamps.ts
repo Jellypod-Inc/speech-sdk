@@ -74,6 +74,13 @@ export function tier2TextMatch(args: {
   turnTexts: readonly string[];
 }): Tier2Result {
   const { timestamps, turnTexts } = args;
+  if (turnTexts.length === 0) {
+    return {
+      timestamps: [],
+      mismatches: 0,
+      budgetExceeded: timestamps.some((t) => normalizeWord(t.text).length > 0),
+    };
+  }
   const turnTokens = turnTexts.map((t) => tokenizeTurn(t));
   const totalExpected = turnTokens.reduce((n, t) => n + t.length, 0);
 
