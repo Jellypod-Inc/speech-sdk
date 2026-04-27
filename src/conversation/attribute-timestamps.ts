@@ -2,6 +2,8 @@ import type {
   ConversationWordTimestamp,
   WordTimestamp,
 } from "../timestamps.js";
+import { distributeWordsAcrossTurns } from "./proportional-fill.js";
+import type { SilenceGap } from "./silence-detection.js";
 
 const NORMALIZE_LEAD_RE = /^[^\p{L}\p{N}'-]+/u;
 const NORMALIZE_TRAIL_RE = /[^\p{L}\p{N}'-]+$/u;
@@ -211,5 +213,141 @@ export function tier2TextMatch(args: {
     timestamps: out,
     mismatches: totalMismatches,
     budgetExceeded,
+  };
+}
+
+const FALLBACK_TEXT_MATCH_WARNING =
+  "speech-sdk: timestamp attribution fell back to text-matching (silence boundaries unclear)";
+const FALLBACK_PROPORTIONAL_WARNING =
+  "speech-sdk: timestamp attribution fell back to proportional distribution; treat per-word turnIndex as approximate.";
+const TIMESTAMPS_UNAVAILABLE_WARNING =
+  "speech-sdk: timestamp attribution unavailable; provider/STT returned no word timestamps.";
+const MIN_TIER1_TOKEN_RATIO = 0.35;
+const MAX_TIER1_TOKEN_RATIO = 2.5;
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: silence-anchored partition is a single algorithm — splitting hurts readability more than the score helps
+export function tier1SilenceAnchored(args: {
+  timestamps: readonly WordTimestamp[];
+  gaps: readonly SilenceGap[];
+  turnTexts: readonly string[];
+}): readonly ConversationWordTimestamp[] | undefined {
+  const { timestamps, gaps, turnTexts } = args;
+  const turnCount = turnTexts.length;
+  if (turnCount <= 1) {
+    return timestamps.map((w) => ({ ...w, turnIndex: 0 }));
+  }
+  if (timestamps.length === 0) {
+    return undefined;
+  }
+
+  const firstWordStartSec = timestamps[0]?.start ?? 0;
+  const lastWordEndSec = timestamps.at(-1)?.end ?? 0;
+  const candidateGaps = gaps.filter((g) => {
+    const midpointSec = (g.startMs + g.endMs) / 2 / 1000;
+    return midpointSec > firstWordStartSec && midpointSec < lastWordEndSec;
+  });
+  if (candidateGaps.length < turnCount - 1) {
+    return undefined;
+  }
+  const selectedGaps = [...candidateGaps]
+    .sort((a, b) => b.durationMs - a.durationMs)
+    .slice(0, turnCount - 1)
+    .sort((a, b) => a.startMs - b.startMs);
+
+  // Boundary times in seconds (midpoint of each gap).
+  const boundariesSec = selectedGaps.map(
+    (g) => (g.startMs + g.endMs) / 2 / 1000
+  );
+
+  // Partition words by which segment each word's midpoint falls into.
+  const partitions: WordTimestamp[][] = Array.from(
+    { length: turnCount },
+    () => []
+  );
+  for (const w of timestamps) {
+    const midpoint = (w.start + w.end) / 2;
+    let turnIndex = 0;
+    while (
+      turnIndex < boundariesSec.length &&
+      midpoint >= (boundariesSec[turnIndex] ?? Number.POSITIVE_INFINITY)
+    ) {
+      turnIndex++;
+    }
+    partitions[turnIndex]?.push(w);
+  }
+
+  // Validate: no partition empty.
+  if (partitions.some((p) => p.length === 0)) {
+    return undefined;
+  }
+  const expectedCounts = turnTexts.map((t) => tokenizeTurn(t).length);
+  for (let i = 0; i < partitions.length; i++) {
+    const expected = expectedCounts[i] ?? 0;
+    if (expected === 0) {
+      return undefined;
+    }
+    const ratio = (partitions[i]?.length ?? 0) / expected;
+    if (ratio < MIN_TIER1_TOKEN_RATIO || ratio > MAX_TIER1_TOKEN_RATIO) {
+      return undefined;
+    }
+  }
+
+  const out: ConversationWordTimestamp[] = [];
+  for (let i = 0; i < partitions.length; i++) {
+    for (const w of partitions[i] ?? []) {
+      out.push({ ...w, turnIndex: i });
+    }
+  }
+  return out;
+}
+
+export interface AttributeTimestampsResult {
+  readonly timestamps?: readonly ConversationWordTimestamp[];
+  readonly warnings: readonly string[];
+}
+
+export function attributeTimestamps(args: {
+  timestamps: readonly WordTimestamp[];
+  turnTexts: readonly string[];
+  silenceGaps: readonly SilenceGap[];
+}): AttributeTimestampsResult {
+  const { timestamps, turnTexts, silenceGaps } = args;
+  const observed = timestamps.filter((w) => normalizeWord(w.text).length > 0);
+  if (observed.length === 0) {
+    return {
+      timestamps: undefined,
+      warnings: [TIMESTAMPS_UNAVAILABLE_WARNING],
+    };
+  }
+
+  // Tier 1: silence-anchored partitioning.
+  const tier1 = tier1SilenceAnchored({
+    timestamps: observed,
+    gaps: silenceGaps,
+    turnTexts,
+  });
+  if (tier1) {
+    return { timestamps: tier1, warnings: [] };
+  }
+
+  // Tier 2: improved text-match.
+  const tier2 = tier2TextMatch({ timestamps: observed, turnTexts });
+  if (!tier2.budgetExceeded) {
+    return {
+      timestamps: tier2.timestamps,
+      warnings: [
+        `${FALLBACK_TEXT_MATCH_WARNING}; ${tier2.mismatches} word(s) tolerated as mismatches.`,
+      ],
+    };
+  }
+
+  // Tier 3: proportional distribution.
+  const expectedTokensPerTurn = turnTexts.map(
+    (t) => t.split(WHITESPACE_SPLIT_RE).filter((s) => s.length > 0).length
+  );
+  const tier3 = distributeWordsAcrossTurns(observed, expectedTokensPerTurn);
+  return {
+    timestamps: tier3,
+    warnings: [FALLBACK_PROPORTIONAL_WARNING],
   };
 }
