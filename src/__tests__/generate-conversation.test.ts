@@ -52,6 +52,8 @@ describe("generateConversation", () => {
     expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
     expect(result.audio.uint8Array).toEqual(new Uint8Array([1, 2, 3]));
     expect(result.metadata.inputChars).toBe("Hi.".length + "Hello.".length);
+    // Native dialogue path has no per-turn boundaries — perTurn is undefined.
+    expect(result.metadata.perTurn).toBeUndefined();
     // Native provider lacks getStitchOptions, so normalization can't run and emits a warning.
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
   });
@@ -110,6 +112,17 @@ describe("generateConversation", () => {
     });
     expect(provider.generate).toHaveBeenCalledTimes(2);
     expect(result.audio.mediaType).toBe("audio/wav");
+    expect(result.metadata.perTurn).toBeDefined();
+    expect(result.metadata.perTurn).toHaveLength(2);
+    const sumChars = (result.metadata.perTurn ?? []).reduce(
+      (n, m) => n + m.inputChars,
+      0
+    );
+    expect(sumChars).toBe(result.metadata.inputChars);
+    for (const m of result.metadata.perTurn ?? []) {
+      expect(typeof m.latencyMs).toBe("number");
+      expect(m.latencyMs).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it("rejects invalid inputs before any provider call", async () => {
