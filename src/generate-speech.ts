@@ -38,7 +38,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
+  // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError (volumeDbfs) or OutputConversionUnsupportedError (output); gateway forwards both server-side.
   volumeDbfs?: number;
   timestamps?: boolean;
   output?: AudioOutput;
@@ -101,11 +101,10 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const result = await pRetry(
     () =>
-      isSpeechGatewayModel(resolved)
+      isGateway
         ? resolved.provider.generate({
             modelId: resolved.modelId,
             text: processedText,
-            // Gateway inline mode only accepts string voice IDs.
             voice: voice as unknown as string,
             providerOptions,
             abortSignal,
@@ -143,33 +142,33 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     throw new NoSpeechGeneratedError();
   }
 
-  const { bytes: outputBytes, mediaType: outputMediaType } =
-    await applyLocalAudioPostProcessing({
-      audio: audioData,
-      mediaType: result.mediaType,
-      isGateway,
-      volumeDbfs,
-      output: options.output,
-    });
+  const { bytes: outputBytes, mediaType: outputMediaType } = isGateway
+    ? { bytes: audioData, mediaType: result.mediaType }
+    : await applyLocalAudioPostProcessing({
+        audio: audioData,
+        mediaType: result.mediaType,
+        volumeDbfs,
+        output: options.output,
+      });
 
   const audio = new DefaultGeneratedAudioFile({
     data: outputBytes,
     mediaType: outputMediaType,
   });
 
-  const audioDurationMs =
-    (await computeAudioDuration(audio.uint8Array, outputMediaType)) ??
-    result.audioDurationMs;
-
-  const resolvedTimestamps = await resolveTimestamps({
-    timestamps,
-    modelIdentifier,
-    resolved,
-    resultTimestamps: result.timestamps,
-    audio: audio.uint8Array,
-    mediaType: outputMediaType,
-    abortSignal,
-  });
+  const [computedDuration, resolvedTimestamps] = await Promise.all([
+    computeAudioDuration(audio.uint8Array, outputMediaType),
+    resolveTimestamps({
+      timestamps,
+      modelIdentifier,
+      resolved,
+      resultTimestamps: result.timestamps,
+      audio: audio.uint8Array,
+      mediaType: outputMediaType,
+      abortSignal,
+    }),
+  ]);
+  const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
   const metadata: SpeechMetadata = {
     latencyMs,
@@ -261,14 +260,13 @@ function resolveProviderOptionsForLocalDecoding(args: {
 async function applyLocalAudioPostProcessing(args: {
   audio: string | Uint8Array;
   mediaType: string;
-  isGateway: boolean;
   volumeDbfs: number | undefined;
   output: AudioOutput | undefined;
 }): Promise<{ bytes: string | Uint8Array; mediaType: string }> {
   let bytes: string | Uint8Array = args.audio;
   let mediaType = args.mediaType;
 
-  if (args.volumeDbfs != null && !args.isGateway) {
+  if (args.volumeDbfs != null) {
     const { adjustVolume } = await import("./volume-adjust.js");
     bytes = await adjustVolume({
       audio: args.audio,
@@ -278,7 +276,7 @@ async function applyLocalAudioPostProcessing(args: {
     mediaType = "audio/wav";
   }
 
-  if (args.output != null && !args.isGateway) {
+  if (args.output != null) {
     const decoded = new DefaultGeneratedAudioFile({
       data: bytes,
       mediaType,
