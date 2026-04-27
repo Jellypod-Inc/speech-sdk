@@ -1,11 +1,24 @@
+<div align="center">
+
+<img src="https://github.com/user-attachments/assets/42d9b528-e507-4162-8120-338bb0c92650" alt="Speech SDK" width="140" />
+
 # Speech SDK
 
-[![npm version](https://img.shields.io/npm/v/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
-[![npm downloads](https://img.shields.io/npm/dm/@speech-sdk/core)](https://www.npmjs.com/package/@speech-sdk/core)
-[![license](https://img.shields.io/npm/l/@speech-sdk/core)](https://github.com/Jellypod-Inc/speech-sdk/blob/main/LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/xcTQMU3nCV)
+**Text-to-speech across 13 providers, one API.**
 
-A lightweight, provider-agnostic TypeScript SDK for text-to-speech. One API, 13 providers, zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
+A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
+
+[![npm version](https://img.shields.io/npm/v/@speech-sdk/core?style=flat-square)](https://www.npmjs.com/package/@speech-sdk/core)
+[![npm downloads](https://img.shields.io/npm/dm/@speech-sdk/core?style=flat-square)](https://www.npmjs.com/package/@speech-sdk/core)
+[![license](https://img.shields.io/npm/l/@speech-sdk/core?style=flat-square)](https://github.com/Jellypod-Inc/speech-sdk/blob/main/LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/xcTQMU3nCV)
+[![Stars](https://img.shields.io/github/stars/Jellypod-Inc/speech-sdk?style=flat-square&logo=github&label=stars)](https://github.com/Jellypod-Inc/speech-sdk/stargazers)
+
+**[Quick start](#quick-start)** · **[Providers](#supported-providers)** · **[Streaming](#streaming)** · **[Multi-Speaker Conversations](#conversations)** · **[Timestamps](#timestamps)**
+
+</div>
+
+<br />
 
 <img width="1200" height="630" alt="Speech SDK" src="https://github.com/user-attachments/assets/b90c0235-9405-4939-bffa-75fc82be5afb" />
 
@@ -19,13 +32,6 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 - **Word-level timestamps** — `timestamps: true` returns alignment, using the provider's native data or falling back to STT.
 - **Volume normalization** — RMS-level outputs to an absolute loudness target.
 - **Audio tags & voice cloning** — bracket cues like `[laugh]` and reference-audio cloning where supported.
-
-## Contents
-
-- [Install](#install) · [Quick start](#quick-start) · [Supported providers](#supported-providers)
-- [Streaming](#streaming) · [Conversations](#conversations) · [Timestamps](#timestamps)
-- [Volume normalization](#volume-normalization) · [Audio tags](#audio-tags) · [Voice cloning](#voice-cloning)
-- [Custom configuration](#custom-configuration) · [Public imports](#public-imports) · [API reference](#api-reference) · [Error handling](#error-handling) · [Development](#development)
 
 ## Install
 

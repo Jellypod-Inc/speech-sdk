@@ -35,7 +35,7 @@ jobs:
       - run: pnpm test
 
   e2e:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false # disabled: e2e tests hit real provider APIs
     runs-on: ubuntu-latest
     needs: unit
     steps:

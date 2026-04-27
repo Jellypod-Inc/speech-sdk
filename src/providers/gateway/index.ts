@@ -220,9 +220,13 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   }
 
   // Server handles stitching/normalization/alignment so callers never need their own STT key.
+  // Pick one of two wire shapes — mutually exclusive at the request level:
+  //   1. shared model    — `modelId` set, every turn omits `model`
+  //   2. per-turn model  — every turn declares its own `model`, `modelId` omitted (one conversation across providers)
   async generateConversation(options: {
+    modelId?: string;
     turns: readonly {
-      model: string;
+      model?: string;
       voice: string;
       text: string;
       providerOptions?: Record<string, unknown>;
@@ -250,17 +254,26 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         'speech-gateway/conversation: every turn must specify a "voice" when routing through the speech gateway.'
       );
     }
-    if (!options.turns.every((t) => t.model)) {
+
+    const sharedModel = options.modelId;
+    const anyTurnModel = options.turns.some((t) => t.model != null);
+    if (sharedModel != null && anyTurnModel) {
       throw new GatewayInputError(
-        'speech-gateway/conversation: every turn must specify a "model" when routing through the speech gateway.'
+        "speech-gateway/conversation: pass either a shared `modelId` or per-turn `model` on every turn — not both."
+      );
+    }
+    if (sharedModel == null && !options.turns.every((t) => t.model)) {
+      throw new GatewayInputError(
+        'speech-gateway/conversation: when no shared `modelId` is set, every turn must declare its own "model".'
       );
     }
 
-    // Per-spec: per-turn `model` on the wire (no top-level), and gapMs/volumeDbfs sent explicitly each call.
+    // gapMs/volumeDbfs sent explicitly each call (don't rely on server defaults).
     const body: Record<string, unknown> = {
       mode: "conversation",
+      ...(sharedModel != null && { model: sharedModel }),
       turns: options.turns.map((t) => ({
-        model: t.model,
+        ...(t.model != null && { model: t.model }),
         voice: t.voice,
         text: t.text,
         ...(t.providerOptions && { providerOptions: t.providerOptions }),

@@ -370,7 +370,7 @@ describe("SpeechGatewayProvider", () => {
 });
 
 describe("SpeechGatewayProvider.generateConversation", () => {
-  it("posts conversation payload with mode, per-turn model, gap/volume defaults; reads raw mixed audio", async () => {
+  it("shared shape: top-level `model`, turns omit `model`", async () => {
     const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
     const provider = new SpeechGatewayProvider({
       apiKey: "gw-key",
@@ -378,18 +378,47 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     });
 
     const result = await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+    });
+
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({
+      mode: "conversation",
+      model: "openai/gpt-4o-mini-tts",
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      gapMs: 300,
+      volumeDbfs: -20,
+    });
+
+    expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));
+    expect(result.mediaType).toBe("audio/wav");
+  });
+
+  it("per-turn shape: turns carry `model`, no top-level model", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generateConversation({
       turns: [
         { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
         { model: "elevenlabs/eleven_v3", voice: "rachel", text: "Hello!" },
       ],
     });
 
-    const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
-    expect(init.headers.Authorization).toBe("Bearer gw-key");
-    expect(init.headers["Content-Type"]).toBe("application/json");
-
-    // Per-turn `model` on the wire, no top-level model; timestamps live on a separate URL.
+    const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       mode: "conversation",
@@ -400,9 +429,42 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       gapMs: 300,
       volumeDbfs: -20,
     });
+  });
 
-    expect(result.audio).toEqual(new Uint8Array([65, 66, 67]));
-    expect(result.mediaType).toBe("audio/wav");
+  it("rejects mixing top-level `modelId` with per-turn `model`", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        modelId: "openai/gpt-4o-mini-tts",
+        turns: [
+          { model: "elevenlabs/eleven_v3", voice: "rachel", text: "Hi." },
+        ],
+      })
+    ).rejects.toBeInstanceOf(GatewayInputError);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("rejects per-turn shape when any turn omits `model`", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(
+      provider.generateConversation({
+        turns: [
+          { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
+          { voice: "nova", text: "Hello!" },
+        ],
+      })
+    ).rejects.toBeInstanceOf(GatewayInputError);
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it("surfaces problem+json `code` on error responses", async () => {

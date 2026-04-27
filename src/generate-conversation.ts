@@ -162,6 +162,12 @@ async function runGateway<V extends Voice>(args: {
 
   const includeTimestamps = options.timestamps ?? false;
 
+  // Pick wire shape: shared model when every turn resolved to the same modelId
+  // (covers both `options.model` and the case where every turn happened to
+  // resolve identically); per-turn model when they diverge.
+  const firstModelId = resolvedPerTurn[0].modelId;
+  const allSameModel = resolvedPerTurn.every((r) => r.modelId === firstModelId);
+
   // Object-shaped voices aren't supported on the gateway conversation path.
   const wireTurns = options.turns.map((t, i) => {
     if (typeof t.voice !== "string") {
@@ -170,7 +176,7 @@ async function runGateway<V extends Voice>(args: {
       );
     }
     return {
-      model: resolvedPerTurn[i].modelId,
+      ...(allSameModel ? {} : { model: resolvedPerTurn[i].modelId }),
       voice: t.voice,
       text: t.text,
       ...(t.providerOptions && { providerOptions: t.providerOptions }),
@@ -180,6 +186,7 @@ async function runGateway<V extends Voice>(args: {
   const result = await pRetry(
     () =>
       provider.generateConversation({
+        ...(allSameModel && { modelId: firstModelId }),
         turns: wireTurns,
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,

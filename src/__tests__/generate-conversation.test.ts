@@ -193,10 +193,12 @@ describe("generateConversation", () => {
     expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
     const body = JSON.parse(init.body);
     expect(body.mode).toBe("conversation");
-    expect(body.model).toBeUndefined();
+    // Shared shape — every turn resolves to the same model, so the wire carries
+    // a top-level `model` and turns omit it.
+    expect(body.model).toBe("openai/gpt-4o-mini-tts");
     expect(body.turns).toEqual([
-      { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
-      { model: "openai/gpt-4o-mini-tts", voice: "nova", text: "Hello!" },
+      { voice: "alloy", text: "Hi there." },
+      { voice: "nova", text: "Hello!" },
     ]);
     expect(body.timestamps).toBeUndefined();
 
@@ -231,10 +233,10 @@ describe("generateConversation", () => {
       const [url, init] = fetchFn.mock.calls[0];
       expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
       const body = JSON.parse(init.body);
-      expect(body.model).toBeUndefined();
+      expect(body.model).toBe("openai/gpt-4o-mini-tts");
       expect(body.turns).toEqual([
-        { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi there." },
-        { model: "openai/gpt-4o-mini-tts", voice: "nova", text: "Hello!" },
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
       ]);
     } finally {
       globalThis.fetch = savedFetch;
