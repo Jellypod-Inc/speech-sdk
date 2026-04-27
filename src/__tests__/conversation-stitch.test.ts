@@ -111,4 +111,40 @@ describe("runStitch", () => {
 
     expect(result.metadata.inputChars).toBe("hi".length + "hello".length);
   });
+
+  it("surfaces per-turn metadata with one entry per turn", async () => {
+    const seg = new Int16Array(2400);
+    seg.fill(7);
+    const provider = mockProvider(seg);
+    const resolved: ResolvedModel[] = [
+      { provider, modelId: "m" },
+      { provider, modelId: "m" },
+    ];
+
+    const result = await runStitch({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "hi" },
+        { voice: "b", text: "hello" },
+      ],
+      stitchOptionsPerTurn: [
+        {
+          providerOptions: { format: "pcm24k" },
+          mediaType: "audio/pcm;rate=24000",
+        },
+        {
+          providerOptions: { format: "pcm24k" },
+          mediaType: "audio/pcm;rate=24000",
+        },
+      ],
+      gapMs: 0,
+      maxConcurrency: 2,
+      maxRetries: 0,
+    });
+
+    expect(result.metadataPerTurn).toHaveLength(2);
+    expect(result.metadataPerTurn[0].latencyMs).toBeGreaterThanOrEqual(0);
+    expect(result.metadataPerTurn[0].inputChars).toBe("hi".length);
+    expect(result.metadataPerTurn[1].inputChars).toBe("hello".length);
+  });
 });

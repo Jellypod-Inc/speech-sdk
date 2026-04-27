@@ -28,7 +28,10 @@ import {
   type ResolvedModel,
   type Voice,
 } from "./speech-provider.js";
-import type { ConversationResult } from "./speech-result.js";
+import type {
+  ConversationMetadata,
+  ConversationResult,
+} from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
@@ -43,7 +46,10 @@ export type {
   ConversationTurn,
   GenerateConversationOptions,
 } from "./conversation/types.js";
-export type { ConversationResult } from "./speech-result.js";
+export type {
+  ConversationMetadata,
+  ConversationResult,
+} from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_CONCURRENCY = 6;
@@ -139,12 +145,13 @@ export async function generateConversation<V extends Voice = Voice>(
     throw new NoSpeechGeneratedError();
   }
 
-  const metadata: SpeechMetadata = {
+  const metadata: ConversationMetadata = {
     latencyMs: stitched.metadata.latencyMs,
     inputChars: stitched.metadata.inputChars,
     ...(stitched.metadata.audioDurationMs != null && {
       audioDurationMs: stitched.metadata.audioDurationMs,
     }),
+    perTurn: stitched.metadataPerTurn,
   };
 
   return {

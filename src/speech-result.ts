@@ -15,7 +15,15 @@ export interface SpeechResult {
   readonly warnings?: string[];
 }
 
-export interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
+export interface ConversationMetadata extends SpeechMetadata {
+  // Populated on the stitch path (one generateSpeech call per turn). Undefined on the native dialogue
+  // path, where per-turn boundaries don't exist as separate provider calls.
+  readonly perTurn?: readonly SpeechMetadata[];
+}
+
+export interface ConversationResult
+  extends Omit<SpeechResult, "metadata" | "timestamps"> {
+  readonly metadata: ConversationMetadata;
   readonly timestamps?: readonly ConversationWordTimestamp[];
 }
 
