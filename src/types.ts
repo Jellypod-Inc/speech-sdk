@@ -1,3 +1,4 @@
+import type { AudioOutput } from "./audio-output.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
@@ -51,6 +52,7 @@ export interface GenerateSpeechOptions<V extends Voice = Voice> {
   headers?: Record<string, string>;
   maxRetries?: number;
   model: string | ResolvedModel<V>;
+  output?: AudioOutput;
   providerOptions?: Record<string, unknown>;
   text: string;
   timestamps?: boolean;

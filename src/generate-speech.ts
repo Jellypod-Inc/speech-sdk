@@ -1,5 +1,11 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
+import {
+  type AudioOutput,
+  convertDecodableAudioToOutput,
+  resolveOutputForLocalConversion,
+  validateOutput,
+} from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
@@ -35,6 +41,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
   timestamps?: boolean;
+  output?: AudioOutput;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -46,23 +53,20 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
+  validateOutput(options.output);
+
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
-  let providerOptions = options.providerOptions;
-
-  if (volumeDbfs != null && !isGateway) {
-    const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId);
-    if (!stitchOpts) {
-      throw new VolumeAdjustmentUnsupportedError(modelIdentifier);
-    }
-    // Stitch options must win — caller-supplied response_format would break the decoder.
-    providerOptions = {
-      ...options.providerOptions,
-      ...stitchOpts.providerOptions,
-    };
-  }
+  const providerOptions = resolveProviderOptionsForLocalDecoding({
+    resolved,
+    isGateway,
+    modelIdentifier,
+    volumeDbfs,
+    output: options.output,
+    callerOptions: options.providerOptions,
+  });
 
   const { text: processedText, warnings } = preprocessText(
     resolved,
@@ -108,6 +112,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
             headers,
             includeTimestamps: shouldRequestNative,
             volumeDbfs,
+            output: options.output,
           })
         : resolved.provider.generate({
             modelId: resolved.modelId,
@@ -138,18 +143,14 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     throw new NoSpeechGeneratedError();
   }
 
-  let outputBytes: Uint8Array | string = audioData;
-  let outputMediaType = result.mediaType;
-
-  if (volumeDbfs != null && !isGateway) {
-    const { adjustVolume } = await import("./volume-adjust.js");
-    outputBytes = await adjustVolume({
+  const { bytes: outputBytes, mediaType: outputMediaType } =
+    await applyLocalAudioPostProcessing({
       audio: audioData,
       mediaType: result.mediaType,
+      isGateway,
       volumeDbfs,
+      output: options.output,
     });
-    outputMediaType = "audio/wav";
-  }
 
   const audio = new DefaultGeneratedAudioFile({
     data: outputBytes,
@@ -226,6 +227,74 @@ async function resolveTimestamps(args: {
     `${args.modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
   );
   return timestamps;
+}
+
+function resolveProviderOptionsForLocalDecoding(args: {
+  resolved: ResolvedModel;
+  isGateway: boolean;
+  modelIdentifier: string;
+  volumeDbfs: number | undefined;
+  output: AudioOutput | undefined;
+  callerOptions: Record<string, unknown> | undefined;
+}): Record<string, unknown> | undefined {
+  const needsLocalDecodable =
+    !args.isGateway && (args.volumeDbfs != null || args.output != null);
+  if (!needsLocalDecodable) {
+    return args.callerOptions;
+  }
+  const stitchOpts = args.resolved.provider.getStitchOptions?.(
+    args.resolved.modelId
+  );
+  if (!stitchOpts) {
+    if (args.volumeDbfs != null) {
+      throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
+    }
+    throw new Error(
+      `${args.modelIdentifier}: explicit output format requires a provider with a decodable PCM/WAV mode (no getStitchOptions for this model).`
+    );
+  }
+  // Stitch options must win — caller-supplied response_format would break the decoder.
+  return {
+    ...args.callerOptions,
+    ...stitchOpts.providerOptions,
+  };
+}
+
+async function applyLocalAudioPostProcessing(args: {
+  audio: string | Uint8Array;
+  mediaType: string;
+  isGateway: boolean;
+  volumeDbfs: number | undefined;
+  output: AudioOutput | undefined;
+}): Promise<{ bytes: string | Uint8Array; mediaType: string }> {
+  let bytes: string | Uint8Array = args.audio;
+  let mediaType = args.mediaType;
+
+  if (args.volumeDbfs != null && !args.isGateway) {
+    const { adjustVolume } = await import("./volume-adjust.js");
+    bytes = await adjustVolume({
+      audio: args.audio,
+      mediaType: args.mediaType,
+      volumeDbfs: args.volumeDbfs,
+    });
+    mediaType = "audio/wav";
+  }
+
+  if (args.output != null && !args.isGateway) {
+    const decoded = new DefaultGeneratedAudioFile({
+      data: bytes,
+      mediaType,
+    }).uint8Array;
+    const converted = await convertDecodableAudioToOutput({
+      audio: decoded,
+      mediaType,
+      output: resolveOutputForLocalConversion(args.output),
+    });
+    bytes = converted.audio;
+    mediaType = converted.mediaType;
+  }
+
+  return { bytes, mediaType };
 }
 
 function preprocessText(

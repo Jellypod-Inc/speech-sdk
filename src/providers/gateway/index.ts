@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import {
   ApiError,
   GatewayInputError,
@@ -95,6 +96,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
     volumeDbfs?: number;
+    output?: AudioOutput;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
