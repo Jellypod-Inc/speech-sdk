@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  ConversationTimestampAttributionError,
-  TimestampKeyMissingError,
-} from "../errors.js";
+import { TimestampKeyMissingError } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
@@ -480,7 +477,7 @@ describe("generateConversation timestamps — native path", () => {
     }
   });
 
-  it("attribution: throws ConversationTimestampAttributionError when provider words don't match input transcript", async () => {
+  it("attribution: emits timestamps via Tier 3 when provider words don't match input transcript", async () => {
     const provider = nativeTTS({
       feature: "timestamps",
       timestamps: [
@@ -492,15 +489,22 @@ describe("generateConversation timestamps — native path", () => {
       ],
     });
 
-    await expect(
-      generateConversation({
-        model: { provider, modelId: "m" },
-        turns: [
-          { voice: "a", text: "Hello there." },
-          { voice: "b", text: "How are you?" },
-        ],
-        timestamps: true,
-      })
-    ).rejects.toThrow(ConversationTimestampAttributionError);
+    const result = await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [
+        { voice: "a", text: "Hello there." },
+        { voice: "b", text: "How are you?" },
+      ],
+      timestamps: true,
+    });
+
+    expect(result.timestamps).toBeDefined();
+    expect(result.timestamps?.length).toBe(5);
+    expect(
+      result.timestamps?.every((t) => typeof t.turnIndex === "number")
+    ).toBe(true);
+    expect(
+      result.warnings?.some((w) => w.includes("proportional distribution"))
+    ).toBe(true);
   });
 });

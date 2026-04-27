@@ -9,11 +9,7 @@ import type {
 import { validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
-import {
-  ApiError,
-  ConversationTimestampAttributionError,
-  NoSpeechGeneratedError,
-} from "./errors.js";
+import { ApiError, NoSpeechGeneratedError } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
@@ -39,16 +35,11 @@ export type {
   ConversationTurn,
   GenerateConversationOptions,
 } from "./conversation/types.js";
-export { ConversationTimestampAttributionError } from "./errors.js";
 export type { ConversationResult } from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_CONCURRENCY = 6;
 const DEFAULT_MAX_RETRIES = 2;
-
-const NORMALIZE_LEAD_RE = /^[^\p{L}\p{N}'-]+/u;
-const NORMALIZE_TRAIL_RE = /[^\p{L}\p{N}'-]+$/u;
-const WHITESPACE_SPLIT_RE = /\s+/;
 
 export async function generateConversation<V extends Voice = Voice>(
   options: GenerateConversationOptions<V>
@@ -349,16 +340,17 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
-  const timestamps = await resolveNativeDialogueTimestamps({
-    requestTimestamps,
-    nativeTimestamps: result.timestamps,
-    audio: audio.uint8Array,
-    mediaType: outputMediaType,
-    ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
-    resolved,
-    abortSignal: options.abortSignal,
-    turns: options.turns,
-  });
+  const { timestamps, warnings: attributionWarnings } =
+    await resolveNativeDialogueTimestamps({
+      requestTimestamps,
+      nativeTimestamps: result.timestamps,
+      audio: audio.uint8Array,
+      mediaType: outputMediaType,
+      ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+      resolved,
+      abortSignal: options.abortSignal,
+      turns: options.turns,
+    });
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
@@ -368,11 +360,16 @@ async function runNative<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
+  const mergedWarnings =
+    warnings.length > 0 || attributionWarnings.length > 0
+      ? [...warnings, ...attributionWarnings]
+      : undefined;
+
   return {
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: warnings.length > 0 ? warnings : undefined,
+    warnings: mergedWarnings,
     timestamps,
   };
 }
@@ -386,138 +383,60 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   turns: readonly ConversationTurn<V>[];
-}): Promise<readonly ConversationWordTimestamp[] | undefined> {
+}): Promise<{
+  timestamps: readonly ConversationWordTimestamp[] | undefined;
+  warnings: readonly string[];
+}> {
   if (!args.requestTimestamps) {
-    return;
+    return { timestamps: undefined, warnings: [] };
   }
+
+  // Either use native flat timestamps, or derive via STT fallback.
+  let flatTimestamps: readonly WordTimestamp[];
   if (args.nativeTimestamps && args.nativeTimestamps.length > 0) {
-    return attributeTimestampsToTurns({
-      timestamps: args.nativeTimestamps,
-      turns: args.turns,
-      modelId: args.ttsModel,
+    flatTimestamps = args.nativeTimestamps;
+  } else {
+    const fallback =
+      args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
+    flatTimestamps = await deriveTimestampsViaSTT({
+      ttsModel: args.ttsModel,
+      audio: args.audio,
+      mediaType: args.mediaType,
+      timestampFallback: fallback,
+      abortSignal: args.abortSignal,
     });
   }
-  const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
-  const derived = await deriveTimestampsViaSTT({
-    ttsModel: args.ttsModel,
-    audio: args.audio,
-    mediaType: args.mediaType,
-    timestampFallback: fallback,
-    abortSignal: args.abortSignal,
+
+  const { decodeToPcm16 } = await import("./conversation/pcm-concat.js");
+  const { detectSilenceGaps } = await import(
+    "./conversation/silence-detection.js"
+  );
+  const { attributeTimestamps } = await import(
+    "./conversation/attribute-timestamps.js"
+  );
+
+  let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
+    [];
+  try {
+    const segment = decodeToPcm16(args.audio, args.mediaType);
+    const gaps = detectSilenceGaps(segment.pcm, {
+      sampleRate: segment.sampleRate,
+      minDurationMs: 150,
+    });
+    silenceGaps = gaps;
+  } catch {
+    // Decoder couldn't read the audio (e.g., compressed format we can't decode locally).
+    // Tier 1 will be skipped; dispatcher falls through to Tier 2/3.
+  }
+
+  const result = attributeTimestamps({
+    timestamps: flatTimestamps,
+    turnTexts: args.turns.map((t) => t.text),
+    silenceGaps,
   });
-  return attributeTimestampsToTurns({
-    timestamps: derived,
-    turns: args.turns,
-    modelId: args.ttsModel,
-  });
-}
 
-// Keep internal apostrophes/hyphens so "don't" ↔ "don't." match.
-function normalizeWord(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(NORMALIZE_LEAD_RE, "")
-    .replace(NORMALIZE_TRAIL_RE, "");
-}
-
-function tokenizeTurn(text: string): string[] {
-  return text
-    .split(WHITESPACE_SPLIT_RE)
-    .map(normalizeWord)
-    .filter((t) => t.length > 0);
-}
-
-function attributeTimestampsToTurns<V extends Voice>(args: {
-  timestamps: readonly WordTimestamp[];
-  turns: readonly ConversationTurn<V>[];
-  modelId: string;
-}): readonly ConversationWordTimestamp[] {
-  const { timestamps, turns, modelId } = args;
-  const turnTokens = turns.map((t) => tokenizeTurn(t.text));
-  const totalExpected = turnTokens.reduce((n, t) => n + t.length, 0);
-
-  // 20% slack for provider drift (e.g. "okay" → "OK").
-  const maxMismatches = Math.max(1, Math.floor(timestamps.length * 0.2));
-
-  const out: ConversationWordTimestamp[] = [];
-  let turnIndex = 0;
-  let tokenIndex = 0;
-  let mismatches = 0;
-
-  for (const ts of timestamps) {
-    const observed = normalizeWord(ts.text);
-
-    if (observed.length === 0) {
-      out.push({
-        text: ts.text,
-        start: ts.start,
-        end: ts.end,
-        turnIndex: Math.min(turnIndex, turns.length - 1),
-      });
-      continue;
-    }
-
-    while (
-      turnIndex < turnTokens.length &&
-      tokenIndex >= (turnTokens[turnIndex]?.length ?? 0)
-    ) {
-      turnIndex++;
-      tokenIndex = 0;
-    }
-
-    if (turnIndex >= turnTokens.length) {
-      throw new ConversationTimestampAttributionError({
-        turnIndex: turns.length - 1,
-        observed: ts.text,
-        expected: "<end of conversation>",
-        modelId,
-      });
-    }
-
-    const expected = turnTokens[turnIndex]?.[tokenIndex] ?? "";
-
-    if (observed === expected) {
-      out.push({
-        text: ts.text,
-        start: ts.start,
-        end: ts.end,
-        turnIndex,
-      });
-      tokenIndex++;
-      continue;
-    }
-
-    // Tolerate up to maxMismatches; attribute to current turn and advance.
-    mismatches++;
-    if (mismatches > maxMismatches) {
-      throw new ConversationTimestampAttributionError({
-        turnIndex,
-        observed: ts.text,
-        expected: turnTokens[turnIndex]?.[tokenIndex] ?? "",
-        modelId,
-      });
-    }
-    out.push({
-      text: ts.text,
-      start: ts.start,
-      end: ts.end,
-      turnIndex,
-    });
-    tokenIndex++;
-  }
-
-  // If we ended far short of the input transcript, an entire turn was likely skipped.
-  const consumedExpected =
-    turnTokens.slice(0, turnIndex).reduce((n, t) => n + t.length, 0) +
-    tokenIndex;
-  if (totalExpected > 0 && consumedExpected < Math.floor(totalExpected * 0.8)) {
-    throw new ConversationTimestampAttributionError({
-      turnIndex,
-      observed: "<end of timestamps>",
-      expected: turnTokens[turnIndex]?.[tokenIndex] ?? "<more words>",
-      modelId,
-    });
-  }
-
-  return out;
+  return {
+    timestamps: result.timestamps,
+    warnings: result.warnings,
+  };
 }

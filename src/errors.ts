@@ -89,27 +89,3 @@ export class TimestampKeyMissingError extends SpeechSDKError {
     this.name = "TimestampKeyMissingError";
   }
 }
-
-export class ConversationTimestampAttributionError extends SpeechSDKError {
-  readonly turnIndex: number;
-  readonly observed: string;
-  readonly expected: string;
-
-  constructor(args: {
-    turnIndex: number;
-    observed: string;
-    expected: string;
-    modelId: string;
-  }) {
-    super(
-      `Failed to attribute timestamps to conversation turns at turn ${args.turnIndex} (${args.modelId}). ` +
-        `Expected next word "${args.expected}" but got "${args.observed}". ` +
-        "The TTS provider may have inserted, dropped, or reordered words. " +
-        "Pass timestamps: false to disable attribution, or use the stitch path (different model per turn) for guaranteed attribution."
-    );
-    this.name = "ConversationTimestampAttributionError";
-    this.turnIndex = args.turnIndex;
-    this.observed = args.observed;
-    this.expected = args.expected;
-  }
-}
