@@ -65,6 +65,18 @@ function isWavSource(mediaType: string): boolean {
   return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav");
 }
 
+function decodeToPcmBytes(audio: Uint8Array, mediaType: string) {
+  const segment = decodeToPcm16(audio, mediaType);
+  return {
+    pcmBytes: new Uint8Array(
+      segment.pcm.buffer,
+      segment.pcm.byteOffset,
+      segment.pcm.byteLength
+    ),
+    sampleRate: segment.sampleRate,
+  };
+}
+
 export async function convertDecodableAudioToOutput(args: {
   readonly audio: Uint8Array;
   readonly mediaType: string;
@@ -82,41 +94,26 @@ export async function convertDecodableAudioToOutput(args: {
     if (isWavSource(mediaType)) {
       return { audio, mediaType: "audio/wav" };
     }
-    const segment = decodeToPcm16(audio, mediaType);
-    const pcmBytes = new Uint8Array(
-      segment.pcm.buffer,
-      segment.pcm.byteOffset,
-      segment.pcm.byteLength
-    );
-    const wav = await wrapPcm16Mono(pcmBytes, segment.sampleRate);
+    const { pcmBytes, sampleRate } = decodeToPcmBytes(audio, mediaType);
+    const wav = await wrapPcm16Mono(pcmBytes, sampleRate);
     return { audio: wav, mediaType: "audio/wav" };
   }
 
   if (output.format === "pcm") {
-    const segment = decodeToPcm16(audio, mediaType);
-    const pcmBytes = new Uint8Array(
-      segment.pcm.buffer,
-      segment.pcm.byteOffset,
-      segment.pcm.byteLength
-    );
+    const { pcmBytes, sampleRate } = decodeToPcmBytes(audio, mediaType);
     return {
       audio: pcmBytes,
       mediaType: mediaTypeForOutput({
         format: "pcm",
-        sampleRate: segment.sampleRate,
+        sampleRate,
       }),
     };
   }
 
-  const segment = decodeToPcm16(audio, mediaType);
-  const pcmBytes = new Uint8Array(
-    segment.pcm.buffer,
-    segment.pcm.byteOffset,
-    segment.pcm.byteLength
-  );
+  const { pcmBytes, sampleRate } = decodeToPcmBytes(audio, mediaType);
   const mp3 = await encodePcm16ToMp3({
     pcm: pcmBytes,
-    sampleRate: segment.sampleRate,
+    sampleRate,
     bitrateKbps: output.bitrate,
   });
   return { audio: mp3, mediaType: "audio/mpeg" };
