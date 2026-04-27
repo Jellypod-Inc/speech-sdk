@@ -68,6 +68,43 @@ describe("SpeechGatewayProvider", () => {
     });
   });
 
+  it("omits `output` from the body when caller does not provide it", async () => {
+    const fetchFn = mockFetchOk();
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).not.toHaveProperty("output");
+  });
+
+  it("forwards the caller's exact `output` object verbatim in the body", async () => {
+    const fetchFn = mockFetchOk();
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+      output: { format: "mp3", bitrate: 96 },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
+  });
+
   it("hits /audio/speech/with-timestamps and parses base64 audio when timestamps are requested", async () => {
     const fetchFn = mockFetchJson({
       audio: btoa("Hello"),
@@ -548,5 +585,40 @@ describe("SpeechGatewayProvider.generateConversation", () => {
       })
     ).rejects.toBeInstanceOf(GatewayInputError);
     expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("omits `output` from the body when caller does not provide it", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [{ voice: "alloy", text: "Hi." }],
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body).not.toHaveProperty("output");
+  });
+
+  it("forwards the caller's exact `output` object verbatim in the body", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [{ voice: "alloy", text: "Hi." }],
+      output: { format: "mp3", bitrate: 96 },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
   });
 });

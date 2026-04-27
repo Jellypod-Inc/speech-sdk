@@ -186,4 +186,58 @@ describe("generateSpeech output format", () => {
     const call = generateMock.mock.calls[0][0];
     expect(call.providerOptions).toEqual({ response_format: "pcm" });
   });
+
+  it("forwards `output` to the speech gateway verbatim without local conversion", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([0xff, 0xfb, 0x10, 0x00]).buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "gw-custom-key",
+        output: { format: "mp3", bitrate: 96 },
+      });
+
+      expect(result.audio.mediaType).toBe("audio/mpeg");
+      const [, init] = mockFetch.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("omits `output` from the gateway request body when caller does not provide it", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([0xff, 0xfb, 0x10, 0x00]).buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      await generateSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "gw-custom-key",
+      });
+
+      const [, init] = mockFetch.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body).not.toHaveProperty("output");
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
 });

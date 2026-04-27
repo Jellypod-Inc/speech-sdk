@@ -121,6 +121,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
     }
+    if (options.output) {
+      body.output = options.output;
+    }
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
     const url = options.includeTimestamps
@@ -239,6 +242,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
+    output?: AudioOutput;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -285,6 +289,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
+    }
+    if (options.output) {
+      body.output = options.output;
     }
 
     const url = options.includeTimestamps
