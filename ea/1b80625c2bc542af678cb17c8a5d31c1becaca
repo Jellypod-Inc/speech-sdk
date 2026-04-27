@@ -1,0 +1,33 @@
+src/__tests__/generate-conversation.test.ts
+  d0a2127a7aef51c3 55-56,115-125
+src/speech-result.ts
+  d0a2127a7aef51c3 18-26
+src/__tests__/conversation-stitch.test.ts
+  d0a2127a7aef51c3 114-149
+package.json
+  d0a2127a7aef51c3 3
+src/conversation/stitch.ts
+  d0a2127a7aef51c3 3,41,139,200
+src/generate-conversation.ts
+  d0a2127a7aef51c3 23-26,41-44,138,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ea1b80625c2bc542af678cb17c8a5d31c1becaca",
+  "prompts": {
+    "d0a2127a7aef51c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29613a16-0daf-4ff6-b547-22c5e37a498c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 73,
+      "total_deletions": 5,
+      "accepted_lines": 73,
+      "overriden_lines": 0
+    }
+  }
+}
