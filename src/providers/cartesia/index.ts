@@ -395,7 +395,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 

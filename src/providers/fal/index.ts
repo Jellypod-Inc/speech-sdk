@@ -157,7 +157,7 @@ export class FalSpeechProvider
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 

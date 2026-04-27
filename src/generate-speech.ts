@@ -203,7 +203,7 @@ async function resolveTimestamps(args: {
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
   if (!args.timestamps) {
-    return undefined;
+    return;
   }
   if (args.resultTimestamps?.length) {
     debug(
@@ -212,7 +212,7 @@ async function resolveTimestamps(args: {
     return args.resultTimestamps;
   }
   if (isSpeechGatewayModel(args.resolved)) {
-    return undefined;
+    return;
   }
   const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
   const timestamps = await deriveTimestampsViaSTT({

@@ -20,7 +20,7 @@ export function parseMediaTypeParam(
   }
   const match = mediaType.match(re);
   if (!match) {
-    return undefined;
+    return;
   }
   const value = Number(match[1]);
   return Number.isFinite(value) && value > 0 ? value : undefined;

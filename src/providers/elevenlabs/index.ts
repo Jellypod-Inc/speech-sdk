@@ -425,14 +425,14 @@ export class ElevenLabsSpeechProvider
         mediaType: "audio/pcm;rate=24000",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "eleven_v3") {
       return { minVoices: 1, maxVoices: 10, maxTotalChars: 2000 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {

@@ -237,7 +237,7 @@ export function tier1SilenceAnchored(args: {
     return timestamps.map((w) => ({ ...w, turnIndex: 0 }));
   }
   if (timestamps.length === 0) {
-    return undefined;
+    return;
   }
 
   const firstWordStartSec = timestamps[0]?.start ?? 0;
@@ -247,7 +247,7 @@ export function tier1SilenceAnchored(args: {
     return midpointSec > firstWordStartSec && midpointSec < lastWordEndSec;
   });
   if (candidateGaps.length < turnCount - 1) {
-    return undefined;
+    return;
   }
   const selectedGaps = [...candidateGaps]
     .sort((a, b) => b.durationMs - a.durationMs)
@@ -278,17 +278,17 @@ export function tier1SilenceAnchored(args: {
 
   // Validate: no partition empty.
   if (partitions.some((p) => p.length === 0)) {
-    return undefined;
+    return;
   }
   const expectedCounts = turnTexts.map((t) => tokenizeTurn(t).length);
   for (let i = 0; i < partitions.length; i++) {
     const expected = expectedCounts[i] ?? 0;
     if (expected === 0) {
-      return undefined;
+      return;
     }
     const ratio = (partitions[i]?.length ?? 0) / expected;
     if (ratio < MIN_TIER1_TOKEN_RATIO || ratio > MAX_TIER1_TOKEN_RATIO) {
-      return undefined;
+      return;
     }
   }
 

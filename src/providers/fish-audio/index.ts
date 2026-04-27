@@ -164,14 +164,14 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "s2-pro") {
       return { minVoices: 1, maxVoices: 4 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {

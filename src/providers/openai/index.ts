@@ -299,7 +299,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/pcm;rate=24000",
       };
     }
-    return undefined;
+    return;
   }
 }
 

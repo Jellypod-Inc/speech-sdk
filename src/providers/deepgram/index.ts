@@ -152,7 +152,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 

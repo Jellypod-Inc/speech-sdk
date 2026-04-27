@@ -221,7 +221,7 @@ export class MistralSpeechProvider
         mediaType: "audio/pcm;rate=24000;encoding=float32",
       };
     }
-    return undefined;
+    return;
   }
 }
 

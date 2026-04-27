@@ -325,7 +325,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
@@ -333,7 +333,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       // Gemini multi-speaker TTS requires exactly 2 unique voices (API validator: "enabled_voices must equal 2").
       return { minVoices: 2, maxVoices: 2 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {

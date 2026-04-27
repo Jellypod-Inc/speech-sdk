@@ -16,12 +16,12 @@ export async function computeAudioDuration(
     });
     const track = await input.getPrimaryAudioTrack();
     if (!track) {
-      return undefined;
+      return;
     }
     const durationSeconds = await track.computeDuration();
     return Math.round(durationSeconds * 1000);
   } catch {
-    return undefined;
+    return;
   }
 }
 

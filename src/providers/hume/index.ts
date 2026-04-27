@@ -85,7 +85,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     if (modelId === "octave-1") {
       return "1";
     }
-    return undefined;
+    return;
   }
 
   async generate(options: {
@@ -267,7 +267,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/pcm;rate=48000",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
@@ -275,7 +275,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       // Hume publishes no hard maximum; cap conservatively at SDK-wide unique-voice ceiling of 4.
       return { minVoices: 1, maxVoices: 4 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {
