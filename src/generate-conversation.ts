@@ -201,6 +201,7 @@ async function runGateway<V extends Voice>(args: {
         abortSignal: options.abortSignal,
         headers: options.headers,
         includeTimestamps,
+        output: options.output,
       }),
     {
       retries: maxRetries,
