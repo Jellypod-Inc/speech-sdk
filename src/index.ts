@@ -8,6 +8,7 @@ export {
 } from "./conversation/errors.js";
 export {
   ApiError,
+  AudioOutputInputError,
   GatewayInputError,
   MissingApiKeyError,
   NoSpeechGeneratedError,

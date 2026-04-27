@@ -6,8 +6,6 @@ import {
 } from "../providers/gateway/index.js";
 import { isSpeechGatewayModel } from "../speech-provider.js";
 
-const REQUIRES_MODEL_ID_RE = /Speech Gateway requires a model ID/;
-
 function mockFetchOk(body = new Uint8Array([1, 2, 3])) {
   return vi.fn().mockResolvedValue({
     ok: true,
@@ -266,7 +264,7 @@ describe("SpeechGatewayProvider", () => {
   it("factory createSpeechGateway requires an explicit modelId", () => {
     const gateway = createSpeechGateway({ apiKey: "k" });
     expect(() => (gateway as (m?: string) => unknown)()).toThrow(
-      REQUIRES_MODEL_ID_RE
+      GatewayInputError
     );
   });
 

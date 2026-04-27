@@ -7,10 +7,8 @@ import {
   validateOutput,
 } from "../audio-output.js";
 import { wrapPcm16Mono } from "../audio-utils.js";
+import { AudioOutputInputError } from "../errors.js";
 
-const BITRATE_ERROR_PATTERN = /bitrate is only valid/i;
-const UNSUPPORTED_SOURCE_PATTERN = /not decodable/i;
-const UNSUPPORTED_SOURCE_MEDIA_TYPE_PATTERN = /audio\/mpeg/;
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
 
 function makePcm16Bytes(numSamples: number): Uint8Array {
@@ -47,7 +45,7 @@ describe("audio-output", () => {
   it("rejects bitrate on non-mp3 formats", () => {
     expect(() =>
       validateOutput({ format: "wav", bitrate: 128 } as never)
-    ).toThrow(BITRATE_ERROR_PATTERN);
+    ).toThrow(AudioOutputInputError);
   });
 
   it("maps output formats to media types", () => {
@@ -136,21 +134,13 @@ describe("convertDecodableAudioToOutput", () => {
     );
   });
 
-  it("rejects unsupported source media types with a clear error", async () => {
+  it("rejects unsupported source media types", async () => {
     await expect(
       convertDecodableAudioToOutput({
         audio: new Uint8Array([1, 2, 3, 4]),
         mediaType: "audio/mpeg",
         output: { format: "wav" },
       })
-    ).rejects.toThrow(UNSUPPORTED_SOURCE_PATTERN);
-
-    await expect(
-      convertDecodableAudioToOutput({
-        audio: new Uint8Array([1, 2, 3, 4]),
-        mediaType: "audio/mpeg",
-        output: { format: "wav" },
-      })
-    ).rejects.toThrow(UNSUPPORTED_SOURCE_MEDIA_TYPE_PATTERN);
+    ).rejects.toThrow(AudioOutputInputError);
   });
 });

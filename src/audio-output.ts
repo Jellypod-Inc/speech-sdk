@@ -1,6 +1,7 @@
 import { wrapPcm16Mono } from "./audio-utils.js";
 import { decodeToPcm16 } from "./conversation/pcm-concat.js";
 import { encodePcm16ToMp3 } from "./encoders/mp3.js";
+import { AudioOutputInputError } from "./errors.js";
 
 export type AudioOutput =
   | { readonly format: "wav" }
@@ -20,7 +21,7 @@ export function validateOutput<T extends AudioOutput | undefined>(
   output: T
 ): T {
   if (output?.format !== "mp3" && output != null && "bitrate" in output) {
-    throw new Error(
+    throw new AudioOutputInputError(
       `audio-output: bitrate is only valid for format "mp3" (got format="${output.format}")`
     );
   }
@@ -85,7 +86,7 @@ export async function convertDecodableAudioToOutput(args: {
   const { audio, mediaType, output } = args;
 
   if (!isDecodableSourceMediaType(mediaType)) {
-    throw new Error(
+    throw new AudioOutputInputError(
       `convertDecodableAudioToOutput: source mediaType "${mediaType}" is not decodable. Only audio/wav, audio/x-wav, audio/pcm, and audio/x-pcm are supported.`
     );
   }

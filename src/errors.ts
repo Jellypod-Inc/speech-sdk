@@ -62,6 +62,13 @@ export class OutputConversionUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class AudioOutputInputError extends SpeechSDKError {
+  constructor(message: string) {
+    super(message);
+    this.name = "AudioOutputInputError";
+  }
+}
+
 export class GatewayInputError extends SpeechSDKError {
   constructor(message: string) {
     super(message);

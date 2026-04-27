@@ -343,7 +343,7 @@ export function createSpeechGateway(config: SpeechGatewayProviderConfig = {}) {
   const provider = new SpeechGatewayProvider(config);
   return function speechGateway(modelId: string): ResolvedModel<string> {
     if (!modelId) {
-      throw new Error(
+      throw new GatewayInputError(
         'Speech Gateway requires a model ID (e.g., "openai/gpt-4o-mini-tts"). The gateway routes to upstream providers and has no default model.'
       );
     }

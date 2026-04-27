@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { OutputConversionUnsupportedError } from "../errors.js";
+import {
+  AudioOutputInputError,
+  OutputConversionUnsupportedError,
+} from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { WordTimestamp } from "../timestamps.js";
 
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
 const PCM_SAMPLE_RATE = 24_000;
-const BITRATE_ONLY_FOR_MP3_RE = /bitrate is only valid/i;
 
 function buildSinePcmBytes(): Uint8Array {
   const pcm = new Int16Array(PCM_SAMPLE_RATE);
@@ -160,7 +162,7 @@ describe("generateConversation stitch output format", () => {
         turns: [{ model: { provider, modelId: "m" }, voice: "a", text: "hi" }],
         output: { format: "wav", bitrate: 96 } as never,
       })
-    ).rejects.toThrow(BITRATE_ONLY_FOR_MP3_RE);
+    ).rejects.toThrow(AudioOutputInputError);
     expect(provider.generate).not.toHaveBeenCalled();
   });
 });
