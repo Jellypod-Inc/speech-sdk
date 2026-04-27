@@ -1,5 +1,9 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
+import {
+  applyOptionalOutputConversion,
+  validateOutput,
+} from "./audio-output.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
 import type {
@@ -9,7 +13,11 @@ import type {
 import { validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
-import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import {
+  ApiError,
+  NoSpeechGeneratedError,
+  OutputConversionUnsupportedError,
+} from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
@@ -51,6 +59,7 @@ export async function generateConversation<V extends Voice = Voice>(
   options: GenerateConversationOptions<V>
 ): Promise<ConversationResult> {
   validateConversationInput(options);
+  validateOutput(options.output);
 
   // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
   const stringResolutionCache = new Map<string, ResolvedModel<V>>();
@@ -125,6 +134,7 @@ export async function generateConversation<V extends Voice = Voice>(
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+    output: options.output,
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
@@ -201,6 +211,7 @@ async function runGateway<V extends Voice>(args: {
         abortSignal: options.abortSignal,
         headers: options.headers,
         includeTimestamps,
+        output: options.output,
       }),
     {
       retries: maxRetries,
@@ -276,6 +287,12 @@ async function runNative<V extends Voice>(args: {
   if (!stitchOpts) {
     warnings.push(
       `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization (no decodable PCM/WAV mode).`
+    );
+  }
+
+  if (options.output && !stitchOpts) {
+    throw new OutputConversionUnsupportedError(
+      `${resolved.provider.id}/${resolved.modelId}`
     );
   }
 
@@ -366,6 +383,18 @@ async function runNative<V extends Voice>(args: {
       turns: options.turns,
     });
 
+  const converted = await applyOptionalOutputConversion({
+    audio: audio.uint8Array,
+    mediaType: outputMediaType,
+    output: options.output,
+  });
+  const finalAudio = options.output
+    ? new DefaultGeneratedAudioFile({
+        data: converted.audio,
+        mediaType: converted.mediaType,
+      })
+    : audio;
+
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
   const metadata: SpeechMetadata = {
@@ -380,7 +409,7 @@ async function runNative<V extends Voice>(args: {
       : undefined;
 
   return {
-    audio,
+    audio: finalAudio,
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergedWarnings,

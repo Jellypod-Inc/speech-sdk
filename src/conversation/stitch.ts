@@ -1,3 +1,8 @@
+import {
+  type AudioOutput,
+  applyOptionalOutputConversion,
+} from "../audio-output.js";
+import { withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { SpeechMetadata } from "../metadata.js";
@@ -19,6 +24,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
   readonly maxRetries: number;
+  readonly output?: AudioOutput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -89,17 +95,22 @@ export async function runStitch<V extends Voice>(
         ...turn.providerOptions,
         ...stitchOpts.providerOptions,
       };
-      const result = await generateSpeech({
-        model: resolved,
-        text: turn.text,
-        voice: turn.voice,
-        apiKey: input.apiKey,
-        providerOptions: mergedProviderOptions,
-        maxRetries: input.maxRetries,
-        abortSignal: input.abortSignal,
-        headers: input.headers,
-        timestamps: input.timestamps,
-      });
+      let result: Awaited<ReturnType<typeof generateSpeech>>;
+      try {
+        result = await generateSpeech({
+          model: resolved,
+          text: turn.text,
+          voice: turn.voice,
+          apiKey: input.apiKey,
+          providerOptions: mergedProviderOptions,
+          maxRetries: input.maxRetries,
+          abortSignal: input.abortSignal,
+          headers: input.headers,
+          timestamps: input.timestamps,
+        });
+      } catch (err) {
+        throw withTurnIndex(err, i);
+      }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(
         result.audio.uint8Array,
@@ -118,6 +129,12 @@ export async function runStitch<V extends Voice>(
   const audio = await concatPcmToWav(leveledSegments, {
     gapMs: input.gapMs,
     targetSampleRate: TARGET_SAMPLE_RATE,
+  });
+
+  const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
+    audio,
+    mediaType: "audio/wav",
+    output: input.output,
   });
 
   const totalSamples =
@@ -190,8 +207,8 @@ export async function runStitch<V extends Voice>(
   }
 
   return {
-    audio,
-    mediaType: "audio/wav",
+    audio: finalAudio,
+    mediaType,
     metadata: {
       inputChars: input.turns.reduce((n, t) => n + t.text.length, 0),
       latencyMs: Math.round(performance.now() - start),

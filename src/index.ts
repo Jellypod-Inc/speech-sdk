@@ -1,3 +1,4 @@
+export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 // biome-ignore lint/performance/noBarrelFile: public API entry point
 export { timestampsToCaptions } from "./captions.js";
 export {
@@ -7,9 +8,11 @@ export {
 } from "./conversation/errors.js";
 export {
   ApiError,
+  AudioOutputInputError,
   GatewayInputError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
+  OutputConversionUnsupportedError,
   SpeechSDKError,
   StreamingNotSupportedError,
   TimestampKeyMissingError,
