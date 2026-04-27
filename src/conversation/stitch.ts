@@ -1,5 +1,6 @@
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
+import type { SpeechMetadata } from "../metadata.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
@@ -37,6 +38,7 @@ interface StitchOutput {
     readonly latencyMs: number;
     readonly audioDurationMs?: number;
   };
+  readonly metadataPerTurn: readonly SpeechMetadata[];
   readonly providerMetadataPerTurn: readonly (
     | Record<string, unknown>
     | undefined
@@ -134,6 +136,7 @@ export async function runStitch<V extends Voice>(
   );
 
   const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
+  const metadataPerTurn = perTurn.map((p) => p.result.metadata);
   const providerMetadataPerTurn = perTurn.map((p) => p.result.providerMetadata);
 
   // Use source duration (pre-resample) so offsets match what the per-turn STT/native saw.
@@ -194,6 +197,7 @@ export async function runStitch<V extends Voice>(
       latencyMs: Math.round(performance.now() - start),
       audioDurationMs,
     },
+    metadataPerTurn,
     providerMetadataPerTurn,
     timestamps,
     warnings:
