@@ -1,6 +1,10 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
-import { validateOutput } from "./audio-output.js";
+import {
+  convertDecodableAudioToOutput,
+  resolveOutputForLocalConversion,
+  validateOutput,
+} from "./audio-output.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
 import type {
@@ -275,6 +279,12 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
+  if (options.output && !stitchOpts) {
+    throw new Error(
+      `${resolved.provider.id}/${resolved.modelId}: explicit output format requires a provider with a decodable PCM/WAV mode (no getStitchOptions for this model).`
+    );
+  }
+
   // Stitch options must win — caller-supplied response_format would break the decoder.
   const dialogueProviderOptions = stitchOpts
     ? { ...options.providerOptions, ...stitchOpts.providerOptions }
@@ -362,6 +372,19 @@ async function runNative<V extends Voice>(args: {
       turns: options.turns,
     });
 
+  let finalAudio: DefaultGeneratedAudioFile = audio;
+  if (options.output) {
+    const converted = await convertDecodableAudioToOutput({
+      audio: audio.uint8Array,
+      mediaType: outputMediaType,
+      output: resolveOutputForLocalConversion(options.output),
+    });
+    finalAudio = new DefaultGeneratedAudioFile({
+      data: converted.audio,
+      mediaType: converted.mediaType,
+    });
+  }
+
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
   const metadata: SpeechMetadata = {
@@ -376,7 +399,7 @@ async function runNative<V extends Voice>(args: {
       : undefined;
 
   return {
-    audio,
+    audio: finalAudio,
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergedWarnings,
