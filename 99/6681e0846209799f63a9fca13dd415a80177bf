@@ -1,0 +1,25 @@
+src/__tests__/mp3-encoder.test.ts
+  188a3f48000f8fb8 1-10,12-63
+src/encoders/mp3.ts
+  188a3f48000f8fb8 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "996681e0846209799f63a9fca13dd415a80177bf",
+  "prompts": {
+    "188a3f48000f8fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eb4ea9f-768b-44b1-a2ae-04ad0676bf4b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 116,
+      "total_deletions": 2,
+      "accepted_lines": 111,
+      "overriden_lines": 1
+    }
+  }
+}
