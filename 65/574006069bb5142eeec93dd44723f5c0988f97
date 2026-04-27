@@ -1,0 +1,62 @@
+skills/speech-sdk/references/providers.md
+  e2a9c3d00f251d06 85
+skills/speech-sdk/SKILL.md
+  5baaaac604e8a9de 8
+  cf45629c5b76fc96 134
+  9f77151f338adbcd 55,108
+skills/speech-sdk/references/configuration.md
+  5baaaac604e8a9de 4,6-8,10,12,14-17,39
+  0f69590e2e54295b 13
+  e2a9c3d00f251d06 3,5,18
+skills/speech-sdk/references/providers/resemble.md
+  0f69590e2e54295b 25
+  9f77151f338adbcd 66
+  e2a9c3d00f251d06 18
+skills/speech-sdk/references/result.md
+  cf45629c5b76fc96 39
+skills/speech-sdk/references/conversation.md
+  cf45629c5b76fc96 63,120
+  b2eb2def7b440f3e 97,99
+  9f77151f338adbcd 16,125
+skills/speech-sdk/references/timestamps.md
+  e2a9c3d00f251d06 43,36,38
+  39af4d88ac38ada9 104,170-171,173-174,188,122,124,126,129-130,136-138,141,165,180,192,194,45
+  571956dbe3d959e4 185-186,121,127
+skills/speech-sdk/references/providers/cartesia.md
+  0f69590e2e54295b 28
+  9f77151f338adbcd 74
+  e2a9c3d00f251d06 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "65574006069bb5142eeec93dd44723f5c0988f97",
+  "prompts": {
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 28,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "e2a9c3d00f251d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0977ba6-d642-4087-b8c3-5a1e443f449f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 273,
+      "total_deletions": 853,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

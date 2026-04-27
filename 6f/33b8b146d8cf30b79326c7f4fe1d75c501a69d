@@ -1,0 +1,222 @@
+src/generate-conversation.ts
+  39af4d88ac38ada9 5-8,19-20,27,43,55,95-97,99-102,168-169,171-172,174-175,180,182-184,186-188,190-204,206-233,237-239,242-244,247-248,259-262,264,266-268,273,332,401,409,435,450,526,529,82,65,69,76,241,253,256-257
+  e9c43f466d9c330d 57,59-62,64,66-68,70-74,78,80,87
+  b2eb2def7b440f3e 391,428,433,75,258
+  9f77151f338adbcd 77,81,83
+  e2a9c3d00f251d06 120,181,296,347
+  8a3ab4cf342abbee 205,234-236,265,407,411
+  a55b19ee079d059a 35,98,170,173,176-177,185,189
+  438cdbebfba5778c 10
+  b59f673e4c59ab90 58,104
+  36ffbffe71b01400 287-288,290,292
+  87fc3a9e43afe1e4 17,313
+src/resolve-provider.ts
+  39af4d88ac38ada9 1-2,27-28
+  b59f673e4c59ab90 26
+  1cf3eaed654a65e5 21-25,31
+README.md
+  39af4d88ac38ada9 68-79,82-86,88,90-92,209-210,213-214,220,224,378-382,396,37,42,318,320,330,332,341,343,353,184,186,188,192,196-197,203,205,212,111
+  57f288e0989fac6a 139
+  b7b0c9d09b3c70c0 401
+  9f77151f338adbcd 41,81,145,280,303,317,319,321-329,331,333-340,342,344-352,80,89,189,204
+  8a3ab4cf342abbee 190,198,201,32,167,178,180-181,202,219,237,363
+  571956dbe3d959e4 211,222-223
+  438cdbebfba5778c 183,187,191,193-195,199-200,410
+  36ffbffe71b01400 261
+  1cf3eaed654a65e5 29,31,34,96-110,112,141,156,206,208,215-218,228,244,265,406
+  d4e3a7c8cdfd83f7 87
+src/conversation/validate.ts
+  e2a9c3d00f251d06 4
+  a55b19ee079d059a 35,43-50,52,11,14,17,22
+  b59f673e4c59ab90 36
+  9550182cef8891c4 5-10,12-13,15-16,18-21,23-24
+src/generate-speech.ts
+  5baaaac604e8a9de 17,52,56,149,170,172-176,190,195-203,205,207-211,213-214,216,218,226,232-233,235-236
+  39af4d88ac38ada9 14,101-104,106-121,126
+  e2a9c3d00f251d06 61,105
+  8a3ab4cf342abbee 94,171,206,215,217,219-221,223-224,227-231,234,263,265-267,272
+  438cdbebfba5778c 4,85-88,225
+  b59f673e4c59ab90 36
+  87fc3a9e43afe1e4 12,276-280
+.mcp.json
+  e2a9c3d00f251d06 1-8
+src/logger.ts
+  e2a9c3d00f251d06 1,25
+AGENTS.md
+  39af4d88ac38ada9 27-28,34-36,40-43
+  b59f673e4c59ab90 65-72,39
+  dbd88af23b369141 38
+src/provider-utils.ts
+  71d7b2f468d53add 18-19,20-21,23,33-41,45,51,55-56,58-68
+  39af4d88ac38ada9 24-27,29,42-43,46-48,50,22
+  e2a9c3d00f251d06 3,49
+  b59f673e4c59ab90 54
+src/__tests__/gateway.test.ts
+  39af4d88ac38ada9 1,3-6,8-15,40-56,58-67,163-188,190-191,228,232-236,238-240,352-362,364-370,37,39,77-82,88-89,94,105-107,112-117,123-124,127-128,130,132-133,140-146,156-157,159-162,194,201-206,211-212,215-216,241-258,260-296,298-351,371-372,375-381,384-391,393-396,399-407,409-410,412-415,420-428,432-434,437-453,457,459-461,463-471,473-476,478-484,486,488-490,26,28,95,225-226
+  b7b0c9d09b3c70c0 16,83,297,20,24-25,71,96-97,108,118,125-126,139,374,408,411,416-419,435-436,462,477
+  5baaaac604e8a9de 17-19,68-70,7,29-36,38,57,72-76,84-87,90-93,100-104,109-111,119-122,129,131,134-138,147-155,158,192-193,195-200,207-210,213-214,21-23,27
+  9f77151f338adbcd 218,220-221,223
+  1cf3eaed654a65e5 98,227,229-231,237
+  8a3ab4cf342abbee 217,219,222,224
+  a55b19ee079d059a 2,189,259,363,382-383,397-398,429-431,454-456,458,472,485,487
+  b59f673e4c59ab90 99
+  438cdbebfba5778c 392
+  36ffbffe71b01400 373
+src/speech-provider.ts
+  9550182cef8891c4 16,11,14,84
+  5baaaac604e8a9de 66
+  39af4d88ac38ada9 6,114-117
+  8a3ab4cf342abbee 15,109
+  d4e3a7c8cdfd83f7 1-4,10,13,33-35,126
+src/conversation/dispatch.ts
+  39af4d88ac38ada9 1-3,5-6
+  a55b19ee079d059a 7-11,16,27-31,33-39
+  b59f673e4c59ab90 26,40
+  9550182cef8891c4 4,13,18,32,78-79
+src/providers/gateway/index.ts
+  39af4d88ac38ada9 7,12,19-25,54,59-81,83-94,97-99,102-103,105-114,118-121,126-129,131-138,143,156-157,159-174,176-194,196-203,208-216,218-219,313-316,324,96,130,195,18,51-52,55,139,204,222-223,225-233,235-237,240-241,246,258-260,262-270,277-287,289,308,311
+  5baaaac604e8a9de 153,325,100,115-116,155,326-338,53,220,256,272,276,288,293,307,312,305,32,36,43
+  8a3ab4cf342abbee 95,101,146-151,144,123,13-16,234,238-239,273-275,294,296,298-303,8,58
+  1cf3eaed654a65e5 117,141,206,244-245,254-255,271,291,297,304,249-250,56,317-323
+  b7b0c9d09b3c70c0 154,158,217,124-125,306,309-310
+  a55b19ee079d059a 2-6,104,175,224,242-243,247-248,251-253,261
+  b59f673e4c59ab90 140,142,205,207,290,292,33-35,37-42,44-49,145,295
+  36ffbffe71b01400 257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6f33b8b146d8cf30b79326c7f4fe1d75c501a69d",
+  "prompts": {
+    "1cf3eaed654a65e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fc38f15-8ea6-4eca-a944-30a1258df40f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 102,
+      "accepted_lines": 50,
+      "overriden_lines": 0
+    },
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 28,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "71d7b2f468d53add": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28c236c8-b4be-4712-a66d-807d68c56ab1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 47,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    },
+    "87fc3a9e43afe1e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8b61715-bfba-4a7a-8d7f-b3ebccdd641b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 18,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "9550182cef8891c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "926fe635-3958-4ed2-80a9-7c56e0a7ee14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 46,
+      "accepted_lines": 25,
+      "overriden_lines": 0
+    },
+    "a55b19ee079d059a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08dcef49-7078-47c5-8ff4-2d7e6d07893d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "b59f673e4c59ab90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa9080a9-13ba-4bad-addc-698b8ddd3e67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 35,
+      "total_deletions": 88,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "d4e3a7c8cdfd83f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2d335c1-db59-4a6d-86e2-1dd4c3d299a1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 17,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "dbd88af23b369141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a705ea7d-36c1-49b8-bccb-107d7d3290ba",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "e2a9c3d00f251d06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0977ba6-d642-4087-b8c3-5a1e443f449f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 191,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

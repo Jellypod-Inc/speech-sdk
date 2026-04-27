@@ -1,0 +1,25 @@
+src/__tests__/attribute-timestamps.test.ts
+  b2eb2def7b440f3e 1,8-111,125-135,137-250,264
+src/conversation/attribute-timestamps.ts
+  b2eb2def7b440f3e 1-4,7-68,71-78,86-315,317-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8843e537cc3288a8ee9611555df3b7110ab0045b",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 1,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}

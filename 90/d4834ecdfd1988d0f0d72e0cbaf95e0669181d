@@ -1,0 +1,235 @@
+skills/speech-sdk/references/configuration.md
+  5baaaac604e8a9de 4,6-8,10,12,14-17,39
+  0f69590e2e54295b 13
+src/__tests__/timestamps.test.ts
+  5baaaac604e8a9de 15,36,147-158,160-161,164-174,184-185,68,72-73
+  438cdbebfba5778c 194,197-198,201,203,205,208-209
+  8a3ab4cf342abbee 195,210,74
+  0f69590e2e54295b 67,82
+  b2eb2def7b440f3e 83
+skills/speech-sdk/references/providers/resemble.md
+  0f69590e2e54295b 25
+  9f77151f338adbcd 66
+skills/speech-sdk/SKILL.md
+  5baaaac604e8a9de 8
+  cf45629c5b76fc96 134
+  9f77151f338adbcd 55,108
+src/__tests__/e2e/cartesia.e2e.test.ts
+  9f77151f338adbcd 67
+skills/speech-sdk/references/timestamps.md
+  e2a9c3d00f251d06 57
+  39af4d88ac38ada9 111,177-178,180-181,195,129,131,133,136-137,143-145,148,172,187,199,201
+  571956dbe3d959e4 192-193,128,134
+src/generate-conversation.ts
+  39af4d88ac38ada9 5-8,18-19,26,46,60,85-87,89-92,167-168,170-171,173-174,186,190-192,194-205,207-209,211-241,260-265,268-269,285-288,290-293,298,368,448,456,481,503,597,600,72
+  87fc3a9e43afe1e4 16,349
+  e9c43f466d9c330d 62
+  b2eb2def7b440f3e 428,474,479
+  9f77151f338adbcd 63,71,73
+src/timestamps.ts
+  39af4d88ac38ada9 22,24-25
+skills/speech-sdk/references/providers/xai.md
+  9f77151f338adbcd 64
+src/__tests__/generate-conversation.test.ts
+  39af4d88ac38ada9 2,4,194-195,197-199,202-216,218-222,227-229,240-242,285-291,300,302-306,317-318,321,325-327,330-331,333-355,245-247,250-251,258,261,263,272-273
+  9f77151f338adbcd 280-282,196,200-201,283-284,243-244,248-249,252-254,256-257,259-260,262,264-266,269-271
+  b7b0c9d09b3c70c0 226,322
+README.md
+  39af4d88ac38ada9 68-76,78-80,83-87,89,91-93,112,222-223,227-228,234,263,268,451-455,470,37,42,389,391,401,403,413,415,425
+  57f288e0989fac6a 140
+  8a3ab4cf342abbee 194-195,197,204-205,218
+  571956dbe3d959e4 226
+  1cf3eaed654a65e5 229-232
+  b7b0c9d09b3c70c0 475
+  9f77151f338adbcd 41,82,146,224,351,374,388,390,392-400,402,404-409,411-412,414,416-424,81,90
+skills/speech-sdk/references/providers/cartesia.md
+  0f69590e2e54295b 28
+  9f77151f338adbcd 74
+src/__tests__/gateway.test.ts
+  39af4d88ac38ada9 1,3-6,8,20-26,51-67,69-71,73-79,200-225,227-228,285,289-296,448-458,460-466,48,50,89-94,100-101,106,118-120,125-130,136-137,140-141,143,145-146,153-159,169-170,173-176,178-183,192,198-199,231,238-243,248-249,252-253,299,306-311,319-320,323-342,344-376,379-384,386-390,392-414,416-444,446-447,467-468,471-476,478,481-485,487-489,492-494,496,499-501,503-508,511-515,524-525,528-531,533-534,536-539,544-552,555-557,560-576,579,581-583,585-591,593-594,596-599,601-607,610,612-614,37,39,107,193,267,269-270,277,282-283
+  b7b0c9d09b3c70c0 27,95,391,31,35-36,83,108-109,121,131,138-139,152,194-195,470,510,532,535,540-543,558-559,584,600
+  5baaaac604e8a9de 28-30,80-82,7,40-47,49,68,84-88,96-99,102-105,113-117,122-124,132-135,142,144,147-151,160-168,171,229-230,232-237,244-247,250-251,298,300-305,313-316,318,321,519,521-523,526,32-34,38
+  9f77151f338adbcd 255,259-260,262,272
+  1cf3eaed654a65e5 110,196,266,276
+src/errors.ts
+  39af4d88ac38ada9 18,27,35
+  a55b19ee079d059a 118,135-137
+skills/speech-sdk/references/providers/mistral.md
+  9f77151f338adbcd 59
+src/__tests__/e2e/elevenlabs.e2e.test.ts
+  9f77151f338adbcd 120
+src/__tests__/conversation-timestamps.test.ts
+  39af4d88ac38ada9 139,142,206,208,214-217,219-225,227-230,232-257,259-261,263-264,266,268-270,295-296,344-346,348-363,366-377,380,382-393,396-400,405,407-412,439
+  8a3ab4cf342abbee 271,401-402
+  b2eb2def7b440f3e 413-415
+skills/speech-sdk/references/providers/elevenlabs.md
+  9f77151f338adbcd 91
+src/speech-result.ts
+  39af4d88ac38ada9 2,33-36
+skills/speech-sdk/references/providers/inworld.md
+  0f69590e2e54295b 28
+  9f77151f338adbcd 61
+src/__tests__/e2e/murf.e2e.test.ts
+  9f77151f338adbcd 65
+skills/speech-sdk/references/providers/fal.md
+  9f77151f338adbcd 47
+skills/speech-sdk/references/providers/deepgram.md
+  9f77151f338adbcd 49
+skills/speech-sdk/references/streaming.md
+  9f77151f338adbcd 87-89,91-94
+src/__tests__/e2e/resemble.e2e.test.ts
+  9f77151f338adbcd 64
+src/__tests__/e2e/hume.e2e.test.ts
+  9f77151f338adbcd 65
+skills/speech-sdk/references/voice-cloning.md
+  cf45629c5b76fc96 6
+skills/speech-sdk/references/providers/openai.md
+  9f77151f338adbcd 62
+src/__tests__/generate-speech.test.ts
+  39af4d88ac38ada9 339,358,363,369-371,414,437-453,380-381,392-393,399,404-405,412,344-346,348,387-389,391,454,481,484-485,487-504,8,461-462,479-480
+  5baaaac604e8a9de 372-375,382,384-385,397-398,400-402,406-411,413
+  9f77151f338adbcd 377-379,383,394-396,343,386,455-460,463-473,475-478
+  b7b0c9d09b3c70c0 366-368
+  0f69590e2e54295b 347,390
+skills/speech-sdk/references/providers/murf.md
+  0f69590e2e54295b 28
+  9f77151f338adbcd 65
+skills/speech-sdk/references/providers/hume.md
+  0f69590e2e54295b 26
+  9f77151f338adbcd 68
+src/providers/gateway/index.ts
+  39af4d88ac38ada9 3,9,32-38,96-97,104-126,128-132,144-150,153-155,158-159,161-170,174-177,186-189,192-199,207,226-227,229-244,246-264,267-274,282-290,292-293,383-386,389,152,190,265,412,31,49-50,98,200,275,307-315,317-324,329,337-346,348-350,355-358,360-366,368,378,381,204,279,372
+  5baaaac604e8a9de 223,390,156,171-172,225,391-395,399,402,405-406,413-414,418,423,437,439-440,444,449,451-461,464,30,51,63,294,334,352,354,367,375,377,382,142-143
+  8a3ab4cf342abbee 151,157,216-221,208,180
+  1cf3eaed654a65e5 173,432,434-435,205,280,325,327-328,330,332-333,351,373,140
+  b7b0c9d09b3c70c0 224,228,291,181-182,376,379-380
+  a55b19ee079d059a 13,18,4
+skills/speech-sdk/references/conversation.md
+  cf45629c5b76fc96 63,120
+  b2eb2def7b440f3e 97,99
+  9f77151f338adbcd 16,125
+skills/speech-sdk/references/providers/fish-audio.md
+  9f77151f338adbcd 63
+src/__tests__/e2e/inworld.e2e.test.ts
+  9f77151f338adbcd 70
+src/generate-speech.ts
+  87fc3a9e43afe1e4 11,311
+  5baaaac604e8a9de 16,77,81,175,196-199,201-202,216,221-229,231-234,236-237,249-250,253,255,259,265-266,268-269
+  8a3ab4cf342abbee 257
+  39af4d88ac38ada9 13,125-128,132-147,152
+src/__tests__/e2e/gateway.e2e.test.ts
+  39af4d88ac38ada9 1-9,11-17,19-27,32-63,65-77,80,82-90,93-98,102,104,118,124,128,143,145
+skills/speech-sdk/references/providers/google.md
+  9f77151f338adbcd 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "90d4834ecdfd1988d0f0d72e0cbaf95e0669181d",
+  "prompts": {
+    "0f69590e2e54295b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1abae513-8606-46c7-bc17-cc6a1d310a69",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    },
+    "1cf3eaed654a65e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fc38f15-8ea6-4eca-a944-30a1258df40f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 102,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 28,
+      "accepted_lines": 27,
+      "overriden_lines": 0
+    },
+    "5baaaac604e8a9de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dbacf-d25b-77e1-b406-4fe47e040388",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 911,
+      "total_deletions": 451,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 81,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 284,
+      "total_deletions": 205,
+      "accepted_lines": 76,
+      "overriden_lines": 0
+    },
+    "a55b19ee079d059a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08dcef49-7078-47c5-8ff4-2d7e6d07893d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 166,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}

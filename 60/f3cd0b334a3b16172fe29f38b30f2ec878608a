@@ -1,0 +1,28 @@
+README.md
+  39af4d88ac38ada9 61-69,71-73,76-80,82,84-86,105,216-217,220-221,227,256,261,407-411,426
+  57f288e0989fac6a 133
+  8a3ab4cf342abbee 188-189,191,198-199,212
+  571956dbe3d959e4 219
+  1cf3eaed654a65e5 222-225
+  b7b0c9d09b3c70c0 431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "60f3cd0b334a3b16172fe29f38b30f2ec878608a",
+  "prompts": {
+    "b7b0c9d09b3c70c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea6d7919-7859-40c5-9295-6c0c5c6a3e19",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 36,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

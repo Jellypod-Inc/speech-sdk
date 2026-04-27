@@ -1,0 +1,16 @@
+src/index.ts
+  9f77151f338adbcd 8,13,18,20
+  a55b19ee079d059a 11
+  571956dbe3d959e4 23
+src/errors.ts
+  39af4d88ac38ada9 12,20,27
+  a55b19ee079d059a 97,114-116,56-62
+  e2a9c3d00f251d06 11
+  438cdbebfba5778c 85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d514be2f40ce27b07e04dd3c1e94239a42278fe2",
+  "prompts": {}
+}

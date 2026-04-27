@@ -1,0 +1,59 @@
+src/__tests__/conversation-timestamps.test.ts
+  39af4d88ac38ada9 132,135,203,205,211-214,216-222,224-227,229-254,256-264,355-356,405-407,409-424,426-438,440-451,453-457,484,486-491,505,332,481,309
+  8a3ab4cf342abbee 265,458-459,18,30,53,63,101,106,149,215,223,228,338,387,408,439,485,168,170,176,178,185,187,365,368-372,158,397,270
+  b2eb2def7b440f3e 492-494,266,482,175,177,179,184,186,188,124,193,255,351,377,425,452,316,465,267-269,271-308,310
+  438cdbebfba5778c 311-315,317-327,329-331,460-464,466-476,478-480
+  b59f673e4c59ab90 11
+src/conversation/stitch.ts
+  39af4d88ac38ada9 43,144,170
+  e2a9c3d00f251d06 100,138
+  8a3ab4cf342abbee 4,25
+  36ffbffe71b01400 110-113
+  b2eb2def7b440f3e 48,143,145,151,153-169,171-174,176-177,181-185,187,201-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "75157590f43ccddbcd678c0f99dd74bfc3166557",
+  "prompts": {
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 28,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 81,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 25,
+      "accepted_lines": 79,
+      "overriden_lines": 0
+    }
+  }
+}

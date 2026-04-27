@@ -1,0 +1,42 @@
+README.md
+  39af4d88ac38ada9 68-76,78-80,83-87,89,91-93,112,245-246,254-255,258,273,455-459,473,37,42,394,396,406,408,417,419,429,194,196,198,202,206-207,213,215,248,267,270
+  57f288e0989fac6a 140
+  8a3ab4cf342abbee 217-218,220,227-228,241,200,208,211,32,177,188,190-191,212,225,257,286,439
+  571956dbe3d959e4 253,247,261-262
+  b7b0c9d09b3c70c0 478
+  9f77151f338adbcd 41,82,146,356,379,393,395,397-405,407,409-416,418,420-428,81,90,199,214,219
+  438cdbebfba5778c 193,197,201,203-205,209-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "49d7f89c910dfeec78fa463e34fb48c6887a9ca4",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 18,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 284,
+      "total_deletions": 205,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

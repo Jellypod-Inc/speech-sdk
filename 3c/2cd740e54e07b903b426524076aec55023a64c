@@ -1,0 +1,248 @@
+src/speech-result.ts
+  39af4d88ac38ada9 2,33-36
+src/__tests__/generate-speech.test.ts
+  39af4d88ac38ada9 337,355,359,361-363,406,429-445,373-374,384-385,391,395-396,403,342-345,380-383,446-447,450-451,453-470
+  5baaaac604e8a9de 364-367,375,377-378,389-390,392-394,397-402,405
+  9f77151f338adbcd 370-372,376,386-388,341,379
+src/speech-provider.ts
+  d4e3a7c8cdfd83f7 30
+  9550182cef8891c4 31
+  5baaaac604e8a9de 104
+  39af4d88ac38ada9 3,163-166
+src/stream-speech.ts
+  39af4d88ac38ada9 9,92
+skills/speech-sdk/references/conversation.md
+  cf45629c5b76fc96 63,120
+  b2eb2def7b440f3e 97,99
+src/index.ts
+  9f77151f338adbcd 5
+src/providers/hume/index.ts
+  39af4d88ac38ada9 8-12,22-40,46-54,56,59
+src/providers/inworld/index.ts
+  39af4d88ac38ada9 6-10,47-48,50-69,71-75,77-79,81,84
+src/generate-conversation.ts
+  39af4d88ac38ada9 5-8,18,20,27,47,61,77-79,81-84,159-160,162-163,165-166,188,192-194,196-207,209-211,214-244,269-274,277-278,282-285,288-291,296,371,452,460,484,488,510,604,607
+  87fc3a9e43afe1e4 16,352
+  e9c43f466d9c330d 63
+  b2eb2def7b440f3e 431,474-476,478
+src/providers/cartesia/index.ts
+  39af4d88ac38ada9 11,27-76,83-87,89-91,93,96
+src/__tests__/gateway.test.ts
+  39af4d88ac38ada9 1,3-6,8,20-26,42-58,60-62,64-70,205-230,232-233,267,271-278,430-440,442-448,39,41,83-88,94-95,102-103,112-114,119-125,131-132,141-143,145,147-148,154-160,170-171,174-177,179-184,193,202-204,236,243-248,253-254,257-258,281,288-293,301-302,305-324,326-358,361-366,368-372,374-396,398-426,428-429,449-450,463-469,471,474-478,480-485,487,490-492,495-498,505-506,514-519,528-529,532-535,544,552-558,560,563,565-566,573-574,576-595,599-607,611,613-628,631,633-635,642-649,651-652,654-657,664-671,674,676-678
+  b7b0c9d09b3c70c0 27,89,373,456,499-500,512,640,662
+  5baaaac604e8a9de 28-30,71-73,7,31-38,40,59,75-79,82,90-93,96-99,104,106-110,116-118,126-129,133,135-139,144,146,149-153,161-169,172,194,196-200,234-235,237-242,249-252,255-256,280,282-287,295-298,300,303,452,462,508,523-527,530,537,551,636,658
+  9f77151f338adbcd 260,264-265
+  a55b19ee079d059a 461,550
+src/__tests__/conversation-timestamps.test.ts
+  39af4d88ac38ada9 139,142,233,235,241-244,246-252,254-257,259-284,286-288,290-291,293,295-297,322-323,387-389,391-406,409-420,423,425-436,439-443,448,450-455,482
+  8a3ab4cf342abbee 298,444-445
+  b2eb2def7b440f3e 456-458
+src/providers/fal/index.ts
+  39af4d88ac38ada9 7-11,19-41,45,48
+  b59f673e4c59ab90 12
+src/providers/murf/index.ts
+  39af4d88ac38ada9 6-10,23-63,65-73,75,78
+src/__tests__/e2e/gateway.e2e.test.ts
+  39af4d88ac38ada9 1-9,11-17,19-27,32-63,65-77,80,84-92,95-100,104,106,120,126,130,145,147
+src/__tests__/generate-conversation.test.ts
+  39af4d88ac38ada9 2,4,194-198,212-226,228-232,235-237,246-248,268-274,283,285-289,300-301,304,308-310,313-314,316-338
+  9f77151f338adbcd 257-259
+  8a3ab4cf342abbee 260
+src/conversation/stitch.ts
+  39af4d88ac38ada9 49,168,179
+src/providers/deepgram/index.ts
+  39af4d88ac38ada9 6-10,45-55,57,60
+src/providers/gateway/index.ts
+  39af4d88ac38ada9 2,7,34-40,99-100,107-129,131-142,146-148,152-153,155-164,173-176,181-184,187-194,199,219-220,222-237,239-257,260-267,272-280,282-283,380-383,386,145,185,258,412,33,52-53,101,195,268,294-302,305-310,313,316-317,322,330-339,342-344,349-352,354-360,362,372,378,536,567
+  5baaaac604e8a9de 216,387,150,170-171,218,388-392,396,399,402-403,413-414,418,423,437,439-440,444,449,451-461,464,32,54,66,284,327,346,348,361,366,371,379,465,472-473,480,483,486-487,516-517,524,529,537-538,545,548,568,570
+  8a3ab4cf342abbee 143,151,165,208-210,212-214,8-9,11-12,201
+  1cf3eaed654a65e5 169,172,432,434-435,197,270,318,320-321,323,325-326,345,364,515,558,560-561
+  b7b0c9d09b3c70c0 217,221,281
+  a55b19ee079d059a 15,20
+src/errors.ts
+  39af4d88ac38ada9 18,27,35
+  a55b19ee079d059a 118,135-137
+src/providers/google/index.ts
+  39af4d88ac38ada9 11,33-60,62-141,143-166,168
+  b59f673e4c59ab90 15
+src/providers/fish-audio/index.ts
+  39af4d88ac38ada9 9,20-35,37,40
+src/conversation/dispatch.ts
+  39af4d88ac38ada9 1-5
+skills/speech-sdk/references/timestamps.md
+  e2a9c3d00f251d06 68
+  39af4d88ac38ada9 120,186-187,189-190,204,138,140,142,145-146,152-154,157,181,196
+  571956dbe3d959e4 201-202,137,143
+README.md
+  39af4d88ac38ada9 61-69,71-73,76-80,82,84-86,105,216-217,220-221,227,256,261,407-411,426
+  57f288e0989fac6a 133
+  8a3ab4cf342abbee 188-189,191,198-199,212
+  571956dbe3d959e4 219
+  1cf3eaed654a65e5 222-225
+src/providers/xai/index.ts
+  39af4d88ac38ada9 6-10,18-19,23-50,52,55
+src/__tests__/conversation-dispatch.test.ts
+  39af4d88ac38ada9 7,133-145,147-149,151-153,167-170,176-185,187,190-191,195-205
+  a55b19ee079d059a 188-189
+src/providers/elevenlabs/index.ts
+  39af4d88ac38ada9 11,27-149,151-155,157-161,163-167,169-171,175,178
+src/providers/mistral/index.ts
+  39af4d88ac38ada9 6-10,27-32,34-37,41,43
+src/provider-utils.ts
+  71d7b2f468d53add 39-40,107
+  39af4d88ac38ada9 48-51,53,70-71,76-78,87
+src/providers/resemble/index.ts
+  39af4d88ac38ada9 6-10,23-57,59-62,64,67
+skills/speech-sdk/references/error-handling.md
+  cf45629c5b76fc96 51,53,55,57,75,77,81
+AGENTS.md
+  39af4d88ac38ada9 27-28,34-36,38-41
+  b59f673e4c59ab90 64
+src/timestamps.ts
+  39af4d88ac38ada9 22,24-25
+src/generate-speech.ts
+  87fc3a9e43afe1e4 11,323
+  5baaaac604e8a9de 16,78,82,177,198-201,203-204,218,223-231,233-236,238-239,251-252,255,257,265,271-272,274-275
+  8a3ab4cf342abbee 259,262-263
+  39af4d88ac38ada9 13,126-129,133-137,139-149,154
+src/providers/openai/index.ts
+  39af4d88ac38ada9 9,21-97,103-107,109-113,115-117,119,122
+  438cdbebfba5778c 296,299,301,304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3c2cd740e54e07b903b426524076aec55023a64c",
+  "prompts": {
+    "1cf3eaed654a65e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fc38f15-8ea6-4eca-a944-30a1258df40f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 102,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    },
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 4576,
+      "total_deletions": 1664,
+      "accepted_lines": 1620,
+      "overriden_lines": 0
+    },
+    "571956dbe3d959e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afbdce77-a913-458c-ad01-12f439609170",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 223,
+      "total_deletions": 115,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "5baaaac604e8a9de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dbacf-d25b-77e1-b406-4fe47e040388",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 911,
+      "total_deletions": 451,
+      "accepted_lines": 54,
+      "overriden_lines": 0
+    },
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 81,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 284,
+      "total_deletions": 205,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "a55b19ee079d059a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08dcef49-7078-47c5-8ff4-2d7e6d07893d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    },
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 166,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "b7b0c9d09b3c70c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea6d7919-7859-40c5-9295-6c0c5c6a3e19",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 36,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    },
+    "cf45629c5b76fc96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "269d9ad2-d762-4d91-9469-83c6439aaaad",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 196,
+      "total_deletions": 412,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}

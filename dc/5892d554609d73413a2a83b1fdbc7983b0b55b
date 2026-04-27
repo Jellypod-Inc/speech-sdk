@@ -1,0 +1,52 @@
+src/__tests__/timestamps.test.ts
+  5baaaac604e8a9de 16,37,146-157,159-160,163-173,183-184,69,73-74
+  8a3ab4cf342abbee 290,75,19,71,90,109,127,191-192,194-195,197-200,209-225,227-241,243-248,253-254,258-260,262-267,269-275,277-279,281-283,286-287
+  0f69590e2e54295b 68,83
+  b2eb2def7b440f3e 84
+src/errors.ts
+  39af4d88ac38ada9 13,22,30
+  a55b19ee079d059a 92,109-111,120,123,132-133
+  e2a9c3d00f251d06 12
+src/index.ts
+  9f77151f338adbcd 8,12,18,20
+src/derive-timestamps.ts
+  8a3ab4cf342abbee 19
+src/generate-speech.ts
+  5baaaac604e8a9de 17,57,61,152,173,175-177,179-180,194,199-207,209,211-213,215-216,218-219,221,223,238,244-245,247-248
+  8a3ab4cf342abbee 237,97,174,210,220,222,224-226,230-231,239-243,246,272
+  39af4d88ac38ada9 14,104-107,109-124,129
+  e2a9c3d00f251d06 66,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "dc5892d554609d73413a2a83b1fdbc7983b0b55b",
+  "prompts": {
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 154,
+      "total_deletions": 58,
+      "accepted_lines": 90,
+      "overriden_lines": 0
+    },
+    "a55b19ee079d059a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08dcef49-7078-47c5-8ff4-2d7e6d07893d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

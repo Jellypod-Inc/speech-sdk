@@ -1,0 +1,30 @@
+skills/speech-sdk/references/providers.md
+  e2a9c3d00f251d06 85
+  675505ad82eb49d2 7-21,25-41,45
+skills/speech-sdk/references/voice-cloning.md
+  cf45629c5b76fc96 6
+skills/speech-sdk/references/timestamps.md
+  e2a9c3d00f251d06 43,36,38
+  39af4d88ac38ada9 95,161-162,164-165,179,113,115,117,120-121,127-129,132,156,171,183,185,45
+  571956dbe3d959e4 176-177,112,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "dd28140ec49b4a654aea4c4db1f44b64eabdb1b6",
+  "prompts": {
+    "675505ad82eb49d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9812497b-0f60-4f9f-9817-c92225da6098",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 60,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    }
+  }
+}

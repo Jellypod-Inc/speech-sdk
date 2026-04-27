@@ -1,0 +1,62 @@
+src/__tests__/timestamps.test.ts
+  5baaaac604e8a9de 15,36,145-156,158-159,162-172,182-183,68,72-73
+  8a3ab4cf342abbee 289,74,18,70,89,108,126,190-191,193-194,196-199,208-224,226-240,242-247,252-253,257-259,261-266,268-274,276-278,280-282,285-286
+  0f69590e2e54295b 67,82
+  b2eb2def7b440f3e 83
+src/__tests__/e2e/openai.e2e.test.ts
+  8a3ab4cf342abbee 136,138,140,164
+README.md
+  39af4d88ac38ada9 68-76,78-80,83-87,89,91-93,112,246-247,251-252,258,287,292,475-479,494,37,42,413,415,425,427,437,439,449,194,196,198,202,207-208,214,216
+  57f288e0989fac6a 140
+  8a3ab4cf342abbee 218-219,221,228-229,242,200,209,212
+  571956dbe3d959e4 250
+  1cf3eaed654a65e5 253-256
+  b7b0c9d09b3c70c0 499
+  9f77151f338adbcd 41,82,146,248,375,398,412,414,416-424,426,428-433,435-436,438,440-448,81,90,199,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "80a40a03c4a724070b97b616e7e7eecd6eb5c5e8",
+  "prompts": {
+    "39af4d88ac38ada9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2aeac5a-ca83-4e45-991d-4b8730fa481d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 28,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "8a3ab4cf342abbee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be58b46d-2780-4b66-9157-8eafddf7d2ce",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 12,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    },
+    "9f77151f338adbcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dc2cb-c494-7722-83ef-b3b924e4e262",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 284,
+      "total_deletions": 205,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

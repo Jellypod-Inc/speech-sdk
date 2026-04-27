@@ -1,0 +1,25 @@
+src/__tests__/elevenlabs-stream.test.ts
+  034e1a321300a367 2,45-50
+src/__tests__/openai-stream.test.ts
+  034e1a321300a367 2,47,49,59-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "72c4a9ae0c7aedbe0200ea82cf285bc4efa0cdfc",
+  "prompts": {
+    "034e1a321300a367": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfc53fcb-60b4-4cf4-a5c5-246b00471b7a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 11,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}

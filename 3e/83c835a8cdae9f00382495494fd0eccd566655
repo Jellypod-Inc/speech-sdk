@@ -1,0 +1,27 @@
+src/providers/openai/index.ts
+  39af4d88ac38ada9 9,23-99,101-105,107-111,113-115,117,120
+  438cdbebfba5778c 294,301,296,298-299,302-313
+  8a3ab4cf342abbee 100,106,112,300
+src/__tests__/openai-stt-factory.test.ts
+  438cdbebfba5778c 1-31,33,35-41,43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3e83c835a8cdae9f00382495494fd0eccd566655",
+  "prompts": {
+    "438cdbebfba5778c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d506e214-f5f5-4040-b8cb-0a32d634cbf1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 8,
+      "accepted_lines": 66,
+      "overriden_lines": 0
+    }
+  }
+}
