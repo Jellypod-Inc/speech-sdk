@@ -1,0 +1,25 @@
+skills/speech-sdk/references/conversation.md
+  b2eb2def7b440f3e 77,79-85
+skills/speech-sdk/references/timestamps.md
+  b2eb2def7b440f3e 72,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e4aea9666cce4e9751b1e6059df16098f3ba48e3",
+  "prompts": {
+    "b2eb2def7b440f3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304da6fe-5bc5-4a99-a591-45a35f93b84d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 7,
+      "accepted_lines": 425,
+      "overriden_lines": 0
+    }
+  }
+}
