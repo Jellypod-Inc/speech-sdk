@@ -1,0 +1,23 @@
+src/audio-output.ts
+  188a3f48000f8fb8 68-79,97-98,103,108,113,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5df1d3b2950f3199102b28774fae5501236ccfaa",
+  "prompts": {
+    "188a3f48000f8fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eb4ea9f-768b-44b1-a2ae-04ad0676bf4b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 21,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
