@@ -1,5 +1,6 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
+import { validateOutput } from "./audio-output.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
 import type {
@@ -45,6 +46,7 @@ export async function generateConversation<V extends Voice = Voice>(
   options: GenerateConversationOptions<V>
 ): Promise<ConversationResult> {
   validateConversationInput(options);
+  validateOutput(options.output);
 
   // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
   const stringResolutionCache = new Map<string, ResolvedModel<V>>();

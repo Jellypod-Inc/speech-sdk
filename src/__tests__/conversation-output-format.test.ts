@@ -105,4 +105,15 @@ describe("generateConversation stitch output format", () => {
       MPEG_FRAME_SYNC_BYTE_2_MASK
     );
   });
+
+  it("rejects invalid output shape at the boundary before any provider call", async () => {
+    const provider = mockPcmProvider();
+    await expect(
+      generateConversation({
+        turns: [{ model: { provider, modelId: "m" }, voice: "a", text: "hi" }],
+        output: { format: "wav", bitrate: 96 } as never,
+      })
+    ).rejects.toThrow(/bitrate is only valid/i);
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
 });
