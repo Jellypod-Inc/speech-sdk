@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { ConversationInputError } from "../conversation/errors.js";
 import { validateConversationInput } from "../conversation/validate.js";
 
-const TEXT_EMPTY_RE = /text must not be empty/i;
-const MODEL_REQUIRED_RE = /model must be set/i;
-
 describe("validateConversationInput", () => {
   const base = {
     model: "openai/tts-1",
@@ -30,7 +27,7 @@ describe("validateConversationInput", () => {
         ...base,
         turns: [{ voice: "nova", text: "" }],
       })
-    ).toThrow(TEXT_EMPTY_RE);
+    ).toThrow(ConversationInputError);
   });
 
   it("rejects turn with whitespace-only text", () => {
@@ -39,7 +36,7 @@ describe("validateConversationInput", () => {
         ...base,
         turns: [{ voice: "nova", text: "   " }],
       })
-    ).toThrow(TEXT_EMPTY_RE);
+    ).toThrow(ConversationInputError);
   });
 
   it("rejects turn with neither top-level nor per-turn model", () => {
@@ -47,7 +44,7 @@ describe("validateConversationInput", () => {
       validateConversationInput({
         turns: [{ voice: "a", text: "Hi." }],
       })
-    ).toThrow(MODEL_REQUIRED_RE);
+    ).toThrow(ConversationInputError);
   });
 
   it("accepts per-turn model when top-level is missing", () => {
@@ -59,5 +56,40 @@ describe("validateConversationInput", () => {
         ],
       })
     ).not.toThrow();
+  });
+
+  it("rejects mixing top-level model with a per-turn model override", () => {
+    expect(() =>
+      validateConversationInput({
+        model: "openai/tts-1",
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hey.", model: "elevenlabs/eleven_v3" },
+        ],
+      })
+    ).toThrow(ConversationInputError);
+  });
+
+  it("rejects mixing top-level model with a per-turn model on every turn", () => {
+    expect(() =>
+      validateConversationInput({
+        model: "openai/tts-1",
+        turns: [
+          { voice: "a", text: "Hi.", model: "openai/tts-1" },
+          { voice: "b", text: "Hey.", model: "openai/tts-1" },
+        ],
+      })
+    ).toThrow(ConversationInputError);
+  });
+
+  it("rejects per-turn model on some turns when top-level is missing", () => {
+    expect(() =>
+      validateConversationInput({
+        turns: [
+          { voice: "a", text: "Hi.", model: "openai/tts-1" },
+          { voice: "b", text: "Hey." },
+        ],
+      })
+    ).toThrow(ConversationInputError);
   });
 });

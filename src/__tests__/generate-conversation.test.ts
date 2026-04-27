@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { ConversationInputError } from "../conversation/errors.js";
+import { ApiError } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
+import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
-
-const AT_LEAST_ONE_TURN_RE = /at least one turn/i;
-const NATIVE_PROVIDER_OPTIONS_RE =
-  /turns\[1\]\.providerOptions.*native dialogue path/;
 
 function nativeProvider(): SpeechProvider {
   return {
@@ -52,11 +51,8 @@ describe("generateConversation", () => {
     });
     expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
     expect(result.audio.uint8Array).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.metadata.provider).toBe("native");
-    expect(result.metadata.model).toBe("m");
     expect(result.metadata.inputChars).toBe("Hi.".length + "Hello.".length);
-    // Native provider with no getStitchOptions ⇒ normalization can't run, so
-    // a warning surfaces (but the audio passes through untouched).
+    // Native provider lacks getStitchOptions, so normalization can't run and emits a warning.
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
   });
 
@@ -88,8 +84,6 @@ describe("generateConversation", () => {
       ],
     });
 
-    // generateDialogue must have received the stitch-mode providerOptions
-    // so the model returns decodable PCM.
     const dialogueCallArgs = (
       provider.generateDialogue as ReturnType<typeof vi.fn>
     ).mock.calls[0][0];
@@ -97,27 +91,11 @@ describe("generateConversation", () => {
       response_format: "pcm",
     });
 
-    // Output is the re-encoded WAV at the default -20 dBFS RMS target.
     expect(result.audio.mediaType).toBe("audio/wav");
     const wav = result.audio.uint8Array;
     const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
     expect(view.getUint32(0)).toBe(0x52_49_46_46);
     expect(result.warnings).toBeUndefined();
-  });
-
-  it("skips native-path normalization when normalizeVolume:false", async () => {
-    const provider = nativeProvider();
-    const result = await generateConversation({
-      model: { provider, modelId: "m" },
-      turns: [
-        { voice: "a", text: "Hi" },
-        { voice: "b", text: "Hello" },
-      ],
-      normalizeVolume: false,
-    });
-    // No warning when the user explicitly opted out.
-    expect(result.warnings).toBeUndefined();
-    expect(result.audio.mediaType).toBe("audio/mpeg");
   });
 
   it("routes to stitch path when dialogue unsupported", async () => {
@@ -141,7 +119,7 @@ describe("generateConversation", () => {
         model: { provider, modelId: "m" },
         turns: [],
       })
-    ).rejects.toThrow(AT_LEAST_ONE_TURN_RE);
+    ).rejects.toBeInstanceOf(ConversationInputError);
     expect(provider.generate).not.toHaveBeenCalled();
   });
 
@@ -158,13 +136,11 @@ describe("generateConversation", () => {
         },
       ],
       gapMs: 0,
-      normalizeVolume: false,
     });
 
     const calls = (provider.generate as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls).toHaveLength(2);
-    // stitchProvider().getStitchOptions declares { response_format: "pcm" },
-    // which is merged last so it always wins over caller-supplied keys.
+    // stitchProvider's response_format: "pcm" is merged last and wins over caller keys.
     expect(calls[0][0].providerOptions).toEqual({
       speed: 0.9,
       response_format: "pcm",
@@ -186,7 +162,167 @@ describe("generateConversation", () => {
           { voice: "b", text: "Hello.", providerOptions: { style: "casual" } },
         ],
       })
-    ).rejects.toThrow(NATIVE_PROVIDER_OPTIONS_RE);
+    ).rejects.toBeInstanceOf(ConversationInputError);
     expect(provider.generateDialogue).not.toHaveBeenCalled();
+  });
+
+  it("routes gateway-supported model through runGateway with a single HTTP call", async () => {
+    const bytes = new Uint8Array([88, 89, 90]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+
+    const result = await generateConversation({
+      model: resolved,
+      turns: [
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ],
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    const body = JSON.parse(init.body);
+    expect(body.mode).toBe("conversation");
+    // Shared shape — every turn resolves to the same model, so the wire carries
+    // a top-level `model` and turns omit it.
+    expect(body.model).toBe("openai/gpt-4o-mini-tts");
+    expect(body.turns).toEqual([
+      { voice: "alloy", text: "Hi there." },
+      { voice: "nova", text: "Hello!" },
+    ]);
+    expect(body.timestamps).toBeUndefined();
+
+    expect(result.audio.uint8Array).toEqual(new Uint8Array([88, 89, 90]));
+    expect(result.audio.mediaType).toBe("audio/wav");
+    expect(result.providerMetadata).toBeUndefined();
+    expect(result.warnings).toBeUndefined();
+  });
+
+  it("reuses the top-level string model so gateway conversations stay on the one-call path", async () => {
+    const bytes = new Uint8Array([88, 89, 90]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = fetchFn as unknown as typeof globalThis.fetch;
+    try {
+      await generateConversation({
+        model: "openai/gpt-4o-mini-tts",
+        apiKey: "gw-key",
+        turns: [
+          { voice: "alloy", text: "Hi there." },
+          { voice: "nova", text: "Hello!" },
+        ],
+      });
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchFn.mock.calls[0];
+      expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+      const body = JSON.parse(init.body);
+      expect(body.model).toBe("openai/gpt-4o-mini-tts");
+      expect(body.turns).toEqual([
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ]);
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("routes timestamps:true to /with-timestamps and uses server-attributed words", async () => {
+    const audioBytes = new Uint8Array([65]);
+    const audioBase64 =
+      typeof btoa === "function"
+        ? btoa(String.fromCharCode(...audioBytes))
+        : Buffer.from(audioBytes).toString("base64");
+    const wirePayload = {
+      audio: audioBase64,
+      mediaType: "audio/wav",
+      warnings: [],
+      timestamps: [
+        { text: "Hi", start: 0, end: 0.1, turnIndex: 0 },
+        { text: "there.", start: 0.1, end: 0.3, turnIndex: 0 },
+        { text: "Hello!", start: 0.4, end: 0.6, turnIndex: 1 },
+      ],
+    };
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => wirePayload,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    const resolved = gateway("openai/gpt-4o-mini-tts");
+
+    const transcribe = vi.fn();
+
+    const result = await generateConversation({
+      model: resolved,
+      turns: [
+        { voice: "alloy", text: "Hi there." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      timestamps: true,
+    });
+
+    expect(transcribe).not.toHaveBeenCalled();
+
+    const [url, init] = fetchFn.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
+    );
+    const body = JSON.parse(init.body);
+    expect(body.timestamps).toBeUndefined();
+
+    expect(result.timestamps).toEqual([
+      { text: "Hi", start: 0, end: 0.1, turnIndex: 0 },
+      { text: "there.", start: 0.1, end: 0.3, turnIndex: 0 },
+      { text: "Hello!", start: 0.4, end: 0.6, turnIndex: 1 },
+    ]);
+  });
+
+  it("does not retry on 501 Not Implemented in the native path", async () => {
+    // 501 = gateway's "this capability will never work" signal; retrying wastes round-trips.
+    const error = new ApiError("Not implemented", {
+      statusCode: 501,
+      code: "timestamps_unsupported",
+    });
+    const provider: SpeechProvider = {
+      id: "native",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn(),
+      generateDialogue: vi.fn().mockRejectedValue(error),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        maxRetries: 2,
+      })
+    ).rejects.toThrow();
+    expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
   });
 });

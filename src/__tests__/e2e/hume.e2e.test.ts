@@ -53,8 +53,6 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
       voice: "Kora",
     });
 
-    expect(result.metadata.provider).toBe("hume");
-    expect(result.metadata.model).toBe("octave-2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -62,12 +60,12 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
   });
 
   describe("timestamps (native /v0/tts)", () => {
-    it("returns word timestamps on the auto default for octave-2", async () => {
+    it("returns word timestamps on the timestamps:on for octave-2", async () => {
       const result = await generateSpeech({
         model: "hume/octave-2",
         text: TEST_TEXT,
         voice: "Kora",
-        timestamps: "auto",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -89,8 +87,7 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
       }
       const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
       const durMs = result.metadata.audioDurationMs ?? 0;
-      // Last word's end must not exceed the audio; generous lower bound
-      // because providers often append trailing silence after the final word.
+      // Generous lower bound: providers often append trailing silence after the final word.
       expect(lastEndMs).toBeLessThanOrEqual(durMs + 100);
       expect(lastEndMs).toBeGreaterThan(durMs * 0.5);
     });
@@ -100,7 +97,7 @@ describe.skipIf(!hasKey)("Hume e2e", () => {
         model: "hume/octave-2",
         text: TEST_TEXT,
         voice: "Kora",
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

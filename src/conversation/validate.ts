@@ -1,41 +1,27 @@
 import { ConversationInputError } from "./errors.js";
 import type { ConversationTurn, GenerateConversationOptions } from "./types.js";
 
-/**
- * Stable key for a voice so we can count unique voices across turns within
- * one call. String voices and URL voices use their value; binary
- * `Uint8Array` audio voices use object-reference identity (two distinct
- * buffers with the same length/endpoints would otherwise collide).
- */
-export function voiceKey(
-  voice: ConversationTurn["voice"],
-  refIds: WeakMap<object, number>,
-  refCounter: { next: number }
-): string {
-  if (typeof voice === "string") {
-    return `s:${voice}`;
-  }
-  if ("url" in voice) {
-    return `u:${voice.url}`;
-  }
-  if ("audio" in voice && typeof voice.audio === "string") {
-    return `a:${voice.audio}`;
-  }
-  // Object voice (Uint8Array audio, or any other shape) — key by reference.
-  let id = refIds.get(voice);
-  if (id === undefined) {
-    id = refCounter.next++;
-    refIds.set(voice, id);
-  }
-  return `o:${id}`;
-}
-
-/** Build a fresh ref-id context for a single conversation. */
-export function newVoiceKeyContext(): {
-  refIds: WeakMap<object, number>;
-  refCounter: { next: number };
-} {
-  return { refIds: new WeakMap(), refCounter: { next: 0 } };
+// Object voices key by reference — distinct buffers with identical content must not collide.
+export function newVoiceKeyer(): (voice: ConversationTurn["voice"]) => string {
+  const refIds = new WeakMap<object, number>();
+  let nextId = 0;
+  return (voice) => {
+    if (typeof voice === "string") {
+      return `s:${voice}`;
+    }
+    if ("url" in voice) {
+      return `u:${voice.url}`;
+    }
+    if ("audio" in voice && typeof voice.audio === "string") {
+      return `a:${voice.audio}`;
+    }
+    let id = refIds.get(voice);
+    if (id === undefined) {
+      id = nextId++;
+      refIds.set(voice, id);
+    }
+    return `o:${id}`;
+  };
 }
 
 export function validateConversationInput(
@@ -47,14 +33,23 @@ export function validateConversationInput(
     );
   }
 
+  // Model placement must be all-or-nothing — partial mix hides which model actually ran where.
+  const hasTopLevel = options.model != null;
+
   for (let i = 0; i < options.turns.length; i++) {
     const turn = options.turns[i];
     if (turn.text.trim().length === 0) {
       throw new ConversationInputError(`turns[${i}].text must not be empty.`);
     }
-    if (options.model == null && turn.model == null) {
+    const hasTurnModel = turn.model != null;
+    if (hasTopLevel && hasTurnModel) {
       throw new ConversationInputError(
-        `turns[${i}]: model must be set, either at top-level or on the turn.`
+        `turns[${i}].model is set, but options.model is also set. Set the model either at the top level for all turns, or on every turn — not both.`
+      );
+    }
+    if (!(hasTopLevel || hasTurnModel)) {
+      throw new ConversationInputError(
+        `turns[${i}].model is required because options.model is not set. Either set options.model for all turns, or set model on every turn.`
       );
     }
   }

@@ -55,8 +55,6 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
       voice,
     });
 
-    expect(result.metadata.provider).toBe("cartesia");
-    expect(result.metadata.model).toBe("sonic-2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -64,12 +62,12 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
   });
 
   describe("timestamps (native /tts/sse add_timestamps)", () => {
-    it("returns word timestamps on the auto default for sonic-3", async () => {
+    it("returns word timestamps on the timestamps:on for sonic-3", async () => {
       const result = await generateSpeech({
         model: "cartesia/sonic-3",
         text: TEST_TEXT,
         voice,
-        timestamps: "auto",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -101,7 +99,7 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
         model: "cartesia/sonic-3",
         text: TEST_TEXT,
         voice,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

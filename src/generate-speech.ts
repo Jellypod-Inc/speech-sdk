@@ -1,6 +1,7 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   ApiError,
@@ -9,8 +10,10 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
+  isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
   type ResolvedModel,
   type Voice,
@@ -18,7 +21,7 @@ import {
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
-import type { TimestampMode, WordTimestamp } from "./timestamps.js";
+import type { WordTimestamp } from "./timestamps.js";
 
 export async function generateSpeech<V extends Voice = Voice>(options: {
   model: string | ResolvedModel<V>;
@@ -29,31 +32,9 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  /**
-   * RMS-normalize the returned audio to this dBFS level. Must be ≤ 0.
-   * When set, generateSpeech requests the provider's decodable PCM/WAV
-   * output mode (via `getStitchOptions`), normalizes the samples to the
-   * target loudness, and re-encodes the result as 16-bit mono WAV — so
-   * the response `mediaType` will be `audio/wav` regardless of the
-   * provider's native default. Throws `VolumeAdjustmentUnsupportedError`
-   * if the provider doesn't expose a decodable output mode.
-   */
+  // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError; gateway models normalize server-side.
   volumeDbfs?: number;
-  /**
-   * Controls whether the returned `SpeechResult` includes word-level
-   * timestamps. Default `"auto"` — return natively when the TTS provider
-   * supplies alignment, otherwise omit. `"on"` forces word timestamps
-   * (falling back to STT round-trip when necessary). `"off"` suppresses
-   * them even for providers that would return them free.
-   */
-  timestamps?: TimestampMode;
-  /**
-   * Override the STT provider used for the derived-timestamps path. Construct
-   * via a factory (e.g. `createOpenAISTT({ apiKey })("whisper-1")`). Only
-   * consulted when timestamps are requested AND the TTS provider can't supply
-   * them natively. Defaults to OpenAI Whisper read from `OPENAI_API_KEY`.
-   */
-  timestampProvider?: ResolvedSTTModel;
+  timestamps?: boolean;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -61,24 +42,22 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     abortSignal,
     headers,
     volumeDbfs,
-    timestamps: timestampMode = "auto",
-    timestampProvider,
+    timestamps = false,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
+  const isGateway = isSpeechGatewayModel(resolved);
 
   let providerOptions = options.providerOptions;
 
-  if (volumeDbfs != null) {
+  if (volumeDbfs != null && !isGateway) {
     const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId);
     if (!stitchOpts) {
       throw new VolumeAdjustmentUnsupportedError(modelIdentifier);
     }
-    // Stitch-mode options are applied last so they win over user-supplied
-    // providerOptions — otherwise a caller could silently break the decoder
-    // by e.g. passing `response_format: "mp3"` alongside `volumeDbfs`.
+    // Stitch options must win — caller-supplied response_format would break the decoder.
     providerOptions = {
       ...options.providerOptions,
       ...stitchOpts.providerOptions,
@@ -100,38 +79,50 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   }
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
+  const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
 
-  // For "on" we still ask the provider natively first — if it has native
-  // alignment, we skip the STT round-trip.
-  const shouldRequestNative =
-    (timestampMode === "on" || timestampMode === "auto") && hasNativeTimestamps;
-
+  const effectiveFallback =
+    !timestamps || shouldRequestNative
+      ? undefined
+      : (resolved.fallbackSTT ?? (await getDefaultSTTFallback()));
   logTimestampDecision({
     modelIdentifier,
-    mode: timestampMode,
+    enabled: timestamps,
     hasNative: hasNativeTimestamps,
     willRequestNative: shouldRequestNative,
-    timestampProvider,
+    effectiveFallback,
   });
 
   const startTime = performance.now();
 
   const result = await pRetry(
     () =>
-      resolved.provider.generate({
-        modelId: resolved.modelId,
-        text: processedText,
-        voice,
-        providerOptions,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-      }),
+      isSpeechGatewayModel(resolved)
+        ? resolved.provider.generate({
+            modelId: resolved.modelId,
+            text: processedText,
+            // Gateway inline mode only accepts string voice IDs.
+            voice: voice as unknown as string,
+            providerOptions,
+            abortSignal,
+            headers,
+            includeTimestamps: shouldRequestNative,
+            volumeDbfs,
+          })
+        : resolved.provider.generate({
+            modelId: resolved.modelId,
+            text: processedText,
+            voice,
+            providerOptions,
+            abortSignal,
+            headers,
+            includeTimestamps: shouldRequestNative,
+          }),
     {
       retries: maxRetries,
       signal: abortSignal,
       shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && error.statusCode < 500) {
+        if (error instanceof ApiError && !isRetriableApiError(error)) {
           return false;
         }
         return true;
@@ -150,7 +141,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   let outputBytes: Uint8Array | string = audioData;
   let outputMediaType = result.mediaType;
 
-  if (volumeDbfs != null) {
+  if (volumeDbfs != null && !isGateway) {
     const { adjustVolume } = await import("./volume-adjust.js");
     outputBytes = await adjustVolume({
       audio: audioData,
@@ -169,32 +160,19 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     (await computeAudioDuration(audio.uint8Array, outputMediaType)) ??
     result.audioDurationMs;
 
-  let timestamps: readonly WordTimestamp[] | undefined;
-  if (timestampMode !== "off") {
-    if (result.timestamps && result.timestamps.length > 0) {
-      debug(
-        `${modelIdentifier}: returned ${result.timestamps.length} native word timestamps.`
-      );
-      timestamps = result.timestamps;
-    } else if (timestampMode === "on") {
-      timestamps = await deriveTimestampsViaSTT({
-        ttsModel: modelIdentifier,
-        audio: audio.uint8Array,
-        mediaType: outputMediaType,
-        timestampProvider,
-        abortSignal,
-      });
-      debug(
-        `${modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
-      );
-    }
-  }
+  const resolvedTimestamps = await resolveTimestamps({
+    timestamps,
+    modelIdentifier,
+    resolved,
+    resultTimestamps: result.timestamps,
+    audio: audio.uint8Array,
+    mediaType: outputMediaType,
+    abortSignal,
+  });
 
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: processedText.length,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
@@ -202,9 +180,52 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: warnings.length > 0 ? warnings : undefined,
-    timestamps,
+    warnings: mergeWarnings(warnings, result.warnings),
+    timestamps: resolvedTimestamps,
   };
+}
+
+function mergeWarnings(
+  preprocessingWarnings: string[],
+  providerWarnings: string[] | undefined
+): string[] | undefined {
+  const merged = [...preprocessingWarnings, ...(providerWarnings ?? [])];
+  return merged.length > 0 ? merged : undefined;
+}
+
+async function resolveTimestamps(args: {
+  timestamps: boolean;
+  modelIdentifier: string;
+  resolved: ResolvedModel;
+  resultTimestamps: readonly WordTimestamp[] | undefined;
+  audio: Uint8Array;
+  mediaType: string;
+  abortSignal: AbortSignal | undefined;
+}): Promise<readonly WordTimestamp[] | undefined> {
+  if (!args.timestamps) {
+    return;
+  }
+  if (args.resultTimestamps?.length) {
+    debug(
+      `${args.modelIdentifier}: returned ${args.resultTimestamps.length} native word timestamps.`
+    );
+    return args.resultTimestamps;
+  }
+  if (isSpeechGatewayModel(args.resolved)) {
+    return;
+  }
+  const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
+  const timestamps = await deriveTimestampsViaSTT({
+    ttsModel: args.modelIdentifier,
+    audio: args.audio,
+    mediaType: args.mediaType,
+    timestampFallback: fallback,
+    abortSignal: args.abortSignal,
+  });
+  debug(
+    `${args.modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
+  );
+  return timestamps;
 }
 
 function preprocessText(
@@ -212,6 +233,10 @@ function preprocessText(
   rawText: string,
   modelIdentifier: string
 ): { text: string; warnings: string[] } {
+  // Gateway server handles audio-tag normalization itself — pass raw text through.
+  if (isSpeechGatewayModel(resolved)) {
+    return { text: rawText, warnings: [] };
+  }
   if (resolved.provider.processAudioTags) {
     return resolved.provider.processAudioTags(rawText, resolved.modelId);
   }
@@ -222,44 +247,28 @@ function preprocessText(
   return { text: rawText, warnings: [] };
 }
 
-/**
- * Logs the timestamp routing decision at debug level so developers can see
- * why they are / aren't getting alignment data. Silent unless `DEBUG`
- * includes `speech-sdk` (or `*`).
- */
 function logTimestampDecision(args: {
   modelIdentifier: string;
-  mode: TimestampMode;
+  enabled: boolean;
   hasNative: boolean;
   willRequestNative: boolean;
-  timestampProvider: ResolvedSTTModel | undefined;
+  effectiveFallback: ResolvedSTTModel | undefined;
 }): void {
-  const { modelIdentifier, mode, willRequestNative } = args;
-  if (mode === "off") {
-    debug(`${modelIdentifier}: timestamps: "off" — skipping alignment.`);
+  const { modelIdentifier, enabled, willRequestNative } = args;
+  if (!enabled) {
+    debug(`${modelIdentifier}: timestamps: false — skipping alignment.`);
     return;
   }
   if (willRequestNative) {
     debug(
-      `${modelIdentifier}: timestamps: "${mode}" — requesting native alignment from the provider.`
+      `${modelIdentifier}: timestamps: true — requesting native alignment from the provider.`
     );
     return;
   }
-  if (mode === "auto") {
-    debug(
-      `${modelIdentifier}: timestamps: "auto" — model has no native alignment; skipping. Pass timestamps: "on" to derive via STT (adds a round-trip of the synthesized audio through Whisper by default).`
-    );
-    return;
-  }
-  // mode === "on" and no native support → will fall back to STT
+  const target = args.effectiveFallback
+    ? `${args.effectiveFallback.provider.id}/${args.effectiveFallback.modelId}`
+    : "unconfigured STT fallback";
   debug(
-    `${modelIdentifier}: timestamps: "on" but no native alignment available — will pipe synthesized audio through ${describeSTTTarget(args.timestampProvider)} for word timestamps (adds a round-trip).`
+    `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${target} for word timestamps (adds a round-trip).`
   );
-}
-
-function describeSTTTarget(provider: ResolvedSTTModel | undefined): string {
-  if (provider) {
-    return `${provider.provider.id}/${provider.modelId}`;
-  }
-  return "openai/whisper-1 (default)";
 }

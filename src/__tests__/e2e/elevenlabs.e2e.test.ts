@@ -4,7 +4,6 @@ import { streamSpeech } from "../../stream-speech.js";
 import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
-// ElevenLabs default "George" voice — replace if this voice ID expires
 const VOICE = process.env.ELEVENLABS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 
 describe("ElevenLabs e2e", () => {
@@ -108,8 +107,6 @@ describe("ElevenLabs e2e", () => {
       voice: VOICE,
     });
 
-    expect(result.metadata.provider).toBe("elevenlabs");
-    expect(result.metadata.model).toBe("eleven_flash_v2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -117,32 +114,29 @@ describe("ElevenLabs e2e", () => {
   });
 
   describe("timestamps (native /with-timestamps)", () => {
-    it("returns word timestamps on the auto default", async () => {
+    it("returns word timestamps on the timestamps:on", async () => {
       const result = await generateSpeech({
         model: "elevenlabs/eleven_flash_v2",
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "auto",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
       expect(result.timestamps).toBeDefined();
       const words = result.timestamps ?? [];
       expect(words.length).toBeGreaterThan(0);
-      // Each word has text + numeric start ≤ end.
       for (const w of words) {
         expect(w.text.length).toBeGreaterThan(0);
         expect(typeof w.start).toBe("number");
         expect(typeof w.end).toBe("number");
         expect(w.end).toBeGreaterThanOrEqual(w.start);
       }
-      // start times strictly non-decreasing.
       for (let i = 1; i < words.length; i++) {
         expect(words[i]?.start).toBeGreaterThanOrEqual(
           words[i - 1]?.start ?? 0
         );
       }
-      // last word's end ≈ audio duration (tolerance: ±500ms).
       const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
       const durMs = result.metadata.audioDurationMs ?? 0;
       expect(Math.abs(lastEndMs - durMs)).toBeLessThan(500);
@@ -153,7 +147,7 @@ describe("ElevenLabs e2e", () => {
         model: "elevenlabs/eleven_flash_v2",
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

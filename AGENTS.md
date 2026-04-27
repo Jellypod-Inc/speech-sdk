@@ -24,25 +24,28 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 **Core flow:** `generateSpeech()` → `resolveModel()` → `provider.generate()` → `SpeechResult`
 
 - `src/generate-speech.ts` — the public API entry point; handles retry logic via `p-retry`
-- `src/resolve-provider.ts` — parses `"provider/model"` strings, instantiates built-in providers; add new providers here in `createBuiltinProvider()`
+- `src/resolve-provider.ts` — bare `"provider/model"` strings resolve to the gateway provider; `ResolvedModel` instances pass through unchanged
+- `src/providers/gateway/index.ts` — `SpeechGatewayProvider` + `createSpeechGateway()`; proxies inline-mode requests to `api.speechgateway.com`. Aggregates every built-in provider's `models[]` under namespaced ids (`openai/tts-1`) so capability checks work through the gateway
 - `src/speech-provider.ts` — `SpeechProvider` interface all providers implement
 - `src/speech-result.ts` — `DefaultGeneratedAudioFile` with lazy base64 conversion
 - `src/provider-utils.ts` — shared `resolveApiKey()` and `handleErrorResponse()`
 - `src/providers/openai/` and `src/providers/elevenlabs/` — provider implementations
 
-**Adding a new provider:**
-1. Create `src/providers/<name>/<name>-speech-model.ts` implementing `SpeechProvider`
-2. Create `src/providers/<name>/<name>-provider.ts` with a `create<Name>()` factory
-3. Add a case to `createBuiltinProvider()` in `resolve-provider.ts`
-4. Add subpath export in `package.json` under `exports`
+**Two paths to a provider** (chosen by how the caller passes `model`):
+- String (`"openai/tts-1"`) → routes through `SpeechGatewayProvider`; needs `SPEECH_GATEWAY_API_KEY`.
+- Factory (`createOpenAI()("tts-1")`) → calls the provider directly; reads the per-provider env var (`OPENAI_API_KEY`) unless an explicit `apiKey` is passed to the factory.
 
-**Provider pattern:** Each provider has a factory function (`createOpenAI`, `createElevenLabs`) that returns a function which produces a `ResolvedModel`. String models like `"openai/tts-1"` resolve API keys from env vars (`OPENAI_API_KEY`, `ELEVENLABS_API_KEY`).
+**Gateway invariant:** when routing through `SpeechGatewayProvider`, the SDK is a thin REST wrapper. A call made via the SDK must be byte-equivalent to the same call made via `curl` against `api.speechgateway.com`. The SDK does not add behavior on the gateway path — no client-side recovery, no client-side enrichment, no synthesizing fields from caller input that weren't on the wire, no fallbacks. The gateway server owns its contract; the SDK is a transport. Any new feature must work identically whether the caller uses the SDK or hits the REST API directly.
+
+**Adding a new provider:**
+1. Create `src/providers/<name>/index.ts` with a `<Name>SpeechProvider` class implementing `SpeechProvider` and a `create<Name>()` factory.
+2. Add subpath export in `package.json` under `exports`.
+3. Register the provider in `aggregatedModels()` in `src/providers/gateway/index.ts` so its models are discoverable through the gateway path.
 
 ## Key Conventions
 
 - ESM-only (`"type": "module"` in package.json); use `.js` extensions in imports
 - TypeScript strict mode, target ES2022
-- Zero runtime dependencies besides `p-retry`
 - `providerOptions` are passed through to provider APIs untransformed
 - Tests use vitest with globals enabled
 - Run `pnpm fix` before committing to ensure formatting compliance
@@ -59,6 +62,13 @@ Formatting and linting enforced by Biome via ultracite. Husky pre-commit hook ru
 - Use `const` by default, `let` only when needed, never `var`
 - Use `async/await` over promise chains
 - Prefer `for...of` over `.forEach()`
+
+### Comments
+
+- Default to no comments. Add one only when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround, or a spec/RFC reference
+- Single-line only. Never write multi-line `//` blocks or block comments outside of JSDoc on exported APIs
+- Don't explain WHAT the code does — well-named identifiers already do that
+- Don't reference the current task, PR, fix, or callers ("added for X", "used by Y") — that rots; put it in the PR description
 
 ### Error Handling
 

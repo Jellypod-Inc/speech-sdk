@@ -1,18 +1,32 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
-  type InworldWordAlignment,
+  inworldWordAlignmentSchema,
   wordAlignmentToWordTimestamps,
 } from "./alignment.js";
+
+const ttsResponseSchema = z.object({
+  audioContent: z.string().optional(),
+  timestampInfo: z
+    .object({ wordAlignment: inworldWordAlignmentSchema.optional() })
+    .optional(),
+});
 
 export interface InworldSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -40,40 +54,43 @@ function mediaTypeForEncoding(encoding: string | undefined): string {
   }
 }
 
+export const INWORLD_PROVIDER_ID = "inworld" as const;
+
+// https://docs.inworld.ai/tts/overview#supported-languages
+const INWORLD_LANGUAGES = [
+  "en",
+  "es",
+  "fr",
+  "de",
+  "it",
+  "pt",
+  "ja",
+  "ko",
+  "nl",
+  "pl",
+  "zh",
+] as const;
+
+export const INWORLD_MODELS: readonly ModelInfo[] = [
+  {
+    id: "inworld-tts-1.5-max",
+    releaseDate: "2025-08-15",
+    languages: INWORLD_LANGUAGES,
+    features: ["streaming", "timestamps"],
+  },
+  {
+    id: "inworld-tts-1.5-mini",
+    releaseDate: "2025-08-15",
+    languages: INWORLD_LANGUAGES,
+    features: ["streaming", "timestamps"],
+  },
+] as const;
+
 export class InworldSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "inworld";
+  readonly id = INWORLD_PROVIDER_ID;
   readonly defaultModel = "inworld-tts-1.5-max";
 
-  // Inworld TTS supports 11 languages out of the box.
-  // https://docs.inworld.ai/tts/overview#supported-languages
-  private static readonly LANGUAGES = [
-    "en",
-    "es",
-    "fr",
-    "de",
-    "it",
-    "pt",
-    "ja",
-    "ko",
-    "nl",
-    "pl",
-    "zh",
-  ] as const;
-
-  readonly models = [
-    {
-      id: "inworld-tts-1.5-max",
-      releaseDate: "2025-08-15",
-      languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "inworld-tts-1.5-mini",
-      releaseDate: "2025-08-15",
-      languages: InworldSpeechProvider.LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-  ] as const;
+  readonly models = INWORLD_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -152,12 +169,9 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `inworld/${options.modelId}`);
+    await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audioContent?: string;
-      timestampInfo?: { wordAlignment?: InworldWordAlignment };
-    };
+    const json = ttsResponseSchema.parse(await response.json());
     if (!json.audioContent) {
       throw new Error(
         `inworld/${options.modelId}: response missing audioContent`
@@ -210,7 +224,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `inworld/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`inworld/${options.modelId}: response has no body`);
@@ -237,7 +251,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
@@ -333,8 +347,7 @@ function parseInworldNdjsonStream(
       } catch (err) {
         const error =
           err instanceof Error ? err : new Error(`${model}: ${String(err)}`);
-        // Cancel the upstream reader so the underlying fetch body isn't left
-        // locked / hanging. Swallow cancel errors — we already have `error`.
+        // Cancel upstream so the fetch body isn't left locked; swallow cancel errors.
         reader.cancel(error).catch(() => {
           /* noop */
         });
@@ -342,8 +355,7 @@ function parseInworldNdjsonStream(
       }
     },
     cancel(reason) {
-      // Consumer cancelled the parsed stream — propagate to the upstream fetch
-      // body so the HTTP connection can be released.
+      // Propagate cancel to upstream fetch so the HTTP connection is released.
       return reader.cancel(reason);
     },
   });
@@ -351,11 +363,13 @@ function parseInworldNdjsonStream(
 
 export function createInworld(config: InworldSpeechProviderConfig = {}) {
   const provider = new InworldSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function inworld(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

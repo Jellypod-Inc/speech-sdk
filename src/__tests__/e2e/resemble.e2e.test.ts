@@ -52,8 +52,6 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
       voice,
     });
 
-    expect(result.metadata.provider).toBe("resemble");
-    expect(result.metadata.model).toBe("default");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -61,12 +59,12 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
   });
 
   describe("timestamps (native audio_timestamps)", () => {
-    it("returns word timestamps on the auto default", async () => {
+    it("returns word timestamps on the timestamps:on", async () => {
       const result = await generateSpeech({
         model: "resemble/default",
         text: TEST_TEXT,
         voice,
-        timestamps: "auto",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -89,8 +87,7 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
       const lastEndMs = (words.at(-1)?.end ?? 0) * 1000;
       const durMs = result.metadata.audioDurationMs ?? 0;
       if (durMs > 0) {
-        // Last word's end must not exceed the audio; generous lower bound
-        // because Resemble appends trailing silence after the final word.
+        // Generous lower bound: Resemble appends trailing silence after the final word.
         expect(lastEndMs).toBeLessThanOrEqual(durMs + 100);
         expect(lastEndMs).toBeGreaterThan(durMs * 0.5);
       }
@@ -101,7 +98,7 @@ describe.skipIf(!hasKey)("Resemble e2e", () => {
         model: "resemble/default",
         text: TEST_TEXT,
         voice,
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

@@ -44,7 +44,7 @@ voice: { audio: readFileSync("./reference.wav") }
 ## Factory
 
 ```ts
-import { createFal } from "@speech-sdk/core/fal-ai"
+import { createFal } from "@speech-sdk/core/providers"
 const fal = createFal({ apiKey: process.env.FAL_API_KEY })
 await generateSpeech({ model: fal("fal-ai/f5-tts"), text: "...", voice: { url: "..." } })
 ```

@@ -6,33 +6,40 @@ import {
 } from "../../provider-utils.js";
 import {
   hasFeature,
+  type ModelInfo,
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 export interface FishAudioSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
+
+export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
+  {
+    id: "s2-pro",
+    releaseDate: "2026-03-09",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "open-source",
+      "inline-voice-cloning",
+    ],
+  },
+] as const;
+
 export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "fish-audio";
+  readonly id = FISH_AUDIO_PROVIDER_ID;
   readonly defaultModel = "s2-pro";
 
-  readonly models = [
-    {
-      id: "s2-pro",
-      releaseDate: "2026-03-09",
-      languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
-      features: [
-        "streaming",
-        "audio-tags",
-        "open-source",
-        "inline-voice-cloning",
-      ],
-    },
-  ] as const;
+  readonly models = FISH_AUDIO_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -92,7 +99,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -138,7 +145,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`fish-audio/${options.modelId}: response has no body`);
@@ -157,14 +164,14 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "s2-pro") {
       return { minVoices: 1, maxVoices: 4 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {
@@ -216,7 +223,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fish-audio/${options.modelId}`);
+    await handleErrorResponse(response);
 
     return {
       audio: new Uint8Array(await response.arrayBuffer()),
@@ -227,11 +234,13 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
 export function createFishAudio(config: FishAudioSpeechProviderConfig = {}) {
   const provider = new FishAudioSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function fishAudio(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

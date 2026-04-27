@@ -1,17 +1,21 @@
-import type { ResolvedModel, Voice } from "../speech-provider.js";
-import { DialogueConstraintError, StitchUnsupportedError } from "./errors.js";
+import {
+  isSpeechGatewayModel,
+  type ResolvedModel,
+  type StitchTurnOptions,
+  type Voice,
+} from "../speech-provider.js";
+import {
+  DialogueConstraintError,
+  MixedDispatchError,
+  StitchUnsupportedError,
+} from "./errors.js";
 import type { ConversationTurn } from "./types.js";
-import { newVoiceKeyContext, voiceKey } from "./validate.js";
+import { newVoiceKeyer } from "./validate.js";
 
 export type ConversationPath =
+  | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
   | { kind: "native"; resolved: ResolvedModel<Voice> }
-  | {
-      kind: "stitch";
-      stitchOptionsPerTurn: readonly {
-        providerOptions: Record<string, unknown>;
-        mediaType: string;
-      }[];
-    };
+  | { kind: "stitch"; stitchOptionsPerTurn: readonly StitchTurnOptions[] };
 
 export function chooseConversationPath(input: {
   resolvedPerTurn: readonly ResolvedModel<Voice>[];
@@ -19,9 +23,21 @@ export function chooseConversationPath(input: {
 }): ConversationPath {
   const { resolvedPerTurn, turns } = input;
 
-  // Compare by provider instance reference, not just provider id, so two
-  // factories of the same provider with different apiKey/baseURL/fetch
-  // configs are not silently merged into one.
+  // Gateway and direct-provider routing can't be combined in one conversation — no coherent ordering/stitching exists across both paths.
+  const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
+  if (gatewayCount > 0 && gatewayCount < resolvedPerTurn.length) {
+    throw new MixedDispatchError();
+  }
+
+  // Gateway wire takes string voices only; clone voices (`{url}`/`{audio}`) on gateway models fall past every other branch and throw StitchUnsupportedError below.
+  if (gatewayCount === resolvedPerTurn.length) {
+    const allVoicesString = turns.every((t) => typeof t.voice === "string");
+    if (allVoicesString) {
+      return { kind: "gateway", resolvedPerTurn };
+    }
+  }
+
+  // Compare by provider instance reference so two factories with different apiKey/baseURL/fetch configs aren't silently merged.
   const first = resolvedPerTurn[0];
   const allSame = resolvedPerTurn.every(
     (r) => r.provider === first.provider && r.modelId === first.modelId
@@ -38,7 +54,6 @@ export function chooseConversationPath(input: {
     }
   }
 
-  // Stitch path — every resolved (provider, modelId) must support getStitchOptions.
   const stitchOptionsPerTurn = resolvedPerTurn.map((r) => {
     const opts = r.provider.getStitchOptions?.(r.modelId);
     if (!opts) {
@@ -60,10 +75,8 @@ function assertNativeConstraints(args: {
 }): void {
   const { provider, modelId, caps, turns } = args;
 
-  const ctx = newVoiceKeyContext();
-  const unique = new Set(
-    turns.map((t) => voiceKey(t.voice, ctx.refIds, ctx.refCounter))
-  ).size;
+  const keyOf = newVoiceKeyer();
+  const unique = new Set(turns.map((t) => keyOf(t.voice))).size;
 
   if (unique < caps.minVoices || unique > caps.maxVoices) {
     const rule =

@@ -31,18 +31,6 @@ function createMetadataProvider(
 }
 
 describe("generateSpeech metadata", () => {
-  it("includes provider and model in metadata", async () => {
-    const provider = createMetadataProvider();
-    const result = await generateSpeech({
-      model: { provider, modelId: "test-model" },
-      text: "Hello world",
-      voice: "v",
-    });
-
-    expect(result.metadata.provider).toBe("test-provider");
-    expect(result.metadata.model).toBe("test-model");
-  });
-
   it("includes inputChars as length of processed text", async () => {
     const provider = createMetadataProvider();
     const result = await generateSpeech({
@@ -139,18 +127,6 @@ function createStreamProvider(
 }
 
 describe("streamSpeech metadata", () => {
-  it("includes provider and model in metadata", async () => {
-    const provider = createStreamProvider();
-    const result = await streamSpeech({
-      model: { provider, modelId: "test-model" },
-      text: "Hello world",
-      voice: "v",
-    });
-
-    expect(result.metadata.provider).toBe("test-provider");
-    expect(result.metadata.model).toBe("test-model");
-  });
-
   it("includes inputChars", async () => {
     const provider = createStreamProvider();
     const result = await streamSpeech({

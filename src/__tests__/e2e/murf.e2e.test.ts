@@ -53,8 +53,6 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
       voice: "en-US-natalie",
     });
 
-    expect(result.metadata.provider).toBe("murf");
-    expect(result.metadata.model).toBe("GEN2");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -62,12 +60,12 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
   });
 
   describe("timestamps (native wordDurations)", () => {
-    it("returns word timestamps on the auto default for GEN2", async () => {
+    it("returns word timestamps on the timestamps:on for GEN2", async () => {
       const result = await generateSpeech({
         model: "murf/GEN2",
         text: TEST_TEXT,
         voice: "en-US-natalie",
-        timestamps: "auto",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -95,7 +93,7 @@ describe.skipIf(!hasKey)("Murf e2e", () => {
         model: "murf/GEN2",
         text: TEST_TEXT,
         voice: "en-US-natalie",
-        timestamps: "off",
+        timestamps: false,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

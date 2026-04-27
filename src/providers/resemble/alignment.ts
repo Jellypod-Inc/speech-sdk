@@ -1,37 +1,20 @@
+import { z } from "zod";
 import type { WordTimestamp } from "../../timestamps.js";
 
-/**
- * Shape of the `audio_timestamps` block Resemble's `/synthesize` returns
- * alongside `audio_content`. Two parallel pairs of arrays:
- *
- * - `graph_chars[i]` is the i-th grapheme (Unicode character) — including
- *   spaces and punctuation as standalone entries — and `graph_times[i]` is
- *   its `[start, end]` window in **seconds**.
- * - `phon_chars` / `phon_times` mirror that for ARPAbet phonemes (no spaces
- *   or punctuation), kept here for typing only — the SDK aggregates from
- *   graphemes, which match input characters 1:1.
- */
-export interface ResembleAudioTimestamps {
-  readonly graph_chars: readonly string[];
-  readonly graph_times: readonly (readonly number[])[];
-  readonly phon_chars?: readonly string[];
-  readonly phon_times?: readonly (readonly number[])[];
-}
+// Resemble `/synthesize` `audio_timestamps`: per-grapheme arrays, times in seconds; phoneme arrays unused.
+export const resembleAudioTimestampsSchema = z.object({
+  graph_chars: z.array(z.string()),
+  graph_times: z.array(z.array(z.number())),
+  phon_chars: z.array(z.string()).optional(),
+  phon_times: z.array(z.array(z.number())).optional(),
+});
+export type ResembleAudioTimestamps = z.infer<
+  typeof resembleAudioTimestampsSchema
+>;
 
 const WHITESPACE_CHAR = /^\s$/;
 
-/**
- * Aggregate Resemble's grapheme-level timing into word-level timestamps.
- *
- * Algorithm: walk `graph_chars` in order. Whitespace flushes the current
- * word and is dropped. Non-whitespace characters (letters AND punctuation)
- * accumulate into a buffer — punctuation stays attached to its adjacent
- * word ("Hello," is one word) to mirror the ElevenLabs aggregator.
- *
- * Each entry in `graph_times` is `[startSeconds, endSeconds]`; the word
- * inherits the first character's start and the last character's end.
- * Entries with malformed timing tuples are skipped to avoid NaN bleed.
- */
+// Whitespace flushes; punctuation stays attached to the adjacent word ("Hello,").
 export function audioTimestampsToWordTimestamps(
   alignment: ResembleAudioTimestamps
 ): WordTimestamp[] {

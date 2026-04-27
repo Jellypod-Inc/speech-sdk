@@ -8,22 +8,23 @@ export class SpeechSDKError extends Error {
 export class ApiError extends SpeechSDKError {
   readonly statusCode: number;
   readonly responseBody?: unknown;
-  readonly model: string;
+  // RFC 7807 `code` extension; only Speech Gateway populates it today.
+  readonly code?: string;
 
   constructor(
     message: string,
     options: {
       statusCode: number;
-      model: string;
       responseBody?: unknown;
       cause?: unknown;
+      code?: string;
     }
   ) {
     super(message, { cause: options.cause });
     this.name = "ApiError";
     this.statusCode = options.statusCode;
-    this.model = options.model;
     this.responseBody = options.responseBody;
+    this.code = options.code;
   }
 }
 
@@ -52,11 +53,13 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
-/**
- * Thrown by `resolveApiKey` when neither the `apiKey` option nor the provider's
- * env var is set. Carries the provider name + env var so callers can build
- * their own actionable error (see `TimestampKeyMissingError`).
- */
+export class GatewayInputError extends SpeechSDKError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GatewayInputError";
+  }
+}
+
 export class MissingApiKeyError extends SpeechSDKError {
   readonly providerName: string;
   readonly envVar: string;
@@ -71,11 +74,6 @@ export class MissingApiKeyError extends SpeechSDKError {
   }
 }
 
-/**
- * Thrown when `timestamps: "on"` is requested but the SDK can't obtain word
- * timestamps because the required API key for the fallback STT provider is
- * missing. Message names the env vars that would unblock the request.
- */
 export class TimestampKeyMissingError extends SpeechSDKError {
   constructor(options: {
     ttsModel: string;
@@ -84,8 +82,9 @@ export class TimestampKeyMissingError extends SpeechSDKError {
   }) {
     super(
       `${options.ttsModel} does not return word timestamps natively. ` +
-        `Set ${options.envVar} to enable the ${options.sttProvider} fallback, ` +
-        `pass a configured timestampProvider, or use timestamps: 'auto' | 'off'.`
+        `Set ${options.envVar} to use the default ${options.sttProvider} fallback, ` +
+        "or pass an explicit fallbackSTT to your provider factory " +
+        "(e.g. createElevenLabs({ apiKey, fallbackSTT: createOpenAI({ apiKey: '...' }).stt('whisper-1') }))."
     );
     this.name = "TimestampKeyMissingError";
   }

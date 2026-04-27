@@ -1,5 +1,7 @@
 # Error Handling
 
+All SDK errors extend `SpeechSDKError`. Catch the base class to catch any SDK-thrown error, or match a specific subclass for finer-grained handling.
+
 ```ts
 import {
   generateSpeech,
@@ -15,7 +17,7 @@ import {
 | `NoSpeechGeneratedError`           | Empty input (after tag stripping) or empty provider response         |
 | `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
-| `TimestampKeyMissingError`         | `timestamps: "on"` fallback STT key missing (message names env var)  |
+| `TimestampKeyMissingError`         | `timestamps: "on"` STT fallback triggered but no key configured      |
 | `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
 ## Catching
@@ -26,25 +28,15 @@ try {
 } catch (error) {
   if (error instanceof ApiError) {
     error.statusCode    // 401, 429, 500, ...
-    error.model         // "openai/gpt-4o-mini-tts"
     error.responseBody  // raw body from the API
+    error.code          // optional RFC 7807 problem+json `code`
   } else if (error instanceof SpeechSDKError) {
     console.log(error.message)
   }
 }
 ```
 
-## ApiError
-
-```ts
-class ApiError extends SpeechSDKError {
-  readonly statusCode: number
-  readonly responseBody?: unknown
-  readonly model: string
-}
-```
-
-Common codes: `401` bad key · `403` insufficient perms · `429` rate-limited · `500` provider error (retried).
+`ApiError.code` is populated when the upstream sets a problem+json `code` extension. Match on `err.code` over parsing `err.message`.
 
 ## NoSpeechGeneratedError
 

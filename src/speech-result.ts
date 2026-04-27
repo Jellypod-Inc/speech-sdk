@@ -1,5 +1,5 @@
 import type { SpeechMetadata } from "./metadata.js";
-import type { WordTimestamp } from "./timestamps.js";
+import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
 export interface GeneratedAudioFile {
   readonly base64: string;
@@ -11,16 +11,12 @@ export interface SpeechResult {
   readonly audio: GeneratedAudioFile;
   readonly metadata: SpeechMetadata;
   readonly providerMetadata?: Record<string, unknown>;
-  /**
-   * Word-level alignment data. Populated when `timestamps: "on"` or when
-   * `timestamps: "auto"` (default) is combined with a TTS provider that
-   * returns alignment natively. Undefined otherwise.
-   *
-   * Timestamps are always word-granularity with start/end in seconds.
-   * Character- or phoneme-level native data is aggregated internally.
-   */
   readonly timestamps?: readonly WordTimestamp[];
   readonly warnings?: string[];
+}
+
+export interface ConversationResult extends Omit<SpeechResult, "timestamps"> {
+  readonly timestamps?: readonly ConversationWordTimestamp[];
 }
 
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {

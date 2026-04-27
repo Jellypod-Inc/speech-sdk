@@ -8,9 +8,11 @@ import {
 } from "../../provider-utils.js";
 import {
   hasFeature,
+  type ModelInfo,
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   type CartesiaWordTimestamps,
@@ -20,75 +22,75 @@ import {
 export interface CartesiaSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const CARTESIA_PROVIDER_ID = "cartesia" as const;
+
+export const CARTESIA_MODELS: readonly ModelInfo[] = [
+  {
+    id: "sonic-3",
+    releaseDate: "2025-10-27",
+    languages: [
+      "en",
+      "fr",
+      "de",
+      "es",
+      "pt",
+      "zh",
+      "ja",
+      "hi",
+      "it",
+      "ko",
+      "nl",
+      "pl",
+      "ru",
+      "sv",
+      "tr",
+      "tl",
+      "bg",
+      "ro",
+      "ar",
+      "cs",
+      "el",
+      "fi",
+      "hr",
+      "ms",
+      "sk",
+      "da",
+      "ta",
+      "uk",
+      "hu",
+      "no",
+      "vi",
+      "bn",
+      "th",
+      "he",
+      "ka",
+      "id",
+      "te",
+      "gu",
+      "kn",
+      "ml",
+      "mr",
+      "pa",
+    ],
+    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
+  },
+  {
+    id: "sonic-2",
+    releaseDate: "2025-03-13",
+    languages: ["en"],
+    features: ["streaming", "timestamps"],
+  },
+] as const;
+
 export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "cartesia";
+  readonly id = CARTESIA_PROVIDER_ID;
   readonly defaultModel = "sonic-3";
 
-  readonly models = [
-    {
-      id: "sonic-3",
-      releaseDate: "2025-10-27",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "zh",
-        "ja",
-        "hi",
-        "it",
-        "ko",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "tl",
-        "bg",
-        "ro",
-        "ar",
-        "cs",
-        "el",
-        "fi",
-        "hr",
-        "ms",
-        "sk",
-        "da",
-        "ta",
-        "uk",
-        "hu",
-        "no",
-        "vi",
-        "bn",
-        "th",
-        "he",
-        "ka",
-        "id",
-        "te",
-        "gu",
-        "kn",
-        "ml",
-        "mr",
-        "pa",
-      ],
-      features: [
-        "streaming",
-        "audio-tags",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-    {
-      id: "sonic-2",
-      releaseDate: "2025-03-13",
-      languages: ["en"],
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-  ] as const;
+  readonly models = CARTESIA_MODELS;
 
   private static readonly PASSTHROUGH_TAGS = ["laughter"] as const;
 
@@ -255,7 +257,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/wav";
@@ -279,10 +281,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
   }> {
-    // Force raw pcm_s16le @ 24kHz: the SDK concatenates chunks directly and
-    // wraps them in a WAV header at end-of-stream. Allowing a caller to
-    // override the container would corrupt the merged audio since Cartesia
-    // SSE's wav/mp3 chunks are not safely concat-able.
+    // Force raw pcm_s16le @ 24kHz — Cartesia SSE wav/mp3 chunks aren't safely concat-able.
     const sampleRate = 24_000;
     const body: Record<string, unknown> = {
       ...options.providerOptions,
@@ -311,7 +310,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new SpeechSDKError(
@@ -324,8 +323,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       `cartesia/${options.modelId}`
     );
 
-    // Concatenated PCM → standard WAV file, so callers don't need to know
-    // sample rate / encoding out-of-band to decode.
     const audio = await wrapPcm16Mono(pcmAudio, sampleRate);
     return {
       audio,
@@ -373,7 +370,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `cartesia/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`cartesia/${options.modelId}: response has no body`);
@@ -398,17 +395,19 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
   const provider = new CartesiaSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function cartesia(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }
@@ -422,13 +421,7 @@ interface CartesiaSseEvent {
 
 const SSE_LEADING_SPACE = /^ /;
 
-/**
- * Drain a Cartesia `/tts/sse` response body into a single audio buffer plus
- * a flat `WordTimestamp[]`. Buffers are collected separately because the
- * server may interleave `chunk` and `timestamps` events in any order — we
- * concatenate audio chunks in arrival order and flatten timestamp messages
- * the same way at end-of-stream (`type: "done"`).
- */
+// Server interleaves chunk + timestamps events; collect both in arrival order.
 async function collectCartesiaSse(
   body: ReadableStream<Uint8Array>,
   modelLabel: string

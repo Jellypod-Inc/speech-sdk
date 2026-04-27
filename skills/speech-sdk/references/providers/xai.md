@@ -61,6 +61,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createXai } from "@speech-sdk/core/xai"
+import { createXai } from "@speech-sdk/core/providers"
 const xai = createXai({ apiKey: process.env.XAI_API_KEY, baseURL: "https://api.x.ai/v1" })
 ```

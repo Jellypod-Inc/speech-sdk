@@ -1,64 +1,67 @@
 # Configuration
 
-By default SpeechSDK reads API keys from env vars. Use factory functions when you need custom keys, base URLs, or fetch implementations.
+String models read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+
+## String Models
+
+```ts
+await generateSpeech({
+  model: "provider/model",
+  text: "Hello!",
+  voice: "voice-id",
+  apiKey: process.env.SPEECH_GATEWAY_API_KEY,
+  timestamps: "on",
+  volumeDbfs: -20,
+})
+```
+
+`apiKey`, `headers`, `abortSignal`, and `maxRetries` are transport/control fields, not request payload. The SDK reserves the `Accept`, `Content-Type`, and `Authorization` request headers — caller-supplied `headers` cannot override them.
 
 ## Factory Functions
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createOpenAI } from "@speech-sdk/core/openai"
+import { createProvider } from "@speech-sdk/core/providers"
 
-const myOpenAI = createOpenAI({
-  apiKey: "sk-...",
+const provider = createProvider({
+  apiKey: "...",
   baseURL: "https://my-proxy.com/v1",
 })
 
 await generateSpeech({
-  model: myOpenAI("gpt-4o-mini-tts"),
+  model: provider("model-id"),
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
 })
 ```
 
-Call the factory with no arg to use the provider's default model:
+Factory-created models call the upstream provider directly. Call the factory with no argument to use the provider's default model.
 
-```ts
-const openai = createOpenAI({ apiKey: "sk-..." })
-await generateSpeech({ model: openai(), text: "...", voice: "alloy" })
-```
+Each factory accepts a config object with these common fields:
 
-## Available Factories
+- `apiKey` — override the env var
+- `baseURL` — custom endpoint (proxy, self-hosted)
+- `fetch` — custom fetch implementation
 
-| Import                           | Function               |
-| -------------------------------- | ---------------------- |
-| `@speech-sdk/core/openai`        | `createOpenAI()`       |
-| `@speech-sdk/core/elevenlabs`    | `createElevenLabs()`   |
-| `@speech-sdk/core/deepgram`      | `createDeepgram()`     |
-| `@speech-sdk/core/cartesia`      | `createCartesia()`     |
-| `@speech-sdk/core/hume`          | `createHume()`         |
-| `@speech-sdk/core/google`        | `createGoogle()`       |
-| `@speech-sdk/core/fish-audio`    | `createFishAudio()`    |
-| `@speech-sdk/core/inworld`       | `createInworld()`      |
-| `@speech-sdk/core/murf`          | `createMurf()`         |
-| `@speech-sdk/core/resemble`      | `createResemble()`     |
-| `@speech-sdk/core/fal-ai`        | `createFal()`          |
-| `@speech-sdk/core/mistral`       | `createMistral()`      |
-| `@speech-sdk/core/xai`           | `createXai()`          |
+The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config.
 
-## Configuration Options
+## Request Options
 
-```ts
-interface ProviderConfig {
-  apiKey?: string                    // override env var
-  baseURL?: string                   // custom endpoint (proxy, self-hosted)
-  fetch?: typeof globalThis.fetch    // custom fetch
-}
-```
+`generateSpeech` accepts:
+
+- `model` — string or factory-resolved model
+- `text` — input text
+- `voice` — string voice ID, `{ audio }`, or `{ url }`
+- `providerOptions` — provider-specific, passed through untransformed
+- `volumeDbfs` — RMS target loudness (≤ 0)
+- `timestamps` — `"on"` or `"off"` (default `"off"`)
+- `maxRetries` — default 2; retries 5xx and network errors only
+- `abortSignal`, `headers`
 
 ### Custom Fetch
 
 ```ts
-const openai = createOpenAI({
+const provider = createProvider({
   fetch: async (url, init) => {
     console.log(`Requesting: ${url}`)
     return globalThis.fetch(url, init)
@@ -66,28 +69,14 @@ const openai = createOpenAI({
 })
 ```
 
-## Request Options
-
-```ts
-interface GenerateSpeechOptions {
-  model: string | ResolvedModel
-  text: string
-  voice: Voice
-  providerOptions?: object          // provider-specific, passed through
-  maxRetries?: number               // default 2
-  abortSignal?: AbortSignal
-  headers?: Record<string, string>
-}
-```
-
 ### Abort
 
 ```ts
 const controller = new AbortController()
 const promise = generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
   abortSignal: controller.signal,
 })
 setTimeout(() => controller.abort(), 5000)
@@ -97,9 +86,9 @@ setTimeout(() => controller.abort(), 5000)
 
 ```ts
 await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",
+  model: "provider/model",
   text: "Hello!",
-  voice: "alloy",
+  voice: "voice-id",
   headers: { "X-Custom-Header": "value" },
 })
 ```
@@ -110,4 +99,5 @@ Retries 5xx and network errors with exponential backoff. Does not retry 4xx. Def
 
 ```ts
 await generateSpeech({ ..., maxRetries: 5 })
+await generateSpeech({ ..., maxRetries: 0 }) // disable
 ```

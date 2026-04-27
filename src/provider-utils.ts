@@ -1,28 +1,7 @@
 import { ApiError, MissingApiKeyError } from "./errors.js";
 
-// Identifies traffic originating from this SDK so providers can bucket
-// usage by integration. Sent as `X-User-Agent` because `User-Agent` is
-// a forbidden header name in browser fetch. Callers may override via
-// options.headers.
+// Sent as X-User-Agent — User-Agent is a forbidden header name in browser fetch.
 export const SDK_USER_AGENT = "jellypod-speech-sdk";
-
-/**
- * Split a `"provider/model"` spec into its parts. Spec with no slash is
- * treated as a bare provider name (caller falls back to `defaultModel`).
- */
-export function parseProviderModelSpec(spec: string): {
-  providerName: string;
-  modelId: string | undefined;
-} {
-  const slashIndex = spec.indexOf("/");
-  if (slashIndex === -1) {
-    return { providerName: spec, modelId: undefined };
-  }
-  return {
-    providerName: spec.slice(0, slashIndex),
-    modelId: spec.slice(slashIndex + 1) || undefined,
-  };
-}
 
 export function resolveApiKey(
   stored: string | undefined,
@@ -38,50 +17,53 @@ export function resolveApiKey(
   return key;
 }
 
-function extractErrorMessage(body: string | undefined): string | undefined {
-  if (!body) {
-    return undefined;
-  }
-  try {
-    const json = JSON.parse(body);
-    // Common error response shapes
-    if (typeof json.error === "string") {
-      return json.error;
-    }
-    if (typeof json.error?.message === "string") {
-      return json.error.message;
-    }
-    if (typeof json.message === "string") {
-      return json.message;
-    }
-    if (typeof json.detail === "string") {
-      return json.detail;
-    }
-  } catch {
-    // Not JSON — use raw text, truncated
-    if (body.length > 200) {
-      return `${body.slice(0, 200)}…`;
-    }
-    return body;
-  }
+function truncate(body: string): string {
   return body.length > 200 ? `${body.slice(0, 200)}…` : body;
 }
 
-export async function handleErrorResponse(
-  response: Response,
-  model: string
-): Promise<void> {
-  if (!response.ok) {
-    const responseBody = await response.text().catch(() => undefined);
-    const detail = extractErrorMessage(responseBody);
-    const message = detail
-      ? `${model} API error ${response.status}: ${detail}`
-      : `${model} API error ${response.status}`;
-
-    throw new ApiError(message, {
-      statusCode: response.status,
-      model,
-      responseBody,
-    });
+function parseErrorJson(body: string | undefined): {
+  message?: string;
+  code?: string;
+} {
+  if (!body) {
+    return {};
   }
+  try {
+    const json = JSON.parse(body);
+    const candidates = [
+      json.error,
+      json.error?.message,
+      json.message,
+      json.detail,
+    ];
+    const message =
+      candidates.find((c: unknown): c is string => typeof c === "string") ??
+      truncate(body);
+    const code = typeof json.code === "string" ? json.code : undefined;
+    return { message, code };
+  } catch {
+    return { message: truncate(body) };
+  }
+}
+
+// 501 is terminal — gateway uses it for "capability will never work" (e.g. timestamps_unsupported).
+export function isRetriableApiError(error: ApiError): boolean {
+  return error.statusCode >= 500 && error.statusCode !== 501;
+}
+
+export async function handleErrorResponse(response: Response): Promise<void> {
+  if (response.ok) {
+    return;
+  }
+  const responseBody = await response.text().catch(() => undefined);
+  const { message: detail, code } = parseErrorJson(responseBody);
+  const message = detail
+    ? `API error ${response.status}: ${detail}`
+    : `API error ${response.status}`;
+
+  throw new ApiError(message, {
+    statusCode: response.status,
+    responseBody,
+    code,
+  });
 }

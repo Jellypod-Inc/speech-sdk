@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   ConversationInputError,
   DialogueConstraintError,
+  generateConversation,
   StitchUnsupportedError,
-} from "../conversation/errors.js";
-import { generateConversation } from "../generate-conversation.js";
+} from "../index.js";
 
-describe("./conversation subpath exports", () => {
+describe("root conversation exports", () => {
   it("exports generateConversation", () => {
     expect(typeof generateConversation).toBe("function");
   });

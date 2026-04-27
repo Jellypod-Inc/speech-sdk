@@ -1,18 +1,29 @@
 {
-  "dependencies": {
-    "mediabunny": "^1.40.1",
-    "p-retry": "^8.0.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.4.12",
-    "@types/node": "^25.5.0",
-    "dotenv": "^17.3.1",
-    "typescript": "^5.8.0",
-    "ultracite": "7.6.1",
-    "vite": "^7.3.2",
-    "vitest": "^4.1.3"
-  },
   "name": "@speech-sdk/core",
+  "version": "0.8.0-alpha",
+  "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
+  "type": "module",
+  "packageManager": "pnpm@10.11.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "default": "./dist/providers.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -22,86 +33,6 @@
     "check": "ultracite check",
     "fix": "ultracite fix"
   },
-  "type": "module",
-  "version": "0.7.0",
-  "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
-  "packageManager": "pnpm@10.11.1",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./conversation": {
-      "types": "./dist/generate-conversation.d.ts",
-      "default": "./dist/generate-conversation.js"
-    },
-    "./conversation/errors": {
-      "types": "./dist/conversation/errors.d.ts",
-      "default": "./dist/conversation/errors.js"
-    },
-    "./openai": {
-      "types": "./dist/providers/openai/index.d.ts",
-      "default": "./dist/providers/openai/index.js"
-    },
-    "./elevenlabs": {
-      "types": "./dist/providers/elevenlabs/index.d.ts",
-      "default": "./dist/providers/elevenlabs/index.js"
-    },
-    "./deepgram": {
-      "types": "./dist/providers/deepgram/index.d.ts",
-      "default": "./dist/providers/deepgram/index.js"
-    },
-    "./cartesia": {
-      "types": "./dist/providers/cartesia/index.d.ts",
-      "default": "./dist/providers/cartesia/index.js"
-    },
-    "./hume": {
-      "types": "./dist/providers/hume/index.d.ts",
-      "default": "./dist/providers/hume/index.js"
-    },
-    "./inworld": {
-      "types": "./dist/providers/inworld/index.d.ts",
-      "default": "./dist/providers/inworld/index.js"
-    },
-    "./google": {
-      "types": "./dist/providers/google/index.d.ts",
-      "default": "./dist/providers/google/index.js"
-    },
-    "./fish-audio": {
-      "types": "./dist/providers/fish-audio/index.d.ts",
-      "default": "./dist/providers/fish-audio/index.js"
-    },
-    "./murf": {
-      "types": "./dist/providers/murf/index.d.ts",
-      "default": "./dist/providers/murf/index.js"
-    },
-    "./resemble": {
-      "types": "./dist/providers/resemble/index.d.ts",
-      "default": "./dist/providers/resemble/index.js"
-    },
-    "./fal-ai": {
-      "types": "./dist/providers/fal/index.d.ts",
-      "default": "./dist/providers/fal/index.js"
-    },
-    "./mistral": {
-      "types": "./dist/providers/mistral/index.d.ts",
-      "default": "./dist/providers/mistral/index.js"
-    },
-    "./xai": {
-      "types": "./dist/providers/xai/index.d.ts",
-      "default": "./dist/providers/xai/index.js"
-    },
-    "./stt/openai": {
-      "types": "./dist/stt-providers/openai/index.d.ts",
-      "default": "./dist/stt-providers/openai/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "keywords": [
     "tts",
     "text-to-speech",
@@ -115,5 +46,19 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Jellypod-Inc/speech-sdk"
+  },
+  "dependencies": {
+    "mediabunny": "^1.40.1",
+    "p-retry": "^8.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.12",
+    "@types/node": "^25.5.0",
+    "dotenv": "^17.3.1",
+    "typescript": "^5.8.0",
+    "ultracite": "7.6.1",
+    "vite": "^7.3.2",
+    "vitest": "^4.1.3"
   }
 }

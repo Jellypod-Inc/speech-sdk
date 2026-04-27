@@ -1,43 +1,61 @@
+import { z } from "zod";
 import { ApiError, StreamingNotSupportedError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+const falJobResponseSchema = z.object({
+  audio: z.object({
+    url: z.string(),
+    content_type: z.string().optional(),
+  }),
+});
 
 export interface FalSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
+
+export const FAL_PROVIDER_ID = "fal-ai" as const;
+
+export const FAL_MODELS: readonly ModelInfo[] = [
+  {
+    id: "f5-tts",
+    releaseDate: "2024-10-08",
+    languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
+    features: ["open-source", "inline-voice-cloning"],
+  },
+  {
+    id: "kokoro",
+    releaseDate: "2025-01-27",
+    languages: ["en", "fr", "ko", "ja", "zh"],
+    features: ["open-source"],
+  },
+  {
+    id: "orpheus-tts",
+    releaseDate: "2025-03-18",
+    languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
+    features: ["open-source"],
+  },
+] as const;
 
 export class FalSpeechProvider
   implements SpeechProvider<string, string | { url: string }>
 {
-  readonly id = "fal-ai";
+  readonly id = FAL_PROVIDER_ID;
   readonly defaultModel = "";
 
-  readonly models = [
-    {
-      id: "f5-tts",
-      releaseDate: "2024-10-08",
-      languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
-      features: ["open-source", "inline-voice-cloning"],
-    },
-    {
-      id: "kokoro",
-      releaseDate: "2025-01-27",
-      languages: ["en", "fr", "ko", "ja", "zh"],
-      features: ["open-source"],
-    },
-    {
-      id: "orpheus-tts",
-      releaseDate: "2025-03-18",
-      languages: ["en", "es", "fr", "de", "it", "pt", "zh"],
-      features: ["open-source"],
-    },
-  ] as const;
+  readonly models = FAL_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -94,17 +112,15 @@ export class FalSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `fal-ai/${options.modelId}`);
+    await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audio: { url: string; content_type?: string };
-    };
+    const json = falJobResponseSchema.parse(await response.json());
     return await this.fetchAudio(json, options);
   }
 
   private async fetchAudio(
-    json: { audio: { url: string; content_type?: string } },
-    options: { modelId: string; abortSignal?: AbortSignal }
+    json: z.infer<typeof falJobResponseSchema>,
+    options: { abortSignal?: AbortSignal }
   ): Promise<{ audio: Uint8Array; mediaType: string }> {
     const audioResponse = await this.fetchFn(json.audio.url, {
       signal: options.abortSignal,
@@ -113,15 +129,12 @@ export class FalSpeechProvider
     if (!audioResponse.ok) {
       throw new ApiError(`API error: ${audioResponse.status}`, {
         statusCode: audioResponse.status,
-        model: `fal-ai/${options.modelId}`,
         responseBody: await audioResponse.text().catch(() => undefined),
       });
     }
 
     const arrayBuffer = await audioResponse.arrayBuffer();
-    // fal includes the authoritative content_type in its JSON response.
-    // Fall back to the CDN response header, then to audio/wav (the format
-    // every currently-listed model emits).
+    // Authoritative content_type lives in fal's JSON; CDN header and audio/wav are fallbacks.
     const mediaType =
       json.audio.content_type ??
       audioResponse.headers.get("content-type") ??
@@ -137,21 +150,20 @@ export class FalSpeechProvider
   }
 
   getStitchOptions(modelId: string) {
-    // All currently-listed fal models (orpheus-tts, f5-tts, kokoro) return
-    // WAV (16-bit mono PCM in a RIFF container) at fal's CDN URL. Pass
-    // through providerOptions empty — fal exposes no format selector.
+    // fal exposes no format selector — listed models all return WAV.
     if (this.models.some((m) => m.id === modelId)) {
       return {
         providerOptions: {},
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
 export function createFal(config: FalSpeechProviderConfig = {}) {
   const provider = new FalSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function fal(
     modelId?: string
@@ -159,6 +171,7 @@ export function createFal(config: FalSpeechProviderConfig = {}) {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

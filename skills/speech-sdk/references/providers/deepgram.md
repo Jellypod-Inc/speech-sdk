@@ -46,7 +46,7 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createDeepgram } from "@speech-sdk/core/deepgram"
+import { createDeepgram } from "@speech-sdk/core/providers"
 const deepgram = createDeepgram({ apiKey: process.env.DEEPGRAM_API_KEY })
 await generateSpeech({ model: deepgram("aura-2"), text: "...", voice: "thalia-en" })
 ```

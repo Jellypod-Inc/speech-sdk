@@ -1,9 +1,15 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
 
 function safeParseJson(input: string): unknown {
@@ -14,35 +20,45 @@ function safeParseJson(input: string): unknown {
   }
 }
 
+const speechResponseSchema = z.object({
+  audio_data: z.string(),
+  usage: z.object({ audio_duration_seconds: z.number().optional() }).optional(),
+});
+
+const audioDeltaEventSchema = z.object({
+  type: z.literal("speech.audio.delta"),
+  audio_data: z.string(),
+});
+
+const audioDoneEventSchema = z.object({
+  type: z.literal("speech.audio.done"),
+  usage: z.record(z.string(), z.unknown()),
+});
+
 export interface MistralSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
+
+export const MISTRAL_PROVIDER_ID = "mistral" as const;
+
+export const MISTRAL_MODELS: readonly ModelInfo[] = [
+  {
+    id: "voxtral-mini-tts-2603",
+    releaseDate: "2026-03-23",
+    languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
+    features: ["streaming", "open-source", "inline-voice-cloning"],
+  },
+] as const;
 
 export class MistralSpeechProvider
   implements SpeechProvider<string, string | { audio: string | Uint8Array }>
 {
-  readonly id = "mistral";
+  readonly id = MISTRAL_PROVIDER_ID;
   readonly defaultModel = "voxtral-mini-tts-2603";
-  readonly models = [
-    {
-      id: "voxtral-mini-tts-2603",
-      releaseDate: "2026-03-23",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "nl",
-        "pt",
-        "it",
-        "hi",
-        "ar",
-      ] as const,
-      features: ["streaming", "open-source", "inline-voice-cloning"],
-    },
-  ] as const;
+  readonly models = MISTRAL_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -104,12 +120,9 @@ export class MistralSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `mistral/${options.modelId}`);
+    await handleErrorResponse(response);
 
-    const json = (await response.json()) as {
-      audio_data: string;
-      usage?: { audio_duration_seconds?: number };
-    };
+    const json = speechResponseSchema.parse(await response.json());
 
     const audioDurationMs =
       json.usage?.audio_duration_seconds == null
@@ -175,7 +188,7 @@ export class MistralSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `mistral/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`mistral/${options.modelId}: response has no body`);
@@ -183,27 +196,14 @@ export class MistralSpeechProvider
 
     const { stream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
-        const json = safeParseJson(eventData) as {
-          type?: string;
-          audio_data?: unknown;
-        } | null;
-        if (
-          json?.type === "speech.audio.delta" &&
-          typeof json.audio_data === "string"
-        ) {
-          return json.audio_data;
-        }
-        return null;
+        const result = audioDeltaEventSchema.safeParse(
+          safeParseJson(eventData)
+        );
+        return result.success ? result.data.audio_data : null;
       },
       extractMetadata(eventData) {
-        const json = safeParseJson(eventData) as {
-          type?: string;
-          usage?: Record<string, unknown>;
-        } | null;
-        if (json?.type === "speech.audio.done" && json.usage) {
-          return { usage: json.usage };
-        }
-        return null;
+        const result = audioDoneEventSchema.safeParse(safeParseJson(eventData));
+        return result.success ? { usage: result.data.usage } : null;
       },
     });
 
@@ -215,15 +215,13 @@ export class MistralSpeechProvider
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // voxtral's `pcm` format is headerless float32 little-endian, mono,
-      // 24 kHz — declared via the `encoding=float32` mediaType param so the
-      // stitch decoder converts to int16 before concatenation.
+      // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the stitch decoder to convert to int16.
       return {
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000;encoding=float32",
       };
     }
-    return undefined;
+    return;
   }
 }
 
@@ -245,9 +243,14 @@ function mediaTypeForResponseFormat(format: unknown): string {
 
 export function createMistral(config: MistralSpeechProviderConfig = {}) {
   const provider = new MistralSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
   return function mistral(
     modelId?: string
   ): ResolvedModel<string | { audio: string | Uint8Array }> {
-    return { provider, modelId: modelId ?? provider.defaultModel };
+    return {
+      provider,
+      modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
+    };
   };
 }

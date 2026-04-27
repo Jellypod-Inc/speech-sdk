@@ -16,14 +16,14 @@
 
 ## Timestamps
 
-`octave-2` returns word alignment natively. When `timestamps: "auto"` or `"on"` is set, the SDK routes through Hume's JSON `/v0/tts` endpoint with `include_timestamp_types: ["word"]` and `split_utterances: false`, then flattens the snippet timestamps to the SDK's seconds-based `WordTimestamp[]`.
+`octave-2` returns word alignment natively. When `timestamps: "on"` is set, the SDK routes through Hume's JSON `/v0/tts` endpoint with `include_timestamp_types: ["word"]` and `split_utterances: false`, then flattens the snippet timestamps to the SDK's seconds-based `WordTimestamp[]`.
 
 ```ts
 const result = await generateSpeech({
   model: "hume/octave-2",
   text: "Hello, world!",
   voice: "Kora",
-  timestamps: "auto",
+  timestamps: "on",
 })
 result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
 ```
@@ -65,6 +65,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createHume } from "@speech-sdk/core/hume"
+import { createHume } from "@speech-sdk/core/providers"
 const hume = createHume({ apiKey: process.env.HUME_API_KEY })
 ```

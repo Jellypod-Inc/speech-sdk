@@ -45,19 +45,6 @@ describe.skipIf(!hasAllKeys)(
       expect(result.audio.mediaType).toBe("audio/wav");
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(44);
 
-      // Aggregate metadata names every distinct provider/model used.
-      for (const id of ["openai", "elevenlabs", "google", "hume"]) {
-        expect(result.metadata.provider).toContain(id);
-      }
-      for (const id of [
-        "tts-1",
-        "eleven_multilingual_v2",
-        "gemini-3.1-flash-tts-preview",
-        "octave-2",
-      ]) {
-        expect(result.metadata.model).toContain(id);
-      }
-
       // Per-turn provider metadata is preserved on the stitch path.
       const perTurn = (
         result.providerMetadata as { turns?: unknown[] } | undefined

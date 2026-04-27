@@ -1,27 +1,13 @@
 import type { WordTimestamp } from "../../timestamps.js";
 
-/**
- * Shape of the `word_timestamps` block inside a Cartesia SSE/WebSocket
- * `type: "timestamps"` message. Three parallel arrays — index N is the Nth
- * word's text (`words[N]`), start time (`start[N]`, seconds), and end time
- * (`end[N]`, seconds).
- *
- * Cartesia emits these messages incrementally — each message covers a span
- * of words synthesized so far in the current `context_id`. The SDK
- * accumulates them in arrival order and flattens at end-of-stream.
- */
+// Cartesia `type: "timestamps"` payload — three parallel arrays, times in seconds.
 export interface CartesiaWordTimestamps {
   readonly end: readonly number[];
   readonly start: readonly number[];
   readonly words: readonly string[];
 }
 
-/**
- * Flatten a sequence of `word_timestamps` messages — collected as the SSE
- * stream emitted them — into a single `WordTimestamp[]`. Skips entries past
- * the shortest array length so a malformed message can't produce undefined
- * start/end values.
- */
+// Skips past the shortest array length to guard against malformed messages.
 export function mergeWordTimestampMessages(
   messages: readonly CartesiaWordTimestamps[]
 ): WordTimestamp[] {

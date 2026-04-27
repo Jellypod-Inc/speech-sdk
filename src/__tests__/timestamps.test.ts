@@ -9,9 +9,10 @@ import type { WordTimestamp } from "../timestamps.js";
 function createTTSProvider(
   overrides: Partial<{
     audio: Uint8Array;
+    id: string;
     mediaType: string;
     timestamps: WordTimestamp[];
-    feature: { id: "timestamps"; mode: "native" | "derived" };
+    feature: "timestamps" | undefined;
     captureIncludeTimestamps: (v: boolean | undefined) => void;
   }> = {}
 ): SpeechProvider {
@@ -29,7 +30,7 @@ function createTTSProvider(
     });
 
   return {
-    id: "test-tts",
+    id: overrides.id ?? "test-tts",
     defaultModel: "t-model",
     models: [
       {
@@ -60,35 +61,10 @@ function createSTTProvider(
 }
 
 describe("generateSpeech timestamps option", () => {
-  it("returns undefined timestamps by default when the provider is not native", async () => {
-    const provider = createTTSProvider();
-    const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
-      text: "Hello",
-      voice: "v",
-    });
-
-    expect(result.timestamps).toBeUndefined();
-  });
-
-  it("auto mode: asks a native provider for timestamps and returns them", async () => {
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
-      timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
-    });
-    const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
-      text: "Hi",
-      voice: "v",
-    });
-
-    expect(result.timestamps).toEqual([{ text: "Hi", start: 0, end: 0.3 }]);
-  });
-
-  it("off mode: never passes includeTimestamps and never returns timestamps", async () => {
+  it('default ("off"): never asks the provider for timestamps, even when the model is native', async () => {
     let captured: boolean | undefined;
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
+      feature: "timestamps",
       timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
       captureIncludeTimestamps: (v) => {
         captured = v;
@@ -98,7 +74,26 @@ describe("generateSpeech timestamps option", () => {
       model: { provider, modelId: "t-model" },
       text: "Hi",
       voice: "v",
-      timestamps: "off",
+    });
+
+    expect(captured).toBe(false);
+    expect(result.timestamps).toBeUndefined();
+  });
+
+  it("off mode: never passes includeTimestamps and never returns timestamps", async () => {
+    let captured: boolean | undefined;
+    const provider = createTTSProvider({
+      feature: "timestamps",
+      timestamps: [{ text: "Hi", start: 0, end: 0.3 }],
+      captureIncludeTimestamps: (v) => {
+        captured = v;
+      },
+    });
+    const result = await generateSpeech({
+      model: { provider, modelId: "t-model" },
+      text: "Hi",
+      voice: "v",
+      timestamps: false,
     });
 
     expect(captured).toBe(false);
@@ -107,38 +102,42 @@ describe("generateSpeech timestamps option", () => {
 
   it("on mode: native provider returns timestamps without calling STT", async () => {
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "native" },
+      feature: "timestamps",
       timestamps: [{ text: "Yo", start: 0, end: 0.1 }],
     });
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
 
     const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       text: "Yo",
       voice: "v",
-      timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestamps: true,
     });
 
     expect(stt.transcribe).not.toHaveBeenCalled();
     expect(result.timestamps).toEqual([{ text: "Yo", start: 0, end: 0.1 }]);
   });
 
-  it("on mode: derived provider falls back to user-supplied STT", async () => {
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
-    });
+  it("on mode: provider without native timestamps falls back to factory-configured STT", async () => {
+    const provider = createTTSProvider({});
     const stt = createSTTProvider([
       { text: "Hello", start: 0, end: 0.4 },
       { text: "world", start: 0.45, end: 0.9 },
     ]);
 
     const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
       text: "Hello world",
       voice: "v",
-      timestamps: "on",
-      timestampProvider: { provider: stt, modelId: "m" },
+      timestamps: true,
     });
 
     expect(stt.transcribe).toHaveBeenCalledOnce();
@@ -146,47 +145,126 @@ describe("generateSpeech timestamps option", () => {
     expect(result.timestamps?.[0]?.text).toBe("Hello");
   });
 
-  it("on mode without override: tries default openai/whisper-1 and errors with actionable message when OPENAI_API_KEY is unset", async () => {
-    const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
-    });
-    const originalKey = process.env.OPENAI_API_KEY;
-    process.env.OPENAI_API_KEY = undefined;
-    delete process.env.OPENAI_API_KEY;
-
-    try {
-      await expect(
-        generateSpeech({
-          model: { provider, modelId: "t-model" },
-          text: "Hello",
-          voice: "v",
-          timestamps: "on",
-        })
-      ).rejects.toThrow(TimestampKeyMissingError);
-    } finally {
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
-    }
-  });
-
-  it("auto mode: does not request native timestamps when the model is derived-only", async () => {
+  it("on mode: asks the gateway for server-side timestamps before STT fallback", async () => {
     let captured: boolean | undefined;
     const provider = createTTSProvider({
-      feature: { id: "timestamps", mode: "derived" },
+      id: "speech-gateway",
+      timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
       captureIncludeTimestamps: (v) => {
         captured = v;
       },
     });
+    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
+
     const result = await generateSpeech({
-      model: { provider, modelId: "t-model" },
-      text: "Hi",
+      model: {
+        provider,
+        modelId: "openai/tts-1",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello",
       voice: "v",
-      // auto (default)
+      timestamps: true,
     });
 
-    expect(captured).toBe(false);
+    expect(captured).toBe(true);
+    expect(stt.transcribe).not.toHaveBeenCalled();
+    expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
+  });
+
+  it("on mode: never runs client-side STT fallback for gateway requests", async () => {
+    const provider = createTTSProvider({ id: "speech-gateway" });
+    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
+
+    const result = await generateSpeech({
+      model: {
+        provider,
+        modelId: "openai/tts-1",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(result.audio).toBeDefined();
     expect(result.timestamps).toBeUndefined();
+    expect(stt.transcribe).not.toHaveBeenCalled();
+  });
+
+  it("throws TimestampKeyMissingError when timestamps:true, no fallback, and OPENAI_API_KEY missing", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const fakeBytes = new Uint8Array([65]);
+      const provider: SpeechProvider = {
+        id: "stub",
+        defaultModel: "m",
+        models: [
+          {
+            id: "m",
+            releaseDate: "2025-01-01",
+            languages: ["en"],
+            features: [],
+          },
+        ],
+        generate: vi.fn().mockResolvedValue({
+          audio: fakeBytes,
+          mediaType: "audio/wav",
+        }),
+      };
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "m" },
+          voice: "v",
+          text: "hi",
+          timestamps: true,
+        })
+      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
+    } finally {
+      if (previousKey !== undefined) {
+        process.env.OPENAI_API_KEY = previousKey;
+      }
+    }
+  });
+
+  it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
+    const transcribe = vi.fn().mockResolvedValue({
+      timestamps: [{ text: "hi", start: 0, end: 0.1 }],
+    });
+    const sttProvider: SpeechToTextProvider = {
+      id: "stub-stt",
+      defaultModel: "stub",
+      models: [],
+      transcribe,
+    };
+
+    const ttsProvider: SpeechProvider = {
+      id: "stub-tts",
+      defaultModel: "m",
+      models: [
+        { id: "m", releaseDate: "2025-01-01", languages: ["en"], features: [] },
+      ],
+      generate: vi.fn().mockResolvedValue({
+        audio: new Uint8Array([65]),
+        mediaType: "audio/wav",
+      }),
+    };
+
+    const result = await generateSpeech({
+      model: {
+        provider: ttsProvider,
+        modelId: "m",
+        fallbackSTT: { provider: sttProvider, modelId: "stub" },
+      },
+      voice: "v",
+      text: "hi",
+      timestamps: true,
+    });
+
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(result.timestamps).toEqual([{ text: "hi", start: 0, end: 0.1 }]);
   });
 });
 

@@ -1,73 +1,90 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
-  type MurfWordDuration,
+  murfWordDurationSchema,
   wordDurationsToWordTimestamps,
 } from "./alignment.js";
+
+const speechResponseSchema = z.object({
+  encodedAudio: z.string(),
+  audioLengthInSeconds: z.number().optional(),
+  wordDurations: z.array(murfWordDurationSchema).optional(),
+});
 
 export interface MurfSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const MURF_PROVIDER_ID = "murf" as const;
+
+export const MURF_MODELS: readonly ModelInfo[] = [
+  {
+    id: "GEN2",
+    releaseDate: "2025-01-01",
+    languages: [
+      "en",
+      "de",
+      "es",
+      "fr",
+      "zh",
+      "ar",
+      "hi",
+      "bn",
+      "ta",
+      "pt",
+      "it",
+      "ja",
+      "ko",
+      "nl",
+      "pl",
+      "ru",
+      "sv",
+      "tr",
+      "id",
+      "ms",
+      "tl",
+      "cs",
+      "fi",
+      "th",
+      "vi",
+      "da",
+      "no",
+      "ro",
+      "el",
+      "hu",
+      "uk",
+      "sk",
+      "bg",
+    ],
+    features: ["streaming", "timestamps"],
+  },
+  {
+    id: "FALCON",
+    releaseDate: "2025-01-01",
+    languages: ["en"],
+    features: ["streaming"],
+  },
+] as const;
+
 export class MurfSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "murf";
+  readonly id = MURF_PROVIDER_ID;
   readonly defaultModel = "GEN2";
 
-  readonly models = [
-    {
-      id: "GEN2",
-      releaseDate: "2025-01-01",
-      languages: [
-        "en",
-        "de",
-        "es",
-        "fr",
-        "zh",
-        "ar",
-        "hi",
-        "bn",
-        "ta",
-        "pt",
-        "it",
-        "ja",
-        "ko",
-        "nl",
-        "pl",
-        "ru",
-        "sv",
-        "tr",
-        "id",
-        "ms",
-        "tl",
-        "cs",
-        "fi",
-        "th",
-        "vi",
-        "da",
-        "no",
-        "ro",
-        "el",
-        "hu",
-        "uk",
-        "sk",
-        "bg",
-      ],
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "FALCON",
-      releaseDate: "2025-01-01",
-      languages: ["en"],
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = MURF_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -123,7 +140,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `murf/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (isFalcon) {
       const arrayBuffer = await response.arrayBuffer();
@@ -134,11 +151,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       };
     }
 
-    const json = (await response.json()) as {
-      encodedAudio: string;
-      audioLengthInSeconds?: number;
-      wordDurations?: MurfWordDuration[];
-    };
+    const json = speechResponseSchema.parse(await response.json());
     const audioDurationMs =
       typeof json.audioLengthInSeconds === "number"
         ? Math.round(json.audioLengthInSeconds * 1000)
@@ -188,7 +201,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `murf/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`murf/${options.modelId}: response has no body`);
@@ -202,25 +215,25 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Murf GEN2 returns base64 WAV (PCM s16) by default; FALCON streams WAV.
-      // Both paths already yield audio/wav so no provider-side overrides are
-      // required.
+      // GEN2 base64 WAV and FALCON streamed WAV both yield audio/wav with no overrides needed.
       return {
         providerOptions: {},
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
 export function createMurf(config: MurfSpeechProviderConfig = {}) {
   const provider = new MurfSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function murf(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

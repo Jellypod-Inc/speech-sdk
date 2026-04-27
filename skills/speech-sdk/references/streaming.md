@@ -8,7 +8,7 @@ Use `streamSpeech` to receive audio as it's generated. Ideal for real-time playb
 import { streamSpeech } from "@speech-sdk/core"
 
 const result = await streamSpeech({
-  model: "elevenlabs/eleven_v3",
+  model: "provider/model",
   text: "Streaming audio, one chunk at a time.",
   voice: "voice-id",
 })
@@ -18,28 +18,16 @@ for await (const chunk of result.audio) {
 }
 ```
 
-`result.audio` is a Web `ReadableStream<Uint8Array>` — works in Node, Edge, and browser.
-
-## StreamSpeechResult
-
-```ts
-interface StreamSpeechResult {
-  readonly audio: ReadableStream<Uint8Array>
-  readonly mediaType: string
-  readonly metadata: SpeechMetadata                   // latencyMs, inputChars, provider, model, ...
-  readonly providerMetadata?: Record<string, unknown>
-  readonly warnings?: string[]
-}
-```
+`result.audio` is a Web `ReadableStream<Uint8Array>` — works in Node, Edge, and browser. The result also exposes `mediaType`, `metadata`, and optional `providerMetadata` / `warnings`. Import `StreamSpeechResult` from `@speech-sdk/core` when you need the exact shape.
 
 ## Returning a Streaming Response
 
 ```ts
 export async function GET() {
   const result = await streamSpeech({
-    model: "deepgram/aura-2",
+    model: "provider/model",
     text: "Hello from the edge.",
-    voice: "thalia-en",
+    voice: "voice-id",
   })
 
   return new Response(result.audio, {
@@ -54,7 +42,7 @@ Use Media Source Extensions, or buffer into a `Blob`:
 
 ```ts
 const result = await streamSpeech({
-  model: "cartesia/sonic-2",
+  model: "provider/model",
   text: "Streaming in the browser.",
   voice: "voice-id",
 })
@@ -71,7 +59,7 @@ new Audio(URL.createObjectURL(blob)).play()
 ```ts
 const controller = new AbortController()
 const result = await streamSpeech({
-  model: "elevenlabs/eleven_v3",
+  model: "provider/model",
   text: "...",
   voice: "voice-id",
   abortSignal: controller.signal,
@@ -79,19 +67,20 @@ const result = await streamSpeech({
 setTimeout(() => controller.abort(), 2000)
 ```
 
-## Provider Support
+## Unsupported Models
 
-Not every model streams. Check at runtime:
+Not every model streams. Calling `streamSpeech` on an unsupported model throws `StreamingNotSupportedError` — fall back to `generateSpeech`:
 
 ```ts
-import { FEATURES, hasFeature } from "@speech-sdk/core"
-import { createOpenAI } from "@speech-sdk/core/openai"
+import { StreamingNotSupportedError, streamSpeech } from "@speech-sdk/core"
 
-const model = createOpenAI()("gpt-4o-mini-tts")
-
-if (hasFeature(model, FEATURES.STREAMING)) {
-  // safe to call streamSpeech
+try {
+  await streamSpeech({ model: "provider/model", text: "...", voice: "voice-id" })
+} catch (error) {
+  if (error instanceof StreamingNotSupportedError) {
+    // fall back to generateSpeech
+  }
 }
 ```
 
-Calling `streamSpeech` on an unsupported model throws `StreamingNotSupportedError` — fall back to `generateSpeech`.
+See `providers/<name>.md` for which models within a provider support streaming.

@@ -6,6 +6,7 @@ import {
   StreamingNotSupportedError,
 } from "./errors.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
   FEATURES,
@@ -88,7 +89,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
       retries: maxRetries,
       signal: abortSignal,
       shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && error.statusCode < 500) {
+        if (error instanceof ApiError && !isRetriableApiError(error)) {
           return false;
         }
         return true;
@@ -102,8 +103,6 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
     latencyMs: ttfbMs,
     ttfbMs,
     inputChars: processedText.length,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(result.audioDurationMs != null && {
       audioDurationMs: result.audioDurationMs,
     }),

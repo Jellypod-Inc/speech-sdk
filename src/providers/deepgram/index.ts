@@ -3,14 +3,14 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
-/**
- * Deepgram's /v1/speak endpoint takes audio-shaping parameters (model,
- * encoding, sample_rate, container, bit_rate, ...) as query-string params.
- * Only `text` (or `url`) belongs in the JSON body — putting anything else
- * there causes a PAYLOAD_ERROR.
- */
+// Deepgram /v1/speak takes audio-shaping params on the query string; only `text` in body or it returns PAYLOAD_ERROR.
 function buildSpeakUrl(
   baseURL: string,
   options: {
@@ -35,21 +35,26 @@ function buildSpeakUrl(
 export interface DeepgramSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const DEEPGRAM_PROVIDER_ID = "deepgram" as const;
+
+export const DEEPGRAM_MODELS: readonly ModelInfo[] = [
+  {
+    id: "aura-2",
+    releaseDate: "2025-04-15",
+    languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
+    features: ["streaming"],
+  },
+] as const;
+
 export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "deepgram";
+  readonly id = DEEPGRAM_PROVIDER_ID;
   readonly defaultModel = "aura-2";
 
-  readonly models = [
-    {
-      id: "aura-2",
-      releaseDate: "2025-04-15",
-      languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = DEEPGRAM_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -87,7 +92,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `deepgram/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -124,7 +129,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `deepgram/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`deepgram/${options.modelId}: response has no body`);
@@ -147,17 +152,19 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {
   const provider = new DeepgramSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function deepgram(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

@@ -14,7 +14,7 @@ function createMockProvider(
     id: "mock",
     defaultModel: "mock-model",
     generate: vi.fn().mockResolvedValue({
-      audio: new Uint8Array([72, 101, 108, 108, 111]), // "Hello"
+      audio: new Uint8Array([72, 101, 108, 108, 111]),
       mediaType: "audio/mpeg",
       ...overrides,
     }),
@@ -121,7 +121,6 @@ describe("generateSpeech", () => {
   it("retries on 5xx errors", async () => {
     const error = new ApiError("Server error", {
       statusCode: 500,
-      model: "mock/test-model",
     });
 
     const provider: SpeechProvider = {
@@ -302,10 +301,8 @@ describe("generateSpeech", () => {
   });
 
   it("works with browser-like fetch that requires correct this context", async () => {
-    // Simulates browser fetch which throws "Illegal invocation" when
-    // called without the correct `this` binding (Window/globalThis context).
-    // The mock is assigned unbound so the provider's .bind(globalThis) is
-    // what makes `this === globalThis` true at call time.
+    // Browser fetch throws "Illegal invocation" without correct `this` binding;
+    // provider's .bind(globalThis) is what makes the call legal.
     const browserFetch = vi.fn(function (this: unknown) {
       if (this !== globalThis) {
         throw new TypeError(
@@ -334,12 +331,16 @@ describe("generateSpeech", () => {
     }
   });
 
-  it("passes apiKey to provider when model is a string", async () => {
+  it("routes string models through the speech gateway with apiKey as bearer", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "audio/mpeg" }),
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("\x01\x02\x03"),
+        mediaType: "audio/mpeg",
+        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+      }),
     });
 
     const savedFetch = globalThis.fetch;
@@ -349,12 +350,61 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         text: "Hello",
         voice: "alloy",
-        apiKey: "sk-custom-key",
+        apiKey: "gw-custom-key",
+        timestamps: true,
       });
 
       expect(result.audio).toBeDefined();
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+      );
+      expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
+      const body = JSON.parse(init.body);
+      expect(body).toEqual({
+        mode: "inline",
+        model: "openai/tts-1",
+        voice: "alloy",
+        text: "Hello",
+      });
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("passes volumeDbfs through to the speech gateway instead of normalizing locally", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("\x01\x02\x03"),
+        mediaType: "audio/mpeg",
+        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+      }),
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      const result = await generateSpeech({
+        model: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+        apiKey: "gw-custom-key",
+        volumeDbfs: -20,
+        timestamps: true,
+      });
+
+      expect(result.audio.mediaType).toBe("audio/mpeg");
       const [, init] = mockFetch.mock.calls[0];
-      expect(init.headers.Authorization).toBe("Bearer sk-custom-key");
+      expect(JSON.parse(init.body)).toEqual({
+        mode: "inline",
+        model: "openai/tts-1",
+        voice: "alloy",
+        text: "Hello",
+        volumeDbfs: -20,
+      });
     } finally {
       globalThis.fetch = savedFetch;
     }
@@ -369,14 +419,61 @@ describe("generateSpeech", () => {
       apiKey: "sk-should-be-ignored",
     });
 
-    // The mock provider is used directly, apiKey does not affect it
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
   it("does not retry on 4xx errors", async () => {
     const error = new ApiError("Auth error", {
       statusCode: 401,
-      model: "mock/test-model",
+    });
+
+    const provider: SpeechProvider = {
+      id: "mock",
+      defaultModel: "mock-model",
+      generate: vi.fn().mockRejectedValue(error),
+    };
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "Hello",
+        maxRetries: 2,
+      })
+    ).rejects.toThrow();
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry gateway 401 responses", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify({ error: "unauthorized" }),
+    });
+
+    const savedFetch = globalThis.fetch;
+    globalThis.fetch = mockFetch as typeof globalThis.fetch;
+    try {
+      await expect(
+        generateSpeech({
+          model: "openai/tts-1",
+          text: "Hello",
+          voice: "alloy",
+          apiKey: "bad-gw-key",
+          maxRetries: 2,
+        })
+      ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = savedFetch;
+    }
+  });
+
+  it("does not retry on 501 Not Implemented", async () => {
+    // 501 = gateway's "this capability will never work" signal; retrying wastes round-trips.
+    const error = new ApiError("Not implemented", {
+      statusCode: 501,
+      code: "timestamps_unsupported",
     });
 
     const provider: SpeechProvider = {

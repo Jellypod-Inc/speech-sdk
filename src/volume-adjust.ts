@@ -11,12 +11,6 @@ interface AdjustVolumeInput {
   readonly volumeDbfs: number;
 }
 
-/**
- * Decode the provider's PCM/WAV output, RMS-normalize to the target dBFS,
- * and re-encode as 16-bit mono WAV. Lazy-loaded by generateSpeech only when
- * `volumeDbfs` is set so callers that never use volume adjustment don't pay
- * for the WAV mux dependency chain at import time.
- */
 export async function adjustVolume(
   input: AdjustVolumeInput
 ): Promise<Uint8Array> {

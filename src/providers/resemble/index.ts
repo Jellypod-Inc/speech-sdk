@@ -1,62 +1,78 @@
+import { z } from "zod";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   audioTimestampsToWordTimestamps,
-  type ResembleAudioTimestamps,
+  resembleAudioTimestampsSchema,
 } from "./alignment.js";
+
+const synthesizeResponseSchema = z.object({
+  audio_content: z.string(),
+  audio_timestamps: resembleAudioTimestampsSchema.optional(),
+});
 
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const RESEMBLE_PROVIDER_ID = "resemble" as const;
+
+export const RESEMBLE_MODELS: readonly ModelInfo[] = [
+  {
+    id: "default",
+    releaseDate: "2025-09-04",
+    languages: [
+      "en",
+      "ar",
+      "da",
+      "de",
+      "el",
+      "es",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "ms",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ru",
+      "sv",
+      "sw",
+      "tr",
+      "zh",
+    ],
+    features: [
+      "streaming",
+      "open-source",
+      "inline-voice-cloning",
+      "timestamps",
+    ],
+  },
+] as const;
+
 export class ResembleSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "resemble";
+  readonly id = RESEMBLE_PROVIDER_ID;
   readonly defaultModel = "default";
 
-  readonly models = [
-    {
-      id: "default",
-      releaseDate: "2025-09-04",
-      languages: [
-        "en",
-        "ar",
-        "da",
-        "de",
-        "el",
-        "es",
-        "fi",
-        "fr",
-        "he",
-        "hi",
-        "it",
-        "ja",
-        "ko",
-        "ms",
-        "nl",
-        "no",
-        "pl",
-        "pt",
-        "ru",
-        "sv",
-        "sw",
-        "tr",
-        "zh",
-      ],
-      features: [
-        "streaming",
-        "open-source",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-  ] as const;
+  readonly models = RESEMBLE_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -106,14 +122,10 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `resemble/${options.modelId}`);
+    await handleErrorResponse(response);
 
-    // Resemble always returns `audio_timestamps`; gate the projection on
-    // the caller's opt-in rather than the presence of the field.
-    const json = (await response.json()) as {
-      audio_content: string;
-      audio_timestamps?: ResembleAudioTimestamps;
-    };
+    // Gate timestamp projection on caller opt-in, not the always-present audio_timestamps field.
+    const json = synthesizeResponseSchema.parse(await response.json());
 
     const timestamps =
       options.includeTimestamps && json.audio_timestamps
@@ -163,7 +175,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `resemble/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`resemble/${options.modelId}: response has no body`);
@@ -177,25 +189,25 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Resemble's /synthesize defaults to PCM_32 (32-bit float WAV) which
-      // the stitch decoder doesn't accept; pin precision to PCM_16 so the
-      // returned WAV is 16-bit signed PCM.
+      // Pin precision to PCM_16 — Resemble defaults to PCM_32 (float WAV) which the stitch decoder rejects.
       return {
         providerOptions: { precision: "PCM_16" },
         mediaType: "audio/wav",
       };
     }
-    return undefined;
+    return;
   }
 }
 
 export function createResemble(config: ResembleSpeechProviderConfig = {}) {
   const provider = new ResembleSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function resemble(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }

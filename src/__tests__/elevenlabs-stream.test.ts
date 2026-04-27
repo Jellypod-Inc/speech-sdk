@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { SpeechSDKError } from "../errors.js";
 import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
-
-const VOICE_ERROR = /voice ID/;
 
 describe("ElevenLabsSpeechProvider.stream", () => {
   it("POSTs to /stream endpoint and returns response.body", async () => {
@@ -43,8 +42,11 @@ describe("ElevenLabsSpeechProvider.stream", () => {
 
   it("requires a voice", async () => {
     const provider = new ElevenLabsSpeechProvider({ apiKey: "xi-test" });
-    await expect(
-      provider.stream?.({ modelId: "eleven_multilingual_v2", text: "hi" })
-    ).rejects.toThrow(VOICE_ERROR);
+    const error = await provider
+      .stream?.({ modelId: "eleven_multilingual_v2", text: "hi" })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SpeechSDKError);
+    expect((error as Error).message).toContain("voice ID");
   });
 });

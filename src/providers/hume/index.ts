@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -5,50 +6,67 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import type {
+  ModelInfo,
+  ResolvedModel,
+  SpeechProvider,
+} from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
-import { type HumeSnippet, snippetsToWordTimestamps } from "./alignment.js";
+import { humeSnippetSchema, snippetsToWordTimestamps } from "./alignment.js";
+
+const ttsResponseSchema = z.object({
+  generations: z
+    .array(
+      z.object({
+        audio: z.string().optional(),
+        snippets: z.array(z.array(humeSnippetSchema)).optional(),
+      })
+    )
+    .optional(),
+});
 
 export interface HumeSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
 
+export const HUME_PROVIDER_ID = "hume" as const;
+
+export const HUME_MODELS: readonly ModelInfo[] = [
+  {
+    id: "octave-2",
+    releaseDate: "2025-10-01",
+    languages: [
+      "en",
+      "fr",
+      "de",
+      "es",
+      "pt",
+      "ja",
+      "ko",
+      "hi",
+      "it",
+      "ar",
+      "ru",
+    ] as const,
+    features: ["streaming", "inline-voice-cloning", "timestamps"],
+  },
+  {
+    id: "octave-1",
+    releaseDate: "2025-03-01",
+    languages: ["en"] as const,
+    features: ["streaming"],
+  },
+] as const;
+
 export class HumeSpeechProvider implements SpeechProvider<string, string> {
-  readonly id = "hume";
+  readonly id = HUME_PROVIDER_ID;
   readonly defaultModel = "octave-2";
 
-  readonly models = [
-    {
-      id: "octave-2",
-      releaseDate: "2025-10-01",
-      languages: [
-        "en",
-        "fr",
-        "de",
-        "es",
-        "pt",
-        "ja",
-        "ko",
-        "hi",
-        "it",
-        "ar",
-        "ru",
-      ] as const,
-      features: [
-        "streaming",
-        "inline-voice-cloning",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-    {
-      id: "octave-1",
-      releaseDate: "2025-03-01",
-      languages: ["en"] as const,
-      features: ["streaming"],
-    },
-  ] as const;
+  readonly models = HUME_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -67,7 +85,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     if (modelId === "octave-1") {
       return "1";
     }
-    return undefined;
+    return;
   }
 
   async generate(options: {
@@ -100,10 +118,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       body.version = version;
     }
 
-    // Native timestamps are only documented for Octave-2 (`version: "2"`).
-    // Hume returns alignment from the JSON `/v0/tts` endpoint — `/v0/tts/file`
-    // is bytes-only — so we route through it whenever the caller asks for
-    // word timing on a model that supports it.
+    // Native timestamps are Octave-2 only and only on JSON /v0/tts (/v0/tts/file is bytes-only).
     if (options.includeTimestamps && version === "2") {
       return this.generateWithTimestamps(options, body);
     }
@@ -122,7 +137,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -147,11 +162,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
   }> {
-    // `split_utterances: false` keeps the response to a single snippet per
-    // utterance — its audio matches the top-level `generations[0].audio`
-    // byte-for-byte, so segment-relative timestamps line up with the audio
-    // we return. `include_timestamp_types: ["word"]` opts into word-level
-    // alignment (Hume defaults to none).
+    // split_utterances:false keeps one snippet per utterance so timestamps line up byte-for-byte with returned audio.
     const body: Record<string, unknown> = {
       ...baseBody,
       include_timestamp_types: ["word"],
@@ -171,14 +182,9 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
-    const payload = (await response.json()) as {
-      generations?: {
-        audio?: string;
-        snippets?: HumeSnippet[][];
-      }[];
-    };
+    const payload = ttsResponseSchema.parse(await response.json());
     const gen = payload.generations?.[0];
     if (!gen?.audio) {
       throw new SpeechSDKError(
@@ -191,8 +197,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       ? snippetsToWordTimestamps(gen.snippets)
       : undefined;
 
-    // /v0/tts delivers audio as base64 in a JSON body, so there's no
-    // Content-Type for the bytes — derive it from the requested format.
+    // No Content-Type for base64-in-JSON audio bytes; derive from requested format.
     const format = (baseBody.format ?? {}) as { type?: string };
     return {
       audio,
@@ -242,7 +247,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`hume/${options.modelId}: response has no body`);
@@ -256,27 +261,21 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
   getStitchOptions(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Hume Octave always returns 48 kHz mono s16 PCM. The /v0/tts/file
-      // API only accepts { type: "mp3" | "wav" | "pcm" } — there is no
-      // sample-rate option (verified against the Hume TS SDK's FormatPcm
-      // type and Hume's own 48 kHz "professional audio" claim). The
-      // response content-type omits the rate, so we declare it here for
-      // the stitch decoder.
+      // Hume Octave is always 48 kHz mono s16 PCM; /v0/tts/file has no rate option and the response omits it.
       return {
         providerOptions: { format: { type: "pcm" } },
         mediaType: "audio/pcm;rate=48000",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
-      // Hume does not publish a hard maximum — cap at the SDK-wide unique
-      // voice ceiling (4) to stay conservative.
+      // Hume publishes no hard maximum; cap conservatively at SDK-wide unique-voice ceiling of 4.
       return { minVoices: 1, maxVoices: 4 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {
@@ -317,7 +316,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `hume/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     return {
@@ -329,21 +328,18 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
 
 export function createHume(config: HumeSpeechProviderConfig = {}) {
   const provider = new HumeSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function hume(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }
 
-/**
- * Map a Hume `format.type` value to a standard media type. Used when decoding
- * base64 audio from `/v0/tts`, which delivers bytes inside a JSON body with
- * no Content-Type hint for the audio itself. PCM is always 48 kHz mono s16
- * (Hume's only documented PCM mode).
- */
+// Hume's PCM mode is always 48 kHz mono s16.
 function humeFormatToMediaType(formatType: string | undefined): string {
   if (!formatType) {
     return "audio/mpeg";

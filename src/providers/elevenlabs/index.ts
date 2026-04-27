@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -8,173 +9,182 @@ import {
 } from "../../provider-utils.js";
 import {
   hasFeature,
+  type ModelInfo,
   type ResolvedModel,
   type SpeechProvider,
 } from "../../speech-provider.js";
+import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   alignmentToWordTimestamps,
-  type ElevenLabsAlignment,
+  elevenLabsAlignmentSchema,
 } from "./alignment.js";
+
+const withTimestampsResponseSchema = z.object({
+  audio_base64: z.string().optional(),
+  alignment: elevenLabsAlignmentSchema.optional(),
+  normalized_alignment: elevenLabsAlignmentSchema.optional(),
+});
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
+
+export const ELEVENLABS_PROVIDER_ID = "elevenlabs" as const;
+
+const ELEVENLABS_V2_LANGUAGES = [
+  "ar",
+  "bg",
+  "cs",
+  "da",
+  "de",
+  "el",
+  "en",
+  "es",
+  "fi",
+  "fil",
+  "fr",
+  "he",
+  "hi",
+  "hr",
+  "id",
+  "it",
+  "ja",
+  "ko",
+  "ms",
+  "nl",
+  "pl",
+  "pt",
+  "ro",
+  "ru",
+  "sk",
+  "sv",
+  "ta",
+  "uk",
+  "zh",
+] as const;
+
+const ELEVENLABS_FLASH_V2_5_LANGUAGES = [
+  ...ELEVENLABS_V2_LANGUAGES,
+  "hu",
+  "no",
+  "vi",
+] as const;
+
+const ELEVENLABS_V3_LANGUAGES = [
+  "af",
+  "ar",
+  "hy",
+  "as",
+  "az",
+  "be",
+  "bn",
+  "bs",
+  "bg",
+  "ca",
+  "ceb",
+  "ny",
+  "hr",
+  "cs",
+  "da",
+  "nl",
+  "en",
+  "et",
+  "fil",
+  "fi",
+  "fr",
+  "gl",
+  "ka",
+  "de",
+  "el",
+  "gu",
+  "ha",
+  "he",
+  "hi",
+  "hu",
+  "is",
+  "id",
+  "ga",
+  "it",
+  "ja",
+  "jv",
+  "kn",
+  "kk",
+  "ky",
+  "ko",
+  "lv",
+  "ln",
+  "lt",
+  "lb",
+  "mk",
+  "ms",
+  "ml",
+  "zh",
+  "mr",
+  "ne",
+  "no",
+  "ps",
+  "fa",
+  "pl",
+  "pt",
+  "pa",
+  "ro",
+  "ru",
+  "sr",
+  "sd",
+  "sk",
+  "sl",
+  "so",
+  "es",
+  "sw",
+  "sv",
+  "ta",
+  "te",
+  "th",
+  "tr",
+  "uk",
+  "ur",
+  "vi",
+  "cy",
+] as const;
+
+export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
+  {
+    id: "eleven_v3",
+    releaseDate: "2025-06-08",
+    languages: ELEVENLABS_V3_LANGUAGES,
+    features: ["streaming", "audio-tags", "timestamps"],
+  },
+  {
+    id: "eleven_multilingual_v2",
+    releaseDate: "2023-08-22",
+    languages: ELEVENLABS_V2_LANGUAGES,
+    features: ["streaming", "timestamps"],
+  },
+  {
+    id: "eleven_flash_v2_5",
+    releaseDate: "2024-12-01",
+    languages: ELEVENLABS_FLASH_V2_5_LANGUAGES,
+    features: ["streaming", "timestamps"],
+  },
+  {
+    id: "eleven_flash_v2",
+    releaseDate: "2024-12-01",
+    languages: ["en"] as const,
+    features: ["streaming", "timestamps"],
+  },
+] as const;
 
 export class ElevenLabsSpeechProvider
   implements SpeechProvider<string, string>
 {
-  readonly id = "elevenlabs";
+  readonly id = ELEVENLABS_PROVIDER_ID;
   readonly defaultModel = "eleven_multilingual_v2";
 
-  private static readonly V2_LANGUAGES = [
-    "ar",
-    "bg",
-    "cs",
-    "da",
-    "de",
-    "el",
-    "en",
-    "es",
-    "fi",
-    "fil",
-    "fr",
-    "he",
-    "hi",
-    "hr",
-    "id",
-    "it",
-    "ja",
-    "ko",
-    "ms",
-    "nl",
-    "pl",
-    "pt",
-    "ro",
-    "ru",
-    "sk",
-    "sv",
-    "ta",
-    "uk",
-    "zh",
-  ] as const;
-
-  private static readonly FLASH_V2_5_LANGUAGES = [
-    ...ElevenLabsSpeechProvider.V2_LANGUAGES,
-    "hu",
-    "no",
-    "vi",
-  ] as const;
-
-  private static readonly V3_LANGUAGES = [
-    "af",
-    "ar",
-    "hy",
-    "as",
-    "az",
-    "be",
-    "bn",
-    "bs",
-    "bg",
-    "ca",
-    "ceb",
-    "ny",
-    "hr",
-    "cs",
-    "da",
-    "nl",
-    "en",
-    "et",
-    "fil",
-    "fi",
-    "fr",
-    "gl",
-    "ka",
-    "de",
-    "el",
-    "gu",
-    "ha",
-    "he",
-    "hi",
-    "hu",
-    "is",
-    "id",
-    "ga",
-    "it",
-    "ja",
-    "jv",
-    "kn",
-    "kk",
-    "ky",
-    "ko",
-    "lv",
-    "ln",
-    "lt",
-    "lb",
-    "mk",
-    "ms",
-    "ml",
-    "zh",
-    "mr",
-    "ne",
-    "no",
-    "ps",
-    "fa",
-    "pl",
-    "pt",
-    "pa",
-    "ro",
-    "ru",
-    "sr",
-    "sd",
-    "sk",
-    "sl",
-    "so",
-    "es",
-    "sw",
-    "sv",
-    "ta",
-    "te",
-    "th",
-    "tr",
-    "uk",
-    "ur",
-    "vi",
-    "cy",
-  ] as const;
-
-  readonly models = [
-    {
-      id: "eleven_v3",
-      releaseDate: "2025-06-08",
-      languages: ElevenLabsSpeechProvider.V3_LANGUAGES,
-      features: [
-        "streaming",
-        "audio-tags",
-        { id: "timestamps", mode: "native" },
-      ],
-    },
-    {
-      id: "eleven_multilingual_v2",
-      releaseDate: "2023-08-22",
-      languages: ElevenLabsSpeechProvider.V2_LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "eleven_flash_v2_5",
-      releaseDate: "2024-12-01",
-      languages: ElevenLabsSpeechProvider.FLASH_V2_5_LANGUAGES,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-    {
-      id: "eleven_flash_v2",
-      releaseDate: "2024-12-01",
-      languages: ["en"] as const,
-      features: ["streaming", { id: "timestamps", mode: "native" }],
-    },
-  ] as const;
+  readonly models = ELEVENLABS_MODELS;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -267,10 +277,7 @@ export class ElevenLabsSpeechProvider
       options.providerOptions
     );
 
-    // When timestamps are requested, ElevenLabs exposes a dedicated endpoint
-    // that returns base64 audio + character-level alignment in a JSON body
-    // (rather than raw audio bytes). We post the same body/query, then
-    // aggregate characters → words before returning.
+    // /with-timestamps returns base64 audio + character-level alignment in JSON; we aggregate characters → words before returning.
     const path = options.includeTimestamps
       ? `/v1/text-to-speech/${options.voice}/with-timestamps`
       : `/v1/text-to-speech/${options.voice}`;
@@ -295,7 +302,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
@@ -306,11 +313,7 @@ export class ElevenLabsSpeechProvider
       : undefined;
 
     if (options.includeTimestamps) {
-      const payload = (await response.json()) as {
-        audio_base64?: string;
-        alignment?: ElevenLabsAlignment;
-        normalized_alignment?: ElevenLabsAlignment;
-      };
+      const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
         throw new SpeechSDKError(
@@ -319,9 +322,7 @@ export class ElevenLabsSpeechProvider
       }
 
       const audio = base64ToUint8Array(payload.audio_base64);
-      // `normalized_alignment` matches what was actually spoken (e.g.,
-      // expanded numbers/abbreviations), so it's the right source for
-      // user-facing word timings.
+      // normalized_alignment matches what was actually spoken (expanded numbers/abbreviations).
       const alignment =
         payload.normalized_alignment ?? payload.alignment ?? null;
       const timestamps = alignment
@@ -331,9 +332,7 @@ export class ElevenLabsSpeechProvider
       return {
         audio,
         audioDurationMs: headerDurationMs,
-        // /with-timestamps returns the audio as base64 inside a JSON body,
-        // so there's no Content-Type hint for the audio bytes themselves —
-        // we derive it from the requested output_format.
+        // No Content-Type for base64-in-JSON audio bytes; derive from output_format.
         mediaType: elevenLabsFormatToMediaType(outputFormat),
         providerMetadata: requestId ? { requestId } : undefined,
         timestamps,
@@ -397,7 +396,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     if (!response.body) {
       throw new Error(`elevenlabs/${options.modelId}: response has no body`);
@@ -426,14 +425,14 @@ export class ElevenLabsSpeechProvider
         mediaType: "audio/pcm;rate=24000",
       };
     }
-    return undefined;
+    return;
   }
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "eleven_v3") {
       return { minVoices: 1, maxVoices: 10, maxTotalChars: 2000 };
     }
-    return undefined;
+    return;
   }
 
   async generateDialogue(options: {
@@ -485,7 +484,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response, `elevenlabs/${options.modelId}`);
+    await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -501,23 +500,18 @@ export class ElevenLabsSpeechProvider
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
+  const fallbackSTT = config.fallbackSTT;
 
   return function elevenlabs(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,
+      ...(fallbackSTT && { fallbackSTT }),
     };
   };
 }
 
-/**
- * Map an ElevenLabs `output_format` identifier (e.g. `"pcm_24000"`,
- * `"mp3_44100_128"`, `"ulaw_8000"`, `"opus_48000_32"`) to a standard media
- * type. Used when decoding base64 audio from `/with-timestamps`, which
- * delivers the bytes inside a JSON body with no Content-Type hint for the
- * audio itself. Unknown or missing formats fall back to the endpoint's
- * default, which is mp3.
- */
+// Unknown formats fall back to mp3 (the endpoint's default).
 function elevenLabsFormatToMediaType(format: string | undefined): string {
   if (!format) {
     return "audio/mpeg";

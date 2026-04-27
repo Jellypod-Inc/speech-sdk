@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createOpenAI } from "../../providers/openai/index.js";
 import { streamSpeech } from "../../stream-speech.js";
-import { createOpenAISTT } from "../../stt-providers/openai/index.js";
 import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const TEST_TEXT = "Hello, this is a test of the speech SDK.";
@@ -107,8 +106,6 @@ describe("OpenAI e2e", () => {
       voice: VOICE,
     });
 
-    expect(result.metadata.provider).toBe("openai");
-    expect(result.metadata.model).toBe("tts-1");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
@@ -123,31 +120,22 @@ describe("OpenAI e2e", () => {
     });
     await collectStreamAndSave(result);
 
-    expect(result.metadata.provider).toBe("openai");
-    expect(result.metadata.model).toBe("tts-1");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.ttfbMs).toBeGreaterThanOrEqual(0);
   });
 
   describe("timestamps (derived via Whisper fallback)", () => {
-    it("auto mode does NOT derive timestamps (OpenAI TTS has no native alignment)", async () => {
-      const result = await generateSpeech({
-        model: "openai/tts-1",
-        text: TEST_TEXT,
-        voice: VOICE,
-        timestamps: "auto",
-      });
-
-      expect(result.timestamps).toBeUndefined();
-    });
-
     it("on mode pipes synthesized audio through Whisper and returns word timestamps", async () => {
+      const stt = createOpenAI().stt();
+      const openai = createOpenAI({
+        fallbackSTT: stt,
+      });
       const result = await generateSpeech({
-        model: "openai/tts-1",
+        model: openai("tts-1"),
         text: TEST_TEXT,
         voice: VOICE,
-        timestamps: "on",
+        timestamps: true,
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
@@ -163,19 +151,6 @@ describe("OpenAI e2e", () => {
           words[i - 1]?.start ?? 0
         );
       }
-    });
-
-    it("honors timestampProvider override (explicit openai/whisper-1)", async () => {
-      const result = await generateSpeech({
-        model: "openai/tts-1",
-        text: TEST_TEXT,
-        voice: VOICE,
-        timestamps: "on",
-        timestampProvider: createOpenAISTT()("whisper-1"),
-      });
-
-      expect(result.timestamps).toBeDefined();
-      expect((result.timestamps ?? []).length).toBeGreaterThan(0);
     });
   });
 });

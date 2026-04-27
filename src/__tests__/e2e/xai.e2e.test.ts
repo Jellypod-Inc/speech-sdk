@@ -51,8 +51,6 @@ describe.skipIf(!hasKey)("xAI e2e", () => {
       voice: "eve",
     });
 
-    expect(result.metadata.provider).toBe("xai");
-    expect(result.metadata.model).toBe("grok-tts");
     expect(result.metadata.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");

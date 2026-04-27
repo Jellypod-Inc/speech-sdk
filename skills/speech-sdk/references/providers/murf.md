@@ -25,7 +25,7 @@ const result = await generateSpeech({
   model: "murf/GEN2",
   text: "Hello, world!",
   voice: "en-US-natalie",
-  timestamps: "auto",
+  timestamps: "on",
 })
 result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
 ```
@@ -62,6 +62,6 @@ await generateSpeech({
 ## Factory
 
 ```ts
-import { createMurf } from "@speech-sdk/core/murf"
+import { createMurf } from "@speech-sdk/core/providers"
 const murf = createMurf({ apiKey: process.env.MURF_API_KEY })
 ```

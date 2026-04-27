@@ -2,33 +2,40 @@ import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
-import type { GenerateConversationOptions } from "./conversation/types.js";
+import type {
+  ConversationTurn,
+  GenerateConversationOptions,
+} from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
+import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import { ApiError, NoSpeechGeneratedError } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { isRetriableApiError } from "./provider-utils.js";
+import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import {
   modelDeclaresNativeTimestamps,
   type ResolvedModel,
   type Voice,
 } from "./speech-provider.js";
-import type { SpeechResult } from "./speech-result.js";
+import type { ConversationResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
-import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
-import type { WordTimestamp } from "./timestamps.js";
+import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
 // biome-ignore lint/performance/noBarrelFile: public entry point — re-export error classes so callers get fn + types + errors from one import
 export {
   ConversationInputError,
   DialogueConstraintError,
+  MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
 export type {
   ConversationTurn,
   GenerateConversationOptions,
 } from "./conversation/types.js";
+export type { ConversationResult } from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_CONCURRENCY = 6;
@@ -36,15 +43,39 @@ const DEFAULT_MAX_RETRIES = 2;
 
 export async function generateConversation<V extends Voice = Voice>(
   options: GenerateConversationOptions<V>
-): Promise<SpeechResult> {
+): Promise<ConversationResult> {
   validateConversationInput(options);
 
+  // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
+  const stringResolutionCache = new Map<string, ResolvedModel<V>>();
+  const resolveOnce = (model: string | ResolvedModel<V>): ResolvedModel<V> => {
+    if (typeof model !== "string") {
+      return resolveModel(model, {
+        apiKey: options.apiKey,
+      }) as ResolvedModel<V>;
+    }
+    const cached = stringResolutionCache.get(model);
+    if (cached) {
+      return cached;
+    }
+    const fresh = resolveModel(model, {
+      apiKey: options.apiKey,
+    }) as ResolvedModel<V>;
+    stringResolutionCache.set(model, fresh);
+    return fresh;
+  };
+
+  const topLevelResolved =
+    options.model == null ? undefined : resolveOnce(options.model);
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
-    const model = turn.model ?? options.model;
+    if (turn.model == null && topLevelResolved) {
+      return topLevelResolved;
+    }
+    const model = turn.model;
     if (!model) {
       throw new Error("generateConversation: model is required");
     }
-    return resolveModel(model, { apiKey: options.apiKey }) as ResolvedModel<V>;
+    return resolveOnce(model);
   });
 
   const path = chooseConversationPath({
@@ -52,13 +83,16 @@ export async function generateConversation<V extends Voice = Voice>(
     turns: options.turns,
   });
 
+  if (path.kind === "gateway") {
+    return await runGateway({
+      options,
+      resolvedPerTurn: path.resolvedPerTurn,
+      maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+    });
+  }
+
   if (path.kind === "native") {
-    // The native-dialogue path renders the entire script in a single provider
-    // API call, so per-turn providerOptions have no well-defined meaning —
-    // silently collapsing them to a single blob would lie to the caller. Fail
-    // loudly and let them move providerOptions to the top level (where it's
-    // forwarded once to the dialogue call) or pick a model that routes
-    // through the stitch path.
+    // Native-dialogue is one API call; per-turn providerOptions can't be honored — fail loudly.
     const turnWithOpts = options.turns.findIndex(
       (t) => t.providerOptions !== undefined
     );
@@ -74,9 +108,7 @@ export async function generateConversation<V extends Voice = Voice>(
     });
   }
 
-  // Lazy-load the stitch pipeline so callers whose dispatch always picks
-  // native (e.g. a Jellypod gateway provider that handles concatenation
-  // server-side) never bundle pcm-concat / audio-utils / mediabunny WAV mux.
+  // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
   const stitched = await runStitch({
     resolvedPerTurn,
@@ -87,28 +119,19 @@ export async function generateConversation<V extends Voice = Voice>(
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
-    normalizeVolume: options.normalizeVolume ?? true,
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
-    timestamps: options.timestamps ?? "auto",
-    timestampProvider: options.timestampProvider,
+    timestamps: options.timestamps ?? false,
   });
 
   if (stitched.audio.length === 0) {
     throw new NoSpeechGeneratedError();
   }
 
-  const providers = Array.from(
-    new Set(resolvedPerTurn.map((r) => r.provider.id))
-  );
-  const models = Array.from(new Set(resolvedPerTurn.map((r) => r.modelId)));
-
   const metadata: SpeechMetadata = {
     latencyMs: stitched.metadata.latencyMs,
     inputChars: stitched.metadata.inputChars,
-    provider: providers.length === 1 ? providers[0] : providers.join(","),
-    model: models.length === 1 ? models[0] : models.join(","),
     ...(stitched.metadata.audioDurationMs != null && {
       audioDurationMs: stitched.metadata.audioDurationMs,
     }),
@@ -126,11 +149,107 @@ export async function generateConversation<V extends Voice = Voice>(
   };
 }
 
+async function runGateway<V extends Voice>(args: {
+  options: GenerateConversationOptions<V>;
+  resolvedPerTurn: readonly ResolvedModel<V>[];
+  maxRetries: number;
+}): Promise<ConversationResult> {
+  const { options, resolvedPerTurn, maxRetries } = args;
+  const start = performance.now();
+
+  const provider = resolvedPerTurn[0]
+    .provider as unknown as SpeechGatewayProvider;
+
+  const includeTimestamps = options.timestamps ?? false;
+
+  // Pick wire shape: shared model when every turn resolved to the same modelId
+  // (covers both `options.model` and the case where every turn happened to
+  // resolve identically); per-turn model when they diverge.
+  const firstModelId = resolvedPerTurn[0].modelId;
+  const allSameModel = resolvedPerTurn.every((r) => r.modelId === firstModelId);
+
+  // Object-shaped voices aren't supported on the gateway conversation path.
+  const wireTurns = options.turns.map((t, i) => {
+    if (typeof t.voice !== "string") {
+      throw new Error(
+        `speech-gateway/conversation: gateway conversation path requires string voices; turns[${i}].voice is an object.`
+      );
+    }
+    return {
+      ...(allSameModel ? {} : { model: resolvedPerTurn[i].modelId }),
+      voice: t.voice,
+      text: t.text,
+      ...(t.providerOptions && { providerOptions: t.providerOptions }),
+    };
+  });
+
+  const result = await pRetry(
+    () =>
+      provider.generateConversation({
+        ...(allSameModel && { modelId: firstModelId }),
+        turns: wireTurns,
+        gapMs: options.gapMs ?? DEFAULT_GAP_MS,
+        volumeDbfs: options.volumeDbfs,
+        providerOptions: options.providerOptions,
+        abortSignal: options.abortSignal,
+        headers: options.headers,
+        includeTimestamps,
+      }),
+    {
+      retries: maxRetries,
+      signal: options.abortSignal,
+      shouldRetry: ({ error }) => {
+        if (error instanceof ApiError && !isRetriableApiError(error)) {
+          return false;
+        }
+        return true;
+      },
+    }
+  );
+
+  const latencyMs = Math.round(performance.now() - start);
+
+  if (result.audio.length === 0) {
+    throw new NoSpeechGeneratedError();
+  }
+
+  const audio = new DefaultGeneratedAudioFile({
+    data: result.audio,
+    mediaType: result.mediaType,
+  });
+  const audioDurationMs = await computeAudioDuration(
+    audio.uint8Array,
+    result.mediaType
+  );
+
+  const timestamps: readonly ConversationWordTimestamp[] | undefined =
+    includeTimestamps ? (result.timestamps ?? []) : undefined;
+  const warnings = result.warnings;
+
+  const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
+
+  const metadata: SpeechMetadata = {
+    latencyMs,
+    inputChars,
+    ...(audioDurationMs != null && { audioDurationMs }),
+  };
+
+  return {
+    audio,
+    metadata,
+    ...(result.providerMetadata !== undefined && {
+      providerMetadata: result.providerMetadata,
+    }),
+    timestamps,
+    warnings: warnings && warnings.length > 0 ? warnings : undefined,
+  };
+}
+
 async function runNative<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
   resolved: ResolvedModel<V>;
   maxRetries: number;
-}): Promise<SpeechResult> {
+}): Promise<ConversationResult> {
   const { options, resolved, maxRetries } = args;
   const start = performance.now();
 
@@ -144,50 +263,34 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
-  // When normalization is requested and the provider exposes a decodable
-  // PCM/WAV mode via getStitchOptions, force the dialogue request into that
-  // mode so we can re-RMS-level the output. Otherwise the dialogue runs
-  // unchanged and emerges in whatever format the provider mixes natively
-  // (often MP3) — we surface that via a warning.
-  const normalize = options.normalizeVolume ?? true;
-  const stitchOpts = normalize
-    ? resolved.provider.getStitchOptions?.(resolved.modelId)
-    : undefined;
+  // Force decodable PCM/WAV via getStitchOptions for normalization; if unavailable, emit the provider's mixed audio and warn.
+  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId);
   const warnings: string[] = [];
-  if (normalize && !stitchOpts) {
+  if (!stitchOpts) {
     warnings.push(
-      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization. Pass normalizeVolume:false to silence this warning.`
+      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization (no decodable PCM/WAV mode).`
     );
   }
 
-  // Stitch-mode options are applied last so they override user-supplied
-  // providerOptions that would otherwise break the decoder (e.g. a caller
-  // requesting `response_format: "mp3"` while normalization is on). Same
-  // precedence as the stitch path's per-turn merge.
+  // Stitch options must win — caller-supplied response_format would break the decoder.
   const dialogueProviderOptions = stitchOpts
     ? { ...options.providerOptions, ...stitchOpts.providerOptions }
     : options.providerOptions;
 
-  const timestampMode = options.timestamps ?? "auto";
+  const requestTimestamps = options.timestamps ?? false;
   const hasNativeDialogueTimestamps = modelDeclaresNativeTimestamps(resolved);
-  const shouldRequestNative =
-    (timestampMode === "on" || timestampMode === "auto") &&
-    hasNativeDialogueTimestamps;
+  const shouldRequestNative = requestTimestamps && hasNativeDialogueTimestamps;
 
   const dialogueId = `${resolved.provider.id}/${resolved.modelId}`;
-  if (timestampMode === "off") {
-    debug(`${dialogueId} (dialogue): timestamps: "off" — skipping alignment.`);
+  if (!requestTimestamps) {
+    debug(`${dialogueId} (dialogue): timestamps: false — skipping alignment.`);
   } else if (shouldRequestNative) {
     debug(
-      `${dialogueId} (dialogue): timestamps: "${timestampMode}" — requesting native dialogue alignment.`
-    );
-  } else if (timestampMode === "auto") {
-    debug(
-      `${dialogueId} (dialogue): timestamps: "auto" — dialogue endpoint has no native alignment; skipping. Pass timestamps: "on" to derive from the mixed audio via STT (flat list, no speaker labels).`
+      `${dialogueId} (dialogue): timestamps: true — requesting native dialogue alignment.`
     );
   } else {
     debug(
-      `${dialogueId} (dialogue): timestamps: "on" but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
+      `${dialogueId} (dialogue): timestamps: true but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
     );
   }
 
@@ -205,7 +308,7 @@ async function runNative<V extends Voice>(args: {
       retries: maxRetries,
       signal: options.abortSignal,
       shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && error.statusCode < 500) {
+        if (error instanceof ApiError && !isRetriableApiError(error)) {
           return false;
         }
         return true;
@@ -220,8 +323,7 @@ async function runNative<V extends Voice>(args: {
   }
 
   let audioBytes: string | Uint8Array = result.audio;
-  // Prefer the stitch-mode mediaType over the provider's response header;
-  // some providers (e.g. Hume) omit the sample rate from content-type.
+  // Hume and others omit sample rate from content-type; prefer stitch mediaType.
   let outputMediaType = stitchOpts?.mediaType ?? result.mediaType;
 
   if (stitchOpts) {
@@ -245,65 +347,103 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
-  const timestamps = await resolveNativeDialogueTimestamps({
-    timestampMode,
-    nativeTimestamps: result.timestamps,
-    audio: audio.uint8Array,
-    mediaType: outputMediaType,
-    ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
-    timestampProvider: options.timestampProvider,
-    abortSignal: options.abortSignal,
-  });
+  const { timestamps, warnings: attributionWarnings } =
+    await resolveNativeDialogueTimestamps({
+      requestTimestamps,
+      nativeTimestamps: result.timestamps,
+      audio: audio.uint8Array,
+      mediaType: outputMediaType,
+      ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+      resolved,
+      abortSignal: options.abortSignal,
+      turns: options.turns,
+    });
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars,
-    provider: resolved.provider.id,
-    model: resolved.modelId,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
+
+  const mergedWarnings =
+    warnings.length > 0 || attributionWarnings.length > 0
+      ? [...warnings, ...attributionWarnings]
+      : undefined;
 
   return {
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: warnings.length > 0 ? warnings : undefined,
+    warnings: mergedWarnings,
     timestamps,
   };
 }
 
-// Resolves timestamps for the native dialogue path:
-//   - "off"                            → undefined
-//   - native alignment returned        → pass through
-//   - "on" without native              → STT fallback on the mixed audio
-//     (flat WordTimestamp[] without speaker labels — limitation of one-call
-//     dialogue rendering)
-//   - "auto" without native            → undefined
-async function resolveNativeDialogueTimestamps(args: {
-  timestampMode: "on" | "auto" | "off";
+async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
+  requestTimestamps: boolean;
   nativeTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
   ttsModel: string;
-  timestampProvider: ResolvedSTTModel | undefined;
+  resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
-}): Promise<readonly WordTimestamp[] | undefined> {
-  if (args.timestampMode === "off") {
-    return;
+  turns: readonly ConversationTurn<V>[];
+}): Promise<{
+  timestamps: readonly ConversationWordTimestamp[] | undefined;
+  warnings: readonly string[];
+}> {
+  if (!args.requestTimestamps) {
+    return { timestamps: undefined, warnings: [] };
   }
+
+  // Either use native flat timestamps, or derive via STT fallback.
+  let flatTimestamps: readonly WordTimestamp[];
   if (args.nativeTimestamps && args.nativeTimestamps.length > 0) {
-    return args.nativeTimestamps;
-  }
-  if (args.timestampMode === "on") {
-    return await deriveTimestampsViaSTT({
+    flatTimestamps = args.nativeTimestamps;
+  } else {
+    const fallback =
+      args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
+    flatTimestamps = await deriveTimestampsViaSTT({
       ttsModel: args.ttsModel,
       audio: args.audio,
       mediaType: args.mediaType,
-      timestampProvider: args.timestampProvider,
+      timestampFallback: fallback,
       abortSignal: args.abortSignal,
     });
   }
-  return;
+
+  const { decodeToPcm16 } = await import("./conversation/pcm-concat.js");
+  const { detectSilenceGaps } = await import(
+    "./conversation/silence-detection.js"
+  );
+  const { attributeTimestamps } = await import(
+    "./conversation/attribute-timestamps.js"
+  );
+
+  let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
+    [];
+  try {
+    const segment = decodeToPcm16(args.audio, args.mediaType);
+    const gaps = detectSilenceGaps(segment.pcm, {
+      sampleRate: segment.sampleRate,
+      minDurationMs: 150,
+    });
+    silenceGaps = gaps;
+  } catch {
+    // Decoder couldn't read the audio (e.g., compressed format we can't decode locally).
+    // Tier 1 will be skipped; dispatcher falls through to Tier 2/3.
+  }
+
+  const result = attributeTimestamps({
+    timestamps: flatTimestamps,
+    turnTexts: args.turns.map((t) => t.text),
+    silenceGaps,
+  });
+
+  return {
+    timestamps: result.timestamps,
+    warnings: result.warnings,
+  };
 }
