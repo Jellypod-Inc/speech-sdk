@@ -69,9 +69,9 @@ For a fully custom STT provider, implement the SDK's STT provider interface and 
 
 `generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a flat list of words across all turns. Each word carries a `turnIndex` — the index into the input `turns[]` array that produced it. Existing callers reading `.text / .start / .end` keep working; new callers can attribute every word to its source turn.
 
-When the underlying transport renders all turns in one call, `turnIndex` is derived by text-matching the provider's flat word stream against the input transcripts. If matching diverges (the provider inserts, drops, or reorders words), `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices.
+When the underlying transport renders all turns in one call, `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings on `result.warnings`; the SDK does not fabricate word timestamps from caller text when the observed word stream is empty.
 
-When turns are rendered separately and stitched, `turnIndex` is exact by construction and word timings are offset by cumulative turn duration plus inter-turn gap.
+When turns are rendered separately and stitched, `turnIndex` is exact by construction and word timings are offset by cumulative turn duration plus inter-turn gap. Turns whose underlying call returned no per-word alignment are filled proportionally, with a warning identifying them.
 
 ```ts
 const result = await generateConversation({
@@ -123,7 +123,6 @@ Natural input for chat-bubble UIs, speaker-attributed captions, or karaoke-style
 | Error                                | When                                                                 |
 | ------------------------------------ | -------------------------------------------------------------------- |
 | `TimestampKeyMissingError`           | STT fallback triggered but no key is configured — message names the env var |
-| `ConversationTimestampAttributionError` | Provider's flat word stream couldn't be unambiguously attributed to input turns |
 
 Other errors (`ApiError`, etc.) propagate from the underlying STT call on the derived path.
 

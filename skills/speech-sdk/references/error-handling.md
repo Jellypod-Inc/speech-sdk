@@ -18,7 +18,6 @@ import {
 | `StreamingNotSupportedError`       | `streamSpeech()` on a non-streaming model                            |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable PCM/WAV output mode                   |
 | `TimestampKeyMissingError`         | `timestamps: "on"` STT fallback triggered but no key configured      |
-| `GatewayTimestampsUnavailableError` | A `provider/model` string `timestamps: "on"` response had no word timestamps |
 | `SpeechSDKError`                   | Base class for all SDK errors                                        |
 
 ## Catching

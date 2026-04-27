@@ -73,11 +73,16 @@ Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podca
 
 The result has the same top-level shape as `SpeechResult` (`audio`, `metadata`, `providerMetadata`, `warnings`, `timestamps`). The differences:
 
-- `metadata.provider` / `metadata.model` are comma-joined when turns span multiple providers/models.
-- `providerMetadata.turns` carries per-turn metadata when the conversation is stitched.
 - Every word in `timestamps` includes `turnIndex` pointing back into the input `turns[]`.
+- `providerMetadata` is passthrough-only — when stitched, it carries `{ turns: [...] }` aggregating each underlying call's provider metadata; on gateway and native dialogue paths it reflects whatever the wire returned.
 
-When the underlying transport renders all turns in one call, `turnIndex` is derived by text-matching the flat word stream against the input transcripts; if matching diverges, `ConversationTimestampAttributionError` is thrown rather than silently emitting wrong indices. When turns are rendered separately and stitched, `turnIndex` is exact by construction.
+When `timestamps: true` is requested, the SDK returns observed word timestamps for stitched and native-dialogue conversations when the provider/STT supplies word-level alignment. The attribution mechanism varies by path:
+
+- **Stitched** — `turnIndex` is exact by construction (one call per turn). Turns whose underlying call returned no per-word alignment are filled proportionally; a warning identifies them.
+- **Native dialogue** — `turnIndex` is derived via a simple tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings. If the observed word stream is empty, `timestamps` is absent with a warning; the SDK does not fabricate word timestamps from caller text.
+- **Gateway** — whatever the gateway response returns. The SDK is a thin REST wrapper here; if the wire returns no timestamps, the field is absent.
+
+Inspect `result.warnings` for attribution-confidence diagnostics in production.
 
 Use the top-level `timestampsToTurns` helper to collapse the flat per-word list into one entry per turn — see `references/timestamps.md`.
 
