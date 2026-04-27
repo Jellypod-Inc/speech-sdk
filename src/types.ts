@@ -1,5 +1,6 @@
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
+export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
 export type {
   ConversationTurn,
