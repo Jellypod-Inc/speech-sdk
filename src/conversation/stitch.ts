@@ -2,6 +2,7 @@ import {
   type AudioOutput,
   applyOptionalOutputConversion,
 } from "../audio-output.js";
+import { withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
@@ -92,17 +93,22 @@ export async function runStitch<V extends Voice>(
         ...turn.providerOptions,
         ...stitchOpts.providerOptions,
       };
-      const result = await generateSpeech({
-        model: resolved,
-        text: turn.text,
-        voice: turn.voice,
-        apiKey: input.apiKey,
-        providerOptions: mergedProviderOptions,
-        maxRetries: input.maxRetries,
-        abortSignal: input.abortSignal,
-        headers: input.headers,
-        timestamps: input.timestamps,
-      });
+      let result: Awaited<ReturnType<typeof generateSpeech>>;
+      try {
+        result = await generateSpeech({
+          model: resolved,
+          text: turn.text,
+          voice: turn.voice,
+          apiKey: input.apiKey,
+          providerOptions: mergedProviderOptions,
+          maxRetries: input.maxRetries,
+          abortSignal: input.abortSignal,
+          headers: input.headers,
+          timestamps: input.timestamps,
+        });
+      } catch (err) {
+        throw withTurnIndex(err, i);
+      }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
       const segment = decodeToPcm16(
         result.audio.uint8Array,

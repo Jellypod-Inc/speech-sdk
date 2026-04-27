@@ -10,6 +10,8 @@ export class ApiError extends SpeechSDKError {
   readonly responseBody?: unknown;
   // RFC 7807 `code` extension; only Speech Gateway populates it today.
   readonly code?: string;
+  // Set by generateConversation's stitch path; undefined for single-turn calls and single-API-call paths (gateway, native dialogue).
+  readonly turnIndex?: number;
 
   constructor(
     message: string,
@@ -18,6 +20,7 @@ export class ApiError extends SpeechSDKError {
       responseBody?: unknown;
       cause?: unknown;
       code?: string;
+      turnIndex?: number;
     }
   ) {
     super(message, { cause: options.cause });
@@ -25,14 +28,35 @@ export class ApiError extends SpeechSDKError {
     this.statusCode = options.statusCode;
     this.responseBody = options.responseBody;
     this.code = options.code;
+    this.turnIndex = options.turnIndex;
   }
 }
 
 export class NoSpeechGeneratedError extends SpeechSDKError {
-  constructor(message?: string) {
+  // Set by generateConversation's stitch path; undefined for single-turn calls.
+  readonly turnIndex?: number;
+
+  constructor(message?: string, options?: { turnIndex?: number }) {
     super(message ?? "No speech audio was generated.");
     this.name = "NoSpeechGeneratedError";
+    this.turnIndex = options?.turnIndex;
   }
+}
+
+export function withTurnIndex(err: unknown, turnIndex: number): unknown {
+  if (err instanceof ApiError) {
+    return new ApiError(err.message, {
+      statusCode: err.statusCode,
+      responseBody: err.responseBody,
+      code: err.code,
+      cause: err,
+      turnIndex,
+    });
+  }
+  if (err instanceof NoSpeechGeneratedError) {
+    return new NoSpeechGeneratedError(err.message, { turnIndex });
+  }
+  return err;
 }
 
 export class StreamingNotSupportedError extends SpeechSDKError {
