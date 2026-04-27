@@ -1,3 +1,8 @@
+import {
+  type AudioOutput,
+  convertDecodableAudioToOutput,
+  resolveOutputForLocalConversion,
+} from "../audio-output.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
@@ -18,6 +23,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
   readonly maxRetries: number;
+  readonly output?: AudioOutput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -118,6 +124,18 @@ export async function runStitch<V extends Voice>(
     targetSampleRate: TARGET_SAMPLE_RATE,
   });
 
+  let mediaType = "audio/wav";
+  let finalAudio = audio;
+  if (input.output) {
+    const converted = await convertDecodableAudioToOutput({
+      audio,
+      mediaType: "audio/wav",
+      output: resolveOutputForLocalConversion(input.output),
+    });
+    finalAudio = converted.audio;
+    mediaType = converted.mediaType;
+  }
+
   const totalSamples =
     perTurn.reduce(
       (n, p) =>
@@ -187,8 +205,8 @@ export async function runStitch<V extends Voice>(
   }
 
   return {
-    audio,
-    mediaType: "audio/wav",
+    audio: finalAudio,
+    mediaType,
     metadata: {
       inputChars: input.turns.reduce((n, t) => n + t.text.length, 0),
       latencyMs: Math.round(performance.now() - start),

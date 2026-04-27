@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../audio-output.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
@@ -15,6 +16,7 @@ export interface GenerateConversationOptions<V extends Voice = Voice> {
   readonly maxConcurrency?: number;
   readonly maxRetries?: number;
   readonly model?: string | ResolvedModel<V>;
+  readonly output?: AudioOutput;
   readonly providerOptions?: Record<string, unknown>;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];
