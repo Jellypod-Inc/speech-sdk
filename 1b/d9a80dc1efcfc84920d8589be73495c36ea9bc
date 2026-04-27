@@ -1,0 +1,25 @@
+src/__tests__/conversation-output-format.test.ts
+  188a3f48000f8fb8 108-112,114-118
+src/generate-conversation.ts
+  188a3f48000f8fb8 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1bd9a80dc1efcfc84920d8589be73495c36ea9bc",
+  "prompts": {
+    "188a3f48000f8fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eb4ea9f-768b-44b1-a2ae-04ad0676bf4b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 0,
+      "accepted_lines": 11,
+      "overriden_lines": 1
+    }
+  }
+}
