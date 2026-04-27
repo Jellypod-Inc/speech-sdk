@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { OutputConversionUnsupportedError } from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { WordTimestamp } from "../timestamps.js";
@@ -6,7 +7,6 @@ import type { WordTimestamp } from "../timestamps.js";
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
 const PCM_SAMPLE_RATE = 24_000;
 const BITRATE_ONLY_FOR_MP3_RE = /bitrate is only valid/i;
-const DECODABLE_REQUIRED_RE = /decodable PCM\/WAV mode/i;
 
 function buildSinePcmBytes(): Uint8Array {
   const pcm = new Int16Array(PCM_SAMPLE_RATE);
@@ -217,7 +217,7 @@ describe("generateConversation native dialogue output format", () => {
         ],
         output: { format: "mp3" },
       })
-    ).rejects.toThrow(DECODABLE_REQUIRED_RE);
+    ).rejects.toThrow(OutputConversionUnsupportedError);
   });
 
   it("attributes timestamps against pre-conversion audio when output is mp3", async () => {

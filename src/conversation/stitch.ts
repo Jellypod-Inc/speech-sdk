@@ -1,7 +1,6 @@
 import {
   type AudioOutput,
-  convertDecodableAudioToOutput,
-  resolveOutputForLocalConversion,
+  applyOptionalOutputConversion,
 } from "../audio-output.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
@@ -124,17 +123,11 @@ export async function runStitch<V extends Voice>(
     targetSampleRate: TARGET_SAMPLE_RATE,
   });
 
-  let mediaType = "audio/wav";
-  let finalAudio = audio;
-  if (input.output) {
-    const converted = await convertDecodableAudioToOutput({
-      audio,
-      mediaType: "audio/wav",
-      output: resolveOutputForLocalConversion(input.output),
-    });
-    finalAudio = converted.audio;
-    mediaType = converted.mediaType;
-  }
+  const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
+    audio,
+    mediaType: "audio/wav",
+    output: input.output,
+  });
 
   const totalSamples =
     perTurn.reduce(

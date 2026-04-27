@@ -1,8 +1,7 @@
 import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
-  convertDecodableAudioToOutput,
-  resolveOutputForLocalConversion,
+  applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
@@ -14,7 +13,11 @@ import type {
 import { validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
-import { ApiError, NoSpeechGeneratedError } from "./errors.js";
+import {
+  ApiError,
+  NoSpeechGeneratedError,
+  OutputConversionUnsupportedError,
+} from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { isRetriableApiError } from "./provider-utils.js";
@@ -281,8 +284,8 @@ async function runNative<V extends Voice>(args: {
   }
 
   if (options.output && !stitchOpts) {
-    throw new Error(
-      `${resolved.provider.id}/${resolved.modelId}: explicit output format requires a provider with a decodable PCM/WAV mode (no getStitchOptions for this model).`
+    throw new OutputConversionUnsupportedError(
+      `${resolved.provider.id}/${resolved.modelId}`
     );
   }
 
@@ -373,18 +376,17 @@ async function runNative<V extends Voice>(args: {
       turns: options.turns,
     });
 
-  let finalAudio: DefaultGeneratedAudioFile = audio;
-  if (options.output) {
-    const converted = await convertDecodableAudioToOutput({
-      audio: audio.uint8Array,
-      mediaType: outputMediaType,
-      output: resolveOutputForLocalConversion(options.output),
-    });
-    finalAudio = new DefaultGeneratedAudioFile({
-      data: converted.audio,
-      mediaType: converted.mediaType,
-    });
-  }
+  const converted = await applyOptionalOutputConversion({
+    audio: audio.uint8Array,
+    mediaType: outputMediaType,
+    output: options.output,
+  });
+  const finalAudio = options.output
+    ? new DefaultGeneratedAudioFile({
+        data: converted.audio,
+        mediaType: converted.mediaType,
+      })
+    : audio;
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 

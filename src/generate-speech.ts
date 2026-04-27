@@ -2,8 +2,7 @@ import pRetry from "p-retry";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
   type AudioOutput,
-  convertDecodableAudioToOutput,
-  resolveOutputForLocalConversion,
+  applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
@@ -12,6 +11,7 @@ import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   ApiError,
   NoSpeechGeneratedError,
+  OutputConversionUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 import { debug } from "./logger.js";
@@ -249,9 +249,7 @@ function resolveProviderOptionsForLocalDecoding(args: {
     if (args.volumeDbfs != null) {
       throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
     }
-    throw new Error(
-      `${args.modelIdentifier}: explicit output format requires a provider with a decodable PCM/WAV mode (no getStitchOptions for this model).`
-    );
+    throw new OutputConversionUnsupportedError(args.modelIdentifier);
   }
   // Stitch options must win — caller-supplied response_format would break the decoder.
   return {
@@ -285,10 +283,10 @@ async function applyLocalAudioPostProcessing(args: {
       data: bytes,
       mediaType,
     }).uint8Array;
-    const converted = await convertDecodableAudioToOutput({
+    const converted = await applyOptionalOutputConversion({
       audio: decoded,
       mediaType,
-      output: resolveOutputForLocalConversion(args.output),
+      output: args.output,
     });
     bytes = converted.audio;
     mediaType = converted.mediaType;

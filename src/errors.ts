@@ -53,6 +53,15 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class OutputConversionUnsupportedError extends SpeechSDKError {
+  constructor(model: string) {
+    super(
+      `Explicit output format is not supported by ${model}: the provider doesn't expose a decodable PCM/WAV output mode.`
+    );
+    this.name = "OutputConversionUnsupportedError";
+  }
+}
+
 export class GatewayInputError extends SpeechSDKError {
   constructor(message: string) {
     super(message);

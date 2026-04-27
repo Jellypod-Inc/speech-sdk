@@ -118,3 +118,18 @@ export async function convertDecodableAudioToOutput(args: {
   });
   return { audio: mp3, mediaType: "audio/mpeg" };
 }
+
+export async function applyOptionalOutputConversion(args: {
+  readonly audio: Uint8Array;
+  readonly mediaType: string;
+  readonly output: AudioOutput | undefined;
+}): Promise<{ readonly audio: Uint8Array; readonly mediaType: string }> {
+  if (!args.output) {
+    return { audio: args.audio, mediaType: args.mediaType };
+  }
+  return await convertDecodableAudioToOutput({
+    audio: args.audio,
+    mediaType: args.mediaType,
+    output: resolveOutputForLocalConversion(args.output),
+  });
+}

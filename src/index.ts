@@ -11,6 +11,7 @@ export {
   GatewayInputError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
+  OutputConversionUnsupportedError,
   SpeechSDKError,
   StreamingNotSupportedError,
   TimestampKeyMissingError,

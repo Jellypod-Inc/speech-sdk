@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { OutputConversionUnsupportedError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import type { SpeechProvider, StitchTurnOptions } from "../speech-provider.js";
 
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
 const PCM_SAMPLE_RATE = 24_000;
-const STITCH_REQUIRED_PATTERN = /decodable PCM\/WAV mode/;
 
 function makePcm16Bytes(numSamples: number): Uint8Array {
   const samples = new Int16Array(numSamples);
@@ -154,7 +154,7 @@ describe("generateSpeech output format", () => {
         voice: "test",
         output: { format: "wav" },
       })
-    ).rejects.toThrow(STITCH_REQUIRED_PATTERN);
+    ).rejects.toThrow(OutputConversionUnsupportedError);
   });
 
   it("applies volumeDbfs first then converts to the requested output", async () => {
