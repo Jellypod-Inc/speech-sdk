@@ -1,0 +1,27 @@
+src/conversation/stitch.ts
+  188a3f48000f8fb8 5,96-111
+src/errors.ts
+  188a3f48000f8fb8 13-14,23,31,36-39,42-57,59
+src/__tests__/conversation-turn-index.test.ts
+  188a3f48000f8fb8 1-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5af69ed3cf6a91aa13bcb50fb64568e9768dacaa",
+  "prompts": {
+    "188a3f48000f8fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eb4ea9f-768b-44b1-a2ae-04ad0676bf4b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 271,
+      "total_deletions": 12,
+      "accepted_lines": 271,
+      "overriden_lines": 0
+    }
+  }
+}
