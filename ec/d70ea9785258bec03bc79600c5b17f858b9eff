@@ -1,0 +1,35 @@
+src/errors.ts
+  188a3f48000f8fb8 65-71
+src/providers/gateway/index.ts
+  188a3f48000f8fb8 346
+src/audio-output.ts
+  188a3f48000f8fb8 4,24,89
+src/index.ts
+  188a3f48000f8fb8 11
+src/__tests__/conversation-output-format.test.ts
+  188a3f48000f8fb8 2-5,165
+src/__tests__/audio-output.test.ts
+  188a3f48000f8fb8 10,48,137,144
+src/__tests__/gateway.test.ts
+  188a3f48000f8fb8 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ecd70ea9785258bec03bc79600c5b17f858b9eff",
+  "prompts": {
+    "188a3f48000f8fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8eb4ea9f-768b-44b1-a2ae-04ad0676bf4b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 23,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}
