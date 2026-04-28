@@ -428,6 +428,36 @@ export class ElevenLabsSpeechProvider
     return;
   }
 
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "pcm":
+      case "wav":
+        return {
+          providerOptions: { output_format: "pcm_24000" },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      case "mp3": {
+        const bitrate = output.bitrate ?? 128;
+        const supportedBitrates = [32, 64, 96, 128, 192];
+        const closest = supportedBitrates.reduce((prev, curr) =>
+          Math.abs(curr - bitrate) < Math.abs(prev - bitrate) ? curr : prev
+        );
+        return {
+          providerOptions: { output_format: `mp3_44100_${closest}` },
+          expectedMediaType: "audio/mpeg",
+        };
+      }
+      default:
+        return;
+    }
+  }
+
   dialogueCapabilities(modelId: string) {
     if (modelId === "eleven_v3") {
       return { minVoices: 1, maxVoices: 10, maxTotalChars: 2000 };
