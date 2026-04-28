@@ -41,6 +41,8 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 1. Create `src/providers/<name>/index.ts` with a `<Name>SpeechProvider` class implementing `SpeechProvider` and a `create<Name>()` factory.
 2. Add subpath export in `package.json` under `exports`.
 3. Register the provider in `aggregatedModels()` in `src/providers/gateway/index.ts` so its models are discoverable through the gateway path.
+4. Implement `resolveOutputFormat(modelId, output)` so the SDK can request the user's chosen output format natively from the API. Return `{ providerOptions, expectedMediaType }` for each format the provider supports; for formats the provider can't produce natively, return options that yield a decodable wav/pcm so the SDK can convert via mediabunny. Return `undefined` for unknown model ids. The SDK never decodes compressed audio — providers must produce wav/pcm for any format the user requests that isn't natively available.
+5. Implement `getStitchOptions(modelId)` so the conversation stitch path can request decodable wav/pcm regardless of user format preference (the stitch pipeline always operates on raw samples).
 
 ## Key Conventions
 
