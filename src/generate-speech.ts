@@ -240,6 +240,9 @@ function resolveProviderOptionsForLocalDecoding(args: {
     return args.callerOptions;
   }
 
+  // volumeDbfs needs a known-decodable wire format to decode→re-level→re-encode,
+  // so SDK-required keys win over caller overrides — otherwise a stray
+  // override would silently violate the normalization contract.
   if (args.volumeDbfs != null) {
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
       args.resolved.modelId
@@ -250,13 +253,17 @@ function resolveProviderOptionsForLocalDecoding(args: {
     return { ...args.callerOptions, ...stitchOpts.providerOptions };
   }
 
+  // For output: { format }, caller's providerOptions win over SDK-derived
+  // defaults — they're an explicit escape hatch. Post-processing reads the
+  // actual response mediaType and adapts (pass-through or re-encode), so an
+  // override that picks a different wire format still terminates correctly.
   if (args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
       args.resolved.modelId,
       args.output
     );
     if (native) {
-      return { ...args.callerOptions, ...native.providerOptions };
+      return { ...native.providerOptions, ...args.callerOptions };
     }
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
       args.resolved.modelId
@@ -264,7 +271,7 @@ function resolveProviderOptionsForLocalDecoding(args: {
     if (!stitchOpts) {
       throw new OutputConversionUnsupportedError(args.modelIdentifier);
     }
-    return { ...args.callerOptions, ...stitchOpts.providerOptions };
+    return { ...stitchOpts.providerOptions, ...args.callerOptions };
   }
 
   return args.callerOptions;

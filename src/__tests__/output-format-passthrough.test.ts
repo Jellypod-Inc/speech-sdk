@@ -148,6 +148,58 @@ describe("generateSpeech native output pass-through", () => {
   });
 });
 
+describe("generateSpeech caller providerOptions precedence", () => {
+  const pcm = new Uint8Array(new Int16Array(2400).fill(1000).buffer);
+
+  it("output: caller's providerOptions override SDK-derived defaults from resolveOutputFormat", async () => {
+    const { provider, callCapture } = makeMockProvider({
+      resolvedFormat: {
+        providerOptions: { output_format: "mp3_44100_96" },
+        expectedMediaType: "audio/mpeg",
+      },
+      generatedMediaType: "audio/mpeg",
+      generatedBytes: pcm,
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "mock-1" },
+      text: "hi",
+      voice: "test",
+      output: { format: "mp3" },
+      providerOptions: { output_format: "mp3_44100_192", extra: "keep-me" },
+    });
+
+    expect(callCapture.providerOptions).toEqual({
+      output_format: "mp3_44100_192",
+      extra: "keep-me",
+    });
+  });
+
+  it("output: caller's providerOptions override SDK-derived defaults from getStitchOptions fallback", async () => {
+    const { provider, callCapture } = makeMockProvider({
+      stitchOptions: {
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      },
+      generatedMediaType: "audio/pcm;rate=24000",
+      generatedBytes: pcm,
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "mock-1" },
+      text: "hi",
+      voice: "test",
+      output: { format: "wav" },
+      providerOptions: { response_format: "wav", custom: 1 },
+    });
+
+    expect(callCapture.providerOptions).toEqual({
+      response_format: "wav",
+      custom: 1,
+    });
+  });
+});
+
 describe("generateSpeech provider-options dispatch fallback", () => {
   const pcm = new Uint8Array(new Int16Array(2400).fill(1000).buffer);
 
