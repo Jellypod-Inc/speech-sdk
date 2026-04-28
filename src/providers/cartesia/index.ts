@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -398,10 +399,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }

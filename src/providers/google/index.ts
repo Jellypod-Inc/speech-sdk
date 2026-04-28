@@ -1,6 +1,11 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
-import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
+import {
+  base64ToUint8Array,
+  parseMediaTypeParam,
+  wrapPcm16Mono,
+} from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -39,15 +44,6 @@ const generateContentResponseSchema = z.object({
 });
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
-
-function base64ToBytes(b64: string): Uint8Array {
-  const binaryString = atob(b64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
 
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
@@ -285,7 +281,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     const sampleRate =
       parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
-    const pcm = base64ToBytes(part.inlineData.data);
+    const pcm = base64ToUint8Array(part.inlineData.data);
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
@@ -328,10 +324,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
@@ -430,7 +423,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const pcm = base64ToBytes(part.inlineData.data);
+    const pcm = base64ToUint8Array(part.inlineData.data);
     const sampleRate =
       parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;

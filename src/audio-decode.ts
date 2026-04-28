@@ -86,9 +86,8 @@ async function decodeContainerized(
   bytes: Uint8Array,
   mediaType: string
 ): Promise<DecodedPcm16> {
-  const ab = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(ab).set(bytes);
-  const blob = new Blob([ab], { type: mediaType });
+  // .slice() copies into a fresh ArrayBuffer (Blob accepts ArrayBuffer-backed views, not SharedArrayBuffer).
+  const blob = new Blob([bytes.slice()], { type: mediaType });
   const input = new Input({
     source: new BlobSource(blob),
     formats: ALL_FORMATS,

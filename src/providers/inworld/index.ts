@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
+import { base64ToUint8Array } from "../../audio-utils.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -254,10 +256,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
@@ -290,15 +289,6 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
   }
 }
 
-function base64ToBytes(b64: string): Uint8Array {
-  const binaryString = atob(b64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
 interface InworldNdjsonChunk {
   audioContent?: string;
   error?: { message?: string } | string;
@@ -322,7 +312,7 @@ function extractAudio(line: string): Uint8Array | null {
   if (!b64) {
     return null;
   }
-  return base64ToBytes(b64);
+  return base64ToUint8Array(b64);
 }
 
 function emitLine(

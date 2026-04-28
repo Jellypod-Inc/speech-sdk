@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -270,10 +271,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }

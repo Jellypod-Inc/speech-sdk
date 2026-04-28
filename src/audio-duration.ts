@@ -1,4 +1,5 @@
 import { ALL_FORMATS, BlobSource, Input } from "mediabunny";
+import { base64ToUint8Array } from "./audio-utils.js";
 
 export async function computeAudioDuration(
   data: Uint8Array | string,
@@ -6,10 +7,8 @@ export async function computeAudioDuration(
 ): Promise<number | undefined> {
   try {
     const bytes = data instanceof Uint8Array ? data : base64ToUint8Array(data);
-    // Copy to a fresh ArrayBuffer — bytes may be a subarray of a larger buffer.
-    const ab = new ArrayBuffer(bytes.byteLength);
-    new Uint8Array(ab).set(bytes);
-    const blob = new Blob([ab], { type: mediaType });
+    // .slice() copies into a fresh ArrayBuffer (Blob accepts ArrayBuffer-backed views, not SharedArrayBuffer).
+    const blob = new Blob([bytes.slice()], { type: mediaType });
     const input = new Input({
       source: new BlobSource(blob),
       formats: ALL_FORMATS,
@@ -23,13 +22,4 @@ export async function computeAudioDuration(
   } catch {
     return;
   }
-}
-
-function base64ToUint8Array(b64: string): Uint8Array {
-  const binaryString = atob(b64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
 }

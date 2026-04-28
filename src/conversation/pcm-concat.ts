@@ -1,4 +1,3 @@
-import { decodeAudioToPcm16 } from "../audio-decode.js";
 import { resamplePcm16, wrapPcm16Mono } from "../audio-utils.js";
 
 export interface Pcm16Segment {
@@ -9,27 +8,6 @@ export interface Pcm16Segment {
 
 const INT16_MAX = 32_767;
 const INT16_MIN = -32_768;
-
-export async function decodeToPcm16(
-  data: Uint8Array,
-  mediaType: string
-): Promise<Pcm16Segment> {
-  const lower = mediaType.toLowerCase();
-  if (
-    !(
-      lower.startsWith("audio/pcm") ||
-      lower.startsWith("audio/x-pcm") ||
-      lower.startsWith("audio/wav") ||
-      lower.startsWith("audio/x-wav")
-    )
-  ) {
-    throw new Error(
-      `conversation.pcm-concat: unsupported stitch mediaType "${mediaType}". ` +
-        'getStitchOptions must return "audio/wav" or "audio/pcm;rate=...[;encoding=float32]" so the stitch layer can concatenate without a compressed-audio decoder.'
-    );
-  }
-  return await decodeAudioToPcm16(data, mediaType);
-}
 
 function silencePcm16(ms: number, sampleRate: number): Int16Array {
   const samples = Math.round((ms / 1000) * sampleRate);
@@ -94,13 +72,15 @@ export async function concatPcmToWav(
 ): Promise<Uint8Array> {
   const { gapMs, targetSampleRate } = options;
 
-  const resampled: Int16Array[] = [];
   const gap = silencePcm16(gapMs, targetSampleRate);
+  const resampledSegments = await Promise.all(
+    segments.map((s) => resamplePcm16(s.pcm, s.sampleRate, targetSampleRate))
+  );
 
-  for (let i = 0; i < segments.length; i++) {
-    const s = segments[i];
-    resampled.push(await resamplePcm16(s.pcm, s.sampleRate, targetSampleRate));
-    if (i < segments.length - 1 && gap.length > 0) {
+  const resampled: Int16Array[] = [];
+  for (let i = 0; i < resampledSegments.length; i++) {
+    resampled.push(resampledSegments[i]);
+    if (i < resampledSegments.length - 1 && gap.length > 0) {
       resampled.push(gap);
     }
   }

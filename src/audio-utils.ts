@@ -9,7 +9,6 @@ import {
   Output,
   WavOutputFormat,
 } from "mediabunny";
-import { decodeAudioToPcm16 } from "./audio-decode.js";
 
 const PARAM_REGEX_CACHE = new Map<string, RegExp>();
 
@@ -75,35 +74,62 @@ export async function resamplePcm16(
     new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength),
     fromRate
   );
-  const ab = new ArrayBuffer(sourceWav.byteLength);
-  new Uint8Array(ab).set(sourceWav);
-  const blob = new Blob([ab], { type: "audio/wav" });
+  const blob = new Blob([sourceWav.slice()], { type: "audio/wav" });
 
   const input = new Input({
     source: new BlobSource(blob),
     formats: ALL_FORMATS,
   });
+  // Output is required by Conversion.init; we drop samples in `process` so
+  // no encode happens — the buffer stays empty and we never read it.
   const output = new Output({
     format: new WavOutputFormat(),
     target: new BufferTarget(),
   });
+
+  const captured: Int16Array[] = [];
+  let totalFrames = 0;
   const conversion = await Conversion.init({
     input,
     output,
-    audio: { sampleRate: toRate, numberOfChannels: 1 },
+    audio: {
+      sampleRate: toRate,
+      numberOfChannels: 1,
+      // WaveMuxer asserts on empty output, so samples pass through to the encoder;
+      // we capture s16 here to skip decoding the output WAV.
+      process: (sample) => {
+        const buf = new Int16Array(sample.numberOfFrames);
+        sample.copyTo(buf, { format: "s16", planeIndex: 0 });
+        captured.push(buf);
+        totalFrames += buf.length;
+        return sample;
+      },
+    },
     showWarnings: false,
   });
   await conversion.execute();
 
-  const buffer = output.target.buffer;
-  if (!buffer) {
-    throw new Error("audio-utils.resamplePcm16: conversion produced no buffer");
+  const out = new Int16Array(totalFrames);
+  let offset = 0;
+  for (const chunk of captured) {
+    out.set(chunk, offset);
+    offset += chunk.length;
   }
-  const resampled = await decodeAudioToPcm16(
-    new Uint8Array(buffer),
-    "audio/wav"
-  );
-  return resampled.pcm;
+  return out;
+}
+
+// Chunked to avoid call-stack overflow on large payloads (~32k arg limit).
+const BASE64_CHUNK = 0x80_00;
+
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK) {
+    s += String.fromCharCode.apply(
+      null,
+      Array.from(bytes.subarray(i, i + BASE64_CHUNK))
+    );
+  }
+  return btoa(s);
 }
 
 export function base64ToUint8Array(b64: string): Uint8Array {

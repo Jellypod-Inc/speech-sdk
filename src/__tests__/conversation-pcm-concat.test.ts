@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { decodeAudioToPcm16 } from "../audio-decode.js";
 import {
   concatPcmToWav,
   DEFAULT_VOLUME_DBFS,
   dbfsToInt16Rms,
-  decodeToPcm16,
   normalizeRms,
 } from "../conversation/pcm-concat.js";
 
@@ -33,10 +33,10 @@ function writeWavHeader(
   return header;
 }
 
-describe("decodeToPcm16", () => {
+describe("decodeAudioToPcm16", () => {
   it("returns bytes untouched when mediaType is audio/pcm with rate", async () => {
     const pcm = new Uint8Array([1, 0, 2, 0, 3, 0, 4, 0]);
-    const out = await decodeToPcm16(pcm, "audio/pcm;rate=24000");
+    const out = await decodeAudioToPcm16(pcm, "audio/pcm;rate=24000");
     expect(out.sampleRate).toBe(24_000);
     expect(out.channels).toBe(1);
     expect(out.pcm).toEqual(new Int16Array([1, 2, 3, 4]));
@@ -49,7 +49,7 @@ describe("decodeToPcm16", () => {
     file.set(header);
     file.set(payload, header.length);
 
-    const out = await decodeToPcm16(file, "audio/wav");
+    const out = await decodeAudioToPcm16(file, "audio/wav");
     expect(out.sampleRate).toBe(16_000);
     expect(out.channels).toBe(1);
     expect(out.pcm).toEqual(new Int16Array([10, 20]));
@@ -58,22 +58,18 @@ describe("decodeToPcm16", () => {
   it("downmixes 2-channel interleaved PCM to mono by averaging", async () => {
     const pcm = new Int16Array([100, 200, -1000, 1000]);
     const bytes = new Uint8Array(pcm.buffer);
-    const out = await decodeToPcm16(bytes, "audio/pcm;rate=24000;channels=2");
+    const out = await decodeAudioToPcm16(
+      bytes,
+      "audio/pcm;rate=24000;channels=2"
+    );
     expect(out.channels).toBe(1);
     expect(Array.from(out.pcm)).toEqual([150, 0]);
-  });
-
-  it("throws on unsupported mediaType", async () => {
-    await expect(
-      decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
-      // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
-    ).rejects.toThrow(/unsupported stitch mediaType/);
   });
 
   it("decodes float32 PCM via the encoding=float32 mediaType param", async () => {
     const samples = new Float32Array([0, 0.5, -0.5, 1, -1, 1.5, -1.5]);
     const bytes = new Uint8Array(samples.buffer);
-    const out = await decodeToPcm16(
+    const out = await decodeAudioToPcm16(
       bytes,
       "audio/pcm;rate=24000;encoding=float32"
     );
@@ -94,7 +90,7 @@ describe("decodeToPcm16", () => {
   it("downmixes 2-channel float32 PCM to mono", async () => {
     const samples = new Float32Array([0.25, 0.75, -0.5, 0.5]);
     const bytes = new Uint8Array(samples.buffer);
-    const out = await decodeToPcm16(
+    const out = await decodeAudioToPcm16(
       bytes,
       "audio/pcm;rate=24000;channels=2;encoding=float32"
     );

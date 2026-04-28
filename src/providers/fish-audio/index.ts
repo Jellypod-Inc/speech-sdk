@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import {
   handleErrorResponse,
@@ -167,10 +168,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }

@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -192,10 +193,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
-  resolveOutputFormat(
-    modelId: string,
-    output: import("../../audio-output.js").AudioOutput
-  ) {
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }

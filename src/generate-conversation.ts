@@ -450,7 +450,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     });
   }
 
-  const { decodeToPcm16 } = await import("./conversation/pcm-concat.js");
+  const { decodeAudioToPcm16 } = await import("./audio-decode.js");
   const { detectSilenceGaps } = await import(
     "./conversation/silence-detection.js"
   );
@@ -461,7 +461,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
     [];
   try {
-    const segment = await decodeToPcm16(args.audio, args.mediaType);
+    const segment = await decodeAudioToPcm16(args.audio, args.mediaType);
     const gaps = detectSilenceGaps(segment.pcm, {
       sampleRate: segment.sampleRate,
       minDurationMs: 150,
