@@ -19,6 +19,10 @@ function isRiffWave(bytes: Uint8Array): boolean {
 }
 
 function isMpegFrameSync(bytes: Uint8Array): boolean {
+  // ID3v2 tag (LAME and many encoders prepend this); the actual MPEG frames follow.
+  if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
+    return true;
+  }
   if (bytes[0] !== 0xff) {
     return false;
   }

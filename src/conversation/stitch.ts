@@ -1,3 +1,4 @@
+import { decodeAudioToPcm16 } from "../audio-decode.js";
 import {
   type AudioOutput,
   applyOptionalOutputConversion,
@@ -8,12 +9,7 @@ import { debug } from "../logger.js";
 import type { SpeechMetadata } from "../metadata.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
-import {
-  concatPcmToWav,
-  dbfsToInt16Rms,
-  decodeToPcm16,
-  normalizeRms,
-} from "./pcm-concat.js";
+import { concatPcmToWav, dbfsToInt16Rms, normalizeRms } from "./pcm-concat.js";
 import { fillTurnTimestampsProportional } from "./proportional-fill.js";
 import type { ConversationTurn } from "./types.js";
 
@@ -112,7 +108,7 @@ export async function runStitch<V extends Voice>(
         throw withTurnIndex(err, i);
       }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
-      const segment = decodeToPcm16(
+      const segment = await decodeAudioToPcm16(
         result.audio.uint8Array,
         stitchOpts.mediaType
       );

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { parseMediaTypeParam, wrapPcm16Mono } from "../../audio-utils.js";
 import {
@@ -300,6 +301,31 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { response_format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { response_format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { response_format: "pcm" },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
   }
 }
 

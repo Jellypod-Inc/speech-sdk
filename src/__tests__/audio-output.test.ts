@@ -7,6 +7,7 @@ import {
   validateOutput,
 } from "../audio-output.js";
 import { wrapPcm16Mono } from "../audio-utils.js";
+import { encodePcm16ToMp3 } from "../encoders/mp3.js";
 import { AudioOutputInputError } from "../errors.js";
 
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
@@ -142,5 +143,34 @@ describe("convertDecodableAudioToOutput", () => {
         output: { format: "wav" },
       })
     ).rejects.toThrow(AudioOutputInputError);
+  });
+
+  it("passes pcm input through when output format is pcm", async () => {
+    const pcm = makePcm16Bytes(2400);
+    const result = await convertDecodableAudioToOutput({
+      audio: pcm,
+      mediaType: "audio/pcm;rate=24000",
+      output: { format: "pcm" },
+    });
+
+    expect(result.mediaType).toBe("audio/pcm;rate=24000");
+    expect(result.audio).toBe(pcm);
+  });
+
+  it("passes mp3 input through when output format is mp3", async () => {
+    const pcm = makePcm16Bytes(24_000);
+    const mp3 = await encodePcm16ToMp3({
+      pcm,
+      sampleRate: 24_000,
+      bitrateKbps: DEFAULT_MP3_BITRATE_KBPS,
+    });
+    const result = await convertDecodableAudioToOutput({
+      audio: mp3,
+      mediaType: "audio/mpeg",
+      output: { format: "mp3", bitrate: DEFAULT_MP3_BITRATE_KBPS },
+    });
+
+    expect(result.mediaType).toBe("audio/mpeg");
+    expect(result.audio).toBe(mp3);
   });
 });

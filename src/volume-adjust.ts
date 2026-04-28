@@ -1,7 +1,8 @@
+import { decodeAudioToPcm16 } from "./audio-decode.js";
+import { base64ToUint8Array } from "./audio-utils.js";
 import {
   concatPcmToWav,
   dbfsToInt16Rms,
-  decodeToPcm16,
   normalizeRms,
 } from "./conversation/pcm-concat.js";
 
@@ -19,7 +20,7 @@ export async function adjustVolume(
       ? input.audio
       : base64ToUint8Array(input.audio);
 
-  const segment = decodeToPcm16(bytes, input.mediaType);
+  const segment = await decodeAudioToPcm16(bytes, input.mediaType);
   const [normalized] = normalizeRms(
     [segment],
     dbfsToInt16Rms(input.volumeDbfs)
@@ -29,13 +30,4 @@ export async function adjustVolume(
     gapMs: 0,
     targetSampleRate: normalized.sampleRate,
   });
-}
-
-function base64ToUint8Array(b64: string): Uint8Array {
-  const binaryString = atob(b64);
-  const out = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    out[i] = binaryString.charCodeAt(i);
-  }
-  return out;
 }

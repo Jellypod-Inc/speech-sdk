@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -134,7 +135,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       audio: json.audio_content,
-      mediaType: "audio/wav",
+      mediaType: resembleMediaType(body.output_format),
       timestamps,
     };
   }
@@ -196,6 +197,42 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        // Pin precision to PCM_16 — Resemble defaults to PCM_32 (float WAV) which downstream decoders reject.
+        return {
+          providerOptions: { output_format: "wav", precision: "PCM_16" },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { output_format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        // No native pcm container; request wav (PCM_16) and let the SDK unwrap via mediabunny.
+        return {
+          providerOptions: { output_format: "wav", precision: "PCM_16" },
+          expectedMediaType: "audio/wav",
+        };
+      default:
+        return;
+    }
+  }
+}
+
+function resembleMediaType(outputFormat: unknown): string {
+  switch (typeof outputFormat === "string" ? outputFormat.toLowerCase() : "") {
+    case "mp3":
+      return "audio/mpeg";
+    default:
+      return "audio/wav";
   }
 }
 

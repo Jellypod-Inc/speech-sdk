@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -268,6 +269,31 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { format: { type: "wav" } },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { format: { type: "mp3" } },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { format: { type: "pcm" } },
+          expectedMediaType: "audio/pcm;rate=48000",
+        };
+      default:
+        return;
+    }
   }
 
   dialogueCapabilities(modelId: string) {

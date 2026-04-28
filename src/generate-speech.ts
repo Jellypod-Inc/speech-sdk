@@ -236,25 +236,48 @@ function resolveProviderOptionsForLocalDecoding(args: {
   output: AudioOutput | undefined;
   callerOptions: Record<string, unknown> | undefined;
 }): Record<string, unknown> | undefined {
-  const needsLocalDecodable =
-    !args.isGateway && (args.volumeDbfs != null || args.output != null);
-  if (!needsLocalDecodable) {
+  if (args.isGateway) {
     return args.callerOptions;
   }
-  const stitchOpts = args.resolved.provider.getStitchOptions?.(
-    args.resolved.modelId
-  );
-  if (!stitchOpts) {
-    if (args.volumeDbfs != null) {
+
+  // volumeDbfs needs a known-decodable wire format to decode→re-level→re-encode,
+  // so SDK-required keys win over caller overrides — otherwise a stray
+  // override would silently violate the normalization contract.
+  if (args.volumeDbfs != null) {
+    const stitchOpts = args.resolved.provider.getStitchOptions?.(
+      args.resolved.modelId
+    );
+    if (!stitchOpts) {
       throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
     }
-    throw new OutputConversionUnsupportedError(args.modelIdentifier);
+    return { ...args.callerOptions, ...stitchOpts.providerOptions };
   }
-  // Stitch options must win — caller-supplied response_format would break the decoder.
-  return {
-    ...args.callerOptions,
-    ...stitchOpts.providerOptions,
-  };
+
+  if (args.output != null) {
+    // Native path: provider produces the requested format directly, so caller's
+    // providerOptions are an explicit escape hatch and win over our defaults
+    // (e.g. tweaking bitrate/sample_rate). Post-processing reads the actual
+    // response mediaType and adapts.
+    const native = args.resolved.provider.resolveOutputFormat?.(
+      args.resolved.modelId,
+      args.output
+    );
+    if (native) {
+      return { ...native.providerOptions, ...args.callerOptions };
+    }
+    // Stitch fallback: the SDK MUST decode locally to convert into the
+    // requested format, so SDK-required keys win — same rationale as the
+    // volumeDbfs path above.
+    const stitchOpts = args.resolved.provider.getStitchOptions?.(
+      args.resolved.modelId
+    );
+    if (!stitchOpts) {
+      throw new OutputConversionUnsupportedError(args.modelIdentifier);
+    }
+    return { ...args.callerOptions, ...stitchOpts.providerOptions };
+  }
+
+  return args.callerOptions;
 }
 
 async function applyLocalAudioPostProcessing(args: {

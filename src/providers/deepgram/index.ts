@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -153,6 +154,41 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: {
+            encoding: "linear16",
+            container: "wav",
+            sample_rate: 24_000,
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "pcm":
+        // Deepgram with container=none returns audio/l16 (RFC 2586, big-endian);
+        // request container=wav and let the SDK unwrap to little-endian s16.
+        return {
+          providerOptions: {
+            encoding: "linear16",
+            container: "wav",
+            sample_rate: 24_000,
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { encoding: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      default:
+        return;
+    }
   }
 }
 

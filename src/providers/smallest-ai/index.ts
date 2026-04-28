@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -34,19 +35,6 @@ export class SmallestAISpeechProvider
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.smallest.ai/waves/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
-  }
-
-  private mediaTypeForFormat(format: unknown): string {
-    if (format === "wav") {
-      return "audio/wav";
-    }
-    if (format === "pcm") {
-      return "audio/pcm";
-    }
-    if (format === "mulaw") {
-      return "audio/basic";
-    }
-    return "audio/mpeg";
   }
 
   async generate(options: {
@@ -92,7 +80,7 @@ export class SmallestAISpeechProvider
     const arrayBuffer = await response.arrayBuffer();
     const mediaType =
       response.headers.get("content-type") ??
-      this.mediaTypeForFormat(outputFormat);
+      smallestAIMediaType(outputFormat, body.sample_rate);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -108,6 +96,45 @@ export class SmallestAISpeechProvider
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { output_format: "wav", sample_rate: 24_000 },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { output_format: "mp3", sample_rate: 24_000 },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { output_format: "pcm", sample_rate: 24_000 },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
+}
+
+function smallestAIMediaType(format: unknown, sampleRate: unknown): string {
+  const rate = typeof sampleRate === "number" ? sampleRate : 24_000;
+  switch (typeof format === "string" ? format.toLowerCase() : "wav") {
+    case "mp3":
+      return "audio/mpeg";
+    case "pcm":
+      return `audio/pcm;rate=${rate}`;
+    case "mulaw":
+      return "audio/basic";
+    default:
+      return "audio/wav";
   }
 }
 

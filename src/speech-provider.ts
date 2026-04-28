@@ -12,6 +12,13 @@ export interface StitchTurnOptions {
   providerOptions: Record<string, unknown>;
 }
 
+export interface ResolvedOutputFormat {
+  /** The mediaType the provider will produce given those options. May or may not match user's requested format; SDK runs final conversion if not. */
+  expectedMediaType: string;
+  /** Provider-specific options to merge into the request body. */
+  providerOptions: Record<string, unknown>;
+}
+
 export type Feature = string | { readonly id: string };
 
 export interface ModelInfo {
@@ -89,6 +96,19 @@ export interface SpeechProvider<
     text: string,
     modelId: string
   ): { text: string; warnings: string[] };
+
+  /**
+   * Given the user's desired output format, return the provider-specific options
+   * that produce the closest native match, plus the mediaType that the provider
+   * will return. The SDK applies a final mediabunny pass if expectedMediaType
+   * differs from the user's chosen format. Return `undefined` if the provider
+   * cannot produce any format that the SDK can convert from (i.e. only emits
+   * compressed audio that doesn't match the user's request).
+   */
+  resolveOutputFormat?(
+    modelId: string,
+    output: import("./audio-output.js").AudioOutput
+  ): ResolvedOutputFormat | undefined;
 
   stream?(options: {
     modelId: string;

@@ -1,3 +1,7 @@
+import {
+  type AudioOutput,
+  DEFAULT_MP3_BITRATE_KBPS,
+} from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -396,6 +400,56 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const sampleRate = 24_000;
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: {
+            output_format: {
+              container: "wav",
+              encoding: "pcm_s16le",
+              sample_rate: sampleRate,
+            },
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "pcm":
+        return {
+          providerOptions: {
+            output_format: {
+              container: "raw",
+              encoding: "pcm_s16le",
+              sample_rate: sampleRate,
+            },
+          },
+          expectedMediaType: `audio/pcm;rate=${sampleRate}`,
+        };
+      case "mp3": {
+        const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
+        const supportedBitrates = [32, 64, 96, 128, 192];
+        const closest = supportedBitrates.reduce((prev, curr) =>
+          Math.abs(curr - bitrate) < Math.abs(prev - bitrate) ? curr : prev
+        );
+        return {
+          providerOptions: {
+            output_format: {
+              container: "mp3",
+              bit_rate: closest * 1000,
+              sample_rate: 44_100,
+            },
+          },
+          expectedMediaType: "audio/mpeg",
+        };
+      }
+      default:
+        return;
+    }
   }
 }
 

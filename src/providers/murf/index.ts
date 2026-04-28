@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -163,7 +164,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: json.encodedAudio,
       audioDurationMs,
-      mediaType: "audio/wav",
+      mediaType: murfMediaType(body.format, body.sampleRate),
       timestamps,
     };
   }
@@ -222,6 +223,47 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { format: "WAV", sampleRate: 24_000 },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { format: "MP3", sampleRate: 24_000 },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { format: "PCM", sampleRate: 24_000 },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
+}
+
+function murfMediaType(format: unknown, sampleRate: unknown): string {
+  const rate = typeof sampleRate === "number" ? sampleRate : 24_000;
+  switch (typeof format === "string" ? format.toUpperCase() : "WAV") {
+    case "MP3":
+      return "audio/mpeg";
+    case "PCM":
+      return `audio/pcm;rate=${rate}`;
+    case "ALAW":
+      return "audio/x-alaw-basic";
+    case "ULAW":
+      return "audio/basic";
+    default:
+      return "audio/wav";
   }
 }
 
