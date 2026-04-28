@@ -24,6 +24,7 @@
     "dist",
     "README.md"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
