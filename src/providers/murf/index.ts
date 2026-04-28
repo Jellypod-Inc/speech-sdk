@@ -223,6 +223,34 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { format: "WAV", sampleRate: 24_000 },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { format: "MP3", sampleRate: 24_000 },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { format: "PCM", sampleRate: 24_000 },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 export function createMurf(config: MurfSpeechProviderConfig = {}) {
