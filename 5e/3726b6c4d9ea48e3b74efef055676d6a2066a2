@@ -1,0 +1,61 @@
+src/audio-duration.ts
+  456d44225f956625 2,10-11
+src/providers/inworld/index.ts
+  456d44225f956625 2-3,259,315
+src/volume-adjust.ts
+  456d44225f956625 1-2,23
+src/providers/fish-audio/index.ts
+  456d44225f956625 1,171
+src/audio-utils.ts
+  456d44225f956625 77,83-84,89-91,95-107,112-116,118-121,123-132
+src/conversation/stitch.ts
+  456d44225f956625 111
+src/providers/openai/index.ts
+  456d44225f956625 2,306
+src/providers/mistral/index.ts
+  456d44225f956625 2-3,100,163,221
+src/providers/murf/index.ts
+  456d44225f956625 2,228
+src/conversation/pcm-concat.ts
+  456d44225f956625 76-78,80-83
+src/providers/cartesia/index.ts
+  456d44225f956625 1,402
+src/providers/deepgram/index.ts
+  456d44225f956625 1,159
+src/__tests__/conversation-pcm-concat.test.ts
+  456d44225f956625 2,36,39,52,61-64,72,93
+src/providers/resemble/index.ts
+  456d44225f956625 2,202
+src/generate-conversation.ts
+  456d44225f956625 453,464
+src/providers/hume/index.ts
+  456d44225f956625 2,274
+src/providers/elevenlabs/index.ts
+  456d44225f956625 2,432
+src/audio-decode.ts
+  456d44225f956625 89-90
+src/providers/google/index.ts
+  456d44225f956625 2,4-8,284,327,426
+src/providers/xai/index.ts
+  456d44225f956625 1,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5e3726b6c4d9ea48e3b74efef055676d6a2066a2",
+  "prompts": {
+    "456d44225f956625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1719cf2-7917-4bdd-8644-66ee861593f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 128,
+      "total_deletions": 189,
+      "accepted_lines": 102,
+      "overriden_lines": 1
+    }
+  }
+}

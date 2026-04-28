@@ -1,0 +1,25 @@
+src/providers/google/index.ts
+  456d44225f956625 331-352
+src/__tests__/google-output-format.test.ts
+  456d44225f956625 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cd4c001d180e3835d29d4d2af52f2e9f6f377165",
+  "prompts": {
+    "456d44225f956625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1719cf2-7917-4bdd-8644-66ee861593f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 75,
+      "total_deletions": 11,
+      "accepted_lines": 64,
+      "overriden_lines": 0
+    }
+  }
+}

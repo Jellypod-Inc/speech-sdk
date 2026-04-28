@@ -1,0 +1,37 @@
+src/providers/fal/index.ts
+  456d44225f956625 2,154-162,166,169-170
+src/__tests__/e2e/output-format.e2e.test.ts
+  456d44225f956625 22-25
+src/__tests__/e2e/output-format-all-providers.e2e.test.ts
+  456d44225f956625 1-50,52-170
+src/providers/murf/index.ts
+  456d44225f956625 167,254-269
+src/providers/resemble/index.ts
+  456d44225f956625 138,230-238
+src/providers/deepgram/index.ts
+  456d44225f956625 174-175,179,182
+src/__tests__/resolve-output-format-contract.test.ts
+  456d44225f956625 52-54,57-62,64
+src/__tests__/provider-stitch-options.test.ts
+  456d44225f956625 152-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7af1f4a461b0d9cbda897e37123c11f43129f658",
+  "prompts": {
+    "456d44225f956625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1719cf2-7917-4bdd-8644-66ee861593f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 233,
+      "total_deletions": 44,
+      "accepted_lines": 231,
+      "overriden_lines": 1
+    }
+  }
+}

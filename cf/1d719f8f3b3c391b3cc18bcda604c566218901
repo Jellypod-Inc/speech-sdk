@@ -1,0 +1,25 @@
+src/__tests__/hume-output-format.test.ts
+  456d44225f956625 1-37
+src/providers/hume/index.ts
+  456d44225f956625 273-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cf1d719f8f3b3c391b3cc18bcda604c566218901",
+  "prompts": {
+    "456d44225f956625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1719cf2-7917-4bdd-8644-66ee861593f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 510,
+      "total_deletions": 0,
+      "accepted_lines": 510,
+      "overriden_lines": 0
+    }
+  }
+}
