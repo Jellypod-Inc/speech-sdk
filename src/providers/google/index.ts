@@ -328,6 +328,28 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    // Gemini TTS endpoint has no format parameter — provider always wraps raw PCM as WAV.
+    // SDK conversion path handles pcm-unwrap and mp3-encode from the wav baseline.
+    if (
+      output.format === "wav" ||
+      output.format === "pcm" ||
+      output.format === "mp3"
+    ) {
+      return {
+        providerOptions: {},
+        expectedMediaType: "audio/wav",
+      };
+    }
+    return;
+  }
+
   dialogueCapabilities(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
       // Gemini multi-speaker TTS requires exactly 2 unique voices (API validator: "enabled_voices must equal 2").
