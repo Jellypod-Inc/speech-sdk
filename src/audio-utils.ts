@@ -1,10 +1,15 @@
 import {
+  ALL_FORMATS,
+  BlobSource,
   BufferTarget,
+  Conversion,
   EncodedAudioPacketSource,
   EncodedPacket,
+  Input,
   Output,
   WavOutputFormat,
 } from "mediabunny";
+import { decodeAudioToPcm16 } from "./audio-decode.js";
 
 const PARAM_REGEX_CACHE = new Map<string, RegExp>();
 
@@ -55,6 +60,50 @@ export async function wrapPcm16Mono(
     throw new Error("audio-utils: WavOutputFormat produced no buffer");
   }
   return new Uint8Array(buffer);
+}
+
+export async function resamplePcm16(
+  pcm: Int16Array,
+  fromRate: number,
+  toRate: number
+): Promise<Int16Array> {
+  if (fromRate === toRate || pcm.length === 0) {
+    return pcm;
+  }
+
+  const sourceWav = await wrapPcm16Mono(
+    new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength),
+    fromRate
+  );
+  const ab = new ArrayBuffer(sourceWav.byteLength);
+  new Uint8Array(ab).set(sourceWav);
+  const blob = new Blob([ab], { type: "audio/wav" });
+
+  const input = new Input({
+    source: new BlobSource(blob),
+    formats: ALL_FORMATS,
+  });
+  const output = new Output({
+    format: new WavOutputFormat(),
+    target: new BufferTarget(),
+  });
+  const conversion = await Conversion.init({
+    input,
+    output,
+    audio: { sampleRate: toRate, numberOfChannels: 1 },
+    showWarnings: false,
+  });
+  await conversion.execute();
+
+  const buffer = output.target.buffer;
+  if (!buffer) {
+    throw new Error("audio-utils.resamplePcm16: conversion produced no buffer");
+  }
+  const resampled = await decodeAudioToPcm16(
+    new Uint8Array(buffer),
+    "audio/wav"
+  );
+  return resampled.pcm;
 }
 
 export function base64ToUint8Array(b64: string): Uint8Array {

@@ -19,7 +19,7 @@ export async function adjustVolume(
       ? input.audio
       : base64ToUint8Array(input.audio);
 
-  const segment = decodeToPcm16(bytes, input.mediaType);
+  const segment = await decodeToPcm16(bytes, input.mediaType);
   const [normalized] = normalizeRms(
     [segment],
     dbfsToInt16Rms(input.volumeDbfs)

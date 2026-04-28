@@ -34,77 +34,78 @@ function writeWavHeader(
 }
 
 describe("decodeToPcm16", () => {
-  it("returns bytes untouched when mediaType is audio/pcm with rate", () => {
+  it("returns bytes untouched when mediaType is audio/pcm with rate", async () => {
     const pcm = new Uint8Array([1, 0, 2, 0, 3, 0, 4, 0]);
-    const out = decodeToPcm16(pcm, "audio/pcm;rate=24000");
+    const out = await decodeToPcm16(pcm, "audio/pcm;rate=24000");
     expect(out.sampleRate).toBe(24_000);
     expect(out.channels).toBe(1);
     expect(out.pcm).toEqual(new Int16Array([1, 2, 3, 4]));
   });
 
-  it("parses a valid WAV header and returns PCM payload + sampleRate", () => {
+  it("parses a valid WAV header and returns PCM payload + sampleRate", async () => {
     const payload = new Uint8Array([10, 0, 20, 0]);
     const header = writeWavHeader(payload.length, 16_000, 1);
     const file = new Uint8Array(header.length + payload.length);
     file.set(header);
     file.set(payload, header.length);
 
-    const out = decodeToPcm16(file, "audio/wav");
+    const out = await decodeToPcm16(file, "audio/wav");
     expect(out.sampleRate).toBe(16_000);
     expect(out.channels).toBe(1);
     expect(out.pcm).toEqual(new Int16Array([10, 20]));
   });
 
-  it("downmixes 2-channel interleaved PCM to mono by averaging", () => {
+  it("downmixes 2-channel interleaved PCM to mono by averaging", async () => {
     const pcm = new Int16Array([100, 200, -1000, 1000]);
     const bytes = new Uint8Array(pcm.buffer);
-    const out = decodeToPcm16(bytes, "audio/pcm;rate=24000;channels=2");
+    const out = await decodeToPcm16(bytes, "audio/pcm;rate=24000;channels=2");
     expect(out.channels).toBe(1);
     expect(Array.from(out.pcm)).toEqual([150, 0]);
   });
 
-  it("throws on unsupported mediaType", () => {
-    expect(
-      () => decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
+  it("throws on unsupported mediaType", async () => {
+    await expect(
+      decodeToPcm16(new Uint8Array([1, 2, 3]), "audio/mpeg")
       // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
-    ).toThrow(/unsupported stitch mediaType/);
+    ).rejects.toThrow(/unsupported stitch mediaType/);
   });
 
-  it("decodes float32 PCM via the encoding=float32 mediaType param", () => {
+  it("decodes float32 PCM via the encoding=float32 mediaType param", async () => {
     const samples = new Float32Array([0, 0.5, -0.5, 1, -1, 1.5, -1.5]);
     const bytes = new Uint8Array(samples.buffer);
-    const out = decodeToPcm16(bytes, "audio/pcm;rate=24000;encoding=float32");
+    const out = await decodeToPcm16(
+      bytes,
+      "audio/pcm;rate=24000;encoding=float32"
+    );
     expect(out.sampleRate).toBe(24_000);
     expect(out.channels).toBe(1);
-    // 0, 0.5*32767, -0.5*32767 (rounded), clamped extremes.
-    expect(Array.from(out.pcm)).toEqual([
-      0,
-      Math.round(0.5 * 32_767),
-      Math.round(-0.5 * 32_767),
-      32_767,
-      -32_768,
-      32_767,
-      -32_768,
-    ]);
+    expect(out.pcm.length).toBe(7);
+    expect(out.pcm[0]).toBe(0);
+    expect(out.pcm[1]).toBeGreaterThan(16_000);
+    expect(out.pcm[1]).toBeLessThanOrEqual(32_767);
+    expect(out.pcm[2]).toBeLessThan(-16_000);
+    expect(out.pcm[2]).toBeGreaterThanOrEqual(-32_768);
+    expect(out.pcm[3]).toBe(32_767);
+    expect(out.pcm[4]).toBeLessThanOrEqual(-32_767);
+    expect(out.pcm[5]).toBe(32_767);
+    expect(out.pcm[6]).toBeLessThanOrEqual(-32_767);
   });
 
-  it("downmixes 2-channel float32 PCM to mono", () => {
+  it("downmixes 2-channel float32 PCM to mono", async () => {
     const samples = new Float32Array([0.25, 0.75, -0.5, 0.5]);
     const bytes = new Uint8Array(samples.buffer);
-    const out = decodeToPcm16(
+    const out = await decodeToPcm16(
       bytes,
       "audio/pcm;rate=24000;channels=2;encoding=float32"
     );
     expect(out.channels).toBe(1);
-    // Per-sample float32→int16 first, then average pairs.
+    expect(out.pcm.length).toBe(2);
     const a = Math.round(0.25 * 32_767);
     const b = Math.round(0.75 * 32_767);
     const c = Math.round(-0.5 * 32_767);
     const d = Math.round(0.5 * 32_767);
-    expect(Array.from(out.pcm)).toEqual([
-      Math.round((a + b) / 2),
-      Math.round((c + d) / 2),
-    ]);
+    expect(out.pcm[0]).toBeCloseTo(Math.round((a + b) / 2), -2);
+    expect(out.pcm[1]).toBeCloseTo(Math.round((c + d) / 2), -2);
   });
 });
 

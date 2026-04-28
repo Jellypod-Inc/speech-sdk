@@ -461,7 +461,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
     [];
   try {
-    const segment = decodeToPcm16(args.audio, args.mediaType);
+    const segment = await decodeToPcm16(args.audio, args.mediaType);
     const gaps = detectSilenceGaps(segment.pcm, {
       sampleRate: segment.sampleRate,
       minDurationMs: 150,

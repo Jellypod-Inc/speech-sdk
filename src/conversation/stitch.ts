@@ -112,7 +112,7 @@ export async function runStitch<V extends Voice>(
         throw withTurnIndex(err, i);
       }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
-      const segment = decodeToPcm16(
+      const segment = await decodeToPcm16(
         result.audio.uint8Array,
         stitchOpts.mediaType
       );
