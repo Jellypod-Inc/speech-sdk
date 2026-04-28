@@ -31,12 +31,12 @@ function makeMockProvider(opts: MockOutcome): {
     resolveOutputFormat: opts.resolvedFormat
       ? () => opts.resolvedFormat
       : undefined,
-    async generate(options) {
+    generate(options) {
       callCapture.providerOptions = options.providerOptions;
-      return {
+      return Promise.resolve({
         audio: opts.generatedBytes,
         mediaType: opts.generatedMediaType,
-      };
+      });
     },
   };
   return { provider, callCapture };
