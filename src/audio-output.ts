@@ -1,7 +1,9 @@
 import { decodeAudioToPcm16 } from "./audio-decode.js";
-import { wrapPcm16Mono } from "./audio-utils.js";
+import { parseMediaTypeParam, wrapPcm16Mono } from "./audio-utils.js";
 import { encodePcm16ToMp3 } from "./encoders/mp3.js";
 import { AudioOutputInputError } from "./errors.js";
+
+const DEFAULT_PCM_RATE = 24_000;
 
 export type AudioOutput =
   | { readonly format: "wav" }
@@ -102,7 +104,14 @@ export async function convertDecodableAudioToOutput(args: {
     return { audio, mediaType: "audio/mpeg" };
   }
   if (output.format === "pcm" && isPcmSource(mediaType)) {
-    return { audio, mediaType };
+    // Some providers (e.g. OpenAI) return bare "audio/pcm" without rate;
+    // normalize to mediaTypeForOutput so callers always know the rate.
+    const sampleRate =
+      parseMediaTypeParam(mediaType, "rate") ?? DEFAULT_PCM_RATE;
+    return {
+      audio,
+      mediaType: mediaTypeForOutput({ format: "pcm", sampleRate }),
+    };
   }
 
   if (!isDecodableSourceMediaType(mediaType)) {
