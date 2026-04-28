@@ -223,6 +223,30 @@ export class MistralSpeechProvider
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "mp3":
+        return {
+          providerOptions: { response_format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+      case "wav":
+        return {
+          providerOptions: { response_format: "pcm" },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 function mediaTypeForResponseFormat(format: unknown): string {
