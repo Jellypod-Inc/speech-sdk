@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { AudioOutput } from "../../audio-output.js";
+import {
+  type AudioOutput,
+  DEFAULT_MP3_BITRATE_KBPS,
+} from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -441,7 +444,7 @@ export class ElevenLabsSpeechProvider
           expectedMediaType: "audio/pcm;rate=24000",
         };
       case "mp3": {
-        const bitrate = output.bitrate ?? 128;
+        const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
         const supportedBitrates = [32, 64, 96, 128, 192];
         const closest = supportedBitrates.reduce((prev, curr) =>
           Math.abs(curr - bitrate) < Math.abs(prev - bitrate) ? curr : prev

@@ -230,9 +230,10 @@ export class MistralSpeechProvider
         };
       case "pcm":
       case "wav":
+        // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the decoder to convert to int16.
         return {
           providerOptions: { response_format: "pcm" },
-          expectedMediaType: "audio/pcm;rate=24000",
+          expectedMediaType: "audio/pcm;rate=24000;encoding=float32",
         };
       default:
         return;

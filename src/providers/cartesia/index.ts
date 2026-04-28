@@ -1,4 +1,7 @@
-import type { AudioOutput } from "../../audio-output.js";
+import {
+  type AudioOutput,
+  DEFAULT_MP3_BITRATE_KBPS,
+} from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -417,7 +420,6 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
           expectedMediaType: "audio/wav",
         };
       case "pcm":
-      case "mp3":
         return {
           providerOptions: {
             output_format: {
@@ -428,6 +430,23 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
           },
           expectedMediaType: `audio/pcm;rate=${sampleRate}`,
         };
+      case "mp3": {
+        const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
+        const supportedBitrates = [32, 64, 96, 128, 192];
+        const closest = supportedBitrates.reduce((prev, curr) =>
+          Math.abs(curr - bitrate) < Math.abs(prev - bitrate) ? curr : prev
+        );
+        return {
+          providerOptions: {
+            output_format: {
+              container: "mp3",
+              bit_rate: closest * 1000,
+              sample_rate: 44_100,
+            },
+          },
+          expectedMediaType: "audio/mpeg",
+        };
+      }
       default:
         return;
     }
