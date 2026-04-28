@@ -301,6 +301,34 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { response_format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { response_format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { response_format: "pcm" },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 // ISO-639-1 codes accepted by Whisper's `language` parameter.
