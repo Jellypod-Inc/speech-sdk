@@ -191,6 +191,36 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { output_format: { codec: "wav" } },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { output_format: { codec: "mp3" } },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: {
+            output_format: { codec: "pcm", sample_rate: 24_000 },
+          },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 export function createXai(config: XaiSpeechProviderConfig = {}) {
