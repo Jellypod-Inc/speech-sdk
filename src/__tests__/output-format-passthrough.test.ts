@@ -175,7 +175,7 @@ describe("generateSpeech caller providerOptions precedence", () => {
     });
   });
 
-  it("output: caller's providerOptions override SDK-derived defaults from getStitchOptions fallback", async () => {
+  it("output: stitch fallback path keeps SDK-required keys winning so local decode/convert can't be silently broken", async () => {
     const { provider, callCapture } = makeMockProvider({
       stitchOptions: {
         providerOptions: { response_format: "pcm" },
@@ -190,11 +190,11 @@ describe("generateSpeech caller providerOptions precedence", () => {
       text: "hi",
       voice: "test",
       output: { format: "wav" },
-      providerOptions: { response_format: "wav", custom: 1 },
+      providerOptions: { response_format: "ogg-bizarre", custom: 1 },
     });
 
     expect(callCapture.providerOptions).toEqual({
-      response_format: "wav",
+      response_format: "pcm",
       custom: 1,
     });
   });

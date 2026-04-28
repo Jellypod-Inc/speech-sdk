@@ -253,11 +253,11 @@ function resolveProviderOptionsForLocalDecoding(args: {
     return { ...args.callerOptions, ...stitchOpts.providerOptions };
   }
 
-  // For output: { format }, caller's providerOptions win over SDK-derived
-  // defaults — they're an explicit escape hatch. Post-processing reads the
-  // actual response mediaType and adapts (pass-through or re-encode), so an
-  // override that picks a different wire format still terminates correctly.
   if (args.output != null) {
+    // Native path: provider produces the requested format directly, so caller's
+    // providerOptions are an explicit escape hatch and win over our defaults
+    // (e.g. tweaking bitrate/sample_rate). Post-processing reads the actual
+    // response mediaType and adapts.
     const native = args.resolved.provider.resolveOutputFormat?.(
       args.resolved.modelId,
       args.output
@@ -265,13 +265,16 @@ function resolveProviderOptionsForLocalDecoding(args: {
     if (native) {
       return { ...native.providerOptions, ...args.callerOptions };
     }
+    // Stitch fallback: the SDK MUST decode locally to convert into the
+    // requested format, so SDK-required keys win — same rationale as the
+    // volumeDbfs path above.
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
       args.resolved.modelId
     );
     if (!stitchOpts) {
       throw new OutputConversionUnsupportedError(args.modelIdentifier);
     }
-    return { ...stitchOpts.providerOptions, ...args.callerOptions };
+    return { ...args.callerOptions, ...stitchOpts.providerOptions };
   }
 
   return args.callerOptions;
