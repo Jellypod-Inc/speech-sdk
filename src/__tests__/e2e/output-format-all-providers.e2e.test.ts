@@ -12,6 +12,7 @@ import { createMistral } from "../../providers/mistral/index.js";
 import { createMurf } from "../../providers/murf/index.js";
 import { createOpenAI } from "../../providers/openai/index.js";
 import { createResemble } from "../../providers/resemble/index.js";
+import { createSmallestAI } from "../../providers/smallest-ai/index.js";
 import { createXai } from "../../providers/xai/index.js";
 import type { ResolvedModel, Voice } from "../../speech-provider.js";
 import { generateSpeech } from "./_save-audio.js";
@@ -132,6 +133,12 @@ const providers: ProviderTarget[] = [
     envKey: "GOOGLE_API_KEY",
     model: () => createGoogle()("gemini-2.5-flash-preview-tts"),
     voice: "Kore",
+  },
+  {
+    name: "smallest-ai",
+    envKey: "SMALLEST_API_KEY",
+    model: () => createSmallestAI()("lightning-v3.1"),
+    voice: process.env.SMALLEST_VOICE_ID ?? "magnus",
   },
 ];
 

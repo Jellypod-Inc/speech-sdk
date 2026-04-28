@@ -11,6 +11,7 @@ import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
+import { SmallestAISpeechProvider } from "../providers/smallest-ai/index.js";
 import { XaiSpeechProvider } from "../providers/xai/index.js";
 
 describe("getStitchOptions per provider", () => {
@@ -149,6 +150,14 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
+  it("Smallest AI returns wav for lightning-v3.1", () => {
+    const p = new SmallestAISpeechProvider({});
+    expect(p.getStitchOptions?.("lightning-v3.1")).toEqual({
+      providerOptions: { output_format: "wav" },
+      mediaType: "audio/wav",
+    });
+  });
+
   it("returns undefined for unknown models on every provider (except fal)", () => {
     // fal accepts arbitrary path-style model IDs (e.g. "kokoro/american-english")
     // and dispatches them to fal.run/fal-ai/<id>. Its getStitchOptions returns
@@ -166,6 +175,7 @@ describe("getStitchOptions per provider", () => {
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
       new MistralSpeechProvider({}),
+      new SmallestAISpeechProvider({}),
     ];
     for (const p of providers) {
       expect(p.getStitchOptions?.("totally-fake-model-id")).toBeUndefined();

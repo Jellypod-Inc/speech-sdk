@@ -12,6 +12,7 @@ import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
+import { SmallestAISpeechProvider } from "../providers/smallest-ai/index.js";
 import { XaiSpeechProvider } from "../providers/xai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
@@ -47,6 +48,10 @@ const providers: { name: string; provider: SpeechProvider }[] = [
   },
   { name: "murf", provider: new MurfSpeechProvider({ apiKey: "test" }) },
   { name: "google", provider: new GoogleSpeechProvider({ apiKey: "test" }) },
+  {
+    name: "smallest-ai",
+    provider: new SmallestAISpeechProvider({ apiKey: "test" }),
+  },
 ];
 
 // fal accepts arbitrary path-style model IDs and serves WAV for all of them.
