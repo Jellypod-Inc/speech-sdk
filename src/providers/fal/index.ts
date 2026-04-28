@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AudioOutput, AudioOutputFormat } from "../../audio-output.js";
 import { ApiError, StreamingNotSupportedError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -8,6 +9,7 @@ import {
 import type {
   ModelInfo,
   ResolvedModel,
+  ResolvedOutputFormat,
   SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -27,6 +29,15 @@ export interface FalSpeechProviderConfig {
 }
 
 export const FAL_PROVIDER_ID = "fal-ai" as const;
+
+const FAL_NATIVE_FORMATS: Record<
+  string,
+  { format: AudioOutputFormat; mediaType: string }
+> = {
+  "f5-tts": { format: "wav", mediaType: "audio/wav" },
+  kokoro: { format: "wav", mediaType: "audio/wav" },
+  "orpheus-tts": { format: "wav", mediaType: "audio/wav" },
+};
 
 export const FAL_MODELS: readonly ModelInfo[] = [
   {
@@ -156,6 +167,24 @@ export class FalSpeechProvider
         providerOptions: {},
         mediaType: "audio/wav",
       };
+    }
+    return;
+  }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: AudioOutput
+  ): ResolvedOutputFormat | undefined {
+    const model = this.models.find((m) => m.id === modelId);
+    if (!model) {
+      return;
+    }
+    const native = FAL_NATIVE_FORMATS[modelId];
+    if (!native) {
+      return;
+    }
+    if (output.format === native.format) {
+      return { providerOptions: {}, expectedMediaType: native.mediaType };
     }
     return;
   }
