@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { encodePcm16ToMp3 } from "../encoders/mp3.js";
+import {
+  OutputConversionUnsupportedError,
+  VolumeAdjustmentUnsupportedError,
+} from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
-import type { SpeechProvider } from "../speech-provider.js";
+import type {
+  ResolvedOutputFormat,
+  SpeechProvider,
+  StitchTurnOptions,
+} from "../speech-provider.js";
 
 interface MockOutcome {
   generatedBytes: Uint8Array;
   generatedMediaType: string;
-  resolvedFormat?: {
-    providerOptions: Record<string, unknown>;
-    expectedMediaType: string;
-  };
+  resolvedFormat?: ResolvedOutputFormat;
+  stitchOptions?: StitchTurnOptions;
 }
 
 function makeMockProvider(opts: MockOutcome): {
@@ -31,6 +37,7 @@ function makeMockProvider(opts: MockOutcome): {
     resolveOutputFormat: opts.resolvedFormat
       ? () => opts.resolvedFormat
       : undefined,
+    getStitchOptions: opts.stitchOptions ? () => opts.stitchOptions : undefined,
     generate(options) {
       callCapture.providerOptions = options.providerOptions;
       return Promise.resolve({
@@ -138,5 +145,93 @@ describe("generateSpeech native output pass-through", () => {
     expect(result.audio.uint8Array[0]).toBe(0xff);
     // biome-ignore lint/suspicious/noBitwiseOperators: MPEG frame sync mask
     expect(result.audio.uint8Array[1] & 0xe0).toBe(0xe0);
+  });
+});
+
+describe("generateSpeech provider-options dispatch fallback", () => {
+  const pcm = new Uint8Array(new Int16Array(2400).fill(1000).buffer);
+
+  it("falls back to getStitchOptions when provider has no resolveOutputFormat", async () => {
+    const { provider, callCapture } = makeMockProvider({
+      stitchOptions: {
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      },
+      generatedMediaType: "audio/pcm;rate=24000",
+      generatedBytes: pcm,
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "mock-1" },
+      text: "hi",
+      voice: "test",
+      output: { format: "wav" },
+    });
+
+    expect(callCapture.providerOptions).toMatchObject({
+      response_format: "pcm",
+    });
+  });
+
+  it("throws OutputConversionUnsupportedError when neither hook is implemented", async () => {
+    const { provider } = makeMockProvider({
+      generatedMediaType: "audio/mpeg",
+      generatedBytes: pcm,
+    });
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "mock-1" },
+        text: "hi",
+        voice: "test",
+        output: { format: "wav" },
+      })
+    ).rejects.toThrow(OutputConversionUnsupportedError);
+  });
+
+  it("volumeDbfs forces stitch options even when resolveOutputFormat exists", async () => {
+    const { provider, callCapture } = makeMockProvider({
+      resolvedFormat: {
+        providerOptions: { response_format: "mp3" },
+        expectedMediaType: "audio/mpeg",
+      },
+      stitchOptions: {
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      },
+      generatedMediaType: "audio/pcm;rate=24000",
+      generatedBytes: pcm,
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "mock-1" },
+      text: "hi",
+      voice: "test",
+      volumeDbfs: -20,
+    });
+
+    expect(callCapture.providerOptions).toMatchObject({
+      response_format: "pcm",
+    });
+  });
+
+  it("throws VolumeAdjustmentUnsupportedError when volumeDbfs is set without stitch options", async () => {
+    const { provider } = makeMockProvider({
+      resolvedFormat: {
+        providerOptions: { response_format: "mp3" },
+        expectedMediaType: "audio/mpeg",
+      },
+      generatedMediaType: "audio/mpeg",
+      generatedBytes: pcm,
+    });
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "mock-1" },
+        text: "hi",
+        voice: "test",
+        volumeDbfs: -20,
+      })
+    ).rejects.toThrow(VolumeAdjustmentUnsupportedError);
   });
 });

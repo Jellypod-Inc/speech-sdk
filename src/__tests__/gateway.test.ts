@@ -621,11 +621,4 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     const body = JSON.parse(init.body);
     expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
   });
-
-  it("does not implement resolveOutputFormat (gateway forwards output to REST verbatim)", () => {
-    const provider = new SpeechGatewayProvider({ apiKey: "gw-key" });
-    expect(
-      (provider as { resolveOutputFormat?: unknown }).resolveOutputFormat
-    ).toBeUndefined();
-  });
 });
