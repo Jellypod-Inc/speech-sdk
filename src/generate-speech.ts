@@ -236,25 +236,38 @@ function resolveProviderOptionsForLocalDecoding(args: {
   output: AudioOutput | undefined;
   callerOptions: Record<string, unknown> | undefined;
 }): Record<string, unknown> | undefined {
-  const needsLocalDecodable =
-    !args.isGateway && (args.volumeDbfs != null || args.output != null);
-  if (!needsLocalDecodable) {
+  if (args.isGateway) {
     return args.callerOptions;
   }
-  const stitchOpts = args.resolved.provider.getStitchOptions?.(
-    args.resolved.modelId
-  );
-  if (!stitchOpts) {
-    if (args.volumeDbfs != null) {
+
+  if (args.volumeDbfs != null) {
+    const stitchOpts = args.resolved.provider.getStitchOptions?.(
+      args.resolved.modelId
+    );
+    if (!stitchOpts) {
       throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
     }
-    throw new OutputConversionUnsupportedError(args.modelIdentifier);
+    return { ...args.callerOptions, ...stitchOpts.providerOptions };
   }
-  // Stitch options must win — caller-supplied response_format would break the decoder.
-  return {
-    ...args.callerOptions,
-    ...stitchOpts.providerOptions,
-  };
+
+  if (args.output != null) {
+    const native = args.resolved.provider.resolveOutputFormat?.(
+      args.resolved.modelId,
+      args.output
+    );
+    if (native) {
+      return { ...args.callerOptions, ...native.providerOptions };
+    }
+    const stitchOpts = args.resolved.provider.getStitchOptions?.(
+      args.resolved.modelId
+    );
+    if (!stitchOpts) {
+      throw new OutputConversionUnsupportedError(args.modelIdentifier);
+    }
+    return { ...args.callerOptions, ...stitchOpts.providerOptions };
+  }
+
+  return args.callerOptions;
 }
 
 async function applyLocalAudioPostProcessing(args: {
