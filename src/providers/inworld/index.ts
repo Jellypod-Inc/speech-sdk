@@ -253,6 +253,41 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+      case "pcm":
+        // LINEAR16 returns 16-bit PCM with a WAV header; SDK unwraps for pcm.
+        return {
+          providerOptions: {
+            audio_config: {
+              audio_encoding: "LINEAR16",
+              sample_rate_hertz: 24_000,
+            },
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: {
+            audio_config: {
+              audio_encoding: "MP3",
+              sample_rate_hertz: 48_000,
+            },
+          },
+          expectedMediaType: "audio/mpeg",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 function base64ToBytes(b64: string): Uint8Array {
