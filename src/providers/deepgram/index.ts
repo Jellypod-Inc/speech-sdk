@@ -154,6 +154,42 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: {
+            encoding: "linear16",
+            container: "wav",
+            sample_rate: 24_000,
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "pcm":
+        return {
+          providerOptions: {
+            encoding: "linear16",
+            container: "none",
+            sample_rate: 24_000,
+          },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      case "mp3":
+        return {
+          providerOptions: { encoding: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      default:
+        return;
+    }
+  }
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {
