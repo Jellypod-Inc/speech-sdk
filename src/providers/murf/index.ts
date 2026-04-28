@@ -164,7 +164,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     return {
       audio: json.encodedAudio,
       audioDurationMs,
-      mediaType: "audio/wav",
+      mediaType: murfMediaType(body.format, body.sampleRate),
       timestamps,
     };
   }
@@ -248,6 +248,22 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+}
+
+function murfMediaType(format: unknown, sampleRate: unknown): string {
+  const rate = typeof sampleRate === "number" ? sampleRate : 24_000;
+  switch (typeof format === "string" ? format.toUpperCase() : "WAV") {
+    case "MP3":
+      return "audio/mpeg";
+    case "PCM":
+      return `audio/pcm;rate=${rate}`;
+    case "ALAW":
+      return "audio/x-alaw-basic";
+    case "ULAW":
+      return "audio/basic";
+    default:
+      return "audio/wav";
   }
 }
 

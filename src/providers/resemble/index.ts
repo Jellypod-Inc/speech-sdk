@@ -135,7 +135,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       audio: json.audio_content,
-      mediaType: "audio/wav",
+      mediaType: resembleMediaType(body.output_format),
       timestamps,
     };
   }
@@ -224,6 +224,15 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+}
+
+function resembleMediaType(outputFormat: unknown): string {
+  switch (typeof outputFormat === "string" ? outputFormat.toLowerCase() : "") {
+    case "mp3":
+      return "audio/mpeg";
+    default:
+      return "audio/wav";
   }
 }
 

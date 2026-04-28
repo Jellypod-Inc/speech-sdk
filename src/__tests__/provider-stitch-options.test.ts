@@ -149,7 +149,10 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("returns undefined for unknown models on every provider", () => {
+  it("returns undefined for unknown models on every provider (except fal)", () => {
+    // fal accepts arbitrary path-style model IDs (e.g. "kokoro/american-english")
+    // and dispatches them to fal.run/fal-ai/<id>. Its getStitchOptions returns
+    // wav unconditionally, matching the actual model behavior.
     const providers = [
       new OpenAISpeechProvider({}),
       new ElevenLabsSpeechProvider({}),
@@ -162,7 +165,6 @@ describe("getStitchOptions per provider", () => {
       new MurfSpeechProvider({}),
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
-      new FalSpeechProvider({}),
       new MistralSpeechProvider({}),
     ];
     for (const p of providers) {

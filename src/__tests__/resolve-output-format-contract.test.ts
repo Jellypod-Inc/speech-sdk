@@ -49,14 +49,19 @@ const providers: { name: string; provider: SpeechProvider }[] = [
   { name: "google", provider: new GoogleSpeechProvider({ apiKey: "test" }) },
 ];
 
+// fal accepts arbitrary path-style model IDs and serves WAV for all of them.
+const FAL_NAME = "fal";
+
 describe("SpeechProvider.resolveOutputFormat contract", () => {
   for (const { name, provider } of providers) {
-    it(`${name} returns undefined for unknown model id`, () => {
-      const result = provider.resolveOutputFormat?.("does-not-exist", {
-        format: "wav",
+    if (name !== FAL_NAME) {
+      it(`${name} returns undefined for unknown model id`, () => {
+        const result = provider.resolveOutputFormat?.("does-not-exist", {
+          format: "wav",
+        });
+        expect(result).toBeUndefined();
       });
-      expect(result).toBeUndefined();
-    });
+    }
 
     for (const format of FORMATS) {
       it(`${name} returns a decodable expectedMediaType for format=${format}`, () => {

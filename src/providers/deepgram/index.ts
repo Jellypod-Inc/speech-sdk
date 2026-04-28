@@ -171,13 +171,15 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
           expectedMediaType: "audio/wav",
         };
       case "pcm":
+        // Deepgram with container=none returns audio/l16 (RFC 2586, big-endian);
+        // request container=wav and let the SDK unwrap to little-endian s16.
         return {
           providerOptions: {
             encoding: "linear16",
-            container: "none",
+            container: "wav",
             sample_rate: 24_000,
           },
-          expectedMediaType: "audio/pcm;rate=24000",
+          expectedMediaType: "audio/wav",
         };
       case "mp3":
         return {
