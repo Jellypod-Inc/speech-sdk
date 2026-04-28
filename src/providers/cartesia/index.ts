@@ -397,6 +397,43 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
+
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const sampleRate = 24_000;
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: {
+            output_format: {
+              container: "wav",
+              encoding: "pcm_s16le",
+              sample_rate: sampleRate,
+            },
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "pcm":
+      case "mp3":
+        return {
+          providerOptions: {
+            output_format: {
+              container: "raw",
+              encoding: "pcm_s16le",
+              sample_rate: sampleRate,
+            },
+          },
+          expectedMediaType: `audio/pcm;rate=${sampleRate}`,
+        };
+      default:
+        return;
+    }
+  }
 }
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
