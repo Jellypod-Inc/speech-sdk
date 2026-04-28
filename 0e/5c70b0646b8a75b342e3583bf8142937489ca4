@@ -1,0 +1,25 @@
+src/audio-output.ts
+  456d44225f956625 1,69-80,98-107,115,121,131
+src/__tests__/audio-output.test.ts
+  456d44225f956625 10,147-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0e5c70b0646b8a75b342e3583bf8142937489ca4",
+  "prompts": {
+    "456d44225f956625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1719cf2-7917-4bdd-8644-66ee861593f0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 50,
+      "total_deletions": 3,
+      "accepted_lines": 405,
+      "overriden_lines": 0
+    }
+  }
+}
