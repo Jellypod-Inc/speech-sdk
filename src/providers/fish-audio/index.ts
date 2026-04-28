@@ -167,6 +167,34 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
+  resolveOutputFormat(
+    modelId: string,
+    output: import("../../audio-output.js").AudioOutput
+  ) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      default:
+        return;
+    }
+  }
+
   dialogueCapabilities(modelId: string) {
     if (modelId === "s2-pro") {
       return { minVoices: 1, maxVoices: 4 };
