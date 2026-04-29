@@ -1,13 +1,12 @@
 import pRetry from "p-retry";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import {
-  ApiError,
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
+import { buildRetryOptions } from "./retry-options.js";
 import {
   FEATURES,
   hasFeature,
@@ -85,16 +84,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
         abortSignal,
         headers,
       }),
-    {
-      retries: maxRetries,
-      signal: abortSignal,
-      shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && !isRetriableApiError(error)) {
-          return false;
-        }
-        return true;
-      },
-    }
+    buildRetryOptions({ maxRetries, abortSignal })
   );
 
   const ttfbMs = Math.round(performance.now() - startTime);

@@ -9,15 +9,14 @@ import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  ApiError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { isRetriableApiError } from "./provider-utils.js";
 import { resolveModel } from "./resolve-provider.js";
+import { buildRetryOptions } from "./retry-options.js";
 import {
   isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
@@ -122,16 +121,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
             headers,
             includeTimestamps: shouldRequestNative,
           }),
-    {
-      retries: maxRetries,
-      signal: abortSignal,
-      shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && !isRetriableApiError(error)) {
-          return false;
-        }
-        return true;
-      },
-    }
+    buildRetryOptions({ maxRetries, abortSignal })
   );
 
   const latencyMs = Math.round(performance.now() - startTime);

@@ -14,15 +14,14 @@ import { validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  ApiError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { isRetriableApiError } from "./provider-utils.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
+import { buildRetryOptions } from "./retry-options.js";
 import {
   modelDeclaresNativeTimestamps,
   type ResolvedModel,
@@ -213,16 +212,7 @@ async function runGateway<V extends Voice>(args: {
         includeTimestamps,
         output: options.output,
       }),
-    {
-      retries: maxRetries,
-      signal: options.abortSignal,
-      shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && !isRetriableApiError(error)) {
-          return false;
-        }
-        return true;
-      },
-    }
+    buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
   );
 
   const latencyMs = Math.round(performance.now() - start);
@@ -328,16 +318,7 @@ async function runNative<V extends Voice>(args: {
         headers: options.headers,
         includeTimestamps: shouldRequestNative,
       }),
-    {
-      retries: maxRetries,
-      signal: options.abortSignal,
-      shouldRetry: ({ error }) => {
-        if (error instanceof ApiError && !isRetriableApiError(error)) {
-          return false;
-        }
-        return true;
-      },
-    }
+    buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
   );
 
   const latencyMs = Math.round(performance.now() - start);

@@ -491,4 +491,189 @@ describe("generateSpeech", () => {
     ).rejects.toThrow();
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
+
+  describe("429 / Retry-After", () => {
+    it("retries on 429 by default", async () => {
+      const error = new ApiError("Rate limited", { statusCode: 429 });
+      const provider: SpeechProvider = {
+        id: "mock",
+        defaultModel: "mock-model",
+        generate: vi
+          .fn()
+          .mockRejectedValueOnce(error)
+          .mockResolvedValue({
+            audio: new Uint8Array([1]),
+            mediaType: "audio/mpeg",
+          }),
+      };
+
+      const result = await generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "Hello",
+        maxRetries: 1,
+      });
+
+      expect(result.audio.uint8Array).toEqual(new Uint8Array([1]));
+      expect(provider.generate).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits at least Retry-After seconds before retry", async () => {
+      const retryAfterSeconds = 2;
+      const error = new ApiError("Rate limited", {
+        statusCode: 429,
+        retryAfterMs: retryAfterSeconds * 1000,
+      });
+      const callTimes: number[] = [];
+      const provider: SpeechProvider = {
+        id: "mock",
+        defaultModel: "mock-model",
+        generate: vi.fn().mockImplementation(() => {
+          callTimes.push(performance.now());
+          if (callTimes.length === 1) {
+            return Promise.reject(error);
+          }
+          return Promise.resolve({
+            audio: new Uint8Array([1]),
+            mediaType: "audio/mpeg",
+          });
+        }),
+      };
+
+      await generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "Hello",
+        maxRetries: 1,
+      });
+
+      const elapsed = (callTimes[1] ?? 0) - (callTimes[0] ?? 0);
+      expect(elapsed).toBeGreaterThanOrEqual(retryAfterSeconds * 1000);
+    }, 10_000);
+
+    it("caps Retry-After at 60s to avoid pathological waits", async () => {
+      const error = new ApiError("Rate limited", {
+        statusCode: 429,
+        retryAfterMs: 600_000,
+      });
+      const callTimes: number[] = [];
+      const provider: SpeechProvider = {
+        id: "mock",
+        defaultModel: "mock-model",
+        generate: vi.fn().mockImplementation(() => {
+          callTimes.push(performance.now());
+          if (callTimes.length === 1) {
+            return Promise.reject(error);
+          }
+          return Promise.resolve({
+            audio: new Uint8Array([1]),
+            mediaType: "audio/mpeg",
+          });
+        }),
+      };
+
+      // Abort after 5s — well under the 60s cap but well over what a sane retry would wait.
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 5000);
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "Hello",
+          maxRetries: 1,
+          abortSignal: controller.signal,
+        })
+      ).rejects.toThrow();
+      expect(provider.generate).toHaveBeenCalledTimes(1);
+    }, 10_000);
+
+    it("populates ApiError.retryAfterMs from Retry-After: <seconds> header", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        headers: new Headers({
+          "content-type": "application/json",
+          "retry-after": "3",
+        }),
+        text: async () => JSON.stringify({ error: "rate limited" }),
+      });
+
+      const savedFetch = globalThis.fetch;
+      globalThis.fetch = mockFetch as typeof globalThis.fetch;
+      try {
+        await expect(
+          generateSpeech({
+            model: "openai/tts-1",
+            text: "Hello",
+            voice: "alloy",
+            apiKey: "gw-key",
+            maxRetries: 0,
+          })
+        ).rejects.toMatchObject({
+          name: "ApiError",
+          statusCode: 429,
+          retryAfterMs: 3000,
+        });
+      } finally {
+        globalThis.fetch = savedFetch;
+      }
+    });
+
+    it("populates ApiError.retryAfterMs from Retry-After: <HTTP-date>", async () => {
+      const futureDate = new Date(Date.now() + 4000);
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        headers: new Headers({
+          "content-type": "application/json",
+          "retry-after": futureDate.toUTCString(),
+        }),
+        text: async () => JSON.stringify({ error: "rate limited" }),
+      });
+
+      const savedFetch = globalThis.fetch;
+      globalThis.fetch = mockFetch as typeof globalThis.fetch;
+      try {
+        const captured = await generateSpeech({
+          model: "openai/tts-1",
+          text: "Hello",
+          voice: "alloy",
+          apiKey: "gw-key",
+          maxRetries: 0,
+        }).catch((e) => e as ApiError);
+        expect(captured.statusCode).toBe(429);
+        // HTTP-date precision is to the second; allow ±1s of slack.
+        expect(captured.retryAfterMs).toBeGreaterThanOrEqual(2000);
+        expect(captured.retryAfterMs).toBeLessThanOrEqual(5000);
+      } finally {
+        globalThis.fetch = savedFetch;
+      }
+    });
+
+    it("leaves retryAfterMs undefined when header is absent", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "content-type": "application/json" }),
+        text: async () => JSON.stringify({ error: "rate limited" }),
+      });
+
+      const savedFetch = globalThis.fetch;
+      globalThis.fetch = mockFetch as typeof globalThis.fetch;
+      try {
+        await expect(
+          generateSpeech({
+            model: "openai/tts-1",
+            text: "Hello",
+            voice: "alloy",
+            apiKey: "gw-key",
+            maxRetries: 0,
+          })
+        ).rejects.toMatchObject({
+          statusCode: 429,
+          retryAfterMs: undefined,
+        });
+      } finally {
+        globalThis.fetch = savedFetch;
+      }
+    });
+  });
 });
