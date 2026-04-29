@@ -10,10 +10,10 @@ importers:
     dependencies:
       '@mediabunny/mp3-encoder':
         specifier: ^1.42.0
-        version: 1.42.0(mediabunny@1.41.0)
+        version: 1.42.0(mediabunny@1.42.0)
       mediabunny:
         specifier: ^1.40.1
-        version: 1.41.0
+        version: 1.42.0
       p-retry:
         specifier: ^8.0.0
         version: 8.0.0
@@ -540,8 +540,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  mediabunny@1.41.0:
-    resolution: {integrity: sha512-cJWBHvAyRNgTbsx8Z2oHptX/PdiywwsS+GIvv2k9eioXSOzzAemBsHwf7jM6fvW3b65azvZGP9RLuO1DI8JmdA==}
+  mediabunny@1.42.0:
+    resolution: {integrity: sha512-s9ypTqLi6kbh95gC+YaJlG0PkLvMxu37Q/wO/pFZx0fUCA5Ym5mp+2dWoa83mKQ3Uo18aNlgev5iJ5ESZqWwgQ==}
 
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
@@ -882,9 +882,9 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@mediabunny/mp3-encoder@1.42.0(mediabunny@1.41.0)':
+  '@mediabunny/mp3-encoder@1.42.0(mediabunny@1.42.0)':
     dependencies:
-      mediabunny: 1.41.0
+      mediabunny: 1.42.0
 
   '@rollup/rollup-android-arm-eabi@4.60.1':
     optional: true
@@ -1121,7 +1121,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  mediabunny@1.41.0:
+  mediabunny@1.42.0:
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.11
       '@types/dom-webcodecs': 0.1.13
