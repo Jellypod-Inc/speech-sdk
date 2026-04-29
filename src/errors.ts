@@ -12,6 +12,7 @@ export class ApiError extends SpeechSDKError {
   readonly code?: string;
   // Set by generateConversation's stitch path; undefined for single-turn calls and single-API-call paths (gateway, native dialogue).
   readonly turnIndex?: number;
+  readonly retryAfterMs?: number;
 
   constructor(
     message: string,
@@ -21,6 +22,7 @@ export class ApiError extends SpeechSDKError {
       cause?: unknown;
       code?: string;
       turnIndex?: number;
+      retryAfterMs?: number;
     }
   ) {
     super(message, { cause: options.cause });
@@ -29,6 +31,7 @@ export class ApiError extends SpeechSDKError {
     this.responseBody = options.responseBody;
     this.code = options.code;
     this.turnIndex = options.turnIndex;
+    this.retryAfterMs = options.retryAfterMs;
   }
 }
 
@@ -51,6 +54,7 @@ export function withTurnIndex(err: unknown, turnIndex: number): unknown {
       code: err.code,
       cause: err,
       turnIndex,
+      retryAfterMs: err.retryAfterMs,
     });
   }
   if (err instanceof NoSpeechGeneratedError) {

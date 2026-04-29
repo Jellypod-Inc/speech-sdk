@@ -413,6 +413,7 @@ try {
     error.statusCode;    // 401, 429, 500, ...
     error.responseBody;
     error.code;          // stable machine-readable code (optional)
+    error.retryAfterMs;  // parsed Retry-After header in ms (optional)
   }
 }
 ```
@@ -430,7 +431,7 @@ try {
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
 
-Retries 5xx and network errors with exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); does not retry 4xx. Default 2 retries; override via `maxRetries`.
+Retries 5xx, 429, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); does not retry other 4xx. On 429 (or any error with a `Retry-After` header), the SDK honors the header — sleeping `Retry-After` before the next attempt — capped at 60s to avoid pathological waits. The parsed value is also surfaced as `ApiError.retryAfterMs`. Default 2 retries; override via `maxRetries`.
 
 ## Development
 
