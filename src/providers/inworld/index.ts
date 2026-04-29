@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
+import { base64ToUint8Array } from "../../audio-utils.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -253,15 +255,38 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     }
     return;
   }
-}
 
-function base64ToBytes(b64: string): Uint8Array {
-  const binaryString = atob(b64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+      case "pcm":
+        // LINEAR16 returns 16-bit PCM with a WAV header; SDK unwraps for pcm.
+        return {
+          providerOptions: {
+            audio_config: {
+              audio_encoding: "LINEAR16",
+              sample_rate_hertz: 24_000,
+            },
+          },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: {
+            audio_config: {
+              audio_encoding: "MP3",
+              sample_rate_hertz: 48_000,
+            },
+          },
+          expectedMediaType: "audio/mpeg",
+        };
+      default:
+        return;
+    }
   }
-  return bytes;
 }
 
 interface InworldNdjsonChunk {
@@ -287,7 +312,7 @@ function extractAudio(line: string): Uint8Array | null {
   if (!b64) {
     return null;
   }
-  return base64ToBytes(b64);
+  return base64ToUint8Array(b64);
 }
 
 function emitLine(

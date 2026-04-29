@@ -274,10 +274,12 @@ result.audio.mediaType; // "audio/mpeg"
 ```
 
 Supported explicit formats are `wav`, `mp3`, and `pcm`.
-For direct providers, explicit output conversion requires a provider with a decodable PCM/WAV mode.
+
+For direct providers, the SDK first asks each provider whether it can natively produce the requested format. If yes, the provider returns it directly and the SDK passes the bytes through unchanged. If the provider can return WAV/PCM but not the requested format (e.g. ElevenLabs has no native WAV output, Cartesia has no native MP3), the SDK requests a decodable format and converts via mediabunny. The SDK never decodes compressed audio (mp3/opus/aac) — providers must return wav/pcm for any local conversion to succeed.
+
 For gateway models, the SDK forwards `output` to the gateway API unchanged.
 
-MP3 encoding uses [`@breezystack/lamejs`](https://www.npmjs.com/package/@breezystack/lamejs) (LGPL-3.0-or-later), loaded dynamically only when MP3 output is requested. See [`NOTICE`](./NOTICE) for attribution and license details.
+MP3 encoding uses [`@mediabunny/mp3-encoder`](https://mediabunny.dev/guide/extensions/mp3-encoder), loaded dynamically only when MP3 output is requested and the host environment does not already provide native MP3 encoding.
 
 ## Audio tags
 

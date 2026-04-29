@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  type AudioOutput,
+  DEFAULT_MP3_BITRATE_KBPS,
+} from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { SpeechSDKError } from "../../errors.js";
@@ -426,6 +430,33 @@ export class ElevenLabsSpeechProvider
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "pcm":
+      case "wav":
+        return {
+          providerOptions: { output_format: "pcm_24000" },
+          expectedMediaType: "audio/pcm;rate=24000",
+        };
+      case "mp3": {
+        const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
+        const supportedBitrates = [32, 64, 96, 128, 192];
+        const closest = supportedBitrates.reduce((prev, curr) =>
+          Math.abs(curr - bitrate) < Math.abs(prev - bitrate) ? curr : prev
+        );
+        return {
+          providerOptions: { output_format: `mp3_44100_${closest}` },
+          expectedMediaType: "audio/mpeg",
+        };
+      }
+      default:
+        return;
+    }
   }
 
   dialogueCapabilities(modelId: string) {

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { AudioOutput } from "../../audio-output.js";
+import { uint8ArrayToBase64 } from "../../audio-utils.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -95,11 +97,7 @@ export class MistralSpeechProvider
       } else if ("audio" in options.voice) {
         const audio = options.voice.audio;
         if (audio instanceof Uint8Array) {
-          let binaryString = "";
-          for (const byte of audio) {
-            binaryString += String.fromCharCode(byte);
-          }
-          body.ref_audio = btoa(binaryString);
+          body.ref_audio = uint8ArrayToBase64(audio);
         } else {
           body.ref_audio = audio;
         }
@@ -162,11 +160,7 @@ export class MistralSpeechProvider
       } else if ("audio" in options.voice) {
         const audio = options.voice.audio;
         if (audio instanceof Uint8Array) {
-          let binaryString = "";
-          for (const byte of audio) {
-            binaryString += String.fromCharCode(byte);
-          }
-          body.ref_audio = btoa(binaryString);
+          body.ref_audio = uint8ArrayToBase64(audio);
         } else {
           body.ref_audio = audio;
         }
@@ -222,6 +216,28 @@ export class MistralSpeechProvider
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "mp3":
+        return {
+          providerOptions: { response_format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+      case "wav":
+        // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the decoder to convert to int16.
+        return {
+          providerOptions: { response_format: "pcm" },
+          expectedMediaType: "audio/pcm;rate=24000;encoding=float32",
+        };
+      default:
+        return;
+    }
   }
 }
 

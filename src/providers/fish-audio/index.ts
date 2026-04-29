@@ -1,3 +1,4 @@
+import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import {
   handleErrorResponse,
@@ -165,6 +166,31 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       };
     }
     return;
+  }
+
+  resolveOutputFormat(modelId: string, output: AudioOutput) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    switch (output.format) {
+      case "wav":
+        return {
+          providerOptions: { format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      case "mp3":
+        return {
+          providerOptions: { format: "mp3" },
+          expectedMediaType: "audio/mpeg",
+        };
+      case "pcm":
+        return {
+          providerOptions: { format: "wav" },
+          expectedMediaType: "audio/wav",
+        };
+      default:
+        return;
+    }
   }
 
   dialogueCapabilities(modelId: string) {
