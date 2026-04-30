@@ -1,7 +1,7 @@
 export interface Pronunciation {
-  readonly word: string;
-  readonly replacement: string;
   readonly caseSensitive?: boolean;
+  readonly replacement: string;
+  readonly word: string;
 }
 
 export interface PronunciationsInput {
@@ -11,6 +11,6 @@ export interface PronunciationsInput {
 
 export interface Edit {
   readonly originalRange: readonly [number, number];
-  readonly replacementRange: readonly [number, number];
   readonly originalWord: string;
+  readonly replacementRange: readonly [number, number];
 }

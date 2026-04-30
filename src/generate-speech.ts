@@ -66,13 +66,28 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   validatePronunciationsInput(options.pronunciations, isGateway);
 
-  const { text: processedTextForSubstitution, edits: pronunciationEdits } =
-    !isGateway && options.pronunciations?.rules?.length
-      ? (() => {
-          const ruleMap = mergeRules(options.pronunciations.rules);
-          return substitute(options.text, ruleMap);
-        })()
-      : { text: options.text, edits: [] as readonly Edit[] };
+  const { text: strippedText, warnings } = preprocessText(
+    resolved,
+    options.text,
+    modelIdentifier
+  );
+
+  if (strippedText.trim().length === 0) {
+    throw new NoSpeechGeneratedError(
+      warnings.length > 0
+        ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
+        : "Text must not be empty."
+    );
+  }
+
+  let textToSend = strippedText;
+  let pronunciationEdits: readonly Edit[] = [];
+  if (!isGateway && options.pronunciations?.rules?.length) {
+    const ruleMap = mergeRules(options.pronunciations.rules);
+    const subbed = substitute(strippedText, ruleMap);
+    textToSend = subbed.text;
+    pronunciationEdits = subbed.edits;
+  }
 
   const providerOptions = resolveProviderOptionsForLocalDecoding({
     resolved,
@@ -82,20 +97,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     output: options.output,
     callerOptions: options.providerOptions,
   });
-
-  const { text: processedText, warnings } = preprocessText(
-    resolved,
-    processedTextForSubstitution,
-    modelIdentifier
-  );
-
-  if (processedText.trim().length === 0) {
-    throw new NoSpeechGeneratedError(
-      warnings.length > 0
-        ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
-        : "Text must not be empty."
-    );
-  }
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
@@ -119,7 +120,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
       isGateway
         ? resolved.provider.generate({
             modelId: resolved.modelId,
-            text: processedText,
+            text: textToSend,
             voice: voice as unknown as string,
             providerOptions,
             abortSignal,
@@ -131,7 +132,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
           } as Parameters<typeof resolved.provider.generate>[0])
         : resolved.provider.generate({
             modelId: resolved.modelId,
-            text: processedText,
+            text: textToSend,
             voice,
             providerOptions,
             abortSignal,
@@ -179,16 +180,12 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const finalTimestamps =
     resolvedTimestamps && pronunciationEdits.length > 0
-      ? inverseAlign(
-          resolvedTimestamps,
-          processedTextForSubstitution,
-          pronunciationEdits
-        )
+      ? inverseAlign(resolvedTimestamps, textToSend, pronunciationEdits)
       : resolvedTimestamps;
 
   const metadata: SpeechMetadata = {
     latencyMs,
-    inputChars: processedText.length,
+    inputChars: textToSend.length,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 

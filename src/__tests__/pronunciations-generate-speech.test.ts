@@ -3,6 +3,8 @@ import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, SpeechProvider } from "../speech-provider.js";
 
 const DICTIONARY_IDS_PATTERN = /dictionaryIds/i;
+const SUBSTITUTED_PATTERN = /el el em/;
+const AUDIO_TAG_PATTERN = /\[pause\]/;
 
 function fakeModel(spy: ReturnType<typeof vi.fn>): ResolvedModel<string> {
   const provider: SpeechProvider<string, string> = {
@@ -69,5 +71,38 @@ describe("generateSpeech with pronunciations", () => {
       })
     ).rejects.toThrow(DICTIONARY_IDS_PATTERN);
     expect(generateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("generateSpeech with pronunciations + audio tags", () => {
+  it("strips audio tags before substituting (so edits anchor to provider-visible text)", async () => {
+    const generateSpy = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+    });
+    await generateSpeech({
+      model: fakeModel(generateSpy),
+      voice: "v1",
+      text: "Say LLM [pause] and LLM",
+      pronunciations: { rules: [{ word: "LLM", replacement: "el el em" }] },
+    });
+
+    const sentText = generateSpy.mock.calls[0][0].text;
+    expect(sentText).toMatch(SUBSTITUTED_PATTERN);
+    expect(sentText).not.toMatch(AUDIO_TAG_PATTERN);
+  });
+
+  it("is a no-op when pronunciations is undefined (text passes through audio-tag stripping only)", async () => {
+    const generateSpy = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+    });
+    await generateSpeech({
+      model: fakeModel(generateSpy),
+      voice: "v1",
+      text: "Plain text without rules",
+    });
+
+    expect(generateSpy.mock.calls[0][0].text).toBe("Plain text without rules");
   });
 });
