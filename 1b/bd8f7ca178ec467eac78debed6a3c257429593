@@ -1,0 +1,23 @@
+README.md
+  ad9a63104d944004 294-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1bbd8f7ca178ec467eac78debed6a3c257429593",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 4,
+      "accepted_lines": 40,
+      "overriden_lines": 0
+    }
+  }
+}
