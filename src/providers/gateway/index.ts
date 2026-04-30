@@ -253,6 +253,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
     output?: AudioOutput;
+    pronunciations?: PronunciationsInput;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -302,6 +303,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.output) {
       body.output = options.output;
+    }
+    if (options.pronunciations) {
+      body.pronunciations = options.pronunciations;
     }
 
     const url = options.includeTimestamps

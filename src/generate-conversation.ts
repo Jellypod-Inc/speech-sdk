@@ -19,6 +19,7 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -97,6 +98,9 @@ export async function generateConversation<V extends Voice = Voice>(
     turns: options.turns,
   });
 
+  const isGateway = path.kind === "gateway";
+  validatePronunciationsInput(options.pronunciations, isGateway);
+
   if (path.kind === "gateway") {
     return await runGateway({
       options,
@@ -138,6 +142,7 @@ export async function generateConversation<V extends Voice = Voice>(
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? false,
+    pronunciations: options.pronunciations,
   });
 
   if (stitched.audio.length === 0) {
@@ -211,6 +216,7 @@ async function runGateway<V extends Voice>(args: {
         headers: options.headers,
         includeTimestamps,
         output: options.output,
+        pronunciations: options.pronunciations,
       }),
     buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
   );
