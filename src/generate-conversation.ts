@@ -19,6 +19,10 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { inverseAlign } from "./pronunciations/inverse-align.js";
+import { mergeRules } from "./pronunciations/merge.js";
+import { substitute } from "./pronunciations/substitute.js";
+import type { Edit } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -314,11 +318,17 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
+  const ruleMap = options.pronunciations?.rules?.length
+    ? mergeRules(options.pronunciations.rules)
+    : null;
+
+  const substitutedTurns = buildSubstitutedTurns(options.turns, ruleMap);
+
   const result = await pRetry(
     () =>
       generateDialogue({
         modelId: resolved.modelId,
-        turns: options.turns.map((t) => ({ voice: t.voice, text: t.text })),
+        turns: substitutedTurns.map((t) => ({ voice: t.voice, text: t.text })),
         providerOptions: dialogueProviderOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
@@ -333,23 +343,10 @@ async function runNative<V extends Voice>(args: {
     throw new NoSpeechGeneratedError();
   }
 
-  let audioBytes: string | Uint8Array = result.audio;
-  // Hume and others omit sample rate from content-type; prefer stitch mediaType.
-  let outputMediaType = stitchOpts?.mediaType ?? result.mediaType;
-
-  if (stitchOpts) {
-    const { adjustVolume } = await import("./volume-adjust.js");
-    audioBytes = await adjustVolume({
-      audio: result.audio,
-      mediaType: stitchOpts.mediaType,
-      volumeDbfs: options.volumeDbfs ?? -20,
-    });
-    outputMediaType = "audio/wav";
-  }
-
-  const audio = new DefaultGeneratedAudioFile({
-    data: audioBytes,
-    mediaType: outputMediaType,
+  const { audio, outputMediaType } = await buildNativeAudio({
+    result,
+    stitchOpts,
+    volumeDbfs: options.volumeDbfs,
   });
 
   const computedDuration = await computeAudioDuration(
@@ -358,7 +355,7 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
-  const { timestamps, warnings: attributionWarnings } =
+  const { timestamps: rawTimestamps, warnings: attributionWarnings } =
     await resolveNativeDialogueTimestamps({
       requestTimestamps,
       nativeTimestamps: result.timestamps,
@@ -368,7 +365,13 @@ async function runNative<V extends Voice>(args: {
       resolved,
       abortSignal: options.abortSignal,
       turns: options.turns,
+      // Attribution must match the audio's actual words (substituted text), not the caller's original.
+      substitutedTurnTexts: substitutedTurns.map((t) => t.text),
     });
+
+  const timestamps = ruleMap
+    ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
+    : rawTimestamps;
 
   const converted = await applyOptionalOutputConversion({
     audio: audio.uint8Array,
@@ -413,6 +416,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   turns: readonly ConversationTurn<V>[];
+  substitutedTurnTexts?: readonly string[];
 }): Promise<{
   timestamps: readonly ConversationWordTimestamp[] | undefined;
   warnings: readonly string[];
@@ -461,7 +465,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
 
   const result = attributeTimestamps({
     timestamps: flatTimestamps,
-    turnTexts: args.turns.map((t) => t.text),
+    turnTexts: args.substitutedTurnTexts ?? args.turns.map((t) => t.text),
     silenceGaps,
   });
 
@@ -469,4 +473,79 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     timestamps: result.timestamps,
     warnings: result.warnings,
   };
+}
+
+async function buildNativeAudio(args: {
+  result: {
+    audio: string | Uint8Array;
+    mediaType: string;
+  };
+  stitchOpts: import("./speech-provider.js").StitchTurnOptions | undefined;
+  volumeDbfs: number | undefined;
+}): Promise<{ audio: DefaultGeneratedAudioFile; outputMediaType: string }> {
+  let audioBytes: string | Uint8Array = args.result.audio;
+  // Hume and others omit sample rate from content-type; prefer stitch mediaType.
+  let outputMediaType = args.stitchOpts?.mediaType ?? args.result.mediaType;
+
+  if (args.stitchOpts) {
+    const { adjustVolume } = await import("./volume-adjust.js");
+    audioBytes = await adjustVolume({
+      audio: args.result.audio as Uint8Array,
+      mediaType: args.stitchOpts.mediaType,
+      volumeDbfs: args.volumeDbfs ?? -20,
+    });
+    outputMediaType = "audio/wav";
+  }
+
+  const audio = new DefaultGeneratedAudioFile({
+    data: audioBytes,
+    mediaType: outputMediaType,
+  });
+
+  return { audio, outputMediaType };
+}
+
+function buildSubstitutedTurns<V extends Voice>(
+  turns: readonly ConversationTurn<V>[],
+  ruleMap: Map<string, import("./pronunciations/types.js").Pronunciation> | null
+): readonly { voice: V; text: string; edits: readonly Edit[] }[] {
+  return turns.map((t) => {
+    if (!ruleMap) {
+      return { voice: t.voice, text: t.text, edits: [] as readonly Edit[] };
+    }
+    const subbed = substitute(t.text, ruleMap);
+    return { voice: t.voice, text: subbed.text, edits: subbed.edits };
+  });
+}
+
+function inverseAlignDialogueTimestamps(
+  timestamps: readonly ConversationWordTimestamp[] | undefined,
+  perTurn: readonly { text: string; edits: readonly Edit[] }[]
+): readonly ConversationWordTimestamp[] | undefined {
+  if (!timestamps) {
+    return timestamps;
+  }
+  const buckets = new Map<number, ConversationWordTimestamp[]>();
+  for (const ts of timestamps) {
+    const bucket = buckets.get(ts.turnIndex);
+    if (bucket) {
+      bucket.push(ts);
+    } else {
+      buckets.set(ts.turnIndex, [ts]);
+    }
+  }
+  const out: ConversationWordTimestamp[] = [];
+  for (let i = 0; i < perTurn.length; i++) {
+    const turnTimestamps = buckets.get(i);
+    if (!turnTimestamps?.length) {
+      continue;
+    }
+    const turn = perTurn[i];
+    if (turn.edits.length === 0) {
+      out.push(...turnTimestamps);
+    } else {
+      out.push(...inverseAlign(turnTimestamps, turn.text, turn.edits));
+    }
+  }
+  return out;
 }

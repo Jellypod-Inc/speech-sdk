@@ -2,6 +2,116 @@ import { describe, expect, it, vi } from "vitest";
 import { generateConversation } from "../generate-conversation.js";
 import { createSpeechGateway } from "../providers/gateway/index.js";
 
+describe("generateConversation with pronunciations (native dialogue path)", () => {
+  it("substitutes each turn's text before native dispatch and inverse-aligns combined timestamps", async () => {
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+      timestamps: [
+        { text: "el", start: 0.0, end: 0.1, turnIndex: 0 },
+        { text: "el", start: 0.1, end: 0.2, turnIndex: 0 },
+        { text: "em", start: 0.2, end: 0.3, turnIndex: 0 },
+        { text: "Hi", start: 0.4, end: 0.5, turnIndex: 1 },
+      ],
+    });
+    const provider = {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: [] }],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+    };
+    const model = { provider, modelId: "d1" } as never;
+
+    const result = await generateConversation({
+      model,
+      timestamps: true,
+      turns: [
+        { text: "LLM", voice: "v1" },
+        { text: "Hi", voice: "v2" },
+      ],
+      pronunciations: { rules: [{ word: "LLM", replacement: "el el em" }] },
+    });
+
+    // Provider was called with substituted turn texts
+    const dialogueArgs = generateDialogue.mock.calls[0][0];
+    expect(dialogueArgs.turns.map((t: { text: string }) => t.text)).toEqual([
+      "el el em",
+      "Hi",
+    ]);
+
+    // Caller-visible timestamps reflect the original word
+    expect(result.timestamps?.map((t) => t.text)).toEqual(["LLM", "Hi"]);
+    expect(result.timestamps?.map((t) => t.turnIndex)).toEqual([0, 1]);
+  });
+
+  it("handles a turn with no pronunciation matches alongside one with matches", async () => {
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+      timestamps: [
+        { text: "Plain", start: 0.0, end: 0.2, turnIndex: 0 },
+        { text: "el", start: 0.3, end: 0.4, turnIndex: 1 },
+        { text: "el", start: 0.4, end: 0.5, turnIndex: 1 },
+        { text: "em", start: 0.5, end: 0.6, turnIndex: 1 },
+      ],
+    });
+    const provider = {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: [] }],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+    };
+    const model = { provider, modelId: "d1" } as never;
+
+    const result = await generateConversation({
+      model,
+      timestamps: true,
+      turns: [
+        { text: "Plain", voice: "v1" },
+        { text: "LLM", voice: "v2" },
+      ],
+      pronunciations: { rules: [{ word: "LLM", replacement: "el el em" }] },
+    });
+
+    expect(result.timestamps?.map((t) => t.text)).toEqual(["Plain", "LLM"]);
+  });
+
+  it("is a no-op on the native path when pronunciations is undefined", async () => {
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+      timestamps: [],
+    });
+    const provider = {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: [] }],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+    };
+    const model = { provider, modelId: "d1" } as never;
+
+    await generateConversation({
+      model,
+      turns: [
+        { text: "Plain", voice: "v1" },
+        { text: "Just text", voice: "v2" },
+      ],
+    });
+
+    const dialogueArgs = generateDialogue.mock.calls[0][0];
+    expect(dialogueArgs.turns.map((t: { text: string }) => t.text)).toEqual([
+      "Plain",
+      "Just text",
+    ]);
+  });
+});
+
 // Top-level regex per lint rules.
 const DICT_IDS_RE = /dictionaryIds/i;
 
