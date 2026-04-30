@@ -9,6 +9,7 @@ import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
+import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -88,28 +89,28 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
 
   const startTime = performance.now();
 
-  const result = await pRetry(
-    () =>
-      isGateway
-        ? streamFn({
-            modelId: resolved.modelId,
-            text: textToSend,
-            voice,
-            providerOptions,
-            abortSignal,
-            headers,
-            pronunciations: options.pronunciations,
-          } as Parameters<typeof streamFn>[0])
-        : streamFn({
-            modelId: resolved.modelId,
-            text: textToSend,
-            voice,
-            providerOptions,
-            abortSignal,
-            headers,
-          }),
-    buildRetryOptions({ maxRetries, abortSignal })
-  );
+  const result = await pRetry(() => {
+    if (isGateway) {
+      const gatewayProvider = resolved.provider as SpeechGatewayProvider;
+      return gatewayProvider.stream({
+        modelId: resolved.modelId,
+        text: textToSend,
+        voice: voice as unknown as string,
+        providerOptions,
+        abortSignal,
+        headers,
+        pronunciations: options.pronunciations,
+      });
+    }
+    return streamFn({
+      modelId: resolved.modelId,
+      text: textToSend,
+      voice,
+      providerOptions,
+      abortSignal,
+      headers,
+    });
+  }, buildRetryOptions({ maxRetries, abortSignal }));
 
   const ttfbMs = Math.round(performance.now() - startTime);
 

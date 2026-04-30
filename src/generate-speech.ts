@@ -20,6 +20,7 @@ import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
+import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -115,32 +116,32 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const startTime = performance.now();
 
-  const result = await pRetry(
-    () =>
-      isGateway
-        ? resolved.provider.generate({
-            modelId: resolved.modelId,
-            text: textToSend,
-            voice: voice as unknown as string,
-            providerOptions,
-            abortSignal,
-            headers,
-            includeTimestamps: shouldRequestNative,
-            volumeDbfs,
-            output: options.output,
-            pronunciations: options.pronunciations,
-          } as Parameters<typeof resolved.provider.generate>[0])
-        : resolved.provider.generate({
-            modelId: resolved.modelId,
-            text: textToSend,
-            voice,
-            providerOptions,
-            abortSignal,
-            headers,
-            includeTimestamps: shouldRequestNative,
-          }),
-    buildRetryOptions({ maxRetries, abortSignal })
-  );
+  const result = await pRetry(() => {
+    if (isGateway) {
+      const gatewayProvider = resolved.provider as SpeechGatewayProvider;
+      return gatewayProvider.generate({
+        modelId: resolved.modelId,
+        text: textToSend,
+        voice: voice as unknown as string,
+        providerOptions,
+        abortSignal,
+        headers,
+        includeTimestamps: shouldRequestNative,
+        volumeDbfs,
+        output: options.output,
+        pronunciations: options.pronunciations,
+      });
+    }
+    return resolved.provider.generate({
+      modelId: resolved.modelId,
+      text: textToSend,
+      voice,
+      providerOptions,
+      abortSignal,
+      headers,
+      includeTimestamps: shouldRequestNative,
+    });
+  }, buildRetryOptions({ maxRetries, abortSignal }));
 
   const latencyMs = Math.round(performance.now() - startTime);
 
