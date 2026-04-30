@@ -9,6 +9,30 @@ function isWordBoundary(text: string, index: number): boolean {
   return NON_WORD_RE.test(text[index]) || NON_WORD_RE.test(text[index - 1]);
 }
 
+function findMatch(
+  text: string,
+  i: number,
+  sortedRules: Pronunciation[]
+): Pronunciation | undefined {
+  for (const rule of sortedRules) {
+    const len = rule.word.length;
+    if (i + len > text.length) {
+      continue;
+    }
+    if (!isWordBoundary(text, i + len)) {
+      continue;
+    }
+    const slice = text.slice(i, i + len);
+    const isMatch = rule.caseSensitive
+      ? slice === rule.word
+      : slice.toLowerCase() === rule.word.toLowerCase();
+    if (isMatch) {
+      return rule;
+    }
+  }
+  return;
+}
+
 export function substitute(
   text: string,
   ruleMap: Map<string, Pronunciation>
@@ -34,24 +58,7 @@ export function substitute(
       continue;
     }
 
-    let matched: Pronunciation | undefined;
-    for (const rule of sortedRules) {
-      const len = rule.word.length;
-      if (i + len > text.length) {
-        continue;
-      }
-      if (!isWordBoundary(text, i + len)) {
-        continue;
-      }
-      const slice = text.slice(i, i + len);
-      const isMatch = rule.caseSensitive
-        ? slice === rule.word
-        : slice.toLowerCase() === rule.word.toLowerCase();
-      if (isMatch) {
-        matched = rule;
-        break;
-      }
-    }
+    const matched = findMatch(text, i, sortedRules);
 
     if (matched) {
       out.push(matched.replacement);

@@ -3,13 +3,20 @@ import { SpeechSDKError } from "../errors.js";
 import { DictionaryIdsRequireGatewayError } from "../pronunciations/errors.js";
 import { validatePronunciationsInput } from "../pronunciations/validate.js";
 
+const RE_DICTIONARY_IDS = /dictionaryIds/i;
+const RE_GATEWAY = /gateway/i;
+const RE_AT_LEAST_ONE = /at least one/i;
+const RE_WORD = /word/i;
+const RE_REPLACEMENT = /replacement/i;
+const RE_DICTIONARY = /dictionary/i;
+
 describe("DictionaryIdsRequireGatewayError", () => {
   it("extends SpeechSDKError and has descriptive message", () => {
     const err = new DictionaryIdsRequireGatewayError();
     expect(err).toBeInstanceOf(SpeechSDKError);
     expect(err.name).toBe("DictionaryIdsRequireGatewayError");
-    expect(err.message).toMatch(/dictionaryIds/i);
-    expect(err.message).toMatch(/gateway/i);
+    expect(err.message).toMatch(RE_DICTIONARY_IDS);
+    expect(err.message).toMatch(RE_GATEWAY);
   });
 });
 
@@ -20,11 +27,11 @@ describe("validatePronunciationsInput", () => {
 
   it("throws when both dictionaryIds and rules are missing/empty", () => {
     expect(() => validatePronunciationsInput({}, false)).toThrowError(
-      /at least one/i
+      RE_AT_LEAST_ONE
     );
     expect(() =>
       validatePronunciationsInput({ dictionaryIds: [], rules: [] }, false)
-    ).toThrowError(/at least one/i);
+    ).toThrowError(RE_AT_LEAST_ONE);
   });
 
   it("throws DictionaryIdsRequireGatewayError when dictionaryIds is non-empty on direct path", () => {
@@ -45,7 +52,7 @@ describe("validatePronunciationsInput", () => {
         { rules: [{ word: "", replacement: "x" }] },
         false
       )
-    ).toThrowError(/word/i);
+    ).toThrowError(RE_WORD);
   });
 
   it("throws on empty replacement", () => {
@@ -54,12 +61,12 @@ describe("validatePronunciationsInput", () => {
         { rules: [{ word: "x", replacement: "" }] },
         false
       )
-    ).toThrowError(/replacement/i);
+    ).toThrowError(RE_REPLACEMENT);
   });
 
   it("throws on empty dictionary id string", () => {
     expect(() =>
       validatePronunciationsInput({ dictionaryIds: [""] }, true)
-    ).toThrowError(/dictionary/i);
+    ).toThrowError(RE_DICTIONARY);
   });
 });
