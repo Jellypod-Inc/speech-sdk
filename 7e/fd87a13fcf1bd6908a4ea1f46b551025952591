@@ -1,0 +1,25 @@
+src/__tests__/pronunciations-conversation.test.ts
+  ad9a63104d944004 5-114
+src/generate-conversation.ts
+  ad9a63104d944004 23-26,331-336,341,365-368,377,387-388,391-394,438,487,496-570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7efd87a13fcf1bd6908a4ea1f46b551025952591",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 220,
+      "total_deletions": 30,
+      "accepted_lines": 209,
+      "overriden_lines": 0
+    }
+  }
+}
