@@ -1,4 +1,5 @@
 import type { AudioOutput } from "./audio-output.js";
+import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
@@ -8,6 +9,10 @@ export type {
   GenerateConversationOptions,
 } from "./conversation/types.js";
 export type { SpeechMetadata } from "./metadata.js";
+export type {
+  Pronunciation,
+  PronunciationsInput,
+} from "./pronunciations/types.js";
 export type { CartesiaSpeechProviderConfig } from "./providers/cartesia/index.js";
 export type { DeepgramSpeechProviderConfig } from "./providers/deepgram/index.js";
 export type { ElevenLabsSpeechProviderConfig } from "./providers/elevenlabs/index.js";
@@ -53,6 +58,7 @@ export interface GenerateSpeechOptions<V extends Voice = Voice> {
   maxRetries?: number;
   model: string | ResolvedModel<V>;
   output?: AudioOutput;
+  pronunciations?: PronunciationsInput;
   providerOptions?: Record<string, unknown>;
   text: string;
   timestamps?: boolean;
