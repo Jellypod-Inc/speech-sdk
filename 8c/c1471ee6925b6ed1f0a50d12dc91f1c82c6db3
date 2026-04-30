@@ -1,0 +1,29 @@
+src/__tests__/pronunciations-validate.test.ts
+  ad9a63104d944004 6-12,18-19,30,34,55,64,70
+src/pronunciations/substitute.ts
+  ad9a63104d944004 12-32,34-35,61
+src/__tests__/pronunciations-inverse-align.test.ts
+  ad9a63104d944004 1-79
+src/pronunciations/inverse-align.ts
+  ad9a63104d944004 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8cc1471ee6925b6ed1f0a50d12dc91f1c82c6db3",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 193,
+      "total_deletions": 25,
+      "accepted_lines": 195,
+      "overriden_lines": 1
+    }
+  }
+}
