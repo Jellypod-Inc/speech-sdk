@@ -105,4 +105,18 @@ describe("generateSpeech with pronunciations + audio tags", () => {
 
     expect(generateSpy.mock.calls[0][0].text).toBe("Plain text without rules");
   });
+
+  it("inputChars metric reflects the caller's original text length, not the substituted length", async () => {
+    const generateSpy = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+    });
+    const result = await generateSpeech({
+      model: fakeModel(generateSpy),
+      voice: "v1",
+      text: "What is LLM?",
+      pronunciations: { rules: [{ word: "LLM", replacement: "el el em" }] },
+    });
+    expect(result.metadata.inputChars).toBe(12);
+  });
 });

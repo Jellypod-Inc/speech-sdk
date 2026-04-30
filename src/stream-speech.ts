@@ -117,7 +117,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
   const metadata: SpeechMetadata = {
     latencyMs: ttfbMs,
     ttfbMs,
-    inputChars: textToSend.length,
+    inputChars: options.text.length,
     ...(result.audioDurationMs != null && {
       audioDurationMs: result.audioDurationMs,
     }),
