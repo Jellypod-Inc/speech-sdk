@@ -23,7 +23,7 @@ export function validatePronunciationsInput(
   }
 
   for (const id of dictIds) {
-    if (typeof id !== "string" || id.length === 0) {
+    if (id.length === 0) {
       throw new SpeechSDKError(
         "pronunciations.dictionaryIds: every id must be a non-empty string."
       );
@@ -31,12 +31,12 @@ export function validatePronunciationsInput(
   }
 
   for (const rule of rules) {
-    if (!rule.word || rule.word.length === 0) {
+    if (rule.word.length === 0) {
       throw new SpeechSDKError(
         "pronunciations.rules: every rule must have a non-empty `word`."
       );
     }
-    if (!rule.replacement || rule.replacement.length === 0) {
+    if (rule.replacement.length === 0) {
       throw new SpeechSDKError(
         "pronunciations.rules: every rule must have a non-empty `replacement`."
       );

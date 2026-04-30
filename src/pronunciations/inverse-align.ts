@@ -10,14 +10,12 @@ function findEditAt(
   );
 }
 
-function locateWordChar(
-  substituted: string,
+function findTokenStart(
+  haystack: string,
   searchFrom: number,
-  word: string
+  token: string
 ): number {
-  const haystack = substituted.toLowerCase();
-  const needle = word.toLowerCase();
-  return haystack.indexOf(needle, searchFrom);
+  return haystack.indexOf(token.toLowerCase(), searchFrom);
 }
 
 export function inverseAlign<T extends WordTimestamp>(
@@ -32,6 +30,7 @@ export function inverseAlign<T extends WordTimestamp>(
   const out: T[] = [];
   let cursor = 0;
   let pendingGroup: { edit: Edit; first: T; last: T } | null = null;
+  const haystack = substitutedText.toLowerCase();
 
   const flushPending = () => {
     if (!pendingGroup) {
@@ -48,7 +47,7 @@ export function inverseAlign<T extends WordTimestamp>(
   };
 
   for (const ts of timestamps) {
-    const pos = locateWordChar(substitutedText, cursor, ts.text);
+    const pos = findTokenStart(haystack, cursor, ts.text);
     if (pos === -1) {
       flushPending();
       out.push(ts);

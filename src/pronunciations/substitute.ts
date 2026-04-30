@@ -12,7 +12,7 @@ function isWordBoundary(text: string, index: number): boolean {
 function findMatch(
   text: string,
   i: number,
-  sortedRules: Pronunciation[]
+  sortedRules: readonly Pronunciation[]
 ): Pronunciation | undefined {
   for (const rule of sortedRules) {
     const len = rule.word.length;

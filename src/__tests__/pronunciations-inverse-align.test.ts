@@ -61,6 +61,25 @@ describe("inverseAlign", () => {
     expect(result[2]).toMatchObject({ start: 0.5, end: 0.8 });
   });
 
+  it("passes through tokens not found in substituted text without advancing cursor", () => {
+    const substituted = "el el em hi";
+    const edits: Edit[] = [
+      { originalRange: [0, 3], replacementRange: [0, 8], originalWord: "LLM" },
+    ];
+    const ts: WordTimestamp[] = [
+      { text: "el", start: 0.0, end: 0.1 },
+      { text: "el", start: 0.1, end: 0.2 },
+      { text: "em", start: 0.2, end: 0.3 },
+      { text: ",", start: 0.3, end: 0.31 },
+      { text: "hi", start: 0.31, end: 0.5 },
+    ];
+    const result = inverseAlign(ts, substituted, edits);
+    expect(result.map((t) => t.text)).toEqual(["LLM", ",", "hi"]);
+    expect(result[0]).toMatchObject({ start: 0.0, end: 0.3 });
+    expect(result[1]).toMatchObject({ text: ",", start: 0.3, end: 0.31 });
+    expect(result[2]).toMatchObject({ text: "hi", start: 0.31, end: 0.5 });
+  });
+
   it("preserves additional fields on conversation timestamps (turnIndex)", () => {
     const substituted = "el el em";
     const edits: Edit[] = [
