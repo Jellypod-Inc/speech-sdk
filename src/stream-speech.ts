@@ -5,11 +5,16 @@ import {
   StreamingNotSupportedError,
 } from "./errors.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { mergeRules } from "./pronunciations/merge.js";
+import { substitute } from "./pronunciations/substitute.js";
+import type { PronunciationsInput } from "./pronunciations/types.js";
+import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
   FEATURES,
   hasFeature,
+  isSpeechGatewayModel,
   type ResolvedModel,
   type Voice,
 } from "./speech-provider.js";
@@ -24,12 +29,15 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
+  pronunciations?: PronunciationsInput;
 }): Promise<StreamSpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
+  const isGateway = isSpeechGatewayModel(resolved);
+  validatePronunciationsInput(options.pronunciations, isGateway);
 
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId
@@ -70,20 +78,36 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
     );
   }
 
+  let textToSend = processedText;
+  if (!isGateway && options.pronunciations?.rules?.length) {
+    const ruleMap = mergeRules(options.pronunciations.rules);
+    textToSend = substitute(processedText, ruleMap).text;
+  }
+
   const streamFn = resolved.provider.stream.bind(resolved.provider);
 
   const startTime = performance.now();
 
   const result = await pRetry(
     () =>
-      streamFn({
-        modelId: resolved.modelId,
-        text: processedText,
-        voice,
-        providerOptions,
-        abortSignal,
-        headers,
-      }),
+      isGateway
+        ? streamFn({
+            modelId: resolved.modelId,
+            text: textToSend,
+            voice,
+            providerOptions,
+            abortSignal,
+            headers,
+            pronunciations: options.pronunciations,
+          } as Parameters<typeof streamFn>[0])
+        : streamFn({
+            modelId: resolved.modelId,
+            text: textToSend,
+            voice,
+            providerOptions,
+            abortSignal,
+            headers,
+          }),
     buildRetryOptions({ maxRetries, abortSignal })
   );
 
@@ -92,7 +116,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
   const metadata: SpeechMetadata = {
     latencyMs: ttfbMs,
     ttfbMs,
-    inputChars: processedText.length,
+    inputChars: textToSend.length,
     ...(result.audioDurationMs != null && {
       audioDurationMs: result.audioDurationMs,
     }),
