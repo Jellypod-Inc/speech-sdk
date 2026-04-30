@@ -18,6 +18,7 @@ describe("substitute", () => {
         originalRange: [8, 11],
         replacementRange: [8, 16],
         originalWord: "LLM",
+        ruleKey: "llm",
       },
     ]);
   });
@@ -60,5 +61,14 @@ describe("substitute", () => {
     const result = substitute("an llm and an LLM", rules);
     expect(result.text).toBe("an ell em and an ell em");
     expect(result.edits).toHaveLength(2);
+  });
+
+  it("populates ruleKey: lowercased word for case-insensitive rules, exact word for case-sensitive", () => {
+    const rules = mergeRules([
+      { word: "LLM", replacement: "el el em" }, // case-insensitive (default)
+      { word: "Apple", replacement: "AAP-pull", caseSensitive: true },
+    ]);
+    const result = substitute("LLM and Apple", rules);
+    expect(result.edits.map((e) => e.ruleKey)).toEqual(["llm", "Apple"]);
   });
 });

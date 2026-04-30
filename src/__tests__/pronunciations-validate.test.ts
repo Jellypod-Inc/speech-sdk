@@ -5,7 +5,6 @@ import { validatePronunciationsInput } from "../pronunciations/validate.js";
 
 const RE_DICTIONARY_IDS = /dictionaryIds/i;
 const RE_GATEWAY = /gateway/i;
-const RE_AT_LEAST_ONE = /at least one/i;
 const RE_WORD = /word/i;
 const RE_REPLACEMENT = /replacement/i;
 const RE_DICTIONARY = /dictionary/i;
@@ -25,13 +24,15 @@ describe("validatePronunciationsInput", () => {
     expect(() => validatePronunciationsInput(undefined, false)).not.toThrow();
   });
 
-  it("throws when both dictionaryIds and rules are missing/empty", () => {
-    expect(() => validatePronunciationsInput({}, false)).toThrowError(
-      RE_AT_LEAST_ONE
-    );
+  it("accepts an empty pronunciations object (gateway server may still apply defaults)", () => {
+    expect(() => validatePronunciationsInput({}, false)).not.toThrow();
+    expect(() => validatePronunciationsInput({}, true)).not.toThrow();
     expect(() =>
       validatePronunciationsInput({ dictionaryIds: [], rules: [] }, false)
-    ).toThrowError(RE_AT_LEAST_ONE);
+    ).not.toThrow();
+    expect(() =>
+      validatePronunciationsInput({ dictionaryIds: [], rules: [] }, true)
+    ).not.toThrow();
   });
 
   it("throws DictionaryIdsRequireGatewayError when dictionaryIds is non-empty on direct path", () => {

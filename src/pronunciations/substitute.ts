@@ -66,6 +66,9 @@ export function substitute(
         originalRange: [i, i + matched.word.length],
         replacementRange: [outLen, outLen + matched.replacement.length],
         originalWord: text.slice(i, i + matched.word.length),
+        ruleKey: matched.caseSensitive
+          ? matched.word
+          : matched.word.toLowerCase(),
       });
       outLen += matched.replacement.length;
       i += matched.word.length;

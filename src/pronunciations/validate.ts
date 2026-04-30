@@ -12,12 +12,6 @@ export function validatePronunciationsInput(
   const dictIds = input.dictionaryIds ?? [];
   const rules = input.rules ?? [];
 
-  if (dictIds.length === 0 && rules.length === 0) {
-    throw new SpeechSDKError(
-      "pronunciations: at least one of dictionaryIds or rules must be non-empty."
-    );
-  }
-
   if (dictIds.length > 0 && !isGateway) {
     throw new DictionaryIdsRequireGatewayError();
   }

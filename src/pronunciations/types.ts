@@ -13,4 +13,5 @@ export interface Edit {
   readonly originalRange: readonly [number, number];
   readonly originalWord: string;
   readonly replacementRange: readonly [number, number];
+  readonly ruleKey: string;
 }

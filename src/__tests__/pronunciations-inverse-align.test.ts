@@ -19,6 +19,7 @@ describe("inverseAlign", () => {
         originalRange: [8, 11],
         replacementRange: [8, 16],
         originalWord: "LLM",
+        ruleKey: "llm",
       },
     ];
     const ts: WordTimestamp[] = [
@@ -39,11 +40,17 @@ describe("inverseAlign", () => {
   it("handles multiple substitutions in one stream", () => {
     const substituted = "el el em and el el em";
     const edits: Edit[] = [
-      { originalRange: [0, 3], replacementRange: [0, 8], originalWord: "LLM" },
+      {
+        originalRange: [0, 3],
+        replacementRange: [0, 8],
+        originalWord: "LLM",
+        ruleKey: "llm",
+      },
       {
         originalRange: [8, 11],
         replacementRange: [13, 21],
         originalWord: "LLM",
+        ruleKey: "llm",
       },
     ];
     const ts: WordTimestamp[] = [
@@ -64,7 +71,12 @@ describe("inverseAlign", () => {
   it("passes through tokens not found in substituted text without advancing cursor", () => {
     const substituted = "el el em hi";
     const edits: Edit[] = [
-      { originalRange: [0, 3], replacementRange: [0, 8], originalWord: "LLM" },
+      {
+        originalRange: [0, 3],
+        replacementRange: [0, 8],
+        originalWord: "LLM",
+        ruleKey: "llm",
+      },
     ];
     const ts: WordTimestamp[] = [
       { text: "el", start: 0.0, end: 0.1 },
@@ -83,7 +95,12 @@ describe("inverseAlign", () => {
   it("preserves additional fields on conversation timestamps (turnIndex)", () => {
     const substituted = "el el em";
     const edits: Edit[] = [
-      { originalRange: [0, 3], replacementRange: [0, 8], originalWord: "LLM" },
+      {
+        originalRange: [0, 3],
+        replacementRange: [0, 8],
+        originalWord: "LLM",
+        ruleKey: "llm",
+      },
     ];
     const ts = [
       { text: "el", start: 0.0, end: 0.1, turnIndex: 2 },
