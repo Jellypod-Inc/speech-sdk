@@ -15,6 +15,11 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { inverseAlign } from "./pronunciations/inverse-align.js";
+import { mergeRules } from "./pronunciations/merge.js";
+import { substitute } from "./pronunciations/substitute.js";
+import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
+import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -41,6 +46,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   volumeDbfs?: number;
   timestamps?: boolean;
   output?: AudioOutput;
+  pronunciations?: PronunciationsInput;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -58,6 +64,16 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
+  validatePronunciationsInput(options.pronunciations, isGateway);
+
+  const { text: processedTextForSubstitution, edits: pronunciationEdits } =
+    !isGateway && options.pronunciations?.rules?.length
+      ? (() => {
+          const ruleMap = mergeRules(options.pronunciations.rules);
+          return substitute(options.text, ruleMap);
+        })()
+      : { text: options.text, edits: [] as readonly Edit[] };
+
   const providerOptions = resolveProviderOptionsForLocalDecoding({
     resolved,
     isGateway,
@@ -69,7 +85,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const { text: processedText, warnings } = preprocessText(
     resolved,
-    options.text,
+    processedTextForSubstitution,
     modelIdentifier
   );
 
@@ -111,7 +127,8 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
             includeTimestamps: shouldRequestNative,
             volumeDbfs,
             output: options.output,
-          })
+            pronunciations: options.pronunciations,
+          } as Parameters<typeof resolved.provider.generate>[0])
         : resolved.provider.generate({
             modelId: resolved.modelId,
             text: processedText,
@@ -160,6 +177,15 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   ]);
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
+  const finalTimestamps =
+    resolvedTimestamps && pronunciationEdits.length > 0
+      ? inverseAlign(
+          resolvedTimestamps,
+          processedTextForSubstitution,
+          pronunciationEdits
+        )
+      : resolvedTimestamps;
+
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: processedText.length,
@@ -171,7 +197,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
-    timestamps: resolvedTimestamps,
+    timestamps: finalTimestamps,
   };
 }
 
