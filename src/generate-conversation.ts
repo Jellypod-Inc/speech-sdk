@@ -60,9 +60,13 @@ const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_CONCURRENCY = 6;
 const DEFAULT_MAX_RETRIES = 2;
 
-export async function generateConversation<V extends Voice = Voice>(
-  options: GenerateConversationOptions<V>
-): Promise<ConversationResult> {
+export async function generateConversation<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> | undefined =
+    | string
+    | ResolvedModel<V>
+    | undefined,
+>(options: GenerateConversationOptions<V, M>): Promise<ConversationResult> {
   validateConversationInput(options);
   validateOutput(options.output);
 

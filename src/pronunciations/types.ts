@@ -9,6 +9,16 @@ export interface PronunciationsInput {
   readonly rules?: readonly Pronunciation[];
 }
 
+// Direct providers can't reach the gateway dictionary store; bare-string models always do.
+export type DirectPronunciationsInput = Omit<
+  PronunciationsInput,
+  "dictionaryIds"
+>;
+
+export type PronunciationsFor<M> = M extends string
+  ? PronunciationsInput
+  : DirectPronunciationsInput;
+
 export interface Edit {
   readonly originalRange: readonly [number, number];
   readonly originalWord: string;

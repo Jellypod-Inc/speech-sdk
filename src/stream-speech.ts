@@ -7,7 +7,7 @@ import {
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
-import type { PronunciationsInput } from "./pronunciations/types.js";
+import type { PronunciationsFor } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -21,8 +21,11 @@ import {
 } from "./speech-provider.js";
 import type { StreamSpeechResult } from "./stream-speech-result.js";
 
-export async function streamSpeech<V extends Voice = Voice>(options: {
-  model: string | ResolvedModel<V>;
+export async function streamSpeech<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+>(options: {
+  model: M;
   text: string;
   voice: V;
   apiKey?: string;
@@ -30,7 +33,7 @@ export async function streamSpeech<V extends Voice = Voice>(options: {
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
-  pronunciations?: PronunciationsInput;
+  pronunciations?: PronunciationsFor<M>;
 }): Promise<StreamSpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;

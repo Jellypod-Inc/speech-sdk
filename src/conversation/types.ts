@@ -1,5 +1,5 @@
 import type { AudioOutput } from "../audio-output.js";
-import type { PronunciationsInput } from "../pronunciations/types.js";
+import type { PronunciationsFor } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
@@ -9,16 +9,22 @@ export interface ConversationTurn<V extends Voice = Voice> {
   readonly voice: V;
 }
 
-export interface GenerateConversationOptions<V extends Voice = Voice> {
+export interface GenerateConversationOptions<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> | undefined =
+    | string
+    | ResolvedModel<V>
+    | undefined,
+> {
   readonly abortSignal?: AbortSignal;
   readonly apiKey?: string;
   readonly gapMs?: number;
   readonly headers?: Record<string, string>;
   readonly maxConcurrency?: number;
   readonly maxRetries?: number;
-  readonly model?: string | ResolvedModel<V>;
+  readonly model?: M;
   readonly output?: AudioOutput;
-  readonly pronunciations?: PronunciationsInput;
+  readonly pronunciations?: PronunciationsFor<M>;
   readonly providerOptions?: Record<string, unknown>;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];

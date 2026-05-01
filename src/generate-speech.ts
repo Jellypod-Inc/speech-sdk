@@ -18,7 +18,7 @@ import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
-import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
+import type { Edit, PronunciationsFor } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -34,8 +34,11 @@ import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
-export async function generateSpeech<V extends Voice = Voice>(options: {
-  model: string | ResolvedModel<V>;
+export async function generateSpeech<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+>(options: {
+  model: M;
   text: string;
   voice: V;
   apiKey?: string;
@@ -47,7 +50,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   volumeDbfs?: number;
   timestamps?: boolean;
   output?: AudioOutput;
-  pronunciations?: PronunciationsInput;
+  pronunciations?: PronunciationsFor<M>;
 }): Promise<SpeechResult> {
   const {
     model,
