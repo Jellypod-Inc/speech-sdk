@@ -5,6 +5,7 @@ import {
   GatewayInputError,
   MissingApiKeyError,
 } from "../../errors.js";
+import type { PronunciationsInput } from "../../pronunciations/types.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
 import type {
   ModelInfo,
@@ -97,6 +98,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     includeTimestamps?: boolean;
     volumeDbfs?: number;
     output?: AudioOutput;
+    pronunciations?: PronunciationsInput;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -123,6 +125,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.output) {
       body.output = options.output;
+    }
+    if (options.pronunciations) {
+      body.pronunciations = options.pronunciations;
     }
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
@@ -172,7 +177,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    pronunciations?: PronunciationsInput;
   }): Promise<{
+    audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
@@ -191,6 +198,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
+    }
+    if (options.pronunciations) {
+      body.pronunciations = options.pronunciations;
     }
 
     const url = `${this.baseURL}/audio/speech`;
@@ -243,6 +253,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
     output?: AudioOutput;
+    pronunciations?: PronunciationsInput;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -292,6 +303,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.output) {
       body.output = options.output;
+    }
+    if (options.pronunciations) {
+      body.pronunciations = options.pronunciations;
     }
 
     const url = options.includeTimestamps

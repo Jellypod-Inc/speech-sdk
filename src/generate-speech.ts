@@ -15,6 +15,12 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
+import { inverseAlign } from "./pronunciations/inverse-align.js";
+import { mergeRules } from "./pronunciations/merge.js";
+import { substitute } from "./pronunciations/substitute.js";
+import type { Edit, PronunciationsFor } from "./pronunciations/types.js";
+import { validatePronunciationsInput } from "./pronunciations/validate.js";
+import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -28,8 +34,11 @@ import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
-export async function generateSpeech<V extends Voice = Voice>(options: {
-  model: string | ResolvedModel<V>;
+export async function generateSpeech<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+>(options: {
+  model: M;
   text: string;
   voice: V;
   apiKey?: string;
@@ -41,6 +50,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   volumeDbfs?: number;
   timestamps?: boolean;
   output?: AudioOutput;
+  pronunciations?: PronunciationsFor<M>;
 }): Promise<SpeechResult> {
   const {
     model,
@@ -58,6 +68,31 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
+  validatePronunciationsInput(options.pronunciations, isGateway);
+
+  const { text: strippedText, warnings } = preprocessText(
+    resolved,
+    options.text,
+    modelIdentifier
+  );
+
+  if (strippedText.trim().length === 0) {
+    throw new NoSpeechGeneratedError(
+      warnings.length > 0
+        ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
+        : "Text must not be empty."
+    );
+  }
+
+  let textToSend = strippedText;
+  let pronunciationEdits: readonly Edit[] = [];
+  if (!isGateway && options.pronunciations?.rules?.length) {
+    const ruleMap = mergeRules(options.pronunciations.rules);
+    const subbed = substitute(strippedText, ruleMap);
+    textToSend = subbed.text;
+    pronunciationEdits = subbed.edits;
+  }
+
   const providerOptions = resolveProviderOptionsForLocalDecoding({
     resolved,
     isGateway,
@@ -66,20 +101,6 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     output: options.output,
     callerOptions: options.providerOptions,
   });
-
-  const { text: processedText, warnings } = preprocessText(
-    resolved,
-    options.text,
-    modelIdentifier
-  );
-
-  if (processedText.trim().length === 0) {
-    throw new NoSpeechGeneratedError(
-      warnings.length > 0
-        ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
-        : "Text must not be empty."
-    );
-  }
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
@@ -98,31 +119,32 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
 
   const startTime = performance.now();
 
-  const result = await pRetry(
-    () =>
-      isGateway
-        ? resolved.provider.generate({
-            modelId: resolved.modelId,
-            text: processedText,
-            voice: voice as unknown as string,
-            providerOptions,
-            abortSignal,
-            headers,
-            includeTimestamps: shouldRequestNative,
-            volumeDbfs,
-            output: options.output,
-          })
-        : resolved.provider.generate({
-            modelId: resolved.modelId,
-            text: processedText,
-            voice,
-            providerOptions,
-            abortSignal,
-            headers,
-            includeTimestamps: shouldRequestNative,
-          }),
-    buildRetryOptions({ maxRetries, abortSignal })
-  );
+  const result = await pRetry(() => {
+    if (isGateway) {
+      const gatewayProvider = resolved.provider as SpeechGatewayProvider;
+      return gatewayProvider.generate({
+        modelId: resolved.modelId,
+        text: textToSend,
+        voice: voice as unknown as string,
+        providerOptions,
+        abortSignal,
+        headers,
+        includeTimestamps: shouldRequestNative,
+        volumeDbfs,
+        output: options.output,
+        pronunciations: options.pronunciations,
+      });
+    }
+    return resolved.provider.generate({
+      modelId: resolved.modelId,
+      text: textToSend,
+      voice,
+      providerOptions,
+      abortSignal,
+      headers,
+      includeTimestamps: shouldRequestNative,
+    });
+  }, buildRetryOptions({ maxRetries, abortSignal }));
 
   const latencyMs = Math.round(performance.now() - startTime);
 
@@ -160,9 +182,14 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
   ]);
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
+  const finalTimestamps =
+    resolvedTimestamps && pronunciationEdits.length > 0
+      ? inverseAlign(resolvedTimestamps, textToSend, pronunciationEdits)
+      : resolvedTimestamps;
+
   const metadata: SpeechMetadata = {
     latencyMs,
-    inputChars: processedText.length,
+    inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
@@ -171,7 +198,7 @@ export async function generateSpeech<V extends Voice = Voice>(options: {
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
-    timestamps: resolvedTimestamps,
+    timestamps: finalTimestamps,
   };
 }
 

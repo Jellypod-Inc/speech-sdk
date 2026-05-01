@@ -7,6 +7,7 @@ import { withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { SpeechMetadata } from "../metadata.js";
+import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import { concatPcmToWav, dbfsToInt16Rms, normalizeRms } from "./pcm-concat.js";
@@ -21,6 +22,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly maxConcurrency: number;
   readonly maxRetries: number;
   readonly output?: AudioOutput;
+  readonly pronunciations?: PronunciationsInput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
@@ -103,6 +105,7 @@ export async function runStitch<V extends Voice>(
           abortSignal: input.abortSignal,
           headers: input.headers,
           timestamps: input.timestamps,
+          pronunciations: input.pronunciations,
         });
       } catch (err) {
         throw withTurnIndex(err, i);
