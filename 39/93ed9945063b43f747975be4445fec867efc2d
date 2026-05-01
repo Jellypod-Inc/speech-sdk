@@ -1,0 +1,25 @@
+src/pronunciations/validate.ts
+  ad9a63104d944004 1-14,21-25,27-33,35-38,40-45
+src/__tests__/pronunciations-validate.test.ts
+  ad9a63104d944004 1-3,5-10,15-20,25-26,28-47,49-56,58-62,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3993ed9945063b43f747975be4445fec867efc2d",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 97,
+      "total_deletions": 0,
+      "accepted_lines": 80,
+      "overriden_lines": 0
+    }
+  }
+}

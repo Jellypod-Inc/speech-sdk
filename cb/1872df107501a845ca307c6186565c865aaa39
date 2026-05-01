@@ -1,0 +1,31 @@
+src/__tests__/pronunciations-conversation.test.ts
+  ad9a63104d944004 1-122
+src/generate-conversation.ts
+  ad9a63104d944004 101-103,145,219,316,471-472
+src/providers/gateway/index.ts
+  ad9a63104d944004 8,101,129-131,180,182,202-204,306-309
+src/conversation/stitch.ts
+  ad9a63104d944004 10,25,108
+src/conversation/types.ts
+  ad9a63104d944004 2,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cb1872df107501a845ca307c6186565c865aaa39",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 170,
+      "total_deletions": 33,
+      "accepted_lines": 136,
+      "overriden_lines": 0
+    }
+  }
+}

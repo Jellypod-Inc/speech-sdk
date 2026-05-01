@@ -1,0 +1,25 @@
+src/__tests__/pronunciations-generate-speech.test.ts
+  ad9a63104d944004 1-11,13-73
+src/generate-speech.ts
+  ad9a63104d944004 18-22,49,67-68,98-99,180-181,187-188,200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9909bd7ae925f259bf6612f2bf87efcc170231ac",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 102,
+      "total_deletions": 5,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,25 @@
+src/__tests__/pronunciations-substitute.test.ts
+  ad9a63104d944004 1-64
+src/pronunciations/substitute.ts
+  ad9a63104d944004 1-19,22-36,55-56,58,62,65-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6e15e2339f574b5364b532cbe52ce601de451517",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 137,
+      "total_deletions": 0,
+      "accepted_lines": 111,
+      "overriden_lines": 0
+    }
+  }
+}

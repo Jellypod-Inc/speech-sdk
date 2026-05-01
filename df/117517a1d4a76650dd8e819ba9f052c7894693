@@ -1,0 +1,25 @@
+src/__tests__/pronunciations-stream-speech.test.ts
+  ad9a63104d944004 1-84
+src/stream-speech.ts
+  ad9a63104d944004 8-11,17,32,39-40,81-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "df117517a1d4a76650dd8e819ba9f052c7894693",
+  "prompts": {
+    "ad9a63104d944004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d5f13d2-07d2-4ad7-9c5b-39bcad5df3a0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 120,
+      "total_deletions": 12,
+      "accepted_lines": 98,
+      "overriden_lines": 0
+    }
+  }
+}
