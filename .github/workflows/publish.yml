@@ -25,4 +25,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm test
+
+      - name: Verify version matches release type
+        env:
+          IS_PRERELEASE_RELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            IS_PRERELEASE_VERSION=true
+          else
+            IS_PRERELEASE_VERSION=false
+          fi
+          if [ "$IS_PRERELEASE_VERSION" != "$IS_PRERELEASE_RELEASE" ]; then
+            echo "::error::Version '$VERSION' (prerelease=$IS_PRERELEASE_VERSION) does not match GitHub Release prerelease flag ($IS_PRERELEASE_RELEASE). Refusing to publish."
+            exit 1
+          fi
+
       - run: pnpm publish --provenance --no-git-checks --tag ${{ github.event.release.prerelease && 'next' || 'latest' }}
