@@ -1,0 +1,29 @@
+src/__tests__/pronunciations-substitute.test.ts
+  93a0c8ebc7bb94f9 33-39
+src/pronunciations/merge.ts
+  93a0c8ebc7bb94f9 3-7,14
+src/pronunciations/substitute.ts
+  93a0c8ebc7bb94f9 3-4,12,18-20,31,33,39-42,51-52,68,71,73-76,78-79
+src/__tests__/pronunciations-merge.test.ts
+  93a0c8ebc7bb94f9 2,12,23-24,32-33,42-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f6e17de5fecce24e34d9de26058a57f93495f8d8",
+  "prompts": {
+    "93a0c8ebc7bb94f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "455108df-09c3-4247-bc98-ade7697c260a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 58,
+      "total_deletions": 35,
+      "accepted_lines": 53,
+      "overriden_lines": 2
+    }
+  }
+}
