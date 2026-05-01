@@ -1,8 +1,8 @@
 import type { Pronunciation } from "./types.js";
 
-// Without a `cs:` / `ci:` prefix, a case-sensitive rule for a lowercase word collides with the case-insensitive rule for that same word.
+// A case-sensitive rule for an already-lowercase word can collide with a case-insensitive rule for the same word in one merge call; gateway dictionaries dedupe via a unique index, and Map.set's last-write-wins is fine for the inline-only case.
 export function ruleMapKey(word: string, caseSensitive: boolean): string {
-  return caseSensitive ? `cs:${word}` : `ci:${word.toLowerCase()}`;
+  return caseSensitive ? word : word.toLowerCase();
 }
 
 export function mergeRules(

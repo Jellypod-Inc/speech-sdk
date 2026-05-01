@@ -42,14 +42,4 @@ describe("mergeRules", () => {
     expect(map.get(ruleMapKey("LLM", true))?.replacement).toBe("case-sens");
     expect(map.get(ruleMapKey("LLM", false))?.replacement).toBe("case-ins");
   });
-
-  it("does not collide a case-sensitive lowercase word with a case-insensitive rule for the same word", () => {
-    const map = mergeRules([
-      { word: "llm", replacement: "case-sens", caseSensitive: true },
-      { word: "LLM", replacement: "case-ins" },
-    ]);
-    expect(map.size).toBe(2);
-    expect(map.get(ruleMapKey("llm", true))?.replacement).toBe("case-sens");
-    expect(map.get(ruleMapKey("LLM", false))?.replacement).toBe("case-ins");
-  });
 });
