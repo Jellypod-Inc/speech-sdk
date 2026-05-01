@@ -293,6 +293,41 @@ await generateSpeech({
 });
 ```
 
+## Pronunciations
+
+Customize how specific words are pronounced. Rules are applied as text substitution before the request is sent to the provider; word timestamps are inverse-mapped on return so the substitution is invisible to the caller.
+
+```ts
+import { generateSpeech } from '@speech-sdk/core';
+
+await generateSpeech({
+  model: 'openai/tts-1', // gateway path; or use createOpenAI()(...)
+  voice: 'alloy',
+  text: 'What is LLM?',
+  pronunciations: {
+    rules: [{ word: 'LLM', replacement: 'el el em' }],
+  },
+});
+```
+
+Stored dictionaries are referenced by ID and resolved server-side (gateway path only):
+
+```ts
+await generateSpeech({
+  model: 'openai/tts-1',
+  voice: 'alloy',
+  text: 'What is LLM?',
+  pronunciations: {
+    dictionaryIds: ['dict_company_terms'],
+    rules: [{ word: 'LLM', replacement: 'el el em' }], // overrides dict matches
+  },
+});
+```
+
+`dictionaryIds` requires the gateway path. On the direct-provider path, passing dictionary IDs throws `DictionaryIdsRequireGatewayError`. Inline `rules` work on both paths.
+
+The same option is available on `streamSpeech` and `generateConversation`. On `generateConversation`, the option applies globally to every turn.
+
 ## Voice cloning
 
 Some providers support reference-audio cloning. Pass a voice object instead of a string.
