@@ -52,6 +52,16 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 - Tests use vitest with globals enabled
 - Run `pnpm fix` before committing to ensure formatting compliance
 
+## Versioning & Releases
+
+Follow semver. Prereleases use the canonical `0.N.M-alpha.K` form so they collapse cleanly into the corresponding stable `0.N.M`.
+
+- **Stable**: `0.8.0`, `0.8.1`, `0.9.0`. Published to npm `latest`.
+- **Prerelease**: `0.9.0-alpha.0`, `0.9.0-alpha.1`, … all pre-patches of the same target `0.9.0`. Published to npm `next`.
+- When the next stable is cut, drop the suffix: `0.9.0-alpha.3` → `0.9.0`. Do **not** keep incrementing the minor/patch on the alpha track (e.g. `0.9.0-alpha`, `0.9.1-alpha`, `0.9.2-alpha`) — that creates phantom stable versions that never shipped and confuses npm's version ordering.
+- Bump the alpha counter (`-alpha.K`), not the minor/patch, between prereleases of the same target.
+- Breaking changes bump the minor while pre-1.0 (`0.8.0` → `0.9.0`); features alone can ride a patch on a stable line if no API changes.
+
 ## Code Standards
 
 Formatting and linting enforced by Biome via ultracite. Husky pre-commit hook runs tests and lint automatically.
