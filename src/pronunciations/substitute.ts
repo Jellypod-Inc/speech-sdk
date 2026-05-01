@@ -9,12 +9,15 @@ function isWordBoundary(text: string, index: number): boolean {
   return NON_WORD_RE.test(text[index]) || NON_WORD_RE.test(text[index - 1]);
 }
 
+type RuleEntry = readonly [key: string, rule: Pronunciation];
+
 function findMatch(
   text: string,
   i: number,
-  sortedRules: readonly Pronunciation[]
-): Pronunciation | undefined {
-  for (const rule of sortedRules) {
+  sortedEntries: readonly RuleEntry[]
+): RuleEntry | undefined {
+  for (const entry of sortedEntries) {
+    const [key, rule] = entry;
     const len = rule.word.length;
     if (i + len > text.length) {
       continue;
@@ -25,9 +28,9 @@ function findMatch(
     const slice = text.slice(i, i + len);
     const isMatch = rule.caseSensitive
       ? slice === rule.word
-      : slice.toLowerCase() === rule.word.toLowerCase();
+      : slice.toLowerCase() === key;
     if (isMatch) {
-      return rule;
+      return entry;
     }
   }
   return;
@@ -41,8 +44,8 @@ export function substitute(
     return { text, edits: [] };
   }
 
-  const sortedRules = [...ruleMap.values()].sort(
-    (a, b) => b.word.length - a.word.length
+  const sortedEntries = [...ruleMap.entries()].sort(
+    ([, a], [, b]) => b.word.length - a.word.length
   );
 
   const out: string[] = [];
@@ -58,20 +61,19 @@ export function substitute(
       continue;
     }
 
-    const matched = findMatch(text, i, sortedRules);
+    const matched = findMatch(text, i, sortedEntries);
 
     if (matched) {
-      out.push(matched.replacement);
+      const [key, rule] = matched;
+      out.push(rule.replacement);
       edits.push({
-        originalRange: [i, i + matched.word.length],
-        replacementRange: [outLen, outLen + matched.replacement.length],
-        originalWord: text.slice(i, i + matched.word.length),
-        ruleKey: matched.caseSensitive
-          ? matched.word
-          : matched.word.toLowerCase(),
+        originalRange: [i, i + rule.word.length],
+        replacementRange: [outLen, outLen + rule.replacement.length],
+        originalWord: text.slice(i, i + rule.word.length),
+        ruleKey: key,
       });
-      outLen += matched.replacement.length;
-      i += matched.word.length;
+      outLen += rule.replacement.length;
+      i += rule.word.length;
     } else {
       out.push(text[i]);
       outLen += 1;

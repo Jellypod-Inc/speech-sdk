@@ -22,7 +22,7 @@ import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
-import type { Edit } from "./pronunciations/types.js";
+import type { Edit, Pronunciation } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -30,6 +30,7 @@ import { buildRetryOptions } from "./retry-options.js";
 import {
   modelDeclaresNativeTimestamps,
   type ResolvedModel,
+  type StitchTurnOptions,
   type Voice,
 } from "./speech-provider.js";
 import type {
@@ -364,8 +365,6 @@ async function runNative<V extends Voice>(args: {
       ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
       resolved,
       abortSignal: options.abortSignal,
-      turns: options.turns,
-      // Attribution must match the audio's actual words (substituted text), not the caller's original.
       substitutedTurnTexts: substitutedTurns.map((t) => t.text),
     });
 
@@ -415,8 +414,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   ttsModel: string;
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
-  turns: readonly ConversationTurn<V>[];
-  substitutedTurnTexts?: readonly string[];
+  substitutedTurnTexts: readonly string[];
 }): Promise<{
   timestamps: readonly ConversationWordTimestamp[] | undefined;
   warnings: readonly string[];
@@ -465,7 +463,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
 
   const result = attributeTimestamps({
     timestamps: flatTimestamps,
-    turnTexts: args.substitutedTurnTexts ?? args.turns.map((t) => t.text),
+    turnTexts: args.substitutedTurnTexts,
     silenceGaps,
   });
 
@@ -480,7 +478,7 @@ async function buildNativeAudio(args: {
     audio: string | Uint8Array;
     mediaType: string;
   };
-  stitchOpts: import("./speech-provider.js").StitchTurnOptions | undefined;
+  stitchOpts: StitchTurnOptions | undefined;
   volumeDbfs: number | undefined;
 }): Promise<{ audio: DefaultGeneratedAudioFile; outputMediaType: string }> {
   let audioBytes: string | Uint8Array = args.result.audio;
@@ -507,7 +505,7 @@ async function buildNativeAudio(args: {
 
 function buildSubstitutedTurns<V extends Voice>(
   turns: readonly ConversationTurn<V>[],
-  ruleMap: Map<string, import("./pronunciations/types.js").Pronunciation> | null
+  ruleMap: Map<string, Pronunciation> | null
 ): readonly { voice: V; text: string; edits: readonly Edit[] }[] {
   return turns.map((t) => {
     if (!ruleMap) {
