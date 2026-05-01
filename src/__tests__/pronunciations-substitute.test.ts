@@ -30,6 +30,13 @@ describe("substitute", () => {
     expect(result.edits).toEqual([]);
   });
 
+  it("does not match inside a non-ASCII word (Unicode-aware boundary)", () => {
+    const rules = mergeRules([{ word: "caf", replacement: "X" }]);
+    const result = substitute("café señor", rules);
+    expect(result.text).toBe("café señor");
+    expect(result.edits).toEqual([]);
+  });
+
   it("substitutes multiple occurrences", () => {
     const rules = mergeRules([{ word: "LLM", replacement: "el el em" }]);
     const result = substitute("LLM and LLM.", rules);

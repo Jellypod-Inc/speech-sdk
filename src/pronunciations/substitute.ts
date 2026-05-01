@@ -1,23 +1,23 @@
 import type { Edit, Pronunciation } from "./types.js";
 
-const NON_WORD_RE = /\W/;
+// `\W` treats non-ASCII letters as non-word, falsely reporting word boundaries inside "café" / "señor".
+const WORD_CHAR_RE = /[\p{L}\p{N}_]/u;
 
 function isWordBoundary(text: string, index: number): boolean {
   if (index <= 0 || index >= text.length) {
     return true;
   }
-  return NON_WORD_RE.test(text[index]) || NON_WORD_RE.test(text[index - 1]);
+  return !(
+    WORD_CHAR_RE.test(text[index]) && WORD_CHAR_RE.test(text[index - 1])
+  );
 }
-
-type RuleEntry = readonly [key: string, rule: Pronunciation];
 
 function findMatch(
   text: string,
   i: number,
-  sortedEntries: readonly RuleEntry[]
-): RuleEntry | undefined {
-  for (const entry of sortedEntries) {
-    const [key, rule] = entry;
+  sortedRules: readonly Pronunciation[]
+): Pronunciation | undefined {
+  for (const rule of sortedRules) {
     const len = rule.word.length;
     if (i + len > text.length) {
       continue;
@@ -28,12 +28,16 @@ function findMatch(
     const slice = text.slice(i, i + len);
     const isMatch = rule.caseSensitive
       ? slice === rule.word
-      : slice.toLowerCase() === key;
+      : slice.toLowerCase() === rule.word.toLowerCase();
     if (isMatch) {
-      return entry;
+      return rule;
     }
   }
   return;
+}
+
+function ruleKeyFor(rule: Pronunciation): string {
+  return rule.caseSensitive ? rule.word : rule.word.toLowerCase();
 }
 
 export function substitute(
@@ -44,8 +48,8 @@ export function substitute(
     return { text, edits: [] };
   }
 
-  const sortedEntries = [...ruleMap.entries()].sort(
-    ([, a], [, b]) => b.word.length - a.word.length
+  const sortedRules = [...ruleMap.values()].sort(
+    (a, b) => b.word.length - a.word.length
   );
 
   const out: string[] = [];
@@ -61,19 +65,18 @@ export function substitute(
       continue;
     }
 
-    const matched = findMatch(text, i, sortedEntries);
+    const matched = findMatch(text, i, sortedRules);
 
     if (matched) {
-      const [key, rule] = matched;
-      out.push(rule.replacement);
+      out.push(matched.replacement);
       edits.push({
-        originalRange: [i, i + rule.word.length],
-        replacementRange: [outLen, outLen + rule.replacement.length],
-        originalWord: text.slice(i, i + rule.word.length),
-        ruleKey: key,
+        originalRange: [i, i + matched.word.length],
+        replacementRange: [outLen, outLen + matched.replacement.length],
+        originalWord: text.slice(i, i + matched.word.length),
+        ruleKey: ruleKeyFor(matched),
       });
-      outLen += rule.replacement.length;
-      i += rule.word.length;
+      outLen += matched.replacement.length;
+      i += matched.word.length;
     } else {
       out.push(text[i]);
       outLen += 1;

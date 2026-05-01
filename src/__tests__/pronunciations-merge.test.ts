@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeRules } from "../pronunciations/merge.js";
+import { mergeRules, ruleMapKey } from "../pronunciations/merge.js";
 
 describe("mergeRules", () => {
   it("returns an empty map for empty input", () => {
@@ -9,7 +9,7 @@ describe("mergeRules", () => {
   it("keys case-insensitive rules by lowercased word", () => {
     const map = mergeRules([{ word: "LLM", replacement: "el el em" }]);
     expect(map.size).toBe(1);
-    expect(map.get("llm")).toEqual({
+    expect(map.get(ruleMapKey("LLM", false))).toEqual({
       word: "LLM",
       replacement: "el el em",
       caseSensitive: false,
@@ -20,8 +20,8 @@ describe("mergeRules", () => {
     const map = mergeRules([
       { word: "LLM", replacement: "el el em", caseSensitive: true },
     ]);
-    expect(map.get("LLM")).toBeDefined();
-    expect(map.get("llm")).toBeUndefined();
+    expect(map.get(ruleMapKey("LLM", true))).toBeDefined();
+    expect(map.get(ruleMapKey("LLM", false))).toBeUndefined();
   });
 
   it("last write wins on duplicate keys", () => {
@@ -29,7 +29,8 @@ describe("mergeRules", () => {
       { word: "LLM", replacement: "first" },
       { word: "llm", replacement: "second" },
     ]);
-    expect(map.get("llm")?.replacement).toBe("second");
+    expect(map.size).toBe(1);
+    expect(map.get(ruleMapKey("llm", false))?.replacement).toBe("second");
   });
 
   it("treats case-sensitive and case-insensitive variants of the same word as separate keys", () => {
@@ -38,7 +39,17 @@ describe("mergeRules", () => {
       { word: "LLM", replacement: "case-ins", caseSensitive: false },
     ]);
     expect(map.size).toBe(2);
-    expect(map.get("LLM")?.replacement).toBe("case-sens");
-    expect(map.get("llm")?.replacement).toBe("case-ins");
+    expect(map.get(ruleMapKey("LLM", true))?.replacement).toBe("case-sens");
+    expect(map.get(ruleMapKey("LLM", false))?.replacement).toBe("case-ins");
+  });
+
+  it("does not collide a case-sensitive lowercase word with a case-insensitive rule for the same word", () => {
+    const map = mergeRules([
+      { word: "llm", replacement: "case-sens", caseSensitive: true },
+      { word: "LLM", replacement: "case-ins" },
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get(ruleMapKey("llm", true))?.replacement).toBe("case-sens");
+    expect(map.get(ruleMapKey("LLM", false))?.replacement).toBe("case-ins");
   });
 });
