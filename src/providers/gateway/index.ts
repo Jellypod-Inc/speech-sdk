@@ -262,6 +262,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     includeTimestamps?: boolean;
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
+    moderationRulesetId?: string;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -314,6 +315,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
+    }
+    if (options.moderationRulesetId !== undefined) {
+      body.moderation_ruleset_id = options.moderationRulesetId;
     }
 
     const url = options.includeTimestamps

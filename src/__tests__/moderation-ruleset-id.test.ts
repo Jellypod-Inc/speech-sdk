@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { ModerationRulesetIdRequiresGatewayError } from "../errors.js";
+import { generateConversation } from "../generate-conversation.js";
 import { generateSpeech } from "../generate-speech.js";
 import {
   createSpeechGateway,
   SpeechGatewayProvider,
 } from "../providers/gateway/index.js";
 import { createOpenAI } from "../providers/openai/index.js";
+import type { SpeechProvider } from "../speech-provider.js";
 import { streamSpeech } from "../stream-speech.js";
 
 const RULESET_ID = "11111111-1111-1111-1111-111111111111";
@@ -149,5 +151,133 @@ describe("moderationRulesetId — direct provider path", () => {
         moderationRulesetId: RULESET_ID,
       })
     ).rejects.toBeInstanceOf(ModerationRulesetIdRequiresGatewayError);
+  });
+});
+
+describe("moderationRulesetId — generateConversation gateway path", () => {
+  it("forwards as moderation_ruleset_id on /audio/conversation", async () => {
+    const fetchSpy = mockFetchAudio();
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateConversation({
+      model: gw("openai/gpt-4o-mini-tts"),
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      moderationRulesetId: RULESET_ID,
+    });
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    const body = JSON.parse(init.body as string);
+    expect(body.moderation_ruleset_id).toBe(RULESET_ID);
+    expect(body.moderationRulesetId).toBeUndefined();
+  });
+
+  it("forwards on /audio/conversation/with-timestamps when timestamps are requested", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          audio: btoa("\x01\x02\x03"),
+          mediaType: "audio/mpeg",
+          timestamps: [],
+          warnings: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateConversation({
+      model: gw("openai/gpt-4o-mini-tts"),
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+      timestamps: true,
+      moderationRulesetId: RULESET_ID,
+    });
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
+    );
+    const body = JSON.parse(init.body as string);
+    expect(body.moderation_ruleset_id).toBe(RULESET_ID);
+  });
+
+  it("omits moderation_ruleset_id when caller does not pass it", async () => {
+    const fetchSpy = mockFetchAudio();
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateConversation({
+      model: gw("openai/gpt-4o-mini-tts"),
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voice: "nova", text: "Hello!" },
+      ],
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect("moderation_ruleset_id" in body).toBe(false);
+  });
+});
+
+describe("moderationRulesetId — generateConversation non-gateway paths", () => {
+  it("throws ModerationRulesetIdRequiresGatewayError on the native dialogue path", async () => {
+    const provider: SpeechProvider = {
+      id: "native",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn(),
+      generateDialogue: vi.fn().mockResolvedValue({
+        audio: new Uint8Array([1, 2, 3]),
+        mediaType: "audio/mpeg",
+      }),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        moderationRulesetId: RULESET_ID,
+      })
+    ).rejects.toBeInstanceOf(ModerationRulesetIdRequiresGatewayError);
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+  });
+
+  it("throws ModerationRulesetIdRequiresGatewayError on the local stitch path", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "stitch",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        moderationRulesetId: RULESET_ID,
+      })
+    ).rejects.toBeInstanceOf(ModerationRulesetIdRequiresGatewayError);
+    expect(provider.generate).not.toHaveBeenCalled();
   });
 });

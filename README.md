@@ -86,7 +86,7 @@ The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want 
 
 ### Per-request moderation ruleset (gateway only)
 
-Every gateway synthesis call accepts an optional `moderationRulesetId` (UUID) that overrides the org's default moderation ruleset for that request only. Pass it on `generateSpeech` or `streamSpeech` (including `timestamps: true`).
+Every gateway synthesis call accepts an optional `moderationRulesetId` (UUID) that overrides the org's default moderation ruleset for that request only. Pass it on `generateSpeech`, `streamSpeech`, or `generateConversation` (including `timestamps: true`).
 
 ```ts
 await generateSpeech({
@@ -97,9 +97,9 @@ await generateSpeech({
 });
 ```
 
-If the ID is omitted, or refers to a ruleset that has been deleted or belongs to another org, the gateway falls back to the org's default ruleset. Other lookup errors (transient DB failures, validation) propagate as `ApiError` so a stricter requested ruleset is never silently downgraded mid-incident. The SDK does not validate the UUID format — invalid IDs return `400` from the gateway. Voice rows no longer carry a moderation ruleset; per-request override is the only way to deviate from the default.
+If the ID is omitted, or refers to a ruleset that has been deleted or belongs to another org, the gateway falls back to the org's default ruleset. Other lookup errors (transient DB failures, validation) propagate as `ApiError` so a stricter requested ruleset is never silently downgraded mid-incident. The SDK does not validate the UUID format — invalid IDs return `400` from the gateway. Voice rows no longer carry a moderation ruleset; per-request override is the only way to deviate from the default. On `generateConversation`, the override applies once and covers every turn rendered in that request.
 
-`moderationRulesetId` is gateway-only. Passing it on a direct-provider model (e.g. `createOpenAI()('tts-1')`) throws `ModerationRulesetIdRequiresGatewayError`. It is not currently exposed on `generateConversation` — conversations always use the org default.
+`moderationRulesetId` is gateway-only. Passing it on a direct-provider model (e.g. `createOpenAI()('tts-1')`), or on the native-dialogue / local-stitch conversation paths, throws `ModerationRulesetIdRequiresGatewayError`.
 
 Per-request pronunciation dictionaries are already supported via the existing `pronunciations.dictionaryIds: string[]` field — see [Pronunciations](#pronunciations).
 
