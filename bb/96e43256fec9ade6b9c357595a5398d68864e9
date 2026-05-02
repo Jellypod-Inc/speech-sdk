@@ -1,0 +1,9 @@
+src/__tests__/generate-speech.test.ts
+  0f14e3cdc9f86928 4,304-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "bb96e43256fec9ade6b9c357595a5398d68864e9",
+  "prompts": {}
+}
