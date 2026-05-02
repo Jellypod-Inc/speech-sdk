@@ -1,0 +1,65 @@
+src/providers/xai/index.ts
+  41dbae4019690508 49
+src/sentence-boundaries.ts
+  41dbae4019690508 1-5
+package.json
+  41dbae4019690508 3
+src/generate-conversation.ts
+  41dbae4019690508 31,33,43,108-113,115,158,193-240
+src/errors.ts
+  41dbae4019690508 93-101
+src/__tests__/text-chunker.test.ts
+  41dbae4019690508 1-48
+src/captions.ts
+  41dbae4019690508 1,75
+src/conversation/dispatch.ts
+  41dbae4019690508 21,25,47
+src/__tests__/generate-speech.test.ts
+  41dbae4019690508 2,4,61-288
+src/providers/deepgram/index.ts
+  41dbae4019690508 51
+src/__tests__/e2e/chunking.e2e.test.ts
+  41dbae4019690508 1-55
+src/conversation/stitch.ts
+  41dbae4019690508 23,110,116-121,124
+src/generate-speech.ts
+  41dbae4019690508 14,22-26,34,36-37,43,46-49,66,110,113-115,118-129,147-162,164,166,239-433,476-481,483,486,488,494-497,499,506-516,519-540
+src/providers/fal/index.ts
+  41dbae4019690508 39
+src/providers/elevenlabs/index.ts
+  41dbae4019690508 164,171,178,185
+src/providers/hume/index.ts
+  41dbae4019690508 57,64
+src/providers/openai/index.ts
+  41dbae4019690508 115,122,129
+src/text-chunker.ts
+  41dbae4019690508 1-202
+src/speech-provider.ts
+  41dbae4019690508 28,149-154
+src/conversation/types.ts
+  41dbae4019690508 24
+src/providers/inworld/index.ts
+  41dbae4019690508 82,89
+src/__tests__/generate-conversation.test.ts
+  41dbae4019690508 103-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f318d7064d805782cd40c951bb4bdf481799ecdc",
+  "prompts": {
+    "41dbae4019690508": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019de965-42e3-7472-b231-d217bd3d4b2a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 1782,
+      "total_deletions": 148,
+      "accepted_lines": 1709,
+      "overriden_lines": 0
+    }
+  }
+}
