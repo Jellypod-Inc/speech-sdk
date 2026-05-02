@@ -1,0 +1,29 @@
+src/__tests__/text-chunker.test.ts
+  41dbae4019690508 33-36
+src/text-chunker.ts
+  41dbae4019690508 86-154
+src/generate-conversation.ts
+  41dbae4019690508 223
+src/__tests__/generate-conversation.test.ts
+  41dbae4019690508 146-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "20f1bfca982948876b66b8b5881d979365d028d2",
+  "prompts": {
+    "41dbae4019690508": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019de965-42e3-7472-b231-d217bd3d4b2a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 81,
+      "total_deletions": 2,
+      "accepted_lines": 81,
+      "overriden_lines": 0
+    }
+  }
+}
