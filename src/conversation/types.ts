@@ -21,6 +21,7 @@ export interface GenerateConversationOptions<
   readonly gapMs?: number;
   readonly headers?: Record<string, string>;
   readonly maxConcurrency?: number;
+  readonly maxInputChars?: number;
   readonly maxRetries?: number;
   readonly model?: M;
   readonly output?: AudioOutput;

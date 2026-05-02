@@ -90,6 +90,15 @@ export class OutputConversionUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class TextChunkingUnsupportedError extends SpeechSDKError {
+  constructor(model: string, maxInputChars: number) {
+    super(
+      `${model} requires chunking at ${maxInputChars} input characters, but the provider doesn't expose a decodable PCM/WAV output mode for stitching chunks.`
+    );
+    this.name = "TextChunkingUnsupportedError";
+  }
+}
+
 export class AudioOutputInputError extends SpeechSDKError {
   constructor(message: string) {
     super(message);

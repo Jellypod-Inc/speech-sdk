@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError } from "../errors.js";
+import { ApiError, TextChunkingUnsupportedError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
+import { createSpeechGateway } from "../providers/gateway/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
@@ -55,6 +56,258 @@ describe("generateSpeech", () => {
         providerOptions: { speed: 1.5 },
       })
     );
+  });
+
+  it("splits long text on model maxInputChars and stitches provider chunks", async () => {
+    const pcm = new Uint8Array(new Int16Array(240).buffer);
+    const provider = createMockProvider(undefined, {
+      models: [
+        {
+          id: "test-model",
+          releaseDate: "2026-01-01",
+          languages: ["en"],
+          features: [],
+          maxInputChars: 16,
+        },
+      ],
+      generate: vi.fn().mockImplementation(async ({ text }) => ({
+        audio: pcm,
+        mediaType: "audio/pcm;rate=24000",
+        warnings: [`chunk:${text.length}`],
+      })),
+      getStitchOptions: () => ({
+        providerOptions: { format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "First sentence. Second sentence.",
+      voice: "some-voice",
+      providerOptions: { format: "mp3" },
+    });
+
+    expect(result.audio.mediaType).toBe("audio/wav");
+    expect(result.metadata.inputChars).toBe(32);
+    expect(result.warnings).toEqual(["chunk:15", "chunk:16"]);
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        text: "First sentence.",
+        providerOptions: { format: "pcm" },
+      })
+    );
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        text: "Second sentence.",
+        providerOptions: { format: "pcm" },
+      })
+    );
+  });
+
+  it("offsets native timestamps when stitching chunked speech", async () => {
+    const pcm = new Uint8Array(new Int16Array(24_000).buffer);
+    const provider = createMockProvider(undefined, {
+      models: [
+        {
+          id: "test-model",
+          releaseDate: "2026-01-01",
+          languages: ["en"],
+          features: ["timestamps"],
+          maxInputChars: 16,
+        },
+      ],
+      generate: vi
+        .fn()
+        .mockImplementation(async ({ text, includeTimestamps }) => ({
+          audio: pcm,
+          mediaType: "audio/pcm;rate=24000",
+          timestamps: includeTimestamps
+            ? [{ text: text.split(" ")[0], start: 0, end: 0.25 }]
+            : undefined,
+        })),
+      getStitchOptions: () => ({
+        providerOptions: { format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "First sentence. Second sentence.",
+      voice: "some-voice",
+      timestamps: true,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "First", start: 0, end: 0.25 },
+      { text: "Second", start: 1, end: 1.25 },
+    ]);
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ includeTimestamps: true })
+    );
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ includeTimestamps: true })
+    );
+  });
+
+  it("uses caller maxInputChars even when the model has no explicit limit", async () => {
+    const pcm = new Uint8Array(new Int16Array(240).buffer);
+    const provider = createMockProvider(undefined, {
+      generate: vi.fn().mockImplementation(async ({ text }) => ({
+        audio: pcm,
+        mediaType: "audio/pcm;rate=24000",
+        warnings: [`chunk:${text.length}`],
+      })),
+      getStitchOptions: () => ({
+        providerOptions: { format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "First sentence. Second sentence.",
+      voice: "some-voice",
+      maxInputChars: 16,
+    });
+
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(result.warnings).toEqual(["chunk:15", "chunk:16"]);
+  });
+
+  it("lets caller maxInputChars override a lower provider max", async () => {
+    const provider = createMockProvider(undefined, {
+      models: [
+        {
+          id: "test-model",
+          releaseDate: "2026-01-01",
+          languages: ["en"],
+          features: [],
+          maxInputChars: 16,
+        },
+      ],
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "First sentence. Second sentence.",
+      voice: "some-voice",
+      maxInputChars: 100,
+    });
+
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+    expect(provider.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "First sentence. Second sentence." })
+    );
+  });
+
+  it("does not split long text without explicit model maxInputChars", async () => {
+    const provider = createMockProvider(undefined, {
+      models: [
+        {
+          id: "test-model",
+          releaseDate: "2026-01-01",
+          languages: ["en"],
+          features: [],
+        },
+      ],
+      getStitchOptions: () => ({
+        providerOptions: { format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+
+    await generateSpeech({
+      model: { provider, modelId: "test-model" },
+      text: "First sentence. Second sentence.",
+      voice: "some-voice",
+    });
+
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+    expect(provider.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "First sentence. Second sentence." })
+    );
+  });
+
+  it("does not chunk gateway-routed calls when maxInputChars is provided", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await generateSpeech({
+      model: gateway("openai/tts-1"),
+      text: "First sentence. Second sentence.",
+      voice: "alloy",
+      maxInputChars: 16,
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    const [, init] = fetchFn.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      mode: "inline",
+      model: "openai/tts-1",
+      voice: "alloy",
+      text: "First sentence. Second sentence.",
+    });
+  });
+
+  it("does not validate ignored gateway maxInputChars values", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await generateSpeech({
+      model: gateway("openai/tts-1"),
+      text: "First sentence. Second sentence.",
+      voice: "alloy",
+      maxInputChars: Number.NaN,
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when chunking is required but the provider cannot stitch chunks", async () => {
+    const provider = createMockProvider(undefined, {
+      models: [
+        {
+          id: "test-model",
+          releaseDate: "2026-01-01",
+          languages: ["en"],
+          features: [],
+          maxInputChars: 16,
+        },
+      ],
+    });
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "First sentence. Second sentence.",
+        voice: "some-voice",
+      })
+    ).rejects.toBeInstanceOf(TextChunkingUnsupportedError);
+    expect(provider.generate).not.toHaveBeenCalled();
   });
 
   it("passes headers and abortSignal to provider", async () => {

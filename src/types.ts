@@ -1,5 +1,5 @@
 import type { AudioOutput } from "./audio-output.js";
-import type { PronunciationsInput } from "./pronunciations/types.js";
+import type { PronunciationsFor } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
@@ -51,14 +51,18 @@ export type {
 } from "./timestamps.js";
 export type { TurnTimestamp } from "./turns.js";
 
-export interface GenerateSpeechOptions<V extends Voice = Voice> {
+export interface GenerateSpeechOptions<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+> {
   abortSignal?: AbortSignal;
   apiKey?: string;
   headers?: Record<string, string>;
+  maxInputChars?: number;
   maxRetries?: number;
-  model: string | ResolvedModel<V>;
+  model: M;
   output?: AudioOutput;
-  pronunciations?: PronunciationsInput;
+  pronunciations?: PronunciationsFor<M>;
   providerOptions?: Record<string, unknown>;
   text: string;
   timestamps?: boolean;

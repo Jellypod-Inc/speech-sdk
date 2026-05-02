@@ -36,6 +36,7 @@ export const FAL_MODELS: readonly ModelInfo[] = [
     releaseDate: "2024-10-08",
     languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
     features: ["open-source", "inline-voice-cloning"],
+    maxInputChars: 5000,
   },
   {
     id: "kokoro",

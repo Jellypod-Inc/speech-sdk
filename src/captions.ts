@@ -1,3 +1,4 @@
+import { SENTENCE_TERMINATOR_RE } from "./sentence-boundaries.js";
 import type { WordTimestamp } from "./timestamps.js";
 
 const SECONDS_PER_HOUR = 3600;
@@ -63,10 +64,6 @@ export function formatVttTime(seconds: number): string {
   return formatTimestamp(seconds, ".");
 }
 
-// Sentence terminators: ASCII + CJK + Devanagari + Arabic, optional trailing quote.
-const SENTENCE_TERMINATOR =
-  /[.!?\u3002\uFF01\uFF1F\u0964\u0965\u061F\u06D4]["'\u2018\u2019\u201C\u201D\u300D\u300F]?$/;
-
 // Limitations: "Dr."/"e.g." are treated as sentence ends; Thai etc. fall through to char/duration breaks.
 export function groupIntoSentences(
   words: readonly WordTimestamp[]
@@ -75,7 +72,7 @@ export function groupIntoSentences(
   let current: WordTimestamp[] = [];
   for (const word of words) {
     current.push(word);
-    if (SENTENCE_TERMINATOR.test(word.text.trim())) {
+    if (SENTENCE_TERMINATOR_RE.test(word.text.trim())) {
       sentences.push(current);
       current = [];
     }

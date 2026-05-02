@@ -28,7 +28,9 @@ import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
+  isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
+  modelMaxInputChars,
   type ResolvedModel,
   type StitchTurnOptions,
   type Voice,
@@ -38,6 +40,7 @@ import type {
   ConversationResult,
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
+import { resolveMaxInputChars } from "./text-chunker.js";
 import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
 // biome-ignore lint/performance/noBarrelFile: public entry point — re-export error classes so callers get fn + types + errors from one import
@@ -102,7 +105,14 @@ export async function generateConversation<
     return resolveOnce(model);
   });
 
+  const forceStitch = needsConversationStitchForMaxInputChars({
+    resolvedPerTurn,
+    turns: options.turns,
+    userMaxInputChars: options.maxInputChars,
+  });
+
   const path = chooseConversationPath({
+    forceStitch,
     resolvedPerTurn,
     turns: options.turns,
   });
@@ -145,6 +155,7 @@ export async function generateConversation<
     apiKey: options.apiKey,
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
+    maxInputChars: options.maxInputChars,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     output: options.output,
     volumeDbfs: options.volumeDbfs,
@@ -177,6 +188,56 @@ export async function generateConversation<
     warnings: stitched.warnings.length > 0 ? [...stitched.warnings] : undefined,
     timestamps: stitched.timestamps,
   };
+}
+
+function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
+  resolvedPerTurn: readonly ResolvedModel<V>[];
+  turns: readonly ConversationTurn<V>[];
+  userMaxInputChars: number | undefined;
+}): boolean {
+  let forceStitch = false;
+  let sawGatewayMaxOverride = false;
+  const overrideLogs: string[] = [];
+
+  for (let i = 0; i < args.resolvedPerTurn.length; i++) {
+    const resolved = args.resolvedPerTurn[i];
+    if (isSpeechGatewayModel(resolved)) {
+      sawGatewayMaxOverride ||= args.userMaxInputChars != null;
+      continue;
+    }
+
+    const resolution = resolveMaxInputChars({
+      providerMaxInputChars: modelMaxInputChars(resolved),
+      userMaxInputChars: args.userMaxInputChars,
+    });
+    const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
+
+    if (resolution.userExceedsProvider) {
+      overrideLogs.push(
+        `${modelIdentifier}: caller maxInputChars=${resolution.userMaxInputChars} exceeds provider maxInputChars=${resolution.providerMaxInputChars}; the provider may reject oversized chunks.`
+      );
+    }
+
+    if (
+      resolution.value != null &&
+      (args.turns[i]?.text.length ?? 0) > resolution.value
+    ) {
+      forceStitch = true;
+    }
+  }
+
+  if (sawGatewayMaxOverride) {
+    debug(
+      "generateConversation: maxInputChars is not applied on the speech gateway path; the gateway server owns request processing."
+    );
+  }
+  if (!forceStitch) {
+    for (const message of overrideLogs) {
+      debug(message);
+    }
+  }
+
+  return forceStitch;
 }
 
 async function runGateway<V extends Voice>(args: {
