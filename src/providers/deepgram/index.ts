@@ -48,6 +48,7 @@ export const DEEPGRAM_MODELS: readonly ModelInfo[] = [
     releaseDate: "2025-04-15",
     languages: ["en", "es", "de", "fr", "it", "ja", "nl"],
     features: ["streaming"],
+    maxInputChars: 2000,
   },
 ] as const;
 

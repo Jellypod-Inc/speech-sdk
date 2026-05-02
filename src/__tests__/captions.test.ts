@@ -143,6 +143,12 @@ describe("groupIntoSentences", () => {
     expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
   });
 
+  it("treats multiple trailing closing quotes as part of terminator", () => {
+    const a = w('"Run.\'"', 0, 0.4);
+    const b = w("Then", 0.5, 0.8);
+    expect(groupIntoSentences([a, b])).toEqual([[a], [b]]);
+  });
+
   it("treats trailing curly quote as part of terminator", () => {
     const a = w("\u201CRun.\u201D", 0, 0.4);
     const b = w("Then", 0.5, 0.8);

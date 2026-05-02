@@ -11,6 +11,7 @@ import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
+  TextChunkingUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 import { debug } from "./logger.js";
@@ -18,7 +19,7 @@ import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
-import type { Edit, PronunciationsFor } from "./pronunciations/types.js";
+import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -26,32 +27,27 @@ import { buildRetryOptions } from "./retry-options.js";
 import {
   isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
+  modelMaxInputChars,
   type ResolvedModel,
+  type SpeechProvider,
+  type StitchTurnOptions,
   type Voice,
 } from "./speech-provider.js";
 import type { SpeechResult } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
+import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
 import type { WordTimestamp } from "./timestamps.js";
+import type { GenerateSpeechOptions } from "./types.js";
+
+type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
+
+const CHUNK_STITCH_SAMPLE_RATE = 24_000;
 
 export async function generateSpeech<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
->(options: {
-  model: M;
-  text: string;
-  voice: V;
-  apiKey?: string;
-  providerOptions?: Record<string, unknown>;
-  maxRetries?: number;
-  abortSignal?: AbortSignal;
-  headers?: Record<string, string>;
-  // Must be ≤ 0. Direct providers without a decodable output mode throw VolumeAdjustmentUnsupportedError (volumeDbfs) or OutputConversionUnsupportedError (output); gateway forwards both server-side.
-  volumeDbfs?: number;
-  timestamps?: boolean;
-  output?: AudioOutput;
-  pronunciations?: PronunciationsFor<M>;
-}): Promise<SpeechResult> {
+>(options: GenerateSpeechOptions<V, M>): Promise<SpeechResult> {
   const {
     model,
     voice,
@@ -93,14 +89,25 @@ export async function generateSpeech<
     pronunciationEdits = subbed.edits;
   }
 
-  const providerOptions = resolveProviderOptionsForLocalDecoding({
+  const { maxInputChars, shouldChunk, textChunks } = resolveTextChunks({
     resolved,
-    isGateway,
     modelIdentifier,
-    volumeDbfs,
-    output: options.output,
-    callerOptions: options.providerOptions,
+    isGateway,
+    processedText: textToSend,
+    userMaxInputChars: options.maxInputChars,
   });
+
+  const { providerOptions, stitchOptions } =
+    resolveProviderOptionsForLocalDecoding({
+      resolved,
+      isGateway,
+      modelIdentifier,
+      volumeDbfs,
+      output: options.output,
+      callerOptions: options.providerOptions,
+      maxInputChars,
+      shouldChunk,
+    });
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
@@ -119,14 +126,26 @@ export async function generateSpeech<
 
   const startTime = performance.now();
 
-  const result = await pRetry(() => {
-    if (isGateway) {
-      const gatewayProvider = resolved.provider as SpeechGatewayProvider;
-      return gatewayProvider.generate({
-        modelId: resolved.modelId,
-        text: textToSend,
-        voice: voice as unknown as string,
+  const result = shouldChunk
+    ? await generateChunkedSpeech({
+        resolved,
+        modelIdentifier,
+        textChunks,
+        voice,
         providerOptions,
+        stitchOptions,
+        maxInputChars: maxInputChars ?? textToSend.length,
+        maxRetries,
+        abortSignal,
+        headers,
+        includeTimestamps: shouldRequestNative,
+      })
+    : await generateProviderSpeech({
+        resolved,
+        text: textToSend,
+        voice,
+        providerOptions,
+        maxRetries,
         abortSignal,
         headers,
         includeTimestamps: shouldRequestNative,
@@ -134,17 +153,6 @@ export async function generateSpeech<
         output: options.output,
         pronunciations: options.pronunciations,
       });
-    }
-    return resolved.provider.generate({
-      modelId: resolved.modelId,
-      text: textToSend,
-      voice,
-      providerOptions,
-      abortSignal,
-      headers,
-      includeTimestamps: shouldRequestNative,
-    });
-  }, buildRetryOptions({ maxRetries, abortSignal }));
 
   const latencyMs = Math.round(performance.now() - startTime);
 
@@ -210,6 +218,208 @@ function mergeWarnings(
   return merged.length > 0 ? merged : undefined;
 }
 
+function resolveTextChunks(args: {
+  resolved: ResolvedModel;
+  modelIdentifier: string;
+  isGateway: boolean;
+  processedText: string;
+  userMaxInputChars: number | undefined;
+}): {
+  maxInputChars: number | undefined;
+  shouldChunk: boolean;
+  textChunks: readonly string[];
+} {
+  if (args.isGateway) {
+    if (args.userMaxInputChars != null) {
+      debug(
+        `${args.modelIdentifier}: maxInputChars is not applied on the speech gateway path; the gateway server owns request processing.`
+      );
+    }
+    return {
+      maxInputChars: undefined,
+      shouldChunk: false,
+      textChunks: [args.processedText],
+    };
+  }
+
+  const maxInputCharsResolution = resolveMaxInputChars({
+    providerMaxInputChars: modelMaxInputChars(args.resolved),
+    userMaxInputChars: args.userMaxInputChars,
+  });
+  if (maxInputCharsResolution.userExceedsProvider) {
+    debug(
+      `${args.modelIdentifier}: caller maxInputChars=${maxInputCharsResolution.userMaxInputChars} exceeds provider maxInputChars=${maxInputCharsResolution.providerMaxInputChars}; the provider may reject oversized chunks.`
+    );
+  }
+
+  const maxInputChars = maxInputCharsResolution.value;
+  const textChunks =
+    maxInputChars == null
+      ? [args.processedText]
+      : splitTextByMaxChars(args.processedText, maxInputChars);
+  const shouldChunk = textChunks.length > 1;
+  if (shouldChunk) {
+    const source =
+      maxInputCharsResolution.source === "user"
+        ? "caller maxInputChars"
+        : "model maxInputChars";
+    debug(
+      `${args.modelIdentifier}: split ${args.processedText.length} input chars into ${textChunks.length} chunks using ${source}=${maxInputChars}.`
+    );
+  }
+
+  return { maxInputChars, shouldChunk, textChunks };
+}
+
+async function generateProviderSpeech<V extends Voice>(args: {
+  resolved: ResolvedModel<V>;
+  text: string;
+  voice: V;
+  providerOptions: Record<string, unknown> | undefined;
+  maxRetries: number;
+  abortSignal: AbortSignal | undefined;
+  headers: Record<string, string> | undefined;
+  includeTimestamps: boolean;
+  volumeDbfs?: number;
+  output?: AudioOutput;
+  pronunciations?: PronunciationsInput;
+}): Promise<ProviderGenerateResult> {
+  return await pRetry(
+    () =>
+      isSpeechGatewayModel(args.resolved)
+        ? (args.resolved.provider as SpeechGatewayProvider).generate({
+            modelId: args.resolved.modelId,
+            text: args.text,
+            voice: args.voice as unknown as string,
+            providerOptions: args.providerOptions,
+            abortSignal: args.abortSignal,
+            headers: args.headers,
+            includeTimestamps: args.includeTimestamps,
+            volumeDbfs: args.volumeDbfs,
+            output: args.output,
+            pronunciations: args.pronunciations,
+          })
+        : args.resolved.provider.generate({
+            modelId: args.resolved.modelId,
+            text: args.text,
+            voice: args.voice,
+            providerOptions: args.providerOptions,
+            abortSignal: args.abortSignal,
+            headers: args.headers,
+            includeTimestamps: args.includeTimestamps,
+          }),
+    buildRetryOptions({
+      maxRetries: args.maxRetries,
+      abortSignal: args.abortSignal,
+    })
+  );
+}
+
+async function generateChunkedSpeech<V extends Voice>(args: {
+  resolved: ResolvedModel<V>;
+  modelIdentifier: string;
+  textChunks: readonly string[];
+  voice: V;
+  providerOptions: Record<string, unknown> | undefined;
+  stitchOptions: StitchTurnOptions | undefined;
+  maxInputChars: number;
+  maxRetries: number;
+  abortSignal: AbortSignal | undefined;
+  headers: Record<string, string> | undefined;
+  includeTimestamps: boolean;
+}): Promise<ProviderGenerateResult> {
+  if (!args.stitchOptions) {
+    throw new TextChunkingUnsupportedError(
+      args.modelIdentifier,
+      args.maxInputChars
+    );
+  }
+
+  const { decodeAudioToPcm16 } = await import("./audio-decode.js");
+  const { concatPcmToWav } = await import("./conversation/pcm-concat.js");
+  const perChunk: {
+    result: ProviderGenerateResult;
+    segment: { channels: number; pcm: Int16Array; sampleRate: number };
+  }[] = [];
+
+  for (const text of args.textChunks) {
+    const result = await generateProviderSpeech({
+      resolved: args.resolved,
+      text,
+      voice: args.voice,
+      providerOptions: args.providerOptions,
+      maxRetries: args.maxRetries,
+      abortSignal: args.abortSignal,
+      headers: args.headers,
+      includeTimestamps: args.includeTimestamps,
+    });
+    const audio = new DefaultGeneratedAudioFile({
+      data: result.audio,
+      mediaType: result.mediaType,
+    }).uint8Array;
+    if (audio.length === 0) {
+      throw new NoSpeechGeneratedError();
+    }
+    const resultMediaType = result.mediaType.toLowerCase();
+    const decodeMediaType =
+      resultMediaType.startsWith("audio/wav") ||
+      resultMediaType.startsWith("audio/x-wav")
+        ? result.mediaType
+        : args.stitchOptions.mediaType;
+    const segment = await decodeAudioToPcm16(audio, decodeMediaType);
+    perChunk.push({ result, segment });
+  }
+
+  const segments = perChunk.map((c) => c.segment);
+  const audio = await concatPcmToWav(segments, {
+    gapMs: 0,
+    targetSampleRate: CHUNK_STITCH_SAMPLE_RATE,
+  });
+  const durationSeconds = segments.reduce(
+    (sum, segment) => sum + segment.pcm.length / segment.sampleRate,
+    0
+  );
+  const warnings = perChunk.flatMap((c) => c.result.warnings ?? []);
+  const providerMetadataChunks = perChunk.map((c) => c.result.providerMetadata);
+  const providerMetadata = providerMetadataChunks.some((m) => m != null)
+    ? { chunks: providerMetadataChunks }
+    : undefined;
+
+  return {
+    audio,
+    audioDurationMs: Math.round(durationSeconds * 1000),
+    mediaType: "audio/wav",
+    providerMetadata,
+    timestamps: mergeChunkTimestamps(perChunk),
+    warnings: warnings.length > 0 ? warnings : undefined,
+  };
+}
+
+function mergeChunkTimestamps(
+  perChunk: readonly {
+    result: ProviderGenerateResult;
+    segment: { pcm: Int16Array; sampleRate: number };
+  }[]
+): WordTimestamp[] | undefined {
+  if (perChunk.some((c) => !c.result.timestamps?.length)) {
+    return;
+  }
+
+  const timestamps: WordTimestamp[] = [];
+  let offset = 0;
+  for (const chunk of perChunk) {
+    for (const word of chunk.result.timestamps ?? []) {
+      timestamps.push({
+        text: word.text,
+        start: word.start + offset,
+        end: word.end + offset,
+      });
+    }
+    offset += chunk.segment.pcm.length / chunk.segment.sampleRate;
+  }
+  return timestamps;
+}
+
 async function resolveTimestamps(args: {
   timestamps: boolean;
   modelIdentifier: string;
@@ -252,49 +462,71 @@ function resolveProviderOptionsForLocalDecoding(args: {
   volumeDbfs: number | undefined;
   output: AudioOutput | undefined;
   callerOptions: Record<string, unknown> | undefined;
-}): Record<string, unknown> | undefined {
+  maxInputChars: number | undefined;
+  shouldChunk: boolean;
+}): {
+  providerOptions: Record<string, unknown> | undefined;
+  stitchOptions: StitchTurnOptions | undefined;
+} {
   if (args.isGateway) {
-    return args.callerOptions;
+    return { providerOptions: args.callerOptions, stitchOptions: undefined };
   }
 
-  // volumeDbfs needs a known-decodable wire format to decode→re-level→re-encode,
-  // so SDK-required keys win over caller overrides — otherwise a stray
-  // override would silently violate the normalization contract.
-  if (args.volumeDbfs != null) {
-    const stitchOpts = args.resolved.provider.getStitchOptions?.(
-      args.resolved.modelId
-    );
-    if (!stitchOpts) {
-      throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
-    }
-    return { ...args.callerOptions, ...stitchOpts.providerOptions };
-  }
+  const needsStitchWireFormat = args.volumeDbfs != null || args.shouldChunk;
 
-  if (args.output != null) {
-    // Native path: provider produces the requested format directly, so caller's
-    // providerOptions are an explicit escape hatch and win over our defaults
-    // (e.g. tweaking bitrate/sample_rate). Post-processing reads the actual
-    // response mediaType and adapts.
+  if (!needsStitchWireFormat && args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
       args.resolved.modelId,
       args.output
     );
     if (native) {
-      return { ...native.providerOptions, ...args.callerOptions };
+      return {
+        providerOptions: { ...native.providerOptions, ...args.callerOptions },
+        stitchOptions: undefined,
+      };
     }
-    // Stitch fallback: the SDK MUST decode locally to convert into the
-    // requested format, so SDK-required keys win — same rationale as the
-    // volumeDbfs path above.
+
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
       args.resolved.modelId
     );
     if (!stitchOpts) {
       throw new OutputConversionUnsupportedError(args.modelIdentifier);
     }
-    return { ...args.callerOptions, ...stitchOpts.providerOptions };
+    return {
+      providerOptions: {
+        ...args.callerOptions,
+        ...stitchOpts.providerOptions,
+      },
+      stitchOptions: stitchOpts,
+    };
   }
 
-  return args.callerOptions;
+  if (!needsStitchWireFormat) {
+    return { providerOptions: args.callerOptions, stitchOptions: undefined };
+  }
+
+  const stitchOpts = args.resolved.provider.getStitchOptions?.(
+    args.resolved.modelId
+  );
+  if (!stitchOpts) {
+    if (args.shouldChunk && args.maxInputChars != null) {
+      throw new TextChunkingUnsupportedError(
+        args.modelIdentifier,
+        args.maxInputChars
+      );
+    }
+    if (args.volumeDbfs != null) {
+      throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
+    }
+    throw new OutputConversionUnsupportedError(args.modelIdentifier);
+  }
+  return {
+    providerOptions: {
+      ...args.callerOptions,
+      ...stitchOpts.providerOptions,
+    },
+    stitchOptions: stitchOpts,
+  };
 }
 
 async function applyLocalAudioPostProcessing(args: {

@@ -100,6 +100,82 @@ describe("generateConversation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
+  it("uses stitch when maxInputChars requires chunking even if native dialogue is available", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "native-stitchable",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      generateDialogue: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    const result = await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [{ voice: "a", text: "First sentence. Second sentence." }],
+      maxInputChars: 16,
+      gapMs: 0,
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ text: "First sentence." })
+    );
+    expect(provider.generate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ text: "Second sentence." })
+    );
+    expect(result.audio.mediaType).toBe("audio/wav");
+    expect(result.metadata.perTurn).toHaveLength(1);
+  });
+
+  it("uses stitch when untrimmed text exceeds maxInputChars", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "native-stitchable",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      generateDialogue: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [{ voice: "a", text: "  First sentence. " }],
+      maxInputChars: 16,
+      gapMs: 0,
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
   it("routes to stitch path when dialogue unsupported", async () => {
     const provider = stitchProvider();
     const result = await generateConversation({
@@ -219,6 +295,28 @@ describe("generateConversation", () => {
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.providerMetadata).toBeUndefined();
     expect(result.warnings).toBeUndefined();
+  });
+
+  it("does not validate ignored gateway maxInputChars values", async () => {
+    const bytes = new Uint8Array([88, 89, 90]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => bytes.buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await generateConversation({
+      model: gateway("openai/gpt-4o-mini-tts"),
+      turns: [{ voice: "alloy", text: "Hi there." }],
+      maxInputChars: Number.NaN,
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
   it("reuses the top-level string model so gateway conversations stay on the one-call path", async () => {

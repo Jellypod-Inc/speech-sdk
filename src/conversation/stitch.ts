@@ -20,6 +20,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly gapMs: number;
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
+  readonly maxInputChars?: number;
   readonly maxRetries: number;
   readonly output?: AudioOutput;
   readonly pronunciations?: PronunciationsInput;
@@ -106,14 +107,21 @@ export async function runStitch<V extends Voice>(
           headers: input.headers,
           timestamps: input.timestamps,
           pronunciations: input.pronunciations,
+          maxInputChars: input.maxInputChars,
         });
       } catch (err) {
         throw withTurnIndex(err, i);
       }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
+      const resultMediaType = result.audio.mediaType.toLowerCase();
+      const decodeMediaType =
+        resultMediaType.startsWith("audio/wav") ||
+        resultMediaType.startsWith("audio/x-wav")
+          ? result.audio.mediaType
+          : stitchOpts.mediaType;
       const segment = await decodeAudioToPcm16(
         result.audio.uint8Array,
-        stitchOpts.mediaType
+        decodeMediaType
       );
       return { result, segment };
     }

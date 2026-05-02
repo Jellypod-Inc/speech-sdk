@@ -4,6 +4,7 @@ import {
   DialogueConstraintError,
   generateConversation,
   StitchUnsupportedError,
+  TextChunkingUnsupportedError,
 } from "../index.js";
 
 describe("root conversation exports", () => {
@@ -15,5 +16,9 @@ describe("root conversation exports", () => {
     expect(typeof ConversationInputError).toBe("function");
     expect(typeof DialogueConstraintError).toBe("function");
     expect(typeof StitchUnsupportedError).toBe("function");
+  });
+
+  it("exports chunking error classes from the root entry point", () => {
+    expect(typeof TextChunkingUnsupportedError).toBe("function");
   });
 });

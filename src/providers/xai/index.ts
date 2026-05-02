@@ -46,6 +46,7 @@ export const XAI_MODELS: readonly ModelInfo[] = [
     releaseDate: "2025-11-01",
     languages: XAI_LANGUAGES,
     features: ["streaming", "audio-tags"],
+    maxInputChars: 15_000,
   },
 ] as const;
 

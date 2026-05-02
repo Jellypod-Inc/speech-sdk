@@ -112,18 +112,21 @@ export const OPENAI_MODELS: readonly ModelInfo[] = [
     releaseDate: "2025-03-20",
     languages: OPENAI_LANGUAGES,
     features: ["streaming", "audio-tags"],
+    maxInputChars: 4096,
   },
   {
     id: "tts-1",
     releaseDate: "2023-11-06",
     languages: OPENAI_LANGUAGES,
     features: ["streaming"],
+    maxInputChars: 4096,
   },
   {
     id: "tts-1-hd",
     releaseDate: "2023-11-06",
     languages: OPENAI_LANGUAGES,
     features: ["streaming"],
+    maxInputChars: 4096,
   },
 ] as const;
 

@@ -18,10 +18,11 @@ export type ConversationPath =
   | { kind: "stitch"; stitchOptionsPerTurn: readonly StitchTurnOptions[] };
 
 export function chooseConversationPath(input: {
+  forceStitch?: boolean;
   resolvedPerTurn: readonly ResolvedModel<Voice>[];
   turns: readonly ConversationTurn<Voice>[];
 }): ConversationPath {
-  const { resolvedPerTurn, turns } = input;
+  const { forceStitch = false, resolvedPerTurn, turns } = input;
 
   // Gateway and direct-provider routing can't be combined in one conversation — no coherent ordering/stitching exists across both paths.
   const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
@@ -43,7 +44,7 @@ export function chooseConversationPath(input: {
     (r) => r.provider === first.provider && r.modelId === first.modelId
   );
 
-  if (allSame) {
+  if (allSame && !forceStitch) {
     const { provider, modelId } = first;
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);

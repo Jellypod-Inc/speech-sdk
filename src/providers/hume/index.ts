@@ -54,12 +54,14 @@ export const HUME_MODELS: readonly ModelInfo[] = [
       "ru",
     ] as const,
     features: ["streaming", "inline-voice-cloning", "timestamps"],
+    maxInputChars: 5000,
   },
   {
     id: "octave-1",
     releaseDate: "2025-03-01",
     languages: ["en"] as const,
     features: ["streaming"],
+    maxInputChars: 5000,
   },
 ] as const;
 

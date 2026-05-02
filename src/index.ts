@@ -15,6 +15,7 @@ export {
   OutputConversionUnsupportedError,
   SpeechSDKError,
   StreamingNotSupportedError,
+  TextChunkingUnsupportedError,
   TimestampKeyMissingError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
@@ -27,3 +28,4 @@ export type {
 } from "./pronunciations/types.js";
 export { streamSpeech } from "./stream-speech.js";
 export { timestampsToTurns } from "./turns.js";
+export type { GenerateSpeechOptions } from "./types.js";

@@ -25,6 +25,7 @@ export interface ModelInfo {
   readonly features: readonly Feature[];
   readonly id: string;
   readonly languages: readonly string[];
+  readonly maxInputChars?: number;
   readonly releaseDate: string;
 }
 
@@ -144,4 +145,11 @@ export function modelDeclaresNativeTimestamps(
     (m) => m.id === resolved.modelId
   );
   return modelInfo != null && hasFeature(modelInfo, FEATURES.TIMESTAMPS);
+}
+
+export function modelMaxInputChars(
+  resolved: ResolvedModel
+): number | undefined {
+  return resolved.provider.models?.find((m) => m.id === resolved.modelId)
+    ?.maxInputChars;
 }

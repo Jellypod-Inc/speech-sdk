@@ -79,12 +79,14 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     releaseDate: "2025-08-15",
     languages: INWORLD_LANGUAGES,
     features: ["streaming", "timestamps"],
+    maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
     releaseDate: "2025-08-15",
     languages: INWORLD_LANGUAGES,
     features: ["streaming", "timestamps"],
+    maxInputChars: 2000,
   },
 ] as const;
 
