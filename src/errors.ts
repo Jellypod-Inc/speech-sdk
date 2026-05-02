@@ -122,6 +122,15 @@ export class ModerationRulesetIdRequiresGatewayError extends SpeechSDKError {
   }
 }
 
+export function assertGatewayForModerationRulesetId(
+  moderationRulesetId: string | undefined,
+  isGateway: boolean
+): void {
+  if (moderationRulesetId !== undefined && !isGateway) {
+    throw new ModerationRulesetIdRequiresGatewayError();
+  }
+}
+
 export class MissingApiKeyError extends SpeechSDKError {
   readonly providerName: string;
   readonly envVar: string;

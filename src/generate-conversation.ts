@@ -14,7 +14,7 @@ import { validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  ModerationRulesetIdRequiresGatewayError,
+  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
 } from "./errors.js";
@@ -120,10 +120,7 @@ export async function generateConversation<
 
   const isGateway = path.kind === "gateway";
   validatePronunciationsInput(options.pronunciations, isGateway);
-
-  if (options.moderationRulesetId !== undefined && !isGateway) {
-    throw new ModerationRulesetIdRequiresGatewayError();
-  }
+  assertGatewayForModerationRulesetId(options.moderationRulesetId, isGateway);
 
   if (path.kind === "gateway") {
     return await runGateway({

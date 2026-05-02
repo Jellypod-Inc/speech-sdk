@@ -9,7 +9,7 @@ import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  ModerationRulesetIdRequiresGatewayError,
+  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   TextChunkingUnsupportedError,
@@ -67,10 +67,7 @@ export async function generateSpeech<
   const isGateway = isSpeechGatewayModel(resolved);
 
   validatePronunciationsInput(options.pronunciations, isGateway);
-
-  if (moderationRulesetId !== undefined && !isGateway) {
-    throw new ModerationRulesetIdRequiresGatewayError();
-  }
+  assertGatewayForModerationRulesetId(moderationRulesetId, isGateway);
 
   const { text: strippedText, warnings } = preprocessText(
     resolved,

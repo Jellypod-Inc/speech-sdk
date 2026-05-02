@@ -1,7 +1,7 @@
 import pRetry from "p-retry";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import {
-  ModerationRulesetIdRequiresGatewayError,
+  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
@@ -44,10 +44,7 @@ export async function streamSpeech<
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
   validatePronunciationsInput(options.pronunciations, isGateway);
-
-  if (options.moderationRulesetId !== undefined && !isGateway) {
-    throw new ModerationRulesetIdRequiresGatewayError();
-  }
+  assertGatewayForModerationRulesetId(options.moderationRulesetId, isGateway);
 
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId
