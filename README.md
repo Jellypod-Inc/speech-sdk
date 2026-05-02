@@ -84,6 +84,25 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
 
+### Per-request moderation ruleset (gateway only)
+
+Every gateway synthesis call accepts an optional `moderationRulesetId` (UUID) that overrides the org's default moderation ruleset for that request only. Pass it on `generateSpeech` or `streamSpeech` (including `timestamps: true`).
+
+```ts
+await generateSpeech({
+  model: 'openai/tts-1',
+  voice: 'alloy',
+  text: 'Hello.',
+  moderationRulesetId: '11111111-1111-1111-1111-111111111111',
+});
+```
+
+If the ID is omitted, or refers to a ruleset that has been deleted or belongs to another org, the gateway falls back to the org's default ruleset. Other lookup errors (transient DB failures, validation) propagate as `ApiError` so a stricter requested ruleset is never silently downgraded mid-incident. The SDK does not validate the UUID format — invalid IDs return `400` from the gateway. Voice rows no longer carry a moderation ruleset; per-request override is the only way to deviate from the default.
+
+`moderationRulesetId` is gateway-only. Passing it on a direct-provider model (e.g. `createOpenAI()('tts-1')`) throws `ModerationRulesetIdRequiresGatewayError`. It is not currently exposed on `generateConversation` — conversations always use the org default.
+
+Per-request pronunciation dictionaries are already supported via the existing `pronunciations.dictionaryIds: string[]` field — see [Pronunciations](#pronunciations).
+
 ## Supported providers
 
 | Provider | Prefix | Env var |

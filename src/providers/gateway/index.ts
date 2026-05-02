@@ -99,6 +99,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     volumeDbfs?: number;
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
+    moderationRulesetId?: string;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -128,6 +129,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
+    }
+    if (options.moderationRulesetId !== undefined) {
+      body.moderation_ruleset_id = options.moderationRulesetId;
     }
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
@@ -178,6 +182,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
     pronunciations?: PronunciationsInput;
+    moderationRulesetId?: string;
   }): Promise<{
     audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
@@ -201,6 +206,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
+    }
+    if (options.moderationRulesetId !== undefined) {
+      body.moderation_ruleset_id = options.moderationRulesetId;
     }
 
     const url = `${this.baseURL}/audio/speech`;

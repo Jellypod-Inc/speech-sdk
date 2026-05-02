@@ -1,0 +1,153 @@
+import { describe, expect, it, vi } from "vitest";
+import { ModerationRulesetIdRequiresGatewayError } from "../errors.js";
+import { generateSpeech } from "../generate-speech.js";
+import {
+  createSpeechGateway,
+  SpeechGatewayProvider,
+} from "../providers/gateway/index.js";
+import { createOpenAI } from "../providers/openai/index.js";
+import { streamSpeech } from "../stream-speech.js";
+
+const RULESET_ID = "11111111-1111-1111-1111-111111111111";
+
+function mockFetchAudio(body = new Uint8Array([1, 2, 3])) {
+  return vi.fn().mockResolvedValue(
+    new Response(body, {
+      status: 200,
+      headers: { "Content-Type": "audio/mpeg" },
+    })
+  );
+}
+
+function mockFetchJsonAudio() {
+  return vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        audio: btoa("\x01\x02\x03"),
+        mediaType: "audio/mpeg",
+        timestamps: [],
+        warnings: [],
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+  );
+}
+
+describe("moderationRulesetId — gateway path", () => {
+  it("forwards as moderation_ruleset_id (snake_case) on /audio/speech", async () => {
+    const fetchSpy = mockFetchAudio();
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateSpeech({
+      model: gw("openai/tts-1"),
+      voice: "alloy",
+      text: "Hello",
+      moderationRulesetId: RULESET_ID,
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect(body.moderation_ruleset_id).toBe(RULESET_ID);
+    expect(body.moderationRulesetId).toBeUndefined();
+  });
+
+  it("forwards on /audio/speech/with-timestamps when timestamps are requested", async () => {
+    const fetchSpy = mockFetchJsonAudio();
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateSpeech({
+      model: gw("openai/tts-1"),
+      voice: "alloy",
+      text: "Hello",
+      timestamps: true,
+      moderationRulesetId: RULESET_ID,
+    });
+
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+    );
+    const body = JSON.parse(init.body as string);
+    expect(body.moderation_ruleset_id).toBe(RULESET_ID);
+  });
+
+  it("forwards on streamSpeech", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(new ReadableStream<Uint8Array>(), {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg" },
+      })
+    );
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await streamSpeech({
+      model: gw("openai/tts-1"),
+      voice: "alloy",
+      text: "Hi",
+      moderationRulesetId: RULESET_ID,
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect(body.moderation_ruleset_id).toBe(RULESET_ID);
+  });
+
+  it("omits moderation_ruleset_id from the body when caller does not pass it", async () => {
+    const fetchSpy = mockFetchAudio();
+    const gw = createSpeechGateway({ apiKey: "gw-key", fetch: fetchSpy });
+
+    await generateSpeech({
+      model: gw("openai/tts-1"),
+      voice: "alloy",
+      text: "Hello",
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect("moderation_ruleset_id" in body).toBe(false);
+  });
+
+  it("does not validate UUID format SDK-side — empty string is forwarded so the gateway can reject it", async () => {
+    const fetchSpy = mockFetchAudio();
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchSpy as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+      moderationRulesetId: "",
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
+    expect(body.moderation_ruleset_id).toBe("");
+  });
+});
+
+describe("moderationRulesetId — direct provider path", () => {
+  it("throws ModerationRulesetIdRequiresGatewayError on generateSpeech", async () => {
+    const direct = createOpenAI({ apiKey: "openai-key" });
+    await expect(
+      generateSpeech({
+        model: direct("tts-1"),
+        voice: "alloy",
+        text: "Hello",
+        moderationRulesetId: RULESET_ID,
+      })
+    ).rejects.toBeInstanceOf(ModerationRulesetIdRequiresGatewayError);
+  });
+
+  it("throws ModerationRulesetIdRequiresGatewayError on streamSpeech", async () => {
+    const direct = createOpenAI({ apiKey: "openai-key" });
+    await expect(
+      streamSpeech({
+        model: direct("tts-1"),
+        voice: "alloy",
+        text: "Hello",
+        moderationRulesetId: RULESET_ID,
+      })
+    ).rejects.toBeInstanceOf(ModerationRulesetIdRequiresGatewayError);
+  });
+});
