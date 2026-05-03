@@ -24,6 +24,8 @@ export interface GenerateConversationOptions<
   readonly maxInputChars?: number;
   readonly maxRetries?: number;
   readonly model?: M;
+  // Gateway-only. Per-request override for the moderation ruleset; falls back to the org default if omitted or unknown. Throws ModerationRulesetIdRequiresGatewayError on non-gateway conversation paths (native dialogue, local stitch).
+  readonly moderationRulesetId?: string;
   readonly output?: AudioOutput;
   readonly pronunciations?: PronunciationsFor<M>;
   readonly providerOptions?: Record<string, unknown>;

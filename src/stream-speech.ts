@@ -1,6 +1,7 @@
 import pRetry from "p-retry";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import {
+  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
@@ -34,6 +35,7 @@ export async function streamSpeech<
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
   pronunciations?: PronunciationsFor<M>;
+  moderationRulesetId?: string;
 }): Promise<StreamSpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
@@ -42,6 +44,7 @@ export async function streamSpeech<
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
   validatePronunciationsInput(options.pronunciations, isGateway);
+  assertGatewayForModerationRulesetId(options.moderationRulesetId, isGateway);
 
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId
@@ -103,6 +106,7 @@ export async function streamSpeech<
         abortSignal,
         headers,
         pronunciations: options.pronunciations,
+        moderationRulesetId: options.moderationRulesetId,
       });
     }
     return streamFn({

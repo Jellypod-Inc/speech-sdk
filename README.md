@@ -84,6 +84,21 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
 
+### Per-request moderation ruleset (gateway only)
+
+Pass an optional `moderationRulesetId` (UUID) on `generateSpeech`, `streamSpeech`, or `generateConversation` to override the org's default moderation ruleset for that one request.
+
+```ts
+await generateSpeech({
+  model: 'openai/tts-1',
+  voice: 'alloy',
+  text: 'Hello.',
+  moderationRulesetId: '11111111-1111-1111-1111-111111111111',
+});
+```
+
+If the ID is missing, deleted, or belongs to another org, the gateway falls back to the org default. Gateway-only — passing it on a direct-provider model or non-gateway conversation path throws `ModerationRulesetIdRequiresGatewayError`.
+
 ## Supported providers
 
 | Provider | Prefix | Env var |

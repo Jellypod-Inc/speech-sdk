@@ -61,6 +61,8 @@ export interface GenerateSpeechOptions<
   maxInputChars?: number;
   maxRetries?: number;
   model: M;
+  // Gateway-only. Per-request override for the moderation ruleset; falls back to the org default if omitted or unknown. Throws ModerationRulesetIdRequiresGatewayError on direct-provider transports.
+  moderationRulesetId?: string;
   output?: AudioOutput;
   pronunciations?: PronunciationsFor<M>;
   providerOptions?: Record<string, unknown>;

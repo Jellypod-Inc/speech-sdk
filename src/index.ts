@@ -11,6 +11,7 @@ export {
   AudioOutputInputError,
   GatewayInputError,
   MissingApiKeyError,
+  ModerationRulesetIdRequiresGatewayError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   SpeechSDKError,
