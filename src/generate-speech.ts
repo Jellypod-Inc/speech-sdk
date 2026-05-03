@@ -6,6 +6,7 @@ import {
   validateOutput,
 } from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+import { DEFAULT_MAX_CONCURRENCY, mapWithConcurrency } from "./concurrency.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
@@ -139,6 +140,7 @@ export async function generateSpeech<
         stitchOptions,
         maxInputChars: maxInputChars ?? textToSend.length,
         maxRetries,
+        maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
         abortSignal,
         headers,
         includeTimestamps: shouldRequestNative,
@@ -330,6 +332,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   stitchOptions: StitchTurnOptions | undefined;
   maxInputChars: number;
   maxRetries: number;
+  maxConcurrency: number;
   abortSignal: AbortSignal | undefined;
   headers: Record<string, string> | undefined;
   includeTimestamps: boolean;
@@ -340,41 +343,42 @@ async function generateChunkedSpeech<V extends Voice>(args: {
       args.maxInputChars
     );
   }
+  const stitchOptions = args.stitchOptions;
 
   const { decodeAudioToPcm16 } = await import("./audio-decode.js");
   const { concatPcmToWav } = await import("./conversation/pcm-concat.js");
-  const perChunk: {
-    result: ProviderGenerateResult;
-    segment: { channels: number; pcm: Int16Array; sampleRate: number };
-  }[] = [];
 
-  for (const text of args.textChunks) {
-    const result = await generateProviderSpeech({
-      resolved: args.resolved,
-      text,
-      voice: args.voice,
-      providerOptions: args.providerOptions,
-      maxRetries: args.maxRetries,
-      abortSignal: args.abortSignal,
-      headers: args.headers,
-      includeTimestamps: args.includeTimestamps,
-    });
-    const audio = new DefaultGeneratedAudioFile({
-      data: result.audio,
-      mediaType: result.mediaType,
-    }).uint8Array;
-    if (audio.length === 0) {
-      throw new NoSpeechGeneratedError();
+  const perChunk = await mapWithConcurrency(
+    args.textChunks,
+    args.maxConcurrency,
+    async (text) => {
+      const result = await generateProviderSpeech({
+        resolved: args.resolved,
+        text,
+        voice: args.voice,
+        providerOptions: args.providerOptions,
+        maxRetries: args.maxRetries,
+        abortSignal: args.abortSignal,
+        headers: args.headers,
+        includeTimestamps: args.includeTimestamps,
+      });
+      const audio = new DefaultGeneratedAudioFile({
+        data: result.audio,
+        mediaType: result.mediaType,
+      }).uint8Array;
+      if (audio.length === 0) {
+        throw new NoSpeechGeneratedError();
+      }
+      const resultMediaType = result.mediaType.toLowerCase();
+      const decodeMediaType =
+        resultMediaType.startsWith("audio/wav") ||
+        resultMediaType.startsWith("audio/x-wav")
+          ? result.mediaType
+          : stitchOptions.mediaType;
+      const segment = await decodeAudioToPcm16(audio, decodeMediaType);
+      return { result, segment };
     }
-    const resultMediaType = result.mediaType.toLowerCase();
-    const decodeMediaType =
-      resultMediaType.startsWith("audio/wav") ||
-      resultMediaType.startsWith("audio/x-wav")
-        ? result.mediaType
-        : args.stitchOptions.mediaType;
-    const segment = await decodeAudioToPcm16(audio, decodeMediaType);
-    perChunk.push({ result, segment });
-  }
+  );
 
   const segments = perChunk.map((c) => c.segment);
   const audio = await concatPcmToWav(segments, {

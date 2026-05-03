@@ -58,6 +58,8 @@ export interface GenerateSpeechOptions<
   abortSignal?: AbortSignal;
   apiKey?: string;
   headers?: Record<string, string>;
+  // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck). Ignored on the gateway path — the gateway server owns request processing.
+  maxConcurrency?: number;
   maxInputChars?: number;
   maxRetries?: number;
   model: M;
