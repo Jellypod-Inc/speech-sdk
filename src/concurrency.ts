@@ -1,4 +1,19 @@
+import { z } from "zod";
+
 export const DEFAULT_MAX_CONCURRENCY = 6;
+
+const MAX_CONCURRENCY_SCHEMA = z.number().finite().int().positive();
+
+export function resolveMaxConcurrency(value: number | undefined): number {
+  if (value == null) {
+    return DEFAULT_MAX_CONCURRENCY;
+  }
+  const parsed = MAX_CONCURRENCY_SCHEMA.safeParse(value);
+  if (!parsed.success) {
+    throw new Error("maxConcurrency must be a positive integer.");
+  }
+  return parsed.data;
+}
 
 export async function mapWithConcurrency<T, R>(
   items: readonly T[],

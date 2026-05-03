@@ -435,6 +435,27 @@ describe("generateSpeech", () => {
       ).rejects.toMatchObject({ name: "ApiError", statusCode: 400 });
     });
 
+    it("rejects non-finite or non-integer maxConcurrency", async () => {
+      const provider = chunkingProvider(
+        vi.fn().mockResolvedValue({
+          audio: new Uint8Array(2),
+          mediaType: "audio/pcm;rate=24000",
+        })
+      );
+
+      for (const bad of [Number.NaN, 0, -1, 1.5, Number.POSITIVE_INFINITY]) {
+        await expect(
+          generateSpeech({
+            model: { provider, modelId: "test-model" },
+            text: "First sentence. Second sentence.",
+            voice: "v",
+            maxConcurrency: bad,
+          })
+        ).rejects.toThrow("maxConcurrency must be a positive integer.");
+      }
+      expect(provider.generate).not.toHaveBeenCalled();
+    });
+
     it("aborts in-flight sibling chunks when one chunk fails", async () => {
       const seenAbortReasons: unknown[] = [];
       const provider = chunkingProvider(

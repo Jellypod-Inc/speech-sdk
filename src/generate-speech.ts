@@ -6,7 +6,7 @@ import {
   validateOutput,
 } from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
-import { DEFAULT_MAX_CONCURRENCY, mapWithConcurrency } from "./concurrency.js";
+import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
@@ -140,7 +140,7 @@ export async function generateSpeech<
         stitchOptions,
         maxInputChars: maxInputChars ?? textToSend.length,
         maxRetries,
-        maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
+        maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
         abortSignal,
         headers,
         includeTimestamps: shouldRequestNative,
