@@ -39,12 +39,13 @@ export async function mapWithConcurrency<T, R>(
     { length: Math.min(Math.max(concurrency, 1), items.length) },
     async () => {
       while (true) {
-        if (controller.signal.aborted) {
-          return;
-        }
         const i = next++;
         if (i >= items.length) {
           return;
+        }
+        // Reject (don't return clean) so Promise.all surfaces the abort instead of resolving with a sparse results array.
+        if (controller.signal.aborted) {
+          throw controller.signal.reason ?? new Error("Aborted");
         }
         try {
           results[i] = await worker(items[i], i, controller.signal);

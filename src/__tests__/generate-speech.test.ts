@@ -456,6 +456,30 @@ describe("generateSpeech", () => {
       expect(provider.generate).not.toHaveBeenCalled();
     });
 
+    it("rejects (not resolves with sparse results) when caller aborts mid-flight", async () => {
+      // Worker ignores the abort signal — exposes the swallow path where a runner
+      // exits cleanly after seeing controller.signal.aborted instead of throwing.
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      const ctl = new AbortController();
+      ctl.abort(new Error("user cancelled"));
+      const provider = chunkingProvider(
+        vi
+          .fn()
+          .mockResolvedValue({ audio: pcm, mediaType: "audio/pcm;rate=24000" })
+      );
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "First sentence. Second sentence.",
+          voice: "v",
+          abortSignal: ctl.signal,
+          maxConcurrency: 1,
+          maxRetries: 0,
+        })
+      ).rejects.toThrow("user cancelled");
+    });
+
     it("aborts in-flight sibling chunks when one chunk fails", async () => {
       const seenAbortReasons: unknown[] = [];
       const provider = chunkingProvider(
