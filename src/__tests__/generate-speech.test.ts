@@ -434,6 +434,45 @@ describe("generateSpeech", () => {
         })
       ).rejects.toMatchObject({ name: "ApiError", statusCode: 400 });
     });
+
+    it("aborts in-flight sibling chunks when one chunk fails", async () => {
+      const seenAbortReasons: unknown[] = [];
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(({ text, abortSignal }) => {
+          if (text === "First sentence.") {
+            return new Promise((_resolve, reject) => {
+              const onAbort = () => {
+                seenAbortReasons.push(abortSignal?.reason);
+                reject(new Error("aborted"));
+              };
+              if (abortSignal?.aborted) {
+                onAbort();
+                return;
+              }
+              abortSignal?.addEventListener("abort", onAbort, { once: true });
+            });
+          }
+          // Second chunk fails fast — should cause first chunk's signal to abort.
+          return Promise.reject(new ApiError("boom", { statusCode: 400 }));
+        })
+      );
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "First sentence. Second sentence.",
+          voice: "v",
+          maxRetries: 0,
+          maxConcurrency: 2,
+        })
+      ).rejects.toMatchObject({ name: "ApiError", statusCode: 400 });
+
+      expect(seenAbortReasons).toHaveLength(1);
+      expect(seenAbortReasons[0]).toMatchObject({
+        name: "ApiError",
+        statusCode: 400,
+      });
+    });
   });
 
   it("passes headers and abortSignal to provider", async () => {

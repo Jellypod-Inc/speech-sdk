@@ -64,7 +64,7 @@ export async function runStitch<V extends Voice>(
   const perTurn = await mapWithConcurrency(
     input.turns,
     input.maxConcurrency,
-    async (turn, i) => {
+    async (turn, i, signal) => {
       const resolved = input.resolvedPerTurn[i];
       const stitchOpts = input.stitchOptionsPerTurn[i];
       const mergedProviderOptions = {
@@ -81,7 +81,7 @@ export async function runStitch<V extends Voice>(
           apiKey: input.apiKey,
           providerOptions: mergedProviderOptions,
           maxRetries: input.maxRetries,
-          abortSignal: input.abortSignal,
+          abortSignal: signal,
           headers: input.headers,
           timestamps: input.timestamps,
           pronunciations: input.pronunciations,
@@ -103,7 +103,8 @@ export async function runStitch<V extends Voice>(
         decodeMediaType
       );
       return { result, segment };
-    }
+    },
+    { signal: input.abortSignal }
   );
 
   const segments = perTurn.map((p) => p.segment);

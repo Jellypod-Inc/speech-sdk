@@ -351,14 +351,14 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   const perChunk = await mapWithConcurrency(
     args.textChunks,
     args.maxConcurrency,
-    async (text) => {
+    async (text, _i, signal) => {
       const result = await generateProviderSpeech({
         resolved: args.resolved,
         text,
         voice: args.voice,
         providerOptions: args.providerOptions,
         maxRetries: args.maxRetries,
-        abortSignal: args.abortSignal,
+        abortSignal: signal,
         headers: args.headers,
         includeTimestamps: args.includeTimestamps,
       });
@@ -377,7 +377,8 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           : stitchOptions.mediaType;
       const segment = await decodeAudioToPcm16(audio, decodeMediaType);
       return { result, segment };
-    }
+    },
+    { signal: args.abortSignal }
   );
 
   const segments = perChunk.map((c) => c.segment);
