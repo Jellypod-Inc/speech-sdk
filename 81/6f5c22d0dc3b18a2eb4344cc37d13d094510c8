@@ -1,0 +1,27 @@
+src/__tests__/e2e/speed.e2e.test.ts
+  04ab81edb5d78072 1-12,14-25,27-51
+package.json
+  04ab81edb5d78072 3
+src/generate-speech.ts
+  04ab81edb5d78072 122-123,497,506-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "816f5c22d0dc3b18a2eb4344cc37d13d094510c8",
+  "prompts": {
+    "04ab81edb5d78072": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd5a4dc0-1a72-461d-b19e-7f26ba7b104d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 62,
+      "total_deletions": 6,
+      "accepted_lines": 54,
+      "overriden_lines": 2
+    }
+  }
+}
