@@ -68,6 +68,8 @@ export interface GenerateSpeechOptions<
   output?: AudioOutput;
   pronunciations?: PronunciationsFor<M>;
   providerOptions?: Record<string, unknown>;
+  // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
+  speed?: number;
   text: string;
   timestamps?: boolean;
   voice: V;

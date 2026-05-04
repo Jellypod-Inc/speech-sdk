@@ -87,6 +87,7 @@ export async function runStitch<V extends Voice>(
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
           maxConcurrency: input.maxConcurrency,
+          speed: turn.speed,
         });
       } catch (err) {
         throw withTurnIndex(err, i);

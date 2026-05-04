@@ -22,6 +22,10 @@
     "./pronunciations": {
       "types": "./dist/pronunciations/index.d.ts",
       "default": "./dist/pronunciations/index.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "default": "./dist/plugins/index.js"
     }
   },
   "files": [
