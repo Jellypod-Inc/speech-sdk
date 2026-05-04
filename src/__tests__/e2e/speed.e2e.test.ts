@@ -11,8 +11,8 @@ const MODEL = elevenlabs("eleven_flash_v2_5");
 describe("speed e2e (elevenlabs direct)", () => {
   describe.each([
     0.85, 1, 1.25, 1.5,
-  ] as const)("generateSpeech speed=%s", (speed) => {
-    it("renders audio at the requested speed", async () => {
+  ] as const)("generateSpeech speed=%s (default output → mp3)", (speed) => {
+    it("renders mp3 at the requested speed", async () => {
       const result = await generateSpeech({
         model: MODEL,
         text: TEST_TEXT,
@@ -21,8 +21,24 @@ describe("speed e2e (elevenlabs direct)", () => {
       });
 
       expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
-      // biome-ignore lint/performance/useTopLevelRegex: single-use test regex
-      expect(result.audio.mediaType).toMatch(/^audio\//);
+      expect(result.audio.mediaType).toBe("audio/mpeg");
+    });
+  });
+
+  describe.each([
+    0.85, 1.25, 1.5,
+  ] as const)("generateSpeech speed=%s with explicit output: wav", (speed) => {
+    it("renders wav at the requested speed", async () => {
+      const result = await generateSpeech({
+        model: MODEL,
+        text: TEST_TEXT,
+        voice: VOICE,
+        speed,
+        output: { format: "wav" },
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.audio.mediaType).toBe("audio/wav");
     });
   });
 
@@ -41,7 +57,7 @@ describe("speed e2e (elevenlabs direct)", () => {
           speed: 0.85,
         },
       ],
-      speed: 1,
+      speed: 1.25,
     });
 
     expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);

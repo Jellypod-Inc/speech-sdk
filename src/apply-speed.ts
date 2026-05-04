@@ -45,15 +45,15 @@ export async function applySpeedToAudio(args: {
   );
   const wav = await wrapPcm16Mono(stretchedBytes, decoded.sampleRate);
 
-  if (args.output) {
-    return await applyOptionalOutputConversion({
-      audio: wav,
-      mediaType: "audio/wav",
-      output: args.output,
-    });
-  }
-
-  return { audio: wav, mediaType: "audio/wav" };
+  // Default to mp3 when no output is specified — matches the format most providers
+  // return natively (so a caller that only sets speed gets the same container they'd
+  // get without speed, instead of a silent switch to wav).
+  const targetOutput: AudioOutput = args.output ?? { format: "mp3" };
+  return await applyOptionalOutputConversion({
+    audio: wav,
+    mediaType: "audio/wav",
+    output: targetOutput,
+  });
 }
 
 export function scaleTimestamps<T extends { start: number; end: number }>(
