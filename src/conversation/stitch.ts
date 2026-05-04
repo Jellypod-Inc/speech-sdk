@@ -18,6 +18,9 @@ import type { ConversationTurn } from "./types.js";
 interface StitchInput<V extends Voice = Voice> {
   readonly abortSignal?: AbortSignal;
   readonly apiKey?: string;
+  // When the caller will time-stretch the merged result downstream, skip the
+  // final output conversion here so we don't encode → decode → encode.
+  readonly deferOutputConversion?: boolean;
   readonly gapMs: number;
   readonly headers?: Record<string, string>;
   readonly maxConcurrency: number;
@@ -87,6 +90,7 @@ export async function runStitch<V extends Voice>(
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
           maxConcurrency: input.maxConcurrency,
+          speed: turn.speed,
         });
       } catch (err) {
         throw withTurnIndex(err, i);
@@ -121,7 +125,7 @@ export async function runStitch<V extends Voice>(
   const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
     audio,
     mediaType: "audio/wav",
-    output: input.output,
+    output: input.deferOutputConversion ? undefined : input.output,
   });
 
   const totalSamples =

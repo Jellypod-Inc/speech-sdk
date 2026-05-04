@@ -1,4 +1,10 @@
 import pRetry from "p-retry";
+import {
+  applySpeedToAudio,
+  isSpeedActive,
+  scaleTimestamps,
+  validateSpeed,
+} from "./apply-speed.js";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
   applyOptionalOutputConversion,
@@ -73,6 +79,11 @@ export async function generateConversation<
 >(options: GenerateConversationOptions<V, M>): Promise<ConversationResult> {
   validateConversationInput(options);
   validateOutput(options.output);
+  validateSpeed(options.speed);
+  for (const turn of options.turns) {
+    validateSpeed(turn.speed);
+  }
+  const hasPerTurnSpeed = options.turns.some((t) => isSpeedActive(t.speed));
 
   // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
   const stringResolutionCache = new Map<string, ResolvedModel<V>>();
@@ -106,11 +117,13 @@ export async function generateConversation<
     return resolveOnce(model);
   });
 
-  const forceStitch = needsConversationStitchForMaxInputChars({
-    resolvedPerTurn,
-    turns: options.turns,
-    userMaxInputChars: options.maxInputChars,
-  });
+  const forceStitch =
+    hasPerTurnSpeed ||
+    needsConversationStitchForMaxInputChars({
+      resolvedPerTurn,
+      turns: options.turns,
+      userMaxInputChars: options.maxInputChars,
+    });
 
   const path = chooseConversationPath({
     forceStitch,
@@ -123,6 +136,7 @@ export async function generateConversation<
   assertGatewayForModerationRulesetId(options.moderationRulesetId, isGateway);
 
   if (path.kind === "gateway") {
+    // Gateway handles top-level + per-turn speed server-side; no local stretch.
     return await runGateway({
       options,
       resolvedPerTurn: path.resolvedPerTurn,
@@ -140,10 +154,14 @@ export async function generateConversation<
         `turns[${turnWithOpts}].providerOptions is set, but ${path.resolved.provider.id}/${path.resolved.modelId} dispatched to the native dialogue path, which renders all turns in one API call. Per-turn providerOptions are not supported on this path; move them to the top-level providerOptions instead.`
       );
     }
-    return await runNative({
-      options,
-      resolved: path.resolved,
-      maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+    return await applySpeedToConversationResult({
+      result: await runNative({
+        options,
+        resolved: path.resolved,
+        maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+      }),
+      speed: options.speed,
+      output: options.output,
     });
   }
 
@@ -165,6 +183,8 @@ export async function generateConversation<
     headers: options.headers,
     timestamps: options.timestamps ?? false,
     pronunciations: options.pronunciations,
+    // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
+    deferOutputConversion: isSpeedActive(options.speed),
   });
 
   if (stitched.audio.length === 0) {
@@ -180,16 +200,21 @@ export async function generateConversation<
     perTurn: stitched.metadataPerTurn,
   };
 
-  return {
-    audio: new DefaultGeneratedAudioFile({
-      data: stitched.audio,
-      mediaType: stitched.mediaType,
-    }),
-    metadata,
-    providerMetadata: { turns: stitched.providerMetadataPerTurn },
-    warnings: stitched.warnings.length > 0 ? [...stitched.warnings] : undefined,
-    timestamps: stitched.timestamps,
-  };
+  return await applySpeedToConversationResult({
+    result: {
+      audio: new DefaultGeneratedAudioFile({
+        data: stitched.audio,
+        mediaType: stitched.mediaType,
+      }),
+      metadata,
+      providerMetadata: { turns: stitched.providerMetadataPerTurn },
+      warnings:
+        stitched.warnings.length > 0 ? [...stitched.warnings] : undefined,
+      timestamps: stitched.timestamps,
+    },
+    speed: options.speed,
+    output: options.output,
+  });
 }
 
 function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
@@ -273,6 +298,7 @@ async function runGateway<V extends Voice>(args: {
       voice: t.voice,
       text: t.text,
       ...(t.providerOptions && { providerOptions: t.providerOptions }),
+      ...(t.speed != null && { speed: t.speed }),
     };
   });
 
@@ -284,6 +310,7 @@ async function runGateway<V extends Voice>(args: {
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,
         providerOptions: options.providerOptions,
+        speed: options.speed,
         abortSignal: options.abortSignal,
         headers: options.headers,
         includeTimestamps,
@@ -440,17 +467,21 @@ async function runNative<V extends Voice>(args: {
     ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
     : rawTimestamps;
 
+  // Defer output conversion to applySpeedToConversationResult when top-level speed
+  // is active — otherwise we'd encode here and re-encode in the stretch step.
+  const deferOutput = isSpeedActive(options.speed);
   const converted = await applyOptionalOutputConversion({
     audio: audio.uint8Array,
     mediaType: outputMediaType,
-    output: options.output,
+    output: deferOutput ? undefined : options.output,
   });
-  const finalAudio = options.output
-    ? new DefaultGeneratedAudioFile({
-        data: converted.audio,
-        mediaType: converted.mediaType,
-      })
-    : audio;
+  const finalAudio =
+    options.output && !deferOutput
+      ? new DefaultGeneratedAudioFile({
+          data: converted.audio,
+          mediaType: converted.mediaType,
+        })
+      : audio;
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
@@ -582,6 +613,48 @@ function buildSubstitutedTurns<V extends Voice>(
     const subbed = substitute(t.text, ruleMap);
     return { voice: t.voice, text: subbed.text, edits: subbed.edits };
   });
+}
+
+async function applySpeedToConversationResult(args: {
+  readonly result: ConversationResult;
+  readonly speed: number | undefined;
+  readonly output: GenerateConversationOptions["output"];
+}): Promise<ConversationResult> {
+  const { result, speed, output } = args;
+  if (!isSpeedActive(speed)) {
+    return result;
+  }
+
+  const stretched = await applySpeedToAudio({
+    audio: result.audio.uint8Array,
+    mediaType: result.audio.mediaType,
+    speed,
+    output,
+  });
+  const newAudio = new DefaultGeneratedAudioFile({
+    data: stretched.audio,
+    mediaType: stretched.mediaType,
+  });
+  const computedDuration = await computeAudioDuration(
+    newAudio.uint8Array,
+    stretched.mediaType
+  );
+  const fallbackDurationMs =
+    result.metadata.audioDurationMs == null
+      ? undefined
+      : Math.round(result.metadata.audioDurationMs / speed);
+  const audioDurationMs = computedDuration ?? fallbackDurationMs;
+
+  return {
+    audio: newAudio,
+    metadata: {
+      ...result.metadata,
+      ...(audioDurationMs != null && { audioDurationMs }),
+    },
+    providerMetadata: result.providerMetadata,
+    warnings: result.warnings,
+    timestamps: scaleTimestamps(result.timestamps, speed),
+  };
 }
 
 function inverseAlignDialogueTimestamps(

@@ -1,4 +1,10 @@
 import pRetry from "p-retry";
+import {
+  applySpeedToAudio,
+  isSpeedActive,
+  scaleTimestamps,
+  validateSpeed,
+} from "./apply-speed.js";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
   type AudioOutput,
@@ -58,10 +64,12 @@ export async function generateSpeech<
     volumeDbfs,
     timestamps = false,
     moderationRulesetId,
+    speed,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
 
   validateOutput(options.output);
+  validateSpeed(speed);
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
@@ -111,6 +119,8 @@ export async function generateSpeech<
       callerOptions: options.providerOptions,
       maxInputChars,
       shouldChunk,
+      // Time-stretching needs decodable PCM/WAV input — request the stitch wire format from the provider.
+      needsDecodableInput: !isGateway && isSpeedActive(speed),
     });
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
@@ -158,6 +168,7 @@ export async function generateSpeech<
         output: options.output,
         pronunciations: options.pronunciations,
         moderationRulesetId,
+        speed,
       });
 
   const latencyMs = Math.round(performance.now() - startTime);
@@ -168,33 +179,39 @@ export async function generateSpeech<
     throw new NoSpeechGeneratedError();
   }
 
-  const { bytes: outputBytes, mediaType: outputMediaType } = isGateway
-    ? { bytes: audioData, mediaType: result.mediaType }
-    : await applyLocalAudioPostProcessing({
-        audio: audioData,
-        mediaType: result.mediaType,
-        volumeDbfs,
-        output: options.output,
-      });
+  // Gateway already applied speed server-side; only apply locally for direct paths.
+  const localSpeed = isGateway ? undefined : speed;
+
+  const stretched = await finalizeSpeechAudio({
+    audioData,
+    resultMediaType: result.mediaType,
+    isGateway,
+    volumeDbfs,
+    output: options.output,
+    speed: localSpeed,
+  });
 
   const audio = new DefaultGeneratedAudioFile({
-    data: outputBytes,
-    mediaType: outputMediaType,
+    data: stretched.audio,
+    mediaType: stretched.mediaType,
   });
 
   const [computedDuration, resolvedTimestamps] = await Promise.all([
-    computeAudioDuration(audio.uint8Array, outputMediaType),
+    computeAudioDuration(audio.uint8Array, stretched.mediaType),
     resolveTimestamps({
       timestamps,
       modelIdentifier,
       resolved,
-      resultTimestamps: result.timestamps,
+      // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
+      resultTimestamps: maybeScale(result.timestamps, localSpeed),
       audio: audio.uint8Array,
-      mediaType: outputMediaType,
+      mediaType: stretched.mediaType,
       abortSignal,
     }),
   ]);
-  const audioDurationMs = computedDuration ?? result.audioDurationMs;
+  const audioDurationMs =
+    computedDuration ??
+    maybeScaleDurationMs(result.audioDurationMs, localSpeed);
 
   const finalTimestamps =
     resolvedTimestamps && pronunciationEdits.length > 0
@@ -290,6 +307,7 @@ async function generateProviderSpeech<V extends Voice>(args: {
   output?: AudioOutput;
   pronunciations?: PronunciationsInput;
   moderationRulesetId?: string;
+  speed?: number;
 }): Promise<ProviderGenerateResult> {
   return await pRetry(
     () =>
@@ -306,6 +324,7 @@ async function generateProviderSpeech<V extends Voice>(args: {
             output: args.output,
             pronunciations: args.pronunciations,
             moderationRulesetId: args.moderationRulesetId,
+            speed: args.speed,
           })
         : args.resolved.provider.generate({
             modelId: args.resolved.modelId,
@@ -475,6 +494,7 @@ function resolveProviderOptionsForLocalDecoding(args: {
   callerOptions: Record<string, unknown> | undefined;
   maxInputChars: number | undefined;
   shouldChunk: boolean;
+  needsDecodableInput: boolean;
 }): {
   providerOptions: Record<string, unknown> | undefined;
   stitchOptions: StitchTurnOptions | undefined;
@@ -483,7 +503,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
     return { providerOptions: args.callerOptions, stitchOptions: undefined };
   }
 
-  const needsStitchWireFormat = args.volumeDbfs != null || args.shouldChunk;
+  const needsStitchWireFormat =
+    args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
 
   if (!needsStitchWireFormat && args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
@@ -593,6 +614,61 @@ function preprocessText(
     return stripAudioTags(rawText, modelIdentifier);
   }
   return { text: rawText, warnings: [] };
+}
+
+function maybeScale<T extends { start: number; end: number }>(
+  timestamps: readonly T[] | undefined,
+  speed: number | undefined
+): readonly T[] | undefined {
+  return isSpeedActive(speed) ? scaleTimestamps(timestamps, speed) : timestamps;
+}
+
+function maybeScaleDurationMs(
+  durationMs: number | undefined,
+  speed: number | undefined
+): number | undefined {
+  if (durationMs == null || !isSpeedActive(speed)) {
+    return durationMs;
+  }
+  return Math.round(durationMs / speed);
+}
+
+async function finalizeSpeechAudio(args: {
+  readonly audioData: string | Uint8Array;
+  readonly resultMediaType: string;
+  readonly isGateway: boolean;
+  readonly volumeDbfs: number | undefined;
+  readonly output: AudioOutput | undefined;
+  readonly speed: number | undefined;
+}): Promise<{ readonly audio: Uint8Array; readonly mediaType: string }> {
+  // When speed is active, defer output conversion to applySpeedToAudio — otherwise
+  // we'd encode to `output` here and then decode/re-encode in the stretch step,
+  // a wasteful round-trip that loses quality on lossy formats.
+  const preStretchOutput = isSpeedActive(args.speed) ? undefined : args.output;
+  const postProcessed = args.isGateway
+    ? { bytes: args.audioData, mediaType: args.resultMediaType }
+    : await applyLocalAudioPostProcessing({
+        audio: args.audioData,
+        mediaType: args.resultMediaType,
+        volumeDbfs: args.volumeDbfs,
+        output: preStretchOutput,
+      });
+
+  const postProcessedBytes = new DefaultGeneratedAudioFile({
+    data: postProcessed.bytes,
+    mediaType: postProcessed.mediaType,
+  }).uint8Array;
+
+  if (!isSpeedActive(args.speed)) {
+    return { audio: postProcessedBytes, mediaType: postProcessed.mediaType };
+  }
+
+  return await applySpeedToAudio({
+    audio: postProcessedBytes,
+    mediaType: postProcessed.mediaType,
+    speed: args.speed,
+    output: args.output,
+  });
 }
 
 function logTimestampDecision(args: {

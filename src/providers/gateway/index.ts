@@ -100,6 +100,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
     moderationRulesetId?: string;
+    speed?: number;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -132,6 +133,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.moderationRulesetId !== undefined) {
       body.moderation_ruleset_id = options.moderationRulesetId;
+    }
+    if (options.speed != null) {
+      body.speed = options.speed;
     }
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
@@ -253,6 +257,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       voice: string;
       text: string;
       providerOptions?: Record<string, unknown>;
+      speed?: number;
     }[];
     gapMs?: number;
     volumeDbfs?: number;
@@ -263,6 +268,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
     moderationRulesetId?: string;
+    speed?: number;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
@@ -303,6 +309,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         voice: t.voice,
         text: t.text,
         ...(t.providerOptions && { providerOptions: t.providerOptions }),
+        ...(t.speed != null && { speed: t.speed }),
       })),
       gapMs: options.gapMs ?? 300,
       volumeDbfs: options.volumeDbfs ?? -20,
@@ -318,6 +325,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.moderationRulesetId !== undefined) {
       body.moderation_ruleset_id = options.moderationRulesetId;
+    }
+    if (options.speed != null) {
+      body.speed = options.speed;
     }
 
     const url = options.includeTimestamps
