@@ -3,6 +3,7 @@ import {
   type AudioOutput,
   applyOptionalOutputConversion,
 } from "../audio-output.js";
+import { mapWithConcurrency } from "../concurrency.js";
 import { withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
@@ -55,29 +56,6 @@ interface StitchOutput {
 const TARGET_SAMPLE_RATE = 24_000;
 const WHITESPACE_RE = /\s+/;
 
-async function mapWithConcurrency<T, R>(
-  items: readonly T[],
-  concurrency: number,
-  worker: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  const runners = Array.from(
-    { length: Math.min(Math.max(concurrency, 1), items.length) },
-    async () => {
-      while (true) {
-        const i = next++;
-        if (i >= items.length) {
-          return;
-        }
-        results[i] = await worker(items[i], i);
-      }
-    }
-  );
-  await Promise.all(runners);
-  return results;
-}
-
 export async function runStitch<V extends Voice>(
   input: StitchInput<V>
 ): Promise<StitchOutput> {
@@ -86,7 +64,7 @@ export async function runStitch<V extends Voice>(
   const perTurn = await mapWithConcurrency(
     input.turns,
     input.maxConcurrency,
-    async (turn, i) => {
+    async (turn, i, signal) => {
       const resolved = input.resolvedPerTurn[i];
       const stitchOpts = input.stitchOptionsPerTurn[i];
       const mergedProviderOptions = {
@@ -103,11 +81,12 @@ export async function runStitch<V extends Voice>(
           apiKey: input.apiKey,
           providerOptions: mergedProviderOptions,
           maxRetries: input.maxRetries,
-          abortSignal: input.abortSignal,
+          abortSignal: signal,
           headers: input.headers,
           timestamps: input.timestamps,
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
+          maxConcurrency: input.maxConcurrency,
         });
       } catch (err) {
         throw withTurnIndex(err, i);
@@ -124,7 +103,8 @@ export async function runStitch<V extends Voice>(
         decodeMediaType
       );
       return { result, segment };
-    }
+    },
+    { signal: input.abortSignal }
   );
 
   const segments = perTurn.map((p) => p.segment);

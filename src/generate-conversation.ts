@@ -4,6 +4,7 @@ import {
   applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
+import { resolveMaxConcurrency } from "./concurrency.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import { ConversationInputError } from "./conversation/errors.js";
 import type {
@@ -61,7 +62,6 @@ export type {
 } from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
-const DEFAULT_MAX_CONCURRENCY = 6;
 const DEFAULT_MAX_RETRIES = 2;
 
 export async function generateConversation<
@@ -156,7 +156,7 @@ export async function generateConversation<
     topLevelProviderOptions: options.providerOptions,
     apiKey: options.apiKey,
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
-    maxConcurrency: options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY,
+    maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
     maxInputChars: options.maxInputChars,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     output: options.output,

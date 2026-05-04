@@ -310,6 +310,216 @@ describe("generateSpeech", () => {
     expect(provider.generate).not.toHaveBeenCalled();
   });
 
+  describe("chunked speech concurrency", () => {
+    function chunkingProvider(generate: SpeechProvider["generate"]) {
+      return {
+        id: "mock",
+        defaultModel: "test-model",
+        models: [
+          {
+            id: "test-model",
+            releaseDate: "2026-01-01",
+            languages: ["en"],
+            features: [],
+            maxInputChars: 16,
+          },
+        ],
+        generate,
+        getStitchOptions: () => ({
+          providerOptions: { format: "pcm" },
+          mediaType: "audio/pcm;rate=24000",
+        }),
+      } satisfies SpeechProvider;
+    }
+
+    it("fans out chunks in parallel by default", async () => {
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      let inFlight = 0;
+      let peakInFlight = 0;
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(async () => {
+          inFlight++;
+          peakInFlight = Math.max(peakInFlight, inFlight);
+          await new Promise((r) => setTimeout(r, 10));
+          inFlight--;
+          return { audio: pcm, mediaType: "audio/pcm;rate=24000" };
+        })
+      );
+
+      await generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "First sentence. Second sentence. Third sentence.",
+        voice: "v",
+      });
+
+      expect(provider.generate).toHaveBeenCalledTimes(3);
+      expect(peakInFlight).toBeGreaterThan(1);
+    });
+
+    it("serializes when maxConcurrency is 1", async () => {
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      let inFlight = 0;
+      let peakInFlight = 0;
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(async () => {
+          inFlight++;
+          peakInFlight = Math.max(peakInFlight, inFlight);
+          await new Promise((r) => setTimeout(r, 10));
+          inFlight--;
+          return { audio: pcm, mediaType: "audio/pcm;rate=24000" };
+        })
+      );
+
+      await generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "First sentence. Second sentence. Third sentence.",
+        voice: "v",
+        maxConcurrency: 1,
+      });
+
+      expect(provider.generate).toHaveBeenCalledTimes(3);
+      expect(peakInFlight).toBe(1);
+    });
+
+    it("preserves chunk order even when later chunks finish first", async () => {
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      // Earlier chunks resolve later — exposes any ordering bug in the stitcher.
+      const delays: Record<string, number> = {
+        "First sentence.": 30,
+        "Second sentence.": 5,
+      };
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(async ({ text }) => {
+          await new Promise((r) => setTimeout(r, delays[text] ?? 0));
+          return {
+            audio: pcm,
+            mediaType: "audio/pcm;rate=24000",
+            warnings: [`chunk:${text}`],
+          };
+        })
+      );
+
+      const result = await generateSpeech({
+        model: { provider, modelId: "test-model" },
+        text: "First sentence. Second sentence.",
+        voice: "v",
+      });
+
+      expect(result.warnings).toEqual([
+        "chunk:First sentence.",
+        "chunk:Second sentence.",
+      ]);
+    });
+
+    it("rejects with the first chunk error", async () => {
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(({ text }) => {
+          if (text === "Second sentence.") {
+            return Promise.reject(new ApiError("boom", { statusCode: 400 }));
+          }
+          return Promise.resolve({
+            audio: pcm,
+            mediaType: "audio/pcm;rate=24000",
+          });
+        })
+      );
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "First sentence. Second sentence.",
+          voice: "v",
+          maxRetries: 0,
+        })
+      ).rejects.toMatchObject({ name: "ApiError", statusCode: 400 });
+    });
+
+    it("rejects non-finite or non-integer maxConcurrency", async () => {
+      const provider = chunkingProvider(
+        vi.fn().mockResolvedValue({
+          audio: new Uint8Array(2),
+          mediaType: "audio/pcm;rate=24000",
+        })
+      );
+
+      for (const bad of [Number.NaN, 0, -1, 1.5, Number.POSITIVE_INFINITY]) {
+        await expect(
+          generateSpeech({
+            model: { provider, modelId: "test-model" },
+            text: "First sentence. Second sentence.",
+            voice: "v",
+            maxConcurrency: bad,
+          })
+        ).rejects.toThrow("maxConcurrency must be a positive integer.");
+      }
+      expect(provider.generate).not.toHaveBeenCalled();
+    });
+
+    it("rejects (not resolves with sparse results) when caller aborts mid-flight", async () => {
+      // Worker ignores the abort signal — exposes the swallow path where a runner
+      // exits cleanly after seeing controller.signal.aborted instead of throwing.
+      const pcm = new Uint8Array(new Int16Array(240).buffer);
+      const ctl = new AbortController();
+      ctl.abort(new Error("user cancelled"));
+      const provider = chunkingProvider(
+        vi
+          .fn()
+          .mockResolvedValue({ audio: pcm, mediaType: "audio/pcm;rate=24000" })
+      );
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "First sentence. Second sentence.",
+          voice: "v",
+          abortSignal: ctl.signal,
+          maxConcurrency: 1,
+          maxRetries: 0,
+        })
+      ).rejects.toThrow("user cancelled");
+    });
+
+    it("aborts in-flight sibling chunks when one chunk fails", async () => {
+      const seenAbortReasons: unknown[] = [];
+      const provider = chunkingProvider(
+        vi.fn().mockImplementation(({ text, abortSignal }) => {
+          if (text === "First sentence.") {
+            return new Promise((_resolve, reject) => {
+              const onAbort = () => {
+                seenAbortReasons.push(abortSignal?.reason);
+                reject(new Error("aborted"));
+              };
+              if (abortSignal?.aborted) {
+                onAbort();
+                return;
+              }
+              abortSignal?.addEventListener("abort", onAbort, { once: true });
+            });
+          }
+          // Second chunk fails fast — should cause first chunk's signal to abort.
+          return Promise.reject(new ApiError("boom", { statusCode: 400 }));
+        })
+      );
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "test-model" },
+          text: "First sentence. Second sentence.",
+          voice: "v",
+          maxRetries: 0,
+          maxConcurrency: 2,
+        })
+      ).rejects.toMatchObject({ name: "ApiError", statusCode: 400 });
+
+      expect(seenAbortReasons).toHaveLength(1);
+      expect(seenAbortReasons[0]).toMatchObject({
+        name: "ApiError",
+        statusCode: 400,
+      });
+    });
+  });
+
   it("passes headers and abortSignal to provider", async () => {
     const provider = createMockProvider();
     const controller = new AbortController();
