@@ -16,19 +16,19 @@
 
 ## Timestamps
 
-`octave-2` returns word alignment natively. When `timestamps: "on"` is set, the SDK routes through Hume's JSON `/v0/tts` endpoint with `include_timestamp_types: ["word"]` and `split_utterances: false`, then flattens the snippet timestamps to the SDK's seconds-based `WordTimestamp[]`.
+`octave-2` returns word alignment natively. When `timestamps: true` is set, the SDK routes through Hume's JSON `/v0/tts` endpoint with `include_timestamp_types: ["word"]` and `split_utterances: false`, then flattens the snippet timestamps to the SDK's seconds-based `WordTimestamp[]`.
 
 ```ts
 const result = await generateSpeech({
   model: "hume/octave-2",
   text: "Hello, world!",
   voice: "Kora",
-  timestamps: "on",
+  timestamps: true,
 })
 result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
 ```
 
-`octave-1` is bytes-only — `timestamps: "on"` falls back to the default Whisper STT pass.
+`octave-1` is bytes-only — `timestamps: true` falls back to the default Whisper STT pass.
 
 ## Usage
 

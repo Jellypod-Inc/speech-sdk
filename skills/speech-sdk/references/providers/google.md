@@ -9,10 +9,11 @@
 
 ## Models
 
-| Model                          | Streaming | Audio Tags | Voice Cloning | Notes                  |
-| ------------------------------ | --------- | ---------- | ------------- | ---------------------- |
-| `gemini-2.5-flash-preview-tts` | Yes       | No         | No            | Default; lower latency |
-| `gemini-2.5-pro-preview-tts`   | Yes       | No         | No            | Higher quality         |
+| Model                            | Streaming | Audio Tags | Voice Cloning | Notes                       |
+| -------------------------------- | --------- | ---------- | ------------- | --------------------------- |
+| `gemini-3.1-flash-tts-preview`   | Yes       | Yes        | No            | Latest preview; tags supported |
+| `gemini-2.5-flash-preview-tts`   | Yes       | No         | No            | Default; lower latency      |
+| `gemini-2.5-pro-preview-tts`     | Yes       | No         | No            | Higher quality              |
 
 ## Usage
 
@@ -28,7 +29,7 @@ Built-in voices include `Kore`, `Puck`, `Charon`, `Fenrir`, `Aoede` — see Gemi
 
 ## Output Format
 
-Gemini returns raw PCM. `mediaType` is `audio/L16;rate=24000`, bytes are passed through unchanged. Wrap in WAV yourself if you need a container.
+Gemini returns raw PCM. `mediaType` is `audio/L16;rate=24000`, bytes are passed through unchanged. Pass `output: { format: "wav" }` (or `"mp3"`) to have the SDK wrap/convert it; otherwise wrap in WAV yourself if you need a container.
 
 ## Streaming
 

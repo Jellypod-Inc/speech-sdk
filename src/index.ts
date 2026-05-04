@@ -4,6 +4,7 @@ export { timestampsToCaptions } from "./captions.js";
 export {
   ConversationInputError,
   DialogueConstraintError,
+  MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
 export {
