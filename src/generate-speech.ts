@@ -119,6 +119,8 @@ export async function generateSpeech<
       callerOptions: options.providerOptions,
       maxInputChars,
       shouldChunk,
+      // Time-stretching needs decodable PCM/WAV input — request the stitch wire format from the provider.
+      needsDecodableInput: !isGateway && isSpeedActive(speed),
     });
 
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
@@ -492,6 +494,7 @@ function resolveProviderOptionsForLocalDecoding(args: {
   callerOptions: Record<string, unknown> | undefined;
   maxInputChars: number | undefined;
   shouldChunk: boolean;
+  needsDecodableInput: boolean;
 }): {
   providerOptions: Record<string, unknown> | undefined;
   stitchOptions: StitchTurnOptions | undefined;
@@ -500,7 +503,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
     return { providerOptions: args.callerOptions, stitchOptions: undefined };
   }
 
-  const needsStitchWireFormat = args.volumeDbfs != null || args.shouldChunk;
+  const needsStitchWireFormat =
+    args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
 
   if (!needsStitchWireFormat && args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
