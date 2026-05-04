@@ -1,0 +1,36 @@
+name: Changelog
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  require-changelog-entry-on-version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Require CHANGELOG entry for new package.json version
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          BASE_VERSION=$(git show "$BASE_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+          HEAD_VERSION=$(git show "$HEAD_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+          echo "Base version: $BASE_VERSION"
+          echo "Head version: $HEAD_VERSION"
+
+          if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
+            echo "Version unchanged; skipping CHANGELOG check."
+            exit 0
+          fi
+
+          if grep -Fxq "## $HEAD_VERSION" CHANGELOG.md; then
+            echo "Found '## $HEAD_VERSION' heading in CHANGELOG.md."
+            exit 0
+          fi
+
+          echo "::error file=CHANGELOG.md::package.json version changed ($BASE_VERSION -> $HEAD_VERSION) but CHANGELOG.md has no '## $HEAD_VERSION' heading. Add an entry for $HEAD_VERSION."
+          exit 1

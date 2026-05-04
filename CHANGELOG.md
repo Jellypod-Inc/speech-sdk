@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0
+
+- **`speed` parameter** on `generateSpeech` and `generateConversation` (range `0.75`–`1.5`). Direct providers time-stretch the audio locally and scale native timestamps and `audioDurationMs` by `1/speed`; the gateway path forwards `speed` in the wire payload so the gateway invariant is preserved.
+- Conversation turns accept a per-turn `speed`. Per-turn `speed` forces the stitch path on direct providers; the gateway forwards both top-level and per-turn `speed`.
+- New `@speech-sdk/core/plugins` subpath exposing `timeStretch`, a WSOLA-based mono PCM time-stretcher (the engine behind `speed`).
+- When `speed` is set without an explicit `output`, the result is encoded as mp3 (matching what most providers return natively) instead of the wav/pcm intermediate the stretcher operates on.
+- Avoid a wasted encode/decode round-trip when `speed` is active: the local post-processing step now defers output conversion to the time-stretch step, preserving quality on lossy formats.
+
 ## 0.8.3
 
 - Parallel chunked text generation. When the SDK locally chunks text that exceeds a model's `maxInputChars`, chunk requests now fan out concurrently instead of running sequentially.
