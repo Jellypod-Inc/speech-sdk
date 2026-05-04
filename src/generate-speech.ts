@@ -641,13 +641,17 @@ async function finalizeSpeechAudio(args: {
   readonly output: AudioOutput | undefined;
   readonly speed: number | undefined;
 }): Promise<{ readonly audio: Uint8Array; readonly mediaType: string }> {
+  // When speed is active, defer output conversion to applySpeedToAudio — otherwise
+  // we'd encode to `output` here and then decode/re-encode in the stretch step,
+  // a wasteful round-trip that loses quality on lossy formats.
+  const preStretchOutput = isSpeedActive(args.speed) ? undefined : args.output;
   const postProcessed = args.isGateway
     ? { bytes: args.audioData, mediaType: args.resultMediaType }
     : await applyLocalAudioPostProcessing({
         audio: args.audioData,
         mediaType: args.resultMediaType,
         volumeDbfs: args.volumeDbfs,
-        output: args.output,
+        output: preStretchOutput,
       });
 
   const postProcessedBytes = new DefaultGeneratedAudioFile({

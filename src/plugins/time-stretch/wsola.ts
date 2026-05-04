@@ -154,7 +154,10 @@ function chooseBestOffset(
   );
 
   if (minCandidate >= maxCandidate) {
-    return clampInteger(expectedInputPosition, 0, maxInputPosition);
+    // Return the collapsed lower bound (which already enforces previousInputPosition + 1)
+    // rather than expectedInputPosition, which can sit below previousInputPosition near
+    // the end of the input and cause the source position to jump backward.
+    return minCandidate;
   }
 
   let bestCandidate = minCandidate;
@@ -182,7 +185,9 @@ function chooseBestOffset(
   }
 
   if (bestScore === Number.NEGATIVE_INFINITY) {
-    return clampInteger(expectedInputPosition, 0, maxInputPosition);
+    // Same monotonicity reason as the early return above — fall back to the
+    // collapsed lower bound, not expectedInputPosition.
+    return minCandidate;
   }
 
   return refineOffset(

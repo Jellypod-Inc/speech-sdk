@@ -183,6 +183,8 @@ export async function generateConversation<
     headers: options.headers,
     timestamps: options.timestamps ?? false,
     pronunciations: options.pronunciations,
+    // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
+    deferOutputConversion: isSpeedActive(options.speed),
   });
 
   if (stitched.audio.length === 0) {
@@ -465,17 +467,21 @@ async function runNative<V extends Voice>(args: {
     ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
     : rawTimestamps;
 
+  // Defer output conversion to applySpeedToConversationResult when top-level speed
+  // is active — otherwise we'd encode here and re-encode in the stretch step.
+  const deferOutput = isSpeedActive(options.speed);
   const converted = await applyOptionalOutputConversion({
     audio: audio.uint8Array,
     mediaType: outputMediaType,
-    output: options.output,
+    output: deferOutput ? undefined : options.output,
   });
-  const finalAudio = options.output
-    ? new DefaultGeneratedAudioFile({
-        data: converted.audio,
-        mediaType: converted.mediaType,
-      })
-    : audio;
+  const finalAudio =
+    options.output && !deferOutput
+      ? new DefaultGeneratedAudioFile({
+          data: converted.audio,
+          mediaType: converted.mediaType,
+        })
+      : audio;
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
