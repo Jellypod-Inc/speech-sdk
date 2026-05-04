@@ -1,0 +1,25 @@
+src/__tests__/e2e/speed.e2e.test.ts
+  04ab81edb5d78072 14-15,26-27,32-41,60
+src/apply-speed.ts
+  04ab81edb5d78072 48-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8c278c41fabcd56bd62537d185592ec61c7fa7b6",
+  "prompts": {
+    "04ab81edb5d78072": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd5a4dc0-1a72-461d-b19e-7f26ba7b104d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 24,
+      "accepted_lines": 26,
+      "overriden_lines": 8
+    }
+  }
+}
