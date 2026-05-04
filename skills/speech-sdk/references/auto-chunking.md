@@ -41,7 +41,12 @@ The chunker prefers (in order) paragraph breaks (`\n\n`), line breaks (`\n`), se
 Chunks are issued in parallel up to `maxConcurrency` (default 6). Lower it to 1 to serialize when the provider's account-level concurrency is the bottleneck:
 
 ```ts
-await generateSpeech({ ..., maxConcurrency: 1 })
+await generateSpeech({
+  model: "...",
+  text: longText,
+  voice: "...",
+  maxConcurrency: 1,
+})
 ```
 
 Errors from any chunk abort sibling requests via `AbortController` so in-flight calls cancel instead of running to completion with discarded results.
