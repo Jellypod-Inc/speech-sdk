@@ -1,0 +1,29 @@
+src/generate-speech.ts
+  04ab81edb5d78072 644-647,654
+src/conversation/stitch.ts
+  04ab81edb5d78072 21-23,128
+src/plugins/time-stretch/wsola.ts
+  04ab81edb5d78072 157-160,188-190
+src/generate-conversation.ts
+  04ab81edb5d78072 186-187,470-472,476,478-484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "da55c91fa00707fd8df7aa6d932b71bfbe6f7fc1",
+  "prompts": {
+    "04ab81edb5d78072": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd5a4dc0-1a72-461d-b19e-7f26ba7b104d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 30,
+      "total_deletions": 12,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  }
+}
