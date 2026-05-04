@@ -9,11 +9,11 @@
 
 ## Models
 
-| Model      | Streaming | Audio Tags        | Voice Cloning | Notes                               |
-| ---------- | --------- | ----------------- | ------------- | ----------------------------------- |
-| `grok-tts` | Yes       | Yes (passthrough) | No            | Native bracket and `<whisper>` tags |
+| Model      | Streaming | Audio Tags        | Voice Cloning | Notes                                                       |
+| ---------- | --------- | ----------------- | ------------- | ----------------------------------------------------------- |
+| `grok-tts` | Yes       | Yes (passthrough) | No            | Native bracket and `<whisper>` tags; `maxInputChars: 15000` |
 
-Languages (`language`): `en`, `ar-EG`, `ar-SA`, `ar-AE`, `bn`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt-BR`, `pt-PT`, `ru`, `es-MX`, `es-ES`, `tr`, `vi`. Default is `auto`.
+Languages (`language`): `en`, `ar`, `bn`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `ru`, `es`, `tr`, `vi`. Default is `auto`. The xAI API also accepts BCP-47 forms (`pt-BR`, `es-MX`, etc.) when passed via `providerOptions.language`.
 
 ## Usage
 

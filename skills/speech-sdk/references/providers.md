@@ -19,31 +19,33 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | fal          | `fal-ai`       | `FAL_API_KEY`          |
 | Mistral      | `mistral`      | `MISTRAL_API_KEY`      |
 | xAI          | `xai`          | `XAI_API_KEY`          |
+| Smallest AI  | `smallest-ai`  | `SMALLEST_API_KEY`     |
 
 ## Capability Matrix
 
 | Provider    | Streaming      | Audio Tags            | Voice Cloning  | Timestamps  | Open Source |
 | ----------- | -------------- | --------------------- | -------------- | ----------- | ----------- |
 | OpenAI      | Yes            | Yes (as instructions) | No             | Via STT     | No          |
-| ElevenLabs  | Yes            | Yes                   | No             | Native      | No          |
+| ElevenLabs  | Yes            | Yes                   | No (inline)    | Native      | No          |
 | Deepgram    | Yes            | No                    | No             | Via STT     | No          |
 | Cartesia    | Yes            | Yes                   | Yes            | Native      | No          |
 | Hume        | Yes            | No                    | Yes            | Native      | No          |
-| Google      | Yes            | No                    | No             | Via STT     | No          |
+| Google      | Yes            | Model-specific        | No             | Via STT     | No          |
 | Fish Audio  | Yes            | Yes                   | Yes            | Via STT     | Yes         |
 | Inworld     | Yes            | No                    | No             | Native      | No          |
-| Murf        | Model-specific | No                    | No             | Native      | No          |
+| Murf        | Yes            | No                    | No             | Native      | No          |
 | Resemble    | Yes            | No                    | Yes            | Native      | Yes         |
-| fal         | No             | No                    | Model-specific | Via STT     | Varies      |
-| Mistral     | No             | No                    | Yes            | Via STT     | Yes         |
+| fal         | No             | No                    | Model-specific | Via STT     | Yes         |
+| Mistral     | Yes            | No                    | Yes            | Via STT     | Yes         |
 | xAI         | Yes            | Yes                   | No             | Via STT     | No          |
+| Smallest AI | No             | No                    | No             | Via STT     | No          |
 
 Capabilities are per-model — see each provider file in `providers/<name>.md` for which models within a provider support what.
 
 **Timestamps column legend:**
 
-- **Native** — TTS response carries word alignment for at least some of this provider's models. `timestamps: "on"` uses the native path with no STT round-trip when the chosen model supports it.
-- **Via STT** — no native alignment. `timestamps: "on"` transcribes the synthesized audio via the SDK's default STT fallback or the caller's `timestampProvider` override (extra cost + latency).
+- **Native** — TTS response carries word alignment for at least some of this provider's models. `timestamps: true` uses the native path with no STT round-trip when the chosen model supports it.
+- **Via STT** — no native alignment. `timestamps: true` transcribes the synthesized audio via the SDK's default STT fallback (or the factory's `fallbackSTT` override). Direct path only.
 
 See `timestamps.md` for the full cascade and overrides.
 

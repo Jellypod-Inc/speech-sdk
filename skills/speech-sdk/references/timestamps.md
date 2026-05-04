@@ -11,7 +11,7 @@ const result = await generateSpeech({
   model: "provider/model",
   text: "Hello from speech-sdk!",
   voice: "voice-id",
-  timestamps: "on",
+  timestamps: true,
 })
 
 result.timestamps
@@ -24,52 +24,57 @@ result.timestamps
 
 ## Modes
 
-- `"on"` — always return timestamps. Native alignment when the provider supplies it; STT fallback otherwise.
-- `"off"` *(default)* — never return timestamps.
+`timestamps` is a boolean.
 
-`result.timestamps` is populated when mode is `"on"` and the underlying transport surfaces alignment. On gateway-routed calls the SDK is a thin REST wrapper — if the wire response lacks timestamps, `result.timestamps` is `undefined` rather than thrown.
+- `true` — return timestamps. Native alignment when the provider supplies it; STT fallback otherwise (direct path only).
+- `false` *(default)* — never return timestamps; no STT round-trip is attempted.
+
+`result.timestamps` is populated when `timestamps: true` and the underlying transport surfaces alignment. On gateway-routed calls the SDK is a thin REST wrapper — if the wire response lacks timestamps, `result.timestamps` is `undefined` rather than thrown.
 
 ## Cascade
 
-When `timestamps: "on"`, the SDK resolves alignment in this order:
+When `timestamps: true`, the SDK resolves alignment in this order:
 
-1. **Native** — provider returns alignment directly in its TTS response.
-2. **User override `timestampProvider`** — a resolved STT model (constructed via `.stt(...)` on a provider factory). Use this to route to a cheaper or in-house STT.
-3. **Default STT fallback** — uses the SDK's built-in default. Requires the corresponding env var, else throws `TimestampKeyMissingError`.
+1. **Native** — provider returns alignment directly in its TTS response (or, for the gateway, the wire payload includes `timestamps`).
+2. **Configured fallback STT** — if the resolved factory has `fallbackSTT` set, that STT model transcribes the synthesized audio. Direct path only.
+3. **Default STT fallback** — `createOpenAI().stt("whisper-1")` is loaded lazily and used. Requires `OPENAI_API_KEY`, else throws `TimestampKeyMissingError` naming the env var.
+
+Gateway-routed calls never run a client-side STT round-trip — alignment is whatever the gateway returns.
 
 ## Per-Provider Support
 
-Native alignment is a per-model capability and the set of models with native alignment evolves. See each `providers/<name>.md` reference for which of that provider's models carry native alignment. Models without it go through the STT fallback.
+Native alignment is a per-model capability and the set of models with native alignment evolves. See each `providers/<name>.md` reference for which of that provider's models carry native alignment. Models without it go through the STT fallback (direct path).
 
-You can also check at runtime by inspecting the model info exposed on the provider — look for a `timestamps` feature with `mode: "native"`.
+You can also check at runtime by inspecting `provider.models` — look for the string `"timestamps"` in a model's `features` array.
 
 ## Custom STT Provider
 
-To use a different STT key or model, configure `fallbackSTT` on the factory by constructing a resolved STT model via `.stt(...)` on a provider factory from `@speech-sdk/core/providers`:
+To use a different STT key or model, set `fallbackSTT` on the TTS factory by constructing a resolved STT model via `.stt(...)` on a provider factory:
 
 ```ts
 import { generateSpeech } from "@speech-sdk/core"
-import { createProviderA, createProviderB } from "@speech-sdk/core/providers"
+import { createElevenLabs, createOpenAI } from "@speech-sdk/core/providers"
 
-const a = createProviderA({
-  fallbackSTT: createProviderB({ apiKey: process.env.MY_STT_KEY }).stt("stt-model-id"),
+const elevenlabs = createElevenLabs({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+  fallbackSTT: createOpenAI({ apiKey: process.env.MY_STT_KEY }).stt("whisper-1"),
 })
 
 await generateSpeech({
-  model: a("tts-model-id"),
+  model: elevenlabs("eleven_flash_v2"),
   text: "...",
   voice: "voice-id",
-  timestamps: "on",
+  timestamps: true,
 })
 ```
 
-For a fully custom STT provider, implement the SDK's STT provider interface and pass the resolved model directly via the `timestampProvider` option on `generateSpeech` / `generateConversation`. Import the relevant interfaces from `@speech-sdk/core` / `@speech-sdk/core/types`.
+There is no per-call `timestampProvider` option — `fallbackSTT` is the only override mechanism, and it lives on the TTS factory config. To use an STT provider that the SDK doesn't ship, implement the `SpeechToTextProvider` interface (see `@speech-sdk/core/types`) and pass a `ResolvedSTTModel` you construct yourself as `fallbackSTT`.
 
 ## Conversations
 
-`generateConversation` accepts the same `timestamps` and `timestampProvider` options and returns a flat list of words across all turns. Each word carries a `turnIndex` — the index into the input `turns[]` array that produced it. Existing callers reading `.text / .start / .end` keep working; new callers can attribute every word to its source turn.
+`generateConversation` accepts the same boolean `timestamps` option and returns a flat list of words across all turns. Each word carries a `turnIndex` — the index into the input `turns[]` array that produced it.
 
-When the underlying transport renders all turns in one call, `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings on `result.warnings`; the SDK does not fabricate word timestamps from caller text when the observed word stream is empty.
+When the underlying transport renders all turns in one call (native dialogue or gateway), `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings on `result.warnings`; the SDK does not fabricate word timestamps from caller text when the observed word stream is empty.
 
 When turns are rendered separately and stitched, `turnIndex` is exact by construction and word timings are offset by cumulative turn duration plus inter-turn gap. Turns whose underlying call returned no per-word alignment are filled proportionally, with a warning identifying them.
 
@@ -79,7 +84,7 @@ const result = await generateConversation({
     { model: "provider-a/model", voice: "voice-1", text: "Hi!" },
     { model: "provider-b/model", voice: "voice-2", text: "Hey!" },
   ],
-  timestamps: "on",
+  timestamps: true,
 })
 
 result.timestamps // monotonic across both turns, each entry has turnIndex
@@ -100,7 +105,7 @@ const turns = [
 const result = await generateConversation({
   model: "provider/model",
   turns,
-  timestamps: "on",
+  timestamps: true,
 })
 
 const turnTimestamps = timestampsToTurns(result.timestamps ?? [])
@@ -118,14 +123,34 @@ const annotated = turnTimestamps.map((t) => ({ ...t, voice: turns[t.turnIndex].v
 
 Natural input for chat-bubble UIs, speaker-attributed captions, or karaoke-style highlighting during playback.
 
+## Captions
+
+Use `timestampsToCaptions` to format word timestamps as SRT or VTT:
+
+```ts
+import { generateSpeech, timestampsToCaptions } from "@speech-sdk/core"
+
+const result = await generateSpeech({ ..., timestamps: true })
+const srt = timestampsToCaptions(result.timestamps ?? [], { format: "srt" })
+const vtt = timestampsToCaptions(result.timestamps ?? [], { format: "vtt" })
+```
+
+## Speed
+
+When `speed` is non-1, timestamps are scaled inversely (`start / speed`, `end / speed`) so they line up with the post-stretch audio. No caller action required.
+
+## Pronunciations
+
+When `pronunciations.rules` substitute words before synthesis, returned timestamps reference the **original** input text — the SDK inverse-aligns each word back through the substitution map.
+
 ## Errors
 
 | Error                                | When                                                                 |
 | ------------------------------------ | -------------------------------------------------------------------- |
-| `TimestampKeyMissingError`           | STT fallback triggered but no key is configured — message names the env var |
+| `TimestampKeyMissingError`           | STT fallback triggered but no key is configured — message names the env var (e.g. `OPENAI_API_KEY` for the default Whisper fallback) |
 
 Other errors (`ApiError`, etc.) propagate from the underlying STT call on the derived path.
 
 ## Debugging
 
-Set `DEBUG=speech-sdk` (or `DEBUG=*`) to log the timestamp routing decision — whether the native path was requested, which STT provider the `"on"` fallback will target, and the word counts returned.
+Set `DEBUG=speech-sdk` (or `DEBUG=*`) to log the timestamp routing decision — whether the native path was requested, which STT provider the fallback will target, and the word counts returned.

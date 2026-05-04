@@ -9,10 +9,9 @@
 
 ## Models
 
-| Model    | Streaming | Audio Tags | Voice Cloning | Notes               |
-| -------- | --------- | ---------- | ------------- | ------------------- |
-| `aura-2` | Yes       | No         | No            | Current default     |
-| `aura`   | Yes       | No         | No            | Previous generation |
+| Model    | Streaming | Audio Tags | Voice Cloning | Notes                                  |
+| -------- | --------- | ---------- | ------------- | -------------------------------------- |
+| `aura-2` | Yes       | No         | No            | Current default; `maxInputChars: 2000` |
 
 ## Usage
 

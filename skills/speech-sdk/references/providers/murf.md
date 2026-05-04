@@ -11,7 +11,7 @@
 
 | Model    | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                     |
 | -------- | --------- | ---------- | ------------- | ----------------- | ------------------------- |
-| `GEN2`   | No        | No         | No            | Yes               | Default; multilingual     |
+| `GEN2`   | Yes       | No         | No            | Yes               | Default; multilingual     |
 | `FALCON` | Yes       | No         | No            | No                | Low-latency, English only |
 
 Each model uses a different endpoint — SpeechSDK routes based on the model you pick.
@@ -25,12 +25,12 @@ const result = await generateSpeech({
   model: "murf/GEN2",
   text: "Hello, world!",
   voice: "en-US-natalie",
-  timestamps: "on",
+  timestamps: true,
 })
 result.timestamps // [{ text: "Hello,", start: 0, end: 0.42 }, ...]
 ```
 
-`FALCON` uses the streaming endpoint which returns audio bytes only; with `timestamps: "on"` it falls back to the default Whisper STT pass.
+`FALCON` returns audio bytes only; with `timestamps: true` it falls back to the default Whisper STT pass.
 
 ## Usage
 

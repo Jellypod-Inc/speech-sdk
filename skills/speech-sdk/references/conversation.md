@@ -4,9 +4,9 @@
 
 **Don't** loop over `generateSpeech` yourself. `generateConversation`:
 
-- Picks the most efficient transport for the given turns automatically.
+- Picks the most efficient transport for the given turns automatically (gateway → native dialogue → local stitch).
 - RMS-normalizes the output so every conversation plays back at the same loudness.
-- Returns a result identical in shape to `SpeechResult`, except every word in `timestamps` carries a `turnIndex` pointing back into the input `turns[]`.
+- Returns a result identical in shape to `SpeechResult`, except every word in `timestamps` carries a `turnIndex` pointing back into the input `turns[]`, and `metadata.perTurn` carries per-turn metadata on the stitch path.
 
 ## Import
 
@@ -34,15 +34,20 @@ result.audio.mediaType
 
 `generateConversation` accepts:
 
-- `turns` — required array of `{ voice, text, model?, providerOptions? }` entries
+- `turns` — required array of `{ voice, text, model?, providerOptions?, speed? }` entries
 - `model` — applies to every turn (all-or-nothing with per-turn `model`)
 - `providerOptions` — top-level; merged with per-turn provider options
-- `apiKey`
-- `gapMs` — silence between turns when stitched, default 300
+- `output` — `{ format: "wav" | "pcm" | "mp3", bitrate? }`
+- `speed` — `0.75–1.5`, applies to the merged audio. Per-turn `speed` applies first, then top-level applies to the mix.
+- `pronunciations` — `{ rules, dictionaryIds? }` (`dictionaryIds` is gateway-only)
+- `moderationRulesetId` — gateway-only
+- `maxInputChars` — override per-model chunk threshold (direct paths only)
 - `maxConcurrency` — parallel turn requests when stitched, default 6
 - `maxRetries` — per-turn retries, default 2
-- `volumeDbfs` — target RMS loudness in dBFS (must be ≤ 0), default `-20`
-- `abortSignal`, `headers`, `timestamps`, `timestampProvider`
+- `gapMs` — silence between turns when stitched, default 300
+- `volumeDbfs` — target RMS loudness in dBFS (≤ 0), default `-20`
+- `timestamps` — boolean, default `false`
+- `apiKey`, `abortSignal`, `headers`
 
 Model placement is all-or-nothing: set `options.model` (applied to every turn) or set `model` on every turn, but not both. Mixing is rejected with `ConversationInputError`.
 
@@ -62,6 +67,8 @@ await generateConversation({
 })
 ```
 
+All turns must dispatch the same way — every turn through the gateway (`"provider/model"` strings) or every turn through direct factories. Mixing the two throws `MixedDispatchError`.
+
 ## Volume Normalization
 
 Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podcast voice standard) so two conversations generated independently play back at the same loudness. Override with `volumeDbfs: -18` (must be ≤ 0) to retarget.
@@ -69,17 +76,32 @@ Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podca
 - Normalization is always on and cannot be disabled.
 - A warning is surfaced when normalization can't be applied (e.g. the chosen provider/model can't expose decodable PCM/WAV) and the raw mix passes through.
 
+## Per-Turn Speed
+
+```ts
+await generateConversation({
+  turns: [
+    { voice: "voice-a", text: "Slow intro.", speed: 0.9 },
+    { voice: "voice-b", text: "Normal pace." },
+    { voice: "voice-a", text: "Quick wrap.", speed: 1.15 },
+  ],
+})
+```
+
+Per-turn speed forces the local-stitch path (so each turn can be re-rendered independently). Top-level `speed` then applies to the merged audio. Both must fall in `0.75–1.5`.
+
 ## Result
 
 The result has the same top-level shape as `SpeechResult` (`audio`, `metadata`, `providerMetadata`, `warnings`, `timestamps`). The differences:
 
 - Every word in `timestamps` includes `turnIndex` pointing back into the input `turns[]`.
+- `metadata.perTurn` is an array of per-turn `SpeechMetadata` entries on the local-stitch path; `undefined` on gateway and native-dialogue paths (no per-turn boundaries exist as separate provider calls).
 - `providerMetadata` is passthrough-only — when stitched, it carries `{ turns: [...] }` aggregating each underlying call's provider metadata; on gateway and native dialogue paths it reflects whatever the wire returned.
 
 When `timestamps: true` is requested, the SDK returns observed word timestamps for stitched and native-dialogue conversations when the provider/STT supplies word-level alignment. The attribution mechanism varies by path:
 
 - **Stitched** — `turnIndex` is exact by construction (one call per turn). Turns whose underlying call returned no per-word alignment are filled proportionally; a warning identifies them.
-- **Native dialogue** — `turnIndex` is derived via a simple tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings. If the observed word stream is empty, `timestamps` is absent with a warning; the SDK does not fabricate word timestamps from caller text.
+- **Native dialogue** — `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings. If the observed word stream is empty, `timestamps` is absent with a warning; the SDK does not fabricate word timestamps from caller text.
 - **Gateway** — whatever the gateway response returns. The SDK is a thin REST wrapper here; if the wire returns no timestamps, the field is absent.
 
 Inspect `result.warnings` for attribution-confidence diagnostics in production.
@@ -97,7 +119,7 @@ From `@speech-sdk/core`:
 | `MixedDispatchError`        | Conversation mixes gateway (`provider/model` string) turns with direct-factory turns         |
 | `StitchUnsupportedError`    | A provider/model can't expose decodable PCM/WAV, so turns can't be locally mixed             |
 | `NoSpeechGeneratedError`    | Final concatenated audio is empty                                                            |
-| `ApiError`                  | Per-turn 4xx. 5xx/network get retried up to `maxRetries`.                                    |
+| `ApiError`                  | Per-turn 4xx (carries `turnIndex` on the stitch path). 5xx/429/network get retried up to `maxRetries`. |
 
 ## When to Use Which
 

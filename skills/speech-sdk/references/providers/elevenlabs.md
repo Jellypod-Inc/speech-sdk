@@ -9,12 +9,12 @@
 
 ## Models
 
-| Model                    | Streaming | Audio Tags        | Notes                                      |
-| ------------------------ | --------- | ----------------- | ------------------------------------------ |
-| `eleven_v3`              | Yes       | Yes (passthrough) | Most expressive; all bracket tags          |
-| `eleven_multilingual_v2` | Yes       | No                | Default; stable multilingual               |
-| `eleven_flash_v2_5`      | Yes       | No                | Low-latency, multilingual                  |
-| `eleven_flash_v2`        | Yes       | No                | Low-latency, English                       |
+| Model                    | Streaming | Audio Tags        | Native Timestamps | Notes                                  |
+| ------------------------ | --------- | ----------------- | ----------------- | -------------------------------------- |
+| `eleven_v3`              | Yes       | Yes (passthrough) | Yes               | Most expressive; `maxInputChars: 5000` |
+| `eleven_multilingual_v2` | Yes       | No                | Yes               | Default; `maxInputChars: 10000`        |
+| `eleven_flash_v2_5`      | Yes       | No                | Yes               | Low-latency multilingual; `maxInputChars: 40000` |
+| `eleven_flash_v2`        | Yes       | No                | Yes               | Low-latency English; `maxInputChars: 30000` |
 
 ## Usage
 
