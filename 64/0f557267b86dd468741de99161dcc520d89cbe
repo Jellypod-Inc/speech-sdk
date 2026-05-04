@@ -1,0 +1,53 @@
+src/types.ts
+  04ab81edb5d78072 71-72
+src/conversation/types.ts
+  04ab81edb5d78072 8-9,34-35
+src/plugins/time-stretch/wsola.ts
+  04ab81edb5d78072 1-18,20-42,44-51,53-61,63-113,115-137,139-144,146-147,149-152,154-174,176-195,197-206,208-249,251-264,266-281,283-305
+src/plugins/time-stretch/bytes.ts
+  04ab81edb5d78072 1-28,30-33
+src/conversation/stitch.ts
+  04ab81edb5d78072 90
+src/plugins/time-stretch/index.ts
+  04ab81edb5d78072 1-18,20-38,40-41
+src/plugins/time-stretch/int16.ts
+  04ab81edb5d78072 1,3-6,8-10,12-13,15-17,20-21,24-45
+src/__tests__/time-stretch.test.ts
+  04ab81edb5d78072 1-5,8-13,15-16,18-22,24-25,27-31,35-41,43-49,51-58,60-64,66-68,70-71,73-83,85-89,91-95,97-101,103-108,110,112-115,117,119-132,134-138,141-142,145-153,155-158,160-183
+src/plugins/time-stretch/validate.ts
+  04ab81edb5d78072 1-4,6-32,34-143
+src/generate-speech.ts
+  04ab81edb5d78072 2-7,67,72,169,180-190,193-194,198,203-204,206,210-212,308,325,615-665
+src/plugins/time-stretch/fallback.ts
+  04ab81edb5d78072 1-4,6-37
+package.json
+  04ab81edb5d78072 25-28
+src/plugins/index.ts
+  04ab81edb5d78072 1-6
+src/generate-conversation.ts
+  04ab81edb5d78072 2-7,82-86,120-126,139,157-164,201-215,299,311,612-636,640-653
+src/providers/gateway/index.ts
+  04ab81edb5d78072 103,137-139,260,271,312,329-331
+src/apply-speed.ts
+  04ab81edb5d78072 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "640f557267b86dd468741de99161dcc520d89cbe",
+  "prompts": {
+    "04ab81edb5d78072": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd5a4dc0-1a72-461d-b19e-7f26ba7b104d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks",
+      "messages": [],
+      "total_additions": 1108,
+      "total_deletions": 81,
+      "accepted_lines": 991,
+      "overriden_lines": 62
+    }
+  }
+}
