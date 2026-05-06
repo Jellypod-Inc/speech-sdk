@@ -25,7 +25,7 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 
 - `src/generate-speech.ts` — the public API entry point; handles retry logic via `p-retry`
 - `src/resolve-provider.ts` — bare `"provider/model"` strings resolve to the gateway provider; `ResolvedModel` instances pass through unchanged
-- `src/providers/gateway/index.ts` — `SpeechGatewayProvider` + `createSpeechGateway()`; proxies inline-mode requests to `api.speechgateway.com`. Aggregates every built-in provider's `models[]` under namespaced ids (`openai/tts-1`) so capability checks work through the gateway
+- `src/providers/gateway/index.ts` — `SpeechGatewayProvider` + `createSpeechGateway()`; proxies inline-mode requests to `api.speechbase.ai`. Aggregates every built-in provider's `models[]` under namespaced ids (`openai/tts-1`) so capability checks work through the gateway
 - `src/speech-provider.ts` — `SpeechProvider` interface all providers implement
 - `src/speech-result.ts` — `DefaultGeneratedAudioFile` with lazy base64 conversion
 - `src/provider-utils.ts` — shared `resolveApiKey()` and `handleErrorResponse()`
@@ -35,7 +35,7 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 - String (`"openai/tts-1"`) → routes through `SpeechGatewayProvider`; needs `SPEECH_GATEWAY_API_KEY`.
 - Factory (`createOpenAI()("tts-1")`) → calls the provider directly; reads the per-provider env var (`OPENAI_API_KEY`) unless an explicit `apiKey` is passed to the factory.
 
-**Gateway invariant:** when routing through `SpeechGatewayProvider`, the SDK is a thin REST wrapper. A call made via the SDK must be byte-equivalent to the same call made via `curl` against `api.speechgateway.com`. The SDK does not add behavior on the gateway path — no client-side recovery, no client-side enrichment, no synthesizing fields from caller input that weren't on the wire, no fallbacks. The gateway server owns its contract; the SDK is a transport. Any new feature must work identically whether the caller uses the SDK or hits the REST API directly.
+**Gateway invariant:** when routing through `SpeechGatewayProvider`, the SDK is a thin REST wrapper. A call made via the SDK must be byte-equivalent to the same call made via `curl` against `api.speechbase.ai`. The SDK does not add behavior on the gateway path — no client-side recovery, no client-side enrichment, no synthesizing fields from caller input that weren't on the wire, no fallbacks. The gateway server owns its contract; the SDK is a transport. Any new feature must work identically whether the caller uses the SDK or hits the REST API directly.
 
 **Adding a new provider:**
 1. Create `src/providers/<name>/index.ts` with a `<Name>SpeechProvider` class implementing `SpeechProvider` and a `create<Name>()` factory.

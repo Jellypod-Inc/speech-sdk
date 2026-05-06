@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Migrate gateway domain from `api.speechgateway.com` to `api.speechbase.ai`. The 401 / missing-key error messages now point to `https://speechbase.ai/` for signup. Public API names (`SpeechGatewayProvider`, `createSpeechGateway`, `SPEECH_GATEWAY_API_KEY`) are unchanged. Override `baseURL` on `createSpeechGateway` if you were pinning the old hostname explicitly.
+
 ## 0.9.0
 
 - **`speed` parameter** on `generateSpeech` and `generateConversation` (range `0.75`–`1.5`). Direct providers time-stretch the audio locally and scale native timestamps and `audioDurationMs` by `1/speed`; the gateway path forwards `speed` in the wire payload so the gateway invariant is preserved.
@@ -18,7 +22,7 @@
 ## 0.8.2
 
 - Automatic text chunking when input exceeds a provider's `maxInputChars`. The SDK splits long text on sentence/word boundaries and concatenates the resulting audio.
-- New per-request `moderationRulesetId` on the gateway path, forwarded to `api.speechgateway.com` for per-call moderation policy selection.
+- New per-request `moderationRulesetId` on the gateway path, forwarded to `api.speechbase.ai` for per-call moderation policy selection.
 
 ## 0.8.1
 
@@ -26,7 +30,7 @@
 
 ## 0.8.0
 
-- **Speech Gateway routing.** Bare `"provider/model"` strings now resolve to a built-in `SpeechGatewayProvider` that proxies requests to `api.speechgateway.com` using `SPEECH_GATEWAY_API_KEY`. Factory-based usage (`createOpenAI()("tts-1")`) continues to call providers directly. The gateway aggregates every built-in provider's models so capability checks work transparently.
+- **Speech Gateway routing.** Bare `"provider/model"` strings now resolve to a built-in `SpeechGatewayProvider` that proxies requests to `api.speechbase.ai` using `SPEECH_GATEWAY_API_KEY`. Factory-based usage (`createOpenAI()("tts-1")`) continues to call providers directly. The gateway aggregates every built-in provider's models so capability checks work transparently.
 - **Smallest AI Lightning TTS provider** added under `@speech-sdk/core/providers/smallest-ai`. (Thanks @harshitajain165 for the first contribution!)
 - **Explicit audio output format.** `generateSpeech` and `generateConversation` now accept `output: "wav" | "mp3" | "pcm"`. The SDK requests the format natively from the provider when supported, and falls back to wav/pcm + local conversion via mediabunny otherwise. Compressed audio is never decoded client-side.
 - **Pronunciations option** on `generateSpeech`, `streamSpeech`, and `generateConversation` for applying substitution rules to input text before synthesis.

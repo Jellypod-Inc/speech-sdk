@@ -820,7 +820,7 @@ describe("generateSpeech", () => {
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
       expect(url).toBe(
-        "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+        "https://api.speechbase.ai/v1/audio/speech/with-timestamps"
       );
       expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
       const body = JSON.parse(init.body);

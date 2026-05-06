@@ -279,7 +279,7 @@ describe("generateConversation", () => {
 
     expect(fetchFn).toHaveBeenCalledTimes(1);
     const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/conversation");
     const body = JSON.parse(init.body);
     expect(body.mode).toBe("conversation");
     // Shared shape — every turn resolves to the same model, so the wire carries
@@ -342,7 +342,7 @@ describe("generateConversation", () => {
 
       expect(fetchFn).toHaveBeenCalledTimes(1);
       const [url, init] = fetchFn.mock.calls[0];
-      expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+      expect(url).toBe("https://api.speechbase.ai/v1/audio/conversation");
       const body = JSON.parse(init.body);
       expect(body.model).toBe("openai/gpt-4o-mini-tts");
       expect(body.turns).toEqual([
@@ -397,7 +397,7 @@ describe("generateConversation", () => {
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe(
-      "https://api.speechgateway.com/v1/audio/conversation/with-timestamps"
+      "https://api.speechbase.ai/v1/audio/conversation/with-timestamps"
     );
     const body = JSON.parse(init.body);
     expect(body.timestamps).toBeUndefined();
