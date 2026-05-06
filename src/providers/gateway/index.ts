@@ -52,7 +52,7 @@ const gatewayConversationJsonResponseSchema = z.object({
 });
 
 const GATEWAY_401_MESSAGE =
-  "Speech Gateway rejected your API key (401). Get a key at https://wavform.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
+  "Speech Gateway rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
@@ -66,7 +66,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
 
   constructor(config: SpeechGatewayProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? "https://api.speechgateway.com/v1";
+    this.baseURL = config.baseURL ?? "https://api.speechbase.ai/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -82,7 +82,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         envVar: "SPEECH_GATEWAY_API_KEY",
       });
       err.message =
-        "To use the Speech Gateway, a Wavform AI api key is required. Sign up at https://wavform.ai/ to get a key, then pass it via the `apiKey` option or set the SPEECH_GATEWAY_API_KEY environment variable.";
+        "To use the Speech Gateway, a Wavform AI api key is required. Sign up at https://speechbase.ai/ to get a key, then pass it via the `apiKey` option or set the SPEECH_GATEWAY_API_KEY environment variable.";
       throw err;
     }
     return key;

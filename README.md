@@ -65,8 +65,8 @@ Pass a `provider/model` string, or just the provider name to use its default mod
 The SDK has two ways to reach a provider, and the choice is made by **how you pass `model`**:
 
 ```ts
-// 1. String → routes through Speech Gateway (https://api.speechgateway.com)
-//    Needs SPEECH_GATEWAY_API_KEY (sign up at https://speechgateway.com).
+// 1. String → routes through Speech Gateway (https://api.speechbase.ai)
+//    Needs SPEECH_GATEWAY_API_KEY (sign up at https://speechbase.ai).
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
 // 2. Factory → calls the provider directly (no proxy hop)
@@ -80,7 +80,7 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 | When to use | You want a single endpoint and easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
 | Setup | `SPEECH_GATEWAY_API_KEY` only | One env var per provider you use |
 | Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
-| Endpoint | `api.speechgateway.com` | Provider's own API |
+| Endpoint | `api.speechbase.ai` | Provider's own API |
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
 

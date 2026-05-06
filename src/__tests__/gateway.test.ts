@@ -57,7 +57,7 @@ describe("SpeechGatewayProvider", () => {
     expect(result.providerMetadata).toBeUndefined();
 
     const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe("https://api.speechgateway.com/v1/audio/speech");
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/speech");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(JSON.parse(init.body)).toEqual({
       mode: "inline",
@@ -131,7 +131,7 @@ describe("SpeechGatewayProvider", () => {
 
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe(
-      "https://api.speechgateway.com/v1/audio/speech/with-timestamps"
+      "https://api.speechbase.ai/v1/audio/speech/with-timestamps"
     );
     // URL split is the timestamps switch; body carries no `timestamps` field.
     expect(JSON.parse(init.body)).toEqual({
@@ -423,7 +423,7 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     });
 
     const [url, init] = fetchFn.mock.calls[0];
-    expect(url).toBe("https://api.speechgateway.com/v1/audio/conversation");
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/conversation");
 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
