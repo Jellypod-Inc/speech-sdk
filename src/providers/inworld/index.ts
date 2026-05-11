@@ -88,6 +88,16 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     features: ["streaming", "timestamps"],
     maxInputChars: 2000,
   },
+  {
+    // Realtime TTS-2 — adds `delivery_mode` (STABLE | BALANCED | CREATIVE);
+    // `temperature` is a no-op on this model. Both flow through verbatim via
+    // providerOptions — no extra plumbing needed in this provider.
+    id: "inworld-tts-2",
+    releaseDate: "2026-05-05",
+    languages: INWORLD_LANGUAGES,
+    features: ["streaming", "timestamps"],
+    maxInputChars: 2000,
+  },
 ] as const;
 
 export class InworldSpeechProvider implements SpeechProvider<string, string> {
