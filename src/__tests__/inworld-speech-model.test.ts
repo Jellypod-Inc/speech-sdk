@@ -265,14 +265,63 @@ describe("InworldSpeechProvider", () => {
     ).rejects.toThrow(MISSING_AUDIO_CONTENT_PATTERN);
   });
 
-  it("declares both 1.5 max and mini models with the streaming feature", () => {
+  it("declares the 1.5 and tts-2 models with the streaming feature", () => {
     const provider = new InworldSpeechProvider({ apiKey: "test-key" });
     const ids = provider.models.map((m) => m.id);
     expect(ids).toContain("inworld-tts-1.5-max");
     expect(ids).toContain("inworld-tts-1.5-mini");
+    expect(ids).toContain("inworld-tts-2");
     for (const m of provider.models) {
       expect(m.features).toContain("streaming");
     }
+  });
+
+  it("sends model_id=inworld-tts-2 when requested", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ audioContent: base64([1]) }),
+    });
+
+    const provider = new InworldSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "inworld-tts-2",
+      text: "Hi",
+      voice: "Ashley",
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.model_id).toBe("inworld-tts-2");
+  });
+
+  it("passes delivery_mode through to the request body verbatim", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ audioContent: base64([1]) }),
+    });
+
+    const provider = new InworldSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "inworld-tts-2",
+      text: "Hi",
+      voice: "Ashley",
+      providerOptions: { delivery_mode: "CREATIVE" },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.delivery_mode).toBe("CREATIVE");
+    expect(body.model_id).toBe("inworld-tts-2");
   });
 
   it("exposes the expected default model and id", () => {

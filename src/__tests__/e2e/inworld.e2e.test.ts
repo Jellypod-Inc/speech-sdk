@@ -12,6 +12,7 @@ describe.skipIf(!hasKey)("Inworld e2e", () => {
   describe.each([
     "inworld-tts-1.5-max",
     "inworld-tts-1.5-mini",
+    "inworld-tts-2",
   ] as const)("model: %s", (modelId) => {
     it("generates audio via string model identifier", async () => {
       const result = await generateSpeech({

@@ -58,33 +58,52 @@ function mediaTypeForEncoding(encoding: string | undefined): string {
 
 export const INWORLD_PROVIDER_ID = "inworld" as const;
 
-// https://docs.inworld.ai/tts/overview#supported-languages
-const INWORLD_LANGUAGES = [
+// Inworld TTS accepts any BCP-47 language code on input — see
+// https://docs.inworld.ai/tts/tts. The arrays below list the *primary
+// documented* languages per model for discoverability (e.g. SDK consumers
+// rendering language pickers); they are NOT a runtime allowlist. Passing a
+// code outside the list — e.g. "fi", "vi", "tr" — works.
+const INWORLD_PRIMARY_LANGUAGES = [
   "en",
-  "es",
+  "ar",
+  "zh",
+  "nl",
   "fr",
   "de",
+  "he",
+  "hi",
   "it",
-  "pt",
   "ja",
   "ko",
-  "nl",
   "pl",
-  "zh",
+  "pt",
+  "es",
 ] as const;
 
 export const INWORLD_MODELS: readonly ModelInfo[] = [
   {
     id: "inworld-tts-1.5-max",
     releaseDate: "2025-08-15",
-    languages: INWORLD_LANGUAGES,
+    languages: INWORLD_PRIMARY_LANGUAGES,
     features: ["streaming", "timestamps"],
     maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
     releaseDate: "2025-08-15",
-    languages: INWORLD_LANGUAGES,
+    languages: INWORLD_PRIMARY_LANGUAGES,
+    features: ["streaming", "timestamps"],
+    maxInputChars: 2000,
+  },
+  {
+    // Realtime TTS-2 — adds `delivery_mode` (STABLE | BALANCED | CREATIVE);
+    // `temperature` is a no-op on this model. Both flow through verbatim via
+    // providerOptions — no extra plumbing needed in this provider. Supports
+    // 100+ BCP-47 languages on input; `languages` below is just the primary
+    // documented set.
+    id: "inworld-tts-2",
+    releaseDate: "2026-05-05",
+    languages: INWORLD_PRIMARY_LANGUAGES,
     features: ["streaming", "timestamps"],
     maxInputChars: 2000,
   },

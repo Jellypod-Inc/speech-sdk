@@ -240,4 +240,39 @@ describe("InworldSpeechProvider.stream", () => {
 
     expect(upstreamCancelled).toBe(true);
   });
+
+  it("streams audio for inworld-tts-2 and passes delivery_mode through", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(
+              new TextEncoder().encode(
+                `${JSON.stringify({ result: { audioContent: base64([9, 9]) } })}\n`
+              )
+            );
+            c.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      )
+    );
+    const provider = new InworldSpeechProvider({
+      apiKey: "iw-test",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.stream({
+      modelId: "inworld-tts-2",
+      text: "hi",
+      voice: "Ashley",
+      providerOptions: { delivery_mode: "STABLE" },
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.model_id).toBe("inworld-tts-2");
+    expect(body.delivery_mode).toBe("STABLE");
+    const bytes = await collect(result.stream);
+    expect(bytes).toEqual(new Uint8Array([9, 9]));
+  });
 });
