@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0
+
+- Add `inworld-tts-2` model to the Inworld provider.
+
 ## 0.9.1
 
 - Migrate gateway domain from `api.speechgateway.com` to `api.speechbase.ai`. The 401 / missing-key error messages now point to `https://speechbase.ai/` for signup. Public API names (`SpeechGatewayProvider`, `createSpeechGateway`, `SPEECH_GATEWAY_API_KEY`) are unchanged. Override `baseURL` on `createSpeechGateway` if you were pinning the old hostname explicitly.
