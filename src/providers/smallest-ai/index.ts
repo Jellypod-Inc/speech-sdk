@@ -60,7 +60,7 @@ export class SmallestAISpeechProvider
     };
 
     const response = await this.fetchFn(
-      `${this.baseURL}/${options.modelId}/get_speech`,
+      `${this.baseURL}/${encodeURIComponent(options.modelId)}/get_speech`,
       {
         method: "POST",
         headers: {

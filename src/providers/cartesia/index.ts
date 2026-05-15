@@ -469,8 +469,20 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
 interface CartesiaSseEvent {
   data?: string;
   done?: boolean;
+  error?: unknown;
+  message?: unknown;
   type?: string;
   word_timestamps?: CartesiaWordTimestamps;
+}
+
+function cartesiaSseErrorDetail(event: CartesiaSseEvent): string {
+  if (typeof event.error === "string" && event.error) {
+    return event.error;
+  }
+  if (typeof event.message === "string" && event.message) {
+    return event.message;
+  }
+  return "unknown error";
 }
 
 const SSE_LEADING_SPACE = /^ /;
@@ -516,7 +528,7 @@ async function collectCartesiaSse(
       timestampMessages.push(parsed.word_timestamps);
     } else if (parsed.type === "error") {
       throw new SpeechSDKError(
-        `${modelLabel}: SSE error: ${JSON.stringify(parsed)}`
+        `${modelLabel}: SSE error: ${cartesiaSseErrorDetail(parsed)}`
       );
     }
   };

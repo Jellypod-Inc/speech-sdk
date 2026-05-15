@@ -88,7 +88,7 @@ export class FalSpeechProvider
       );
     }
 
-    const url = `${this.baseURL}/fal-ai/${options.modelId}`;
+    const url = `${this.baseURL}/fal-ai/${encodeURIComponent(options.modelId)}`;
 
     const body: Record<string, unknown> = {
       ...options.providerOptions,

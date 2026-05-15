@@ -28,9 +28,22 @@ export async function decodeAudioToPcm16(
 
 const ENCODING_PARAM_RE = /(?:^|;)\s*encoding=([a-z0-9_-]+)(?=$|;|\s)/i;
 
+// Bounds defensive buffer sizing — TTS output is mono or stereo in practice; an upstream
+// that returns audio/pcm;channels=999999 must not be allowed to drive arithmetic on byte counts.
+const MAX_PCM_CHANNELS = 32;
+
 function decodeRawPcm(bytes: Uint8Array, mediaType: string): DecodedPcm16 {
   const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
   const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
+  if (
+    !Number.isInteger(channels) ||
+    channels < 1 ||
+    channels > MAX_PCM_CHANNELS
+  ) {
+    throw new Error(
+      `audio-decode: invalid channels=${channels} (mediaType="${mediaType}"); must be an integer in [1, ${MAX_PCM_CHANNELS}]`
+    );
+  }
   const encoding = mediaType.toLowerCase().match(ENCODING_PARAM_RE)?.[1];
   const format = encoding === "float32" ? "f32" : "s16";
   const bytesPerSample = format === "f32" ? 4 : 2;

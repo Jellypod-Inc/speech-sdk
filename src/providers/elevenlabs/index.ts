@@ -286,9 +286,10 @@ export class ElevenLabsSpeechProvider
     );
 
     // /with-timestamps returns base64 audio + character-level alignment in JSON; we aggregate characters → words before returning.
+    const encodedVoice = encodeURIComponent(options.voice);
     const path = options.includeTimestamps
-      ? `/v1/text-to-speech/${options.voice}/with-timestamps`
-      : `/v1/text-to-speech/${options.voice}`;
+      ? `/v1/text-to-speech/${encodedVoice}/with-timestamps`
+      : `/v1/text-to-speech/${encodedVoice}`;
     let url = `${this.baseURL}${path}`;
     if (queryString) {
       url += `?${queryString}`;
@@ -383,7 +384,7 @@ export class ElevenLabsSpeechProvider
       options.providerOptions
     );
 
-    let url = `${this.baseURL}/v1/text-to-speech/${options.voice}/stream`;
+    let url = `${this.baseURL}/v1/text-to-speech/${encodeURIComponent(options.voice)}/stream`;
     if (queryString) {
       url += `?${queryString}`;
     }

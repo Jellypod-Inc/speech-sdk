@@ -8,9 +8,10 @@ export function resolveApiKey(
   envVar: string,
   providerName: string
 ): string {
-  const key =
+  const raw =
     stored ??
     (typeof process === "undefined" ? undefined : process.env?.[envVar]);
+  const key = raw?.trim();
   if (!key) {
     throw new MissingApiKeyError({ providerName, envVar });
   }

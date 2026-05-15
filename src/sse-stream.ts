@@ -10,6 +10,11 @@ export interface ParseSseBase64Result {
 
 const LEADING_SPACE = /^ /;
 
+// Bounds the unframed SSE buffer so a slow or misbehaving upstream that never sends a
+// frame terminator can't grow this string without limit. 16 MiB comfortably fits any
+// realistic single TTS event (base64 audio chunks are typically <1 MiB).
+const MAX_SSE_BUFFER_BYTES = 16 * 1024 * 1024;
+
 function base64ToBytes(b64: string): Uint8Array {
   const binaryString = atob(b64);
   const bytes = new Uint8Array(binaryString.length);
@@ -113,6 +118,11 @@ export function parseSseBase64Stream(
             break;
           }
           state.buffer += decoder.decode(value, { stream: true });
+          if (state.buffer.length > MAX_SSE_BUFFER_BYTES) {
+            throw new Error(
+              `SSE stream buffer exceeded ${MAX_SSE_BUFFER_BYTES} bytes without an event terminator`
+            );
+          }
           drainBuffer(state, options, controller, setMetadata);
         }
         controller.close();
@@ -120,6 +130,10 @@ export function parseSseBase64Stream(
       } catch (err) {
         controller.error(err);
         setMetadata(undefined);
+      } finally {
+        reader.cancel().catch(() => {
+          // upstream may already be torn down; the cancel is best-effort
+        });
       }
     },
   });

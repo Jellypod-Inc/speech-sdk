@@ -252,7 +252,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     };
 
-    const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
+    const url = `${this.baseURL}/models/${encodeURIComponent(options.modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -398,7 +398,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     };
 
-    const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
+    const url = `${this.baseURL}/models/${encodeURIComponent(options.modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
