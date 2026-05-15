@@ -23,6 +23,7 @@ export interface FishAudioSpeechProviderConfig {
 export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
+  // TODO(fish-audio): `s1` is also available on the cloud API but not registered here. See docs/audits/fish-audio.md §1.
   {
     id: "s2-pro",
     releaseDate: "2026-03-09",
@@ -31,6 +32,7 @@ export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
       "streaming",
       "audio-tags",
       "open-source",
+      // TODO(fish-audio): flag claims a capability the SDK can't surface without `voice` accepting structured ReferenceAudio. See docs/audits/fish-audio.md §2.
       "inline-voice-cloning",
     ],
   },
@@ -195,6 +197,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "s2-pro") {
+      // TODO(fish-audio): maxVoices=4 is an SDK-chosen cap; Fish's spec doesn't publish a limit. See docs/audits/fish-audio.md §3.
       return { minVoices: 1, maxVoices: 4 };
     }
     return;

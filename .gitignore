@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
-docs/
+docs/*
+!docs/audits/
 .docs/superpowers/
 .env
 .worktrees/
