@@ -1,0 +1,21 @@
+CHANGELOG.md
+  s_15ea635c45a223::t_beb3706681ddbb 3-6
+package.json
+  s_15ea635c45a223::t_5a785cb0346ab4 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "dd691f5d416995b6cf42e92edb4d6f66b74de7c2",
+  "prompts": {},
+  "sessions": {
+    "s_15ea635c45a223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6f4818-6ba1-4513-a26c-049213ffcc97",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
