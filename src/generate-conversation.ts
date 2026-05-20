@@ -12,7 +12,6 @@ import {
 } from "./audio-output.js";
 import { resolveMaxConcurrency } from "./concurrency.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
-import { ConversationInputError } from "./conversation/errors.js";
 import type {
   ConversationTurn,
   GenerateConversationOptions,
@@ -145,15 +144,6 @@ export async function generateConversation<
   }
 
   if (path.kind === "native") {
-    // Native-dialogue is one API call; per-turn providerOptions can't be honored — fail loudly.
-    const turnWithOpts = options.turns.findIndex(
-      (t) => t.providerOptions !== undefined
-    );
-    if (turnWithOpts !== -1) {
-      throw new ConversationInputError(
-        `turns[${turnWithOpts}].providerOptions is set, but ${path.resolved.provider.id}/${path.resolved.modelId} dispatched to the native dialogue path, which renders all turns in one API call. Per-turn providerOptions are not supported on this path; move them to the top-level providerOptions instead.`
-      );
-    }
     return await applySpeedToConversationResult({
       result: await runNative({
         options,
@@ -200,6 +190,14 @@ export async function generateConversation<
     perTurn: stitched.metadataPerTurn,
   };
 
+  const fallbackWarning =
+    path.reason === "fallback-from-native"
+      ? `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`
+      : undefined;
+  const combinedWarnings = fallbackWarning
+    ? [fallbackWarning, ...stitched.warnings]
+    : stitched.warnings;
+
   return await applySpeedToConversationResult({
     result: {
       audio: new DefaultGeneratedAudioFile({
@@ -208,8 +206,7 @@ export async function generateConversation<
       }),
       metadata,
       providerMetadata: { turns: stitched.providerMetadataPerTurn },
-      warnings:
-        stitched.warnings.length > 0 ? [...stitched.warnings] : undefined,
+      warnings: combinedWarnings.length > 0 ? [...combinedWarnings] : undefined,
       timestamps: stitched.timestamps,
     },
     speed: options.speed,

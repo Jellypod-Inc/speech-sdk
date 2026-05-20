@@ -12,10 +12,16 @@ import {
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyer } from "./validate.js";
 
+export type StitchFallbackReason = "fallback-from-native";
+
 export type ConversationPath =
   | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
   | { kind: "native"; resolved: ResolvedModel<Voice> }
-  | { kind: "stitch"; stitchOptionsPerTurn: readonly StitchTurnOptions[] };
+  | {
+      kind: "stitch";
+      reason?: StitchFallbackReason;
+      stitchOptionsPerTurn: readonly StitchTurnOptions[];
+    };
 
 export function chooseConversationPath(input: {
   forceStitch?: boolean;
@@ -44,13 +50,20 @@ export function chooseConversationPath(input: {
     (r) => r.provider === first.provider && r.modelId === first.modelId
   );
 
+  let stitchFallbackReason: StitchFallbackReason | undefined;
+
   if (allSame && !forceStitch) {
     const { provider, modelId } = first;
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);
       if (caps) {
-        assertNativeConstraints({ provider, modelId, caps, turns });
-        return { kind: "native", resolved: first };
+        // Native dialogue is a single API call that can't carry per-utterance config. Any per-turn providerOptions force stitch — and stitch isn't bound by native voice-count / maxTotalChars limits, so skip those checks too.
+        if (turns.some((t) => t.providerOptions !== undefined)) {
+          stitchFallbackReason = "fallback-from-native";
+        } else {
+          assertNativeConstraints({ provider, modelId, caps, turns });
+          return { kind: "native", resolved: first };
+        }
       }
     }
   }
@@ -65,7 +78,11 @@ export function chooseConversationPath(input: {
     }
     return opts;
   });
-  return { kind: "stitch", stitchOptionsPerTurn };
+  return {
+    kind: "stitch",
+    ...(stitchFallbackReason && { reason: stitchFallbackReason }),
+    stitchOptionsPerTurn,
+  };
 }
 
 function assertNativeConstraints(args: {
