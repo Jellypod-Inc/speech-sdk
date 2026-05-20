@@ -1,0 +1,33 @@
+src/conversation/dispatch.ts
+  s_15ea635c45a223::t_c7d0bb63e99b43 15-16,20-24,53-54,66,81-85
+  s_15ea635c45a223::t_18b101eb5211f4 61-65
+src/__tests__/conversation-dispatch.test.ts
+  s_15ea635c45a223::t_fcc94fe3853c93 46,63
+  s_15ea635c45a223::t_00b05022de6141 47-62,64-94
+src/__tests__/generate-conversation.test.ts
+  s_15ea635c45a223::t_1e197dd283d038 270-271,282
+  s_15ea635c45a223::t_7d5b172e6965cd 278-279
+  s_15ea635c45a223::t_466bed1389a203 292
+  s_15ea635c45a223::t_b4800f17bce337 8-11
+  s_15ea635c45a223::t_60e63042e29892 248
+  s_15ea635c45a223::t_debbe21badf2f0 249-269,272-277,280-281
+src/generate-conversation.ts
+  s_15ea635c45a223::t_9cbac586fb2e74 195
+  s_15ea635c45a223::t_e264205ef60deb 193-194,196-200,209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "126910e09e746327dc80ee7e4c2904eae5b1d8ad",
+  "prompts": {},
+  "sessions": {
+    "s_15ea635c45a223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6f4818-6ba1-4513-a26c-049213ffcc97",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
