@@ -5,6 +5,10 @@ import { generateConversation } from "../generate-conversation.js";
 import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
+const NATIVE_FALLBACK_WARNING_RE = /native dialogue unavailable/;
+const NATIVE_FALLBACK_CALL_COUNT_RE = /2 API calls instead of 1/;
+const STITCH_UNSUPPORTED_RE = /cannot be used in a stitched conversation/;
+
 function nativeProvider(): SpeechProvider {
   return {
     id: "native",
@@ -241,7 +245,41 @@ describe("generateConversation", () => {
     });
   });
 
-  it("rejects per-turn providerOptions on the native-dialogue path", async () => {
+  it("falls back to stitch with a warning when any per-turn providerOptions is set on a native-capable model", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "native-stitchable",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn().mockResolvedValue({
+        audio: bytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    const result = await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "b", text: "Hello.", providerOptions: { style: "casual" } },
+      ],
+      gapMs: 0,
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(result.warnings?.[0]).toMatch(NATIVE_FALLBACK_WARNING_RE);
+    expect(result.warnings?.[0]).toMatch(NATIVE_FALLBACK_CALL_COUNT_RE);
+  });
+
+  it("propagates StitchUnsupportedError when per-turn options force the stitch fallback on a native-only provider", async () => {
     const provider = nativeProvider();
     await expect(
       generateConversation({
@@ -251,7 +289,7 @@ describe("generateConversation", () => {
           { voice: "b", text: "Hello.", providerOptions: { style: "casual" } },
         ],
       })
-    ).rejects.toBeInstanceOf(ConversationInputError);
+    ).rejects.toThrow(STITCH_UNSUPPORTED_RE);
     expect(provider.generateDialogue).not.toHaveBeenCalled();
   });
 

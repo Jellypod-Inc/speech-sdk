@@ -43,6 +43,57 @@ describe("chooseConversationPath", () => {
     expect(result.kind).toBe("native");
   });
 
+  it("falls back to stitch with reason when any per-turn providerOptions is set on a native-capable model", () => {
+    const provider = mockProvider({
+      id: "elevenlabs",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      getStitchOptions: () => ({
+        providerOptions: { output_format: "pcm_24000" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+    const resolved = [
+      { provider, modelId: "eleven_v3" },
+      { provider, modelId: "eleven_v3" },
+    ];
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "b", text: "Hello.", providerOptions: { x: 1 } },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+    if (result.kind === "stitch") {
+      expect(result.reason).toBe("fallback-from-native");
+    }
+  });
+
+  it("uses stitch with no fallback reason when provider has no native dialogue capability", () => {
+    const provider = mockProvider({
+      id: "openai",
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+    const result = chooseConversationPath({
+      resolvedPerTurn: [
+        { provider, modelId: "tts-1" },
+        { provider, modelId: "tts-1" },
+      ],
+      turns: [
+        { voice: "nova", text: "Hi.", providerOptions: { speed: 0.9 } },
+        { voice: "shimmer", text: "Hello.", providerOptions: { speed: 1.1 } },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+    if (result.kind === "stitch") {
+      expect(result.reason).toBeUndefined();
+    }
+  });
+
   it("returns stitch when provider lacks generateDialogue", () => {
     const provider = mockProvider({
       id: "openai",
