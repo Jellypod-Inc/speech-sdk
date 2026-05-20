@@ -1,0 +1,21 @@
+src/conversation/dispatch.ts
+  s_15ea635c45a223::t_95bd8c4d503e02 60,64
+src/__tests__/conversation-dispatch.test.ts
+  s_15ea635c45a223::t_4c9fecf702f056 73-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "4ea3a1ca1b22adf427ea826764faed0cfafe4599",
+  "prompts": {},
+  "sessions": {
+    "s_15ea635c45a223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f6f4818-6ba1-4513-a26c-049213ffcc97",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
