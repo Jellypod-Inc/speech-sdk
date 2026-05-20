@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- `generateConversation` no longer throws `ConversationInputError` when a turn carries `providerOptions` on a model that dispatches to native dialogue (e.g. `elevenlabs/eleven_v3`, Gemini multi-speaker). Dispatch falls through to the stitch path and surfaces a warning so callers can see they paid for extra API calls instead of one native call.
+
 ## 0.10.0
 
 - Add `inworld-tts-2` model to the Inworld provider.
