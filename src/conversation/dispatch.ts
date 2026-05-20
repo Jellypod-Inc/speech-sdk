@@ -57,11 +57,11 @@ export function chooseConversationPath(input: {
     if (provider.generateDialogue && provider.dialogueCapabilities) {
       const caps = provider.dialogueCapabilities(modelId);
       if (caps) {
-        assertNativeConstraints({ provider, modelId, caps, turns });
-        // Native dialogue is a single API call that can't carry per-utterance config. Any per-turn providerOptions force stitch.
+        // Native dialogue is a single API call that can't carry per-utterance config. Any per-turn providerOptions force stitch — and stitch isn't bound by native voice-count / maxTotalChars limits, so skip those checks too.
         if (turns.some((t) => t.providerOptions !== undefined)) {
           stitchFallbackReason = "fallback-from-native";
         } else {
+          assertNativeConstraints({ provider, modelId, caps, turns });
           return { kind: "native", resolved: first };
         }
       }
