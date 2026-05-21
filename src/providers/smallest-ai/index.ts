@@ -22,7 +22,29 @@ export class SmallestAISpeechProvider
     {
       id: "lightning-v3.1",
       releaseDate: "2025-01-01",
-      languages: ["en", "hi", "es", "ta"] as const,
+      languages: [
+        "en",
+        "hi",
+        "es",
+        "ta",
+        "kn",
+        "te",
+        "ml",
+        "mr",
+        "gu",
+        "fr",
+        "it",
+        "nl",
+        "sv",
+        "pt",
+        "de",
+      ] as const,
+      features: [],
+    },
+    {
+      id: "lightning_v3.1_pro",
+      releaseDate: "2025-05-01",
+      languages: ["en", "hi"] as const,
       features: [],
     },
   ] as const;
@@ -51,29 +73,36 @@ export class SmallestAISpeechProvider
     const outputFormat =
       (options.providerOptions?.output_format as string | undefined) ?? "wav";
 
+    const isProModel = options.modelId === "lightning_v3.1_pro";
+
     const body: Record<string, unknown> = {
-      voice_id: options.voice ?? "magnus",
+      voice_id: options.voice ?? (isProModel ? "meher" : "magnus"),
       language: "auto",
       ...options.providerOptions,
       text: options.text,
       output_format: outputFormat,
     };
 
-    const response = await this.fetchFn(
-      `${this.baseURL}/${options.modelId}/get_speech`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
-          "X-User-Agent": SDK_USER_AGENT,
-          "X-Source": "jellypod-speech-sdk",
-          ...options.headers,
-        },
-        body: JSON.stringify(body),
-        signal: options.abortSignal,
-      }
-    );
+    if (isProModel) {
+      body.model = "lightning_v3.1_pro";
+    }
+
+    const url = isProModel
+      ? `${this.baseURL}/tts`
+      : `${this.baseURL}/${options.modelId}/get_speech`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        "X-Source": "jellypod-speech-sdk",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
 
     await handleErrorResponse(response);
 
