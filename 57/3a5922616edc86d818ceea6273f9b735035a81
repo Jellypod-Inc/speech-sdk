@@ -1,0 +1,41 @@
+src/conversation/stitch.ts
+  s_aa14159cbc9d0b::t_518e5a5ce5421d 16
+  s_aa14159cbc9d0b::t_f408ff3ad9891b 37
+src/conversation/validate.ts
+  s_aa14159cbc9d0b::t_5fa47b15e87350 1,3-16,19,58-63
+src/providers/gateway/index.ts
+  s_aa14159cbc9d0b::t_b9b0fc0ff9688a 334-337,340-354,377-379,381,386-388,394-397,399,407-423
+src/conversation/types.ts
+  s_aa14159cbc9d0b::t_30a5d650be2697 5,14-23
+src/__tests__/generate-conversation.test.ts
+  s_aa14159cbc9d0b::t_7c9916a74049be 446-511
+src/conversation/dispatch.ts
+  s_aa14159cbc9d0b::t_ea45bd2e4d4698 12-13,35-37,82-86
+src/generate-conversation.ts
+  s_aa14159cbc9d0b::t_e11e71adff2397 203-208
+  s_aa14159cbc9d0b::t_d1c63d0885ea8d 90
+  s_aa14159cbc9d0b::t_291a2bc7c9f605 674
+  s_aa14159cbc9d0b::t_585bc785aa7a4c 175-182
+  s_aa14159cbc9d0b::t_ed195b05adc67f 213-214
+  s_aa14159cbc9d0b::t_a9f8d5f3cc033a 485-489
+  s_aa14159cbc9d0b::t_b1004bb69b1126 65-66
+  s_aa14159cbc9d0b::t_a49ab55fb34234 19,21
+  s_aa14159cbc9d0b::t_ec2fccb81c2064 324-341,344-353,359-365,372
+  s_aa14159cbc9d0b::t_8ce4b940bc7dc3 109-128,130-137,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "573a5922616edc86d818ceea6273f9b735035a81",
+  "prompts": {},
+  "sessions": {
+    "s_aa14159cbc9d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7961527c-cd38-4e17-863d-9856fcf91efd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
