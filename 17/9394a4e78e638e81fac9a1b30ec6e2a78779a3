@@ -1,0 +1,31 @@
+src/retry-options.ts
+  s_aa14159cbc9d0b::t_c49f9b4434564d 19-24
+  s_aa14159cbc9d0b::t_0a282b7d467e86 2
+src/index.ts
+  s_aa14159cbc9d0b::t_f30396d9298bad 22-23
+src/errors.ts
+  s_aa14159cbc9d0b::t_8ecffca3971996 148-186
+src/__tests__/gateway.test.ts
+  s_aa14159cbc9d0b::t_237ca16d70c4d9 738-791
+src/providers/gateway/index.ts
+  s_aa14159cbc9d0b::t_949d9723ee1a75 213-220
+  s_aa14159cbc9d0b::t_ad8345148a661f 330-337
+  s_aa14159cbc9d0b::t_e4862e18ec074c 7-8
+  s_aa14159cbc9d0b::t_3535f7af0a406c 537-581
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "179394a4e78e638e81fac9a1b30ec6e2a78779a3",
+  "prompts": {},
+  "sessions": {
+    "s_aa14159cbc9d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7961527c-cd38-4e17-863d-9856fcf91efd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
