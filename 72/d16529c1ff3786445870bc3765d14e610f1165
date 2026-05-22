@@ -1,0 +1,20 @@
+skills/speech-sdk/references/configuration.md
+  s_aa14159cbc9d0b::t_9828038eb41e57 8-9,13,19-34
+  s_aa14159cbc9d0b::t_4cd96f39545ec9 82,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "72d16529c1ff3786445870bc3765d14e610f1165",
+  "prompts": {},
+  "sessions": {
+    "s_aa14159cbc9d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7961527c-cd38-4e17-863d-9856fcf91efd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
