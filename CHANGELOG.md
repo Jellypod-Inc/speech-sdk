@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+- **Breaking: per-provider default sample rate raised.** Providers that natively support higher rates now default to their highest documented rate instead of 24 kHz: ElevenLabs, Cartesia, Deepgram Aura, Inworld, Murf, Fish Audio (44.1 kHz), and xAI. Stitch and chunk-stitch paths now use `max(per-segment rate)` instead of a 24 kHz constant. Single-rate providers (OpenAI 24 kHz, Google 24 kHz, Hume 48 kHz, Mistral 24 kHz, Resemble 44.1 kHz, Smallest-AI 24 kHz) declare their fixed rate and reject mismatches. Fal remains a pass-through with no rate selection.
+  - **ElevenLabs free-tier callers** will see ElevenLabs reject PCM/WAV requests at ≥44.1 kHz. Pass `output: { format: "pcm", sampleRate: 24000 }` to keep the previous behavior.
+- **New `output.sampleRate` option** on `AudioOutput`. Pass a positive integer to request a specific rate. Providers throw `UnsupportedSampleRateError` if the rate isn't in their documented set.
+- **Fix: `volumeDbfs` no longer hard-clips transient consonants.** `normalizeRms` is now peak-aware: it caps the RMS-targeted gain so post-gain peaks stay ≤0.99 × INT16_MAX. If the source can't reach the requested RMS without clipping, the SDK preserves the source's dynamic range instead of distorting transients.
+- New `UnsupportedSampleRateError` thrown when the caller requests a `sampleRate` the provider's API doesn't expose.
+
 ## 0.10.1
 
 - `generateConversation` no longer throws `ConversationInputError` when a turn carries `providerOptions` on a model that dispatches to native dialogue (e.g. `elevenlabs/eleven_v3`, Gemini multi-speaker). Dispatch falls through to the stitch path and surfaces a warning so callers can see they paid for extra API calls instead of one native call.
