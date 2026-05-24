@@ -11,6 +11,7 @@ import { encodePcm16ToMp3 } from "../encoders/mp3.js";
 import { AudioOutputInputError } from "../errors.js";
 
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
+const SAMPLE_RATE_ERR_RE = /sampleRate/;
 
 function makePcm16Bytes(numSamples: number): Uint8Array {
   const samples = new Int16Array(numSamples);
@@ -81,17 +82,17 @@ describe("audio-output", () => {
 
   it("rejects non-positive sampleRate", () => {
     expect(() => validateOutput({ format: "wav", sampleRate: 0 })).toThrow(
-      /sampleRate/
+      SAMPLE_RATE_ERR_RE
     );
     expect(() => validateOutput({ format: "pcm", sampleRate: -1 })).toThrow(
-      /sampleRate/
+      SAMPLE_RATE_ERR_RE
     );
   });
 
   it("rejects non-integer sampleRate", () => {
     expect(() =>
       validateOutput({ format: "wav", sampleRate: 44_100.5 })
-    ).toThrow(/sampleRate/);
+    ).toThrow(SAMPLE_RATE_ERR_RE);
   });
 });
 
