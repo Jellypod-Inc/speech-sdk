@@ -1,0 +1,24 @@
+src/__tests__/generate-speech-sample-rate.test.ts
+  s_2d7bc864951653::t_475fc2b1fd4542 1-6,8-9,15-30,32-33,39-54,56-57,63-78
+  s_2d7bc864951653::t_c877eb045618f0 7,10-14,31,34-38,55,58-62
+src/generate-speech.ts
+  s_2d7bc864951653::t_d9b9a435e2c290 408,411
+  s_2d7bc864951653::t_4f7865aa1a3520 514-518,532-533,552-553
+  s_2d7bc864951653::t_de1841f665093b 53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "adc9cf25509edc6629c6e01277ae0ed7b48c3d16",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
