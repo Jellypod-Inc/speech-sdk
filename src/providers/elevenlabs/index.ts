@@ -353,7 +353,13 @@ export class ElevenLabsSpeechProvider
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    // ElevenLabs returns bare "audio/pcm" without a rate parameter for pcm_<rate>
+    // requests, which would cause downstream decoders to fall back to a default
+    // rate. Prefer what we asked for when output_format is set.
+    const mediaType =
+      outputFormat == null
+        ? (response.headers.get("content-type") ?? "audio/mpeg")
+        : elevenLabsFormatToMediaType(outputFormat);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -382,7 +388,7 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const { body, queryString } = this.buildRequest(
+    const { body, queryString, outputFormat } = this.buildRequest(
       options.text,
       options.modelId,
       options.providerOptions
@@ -426,7 +432,10 @@ export class ElevenLabsSpeechProvider
     return {
       audioDurationMs,
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType:
+        outputFormat == null
+          ? (response.headers.get("content-type") ?? "audio/mpeg")
+          : elevenLabsFormatToMediaType(outputFormat),
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
