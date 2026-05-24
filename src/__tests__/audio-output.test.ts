@@ -58,6 +58,41 @@ describe("audio-output", () => {
       "audio/pcm;rate=24000"
     );
   });
+
+  it("accepts sampleRate on wav output", () => {
+    expect(validateOutput({ format: "wav", sampleRate: 48_000 })).toEqual({
+      format: "wav",
+      sampleRate: 48_000,
+    });
+  });
+
+  it("accepts sampleRate on pcm output", () => {
+    expect(validateOutput({ format: "pcm", sampleRate: 44_100 })).toEqual({
+      format: "pcm",
+      sampleRate: 44_100,
+    });
+  });
+
+  it("accepts sampleRate on mp3 output alongside bitrate", () => {
+    expect(
+      validateOutput({ format: "mp3", bitrate: 192, sampleRate: 48_000 })
+    ).toEqual({ format: "mp3", bitrate: 192, sampleRate: 48_000 });
+  });
+
+  it("rejects non-positive sampleRate", () => {
+    expect(() => validateOutput({ format: "wav", sampleRate: 0 })).toThrow(
+      /sampleRate/
+    );
+    expect(() => validateOutput({ format: "pcm", sampleRate: -1 })).toThrow(
+      /sampleRate/
+    );
+  });
+
+  it("rejects non-integer sampleRate", () => {
+    expect(() =>
+      validateOutput({ format: "wav", sampleRate: 44_100.5 })
+    ).toThrow(/sampleRate/);
+  });
 });
 
 describe("convertDecodableAudioToOutput", () => {
