@@ -5,7 +5,7 @@ import {
 } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import { SpeechSDKError } from "../../errors.js";
+import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -15,6 +15,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -153,6 +154,10 @@ const ELEVENLABS_V3_LANGUAGES = [
   "ur",
   "vi",
   "cy",
+] as const;
+
+const ELEVENLABS_PCM_WAV_RATES = [
+  8000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
 ] as const;
 
 export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
@@ -426,14 +431,26 @@ export class ElevenLabsSpeechProvider
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { output_format: "pcm_24000" },
-        mediaType: "audio/pcm;rate=24000",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return ELEVENLABS_PCM_WAV_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `elevenlabs/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { output_format: `pcm_${rate}` },
+      mediaType: `audio/pcm;rate=${rate}`,
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -442,12 +459,29 @@ export class ElevenLabsSpeechProvider
     }
     switch (output.format) {
       case "pcm":
-      case "wav":
+      case "wav": {
+        const rate = resolveSampleRate(
+          `elevenlabs/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
-          providerOptions: { output_format: "pcm_24000" },
-          expectedMediaType: "audio/pcm;rate=24000",
+          providerOptions: { output_format: `pcm_${rate}` },
+          expectedMediaType: `audio/pcm;rate=${rate}`,
         };
+      }
       case "mp3": {
+        // ElevenLabs MP3 is effectively fixed at 44.1 kHz (the API exposes
+        // mp3_22050_32 and mp3_24000_48 as special cases, but otherwise all
+        // bitrates are gated to mp3_44100_*). If the caller asked for a
+        // different MP3 rate, surface that as unsupported.
+        if (output.sampleRate != null && output.sampleRate !== 44_100) {
+          throw new UnsupportedSampleRateError(
+            `elevenlabs/${modelId}`,
+            output.sampleRate,
+            [44_100]
+          );
+        }
         const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
         const supportedBitrates = [32, 64, 96, 128, 192];
         const closest = supportedBitrates.reduce((prev, curr) =>

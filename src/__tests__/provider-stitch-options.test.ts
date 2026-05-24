@@ -25,7 +25,7 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("ElevenLabs returns pcm_24000 for all supported models", () => {
+  it("ElevenLabs returns pcm_48000 (highest supported rate) for all supported models by default", () => {
     const p = new ElevenLabsSpeechProvider({});
     for (const m of [
       "eleven_v3",
@@ -34,8 +34,8 @@ describe("getStitchOptions per provider", () => {
       "eleven_flash_v2",
     ] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
-        providerOptions: { output_format: "pcm_24000" },
-        mediaType: "audio/pcm;rate=24000",
+        providerOptions: { output_format: "pcm_48000" },
+        mediaType: "audio/pcm;rate=48000",
       });
     }
   });
