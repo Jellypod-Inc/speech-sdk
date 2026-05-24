@@ -61,7 +61,7 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("Cartesia returns wav pcm_s16le 24k", () => {
+  it("Cartesia returns wav pcm_s16le 48k (highest supported rate) by default", () => {
     const p = new CartesiaSpeechProvider({});
     const opts = p.getStitchOptions?.("sonic-3");
     expect(opts?.mediaType).toBe("audio/wav");
@@ -69,7 +69,7 @@ describe("getStitchOptions per provider", () => {
       output_format: {
         container: "wav",
         encoding: "pcm_s16le",
-        sample_rate: 24_000,
+        sample_rate: 48_000,
       },
     });
   });
