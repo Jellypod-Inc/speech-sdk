@@ -1,0 +1,21 @@
+src/providers/elevenlabs/index.ts
+  s_2d7bc864951653::t_b2d103269b0f14 474
+src/__tests__/elevenlabs-sample-rate.test.ts
+  s_2d7bc864951653::t_78da94646e061c 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "c1f2be8c5c88fcd448ea997747259061fa81a356",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
