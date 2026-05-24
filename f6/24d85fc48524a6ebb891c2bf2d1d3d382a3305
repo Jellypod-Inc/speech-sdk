@@ -1,0 +1,20 @@
+src/__tests__/gateway.test.ts
+  s_2d7bc864951653::t_8485eb003de072 108-127
+  s_2d7bc864951653::t_38c1016d2278a3 644-662
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "f624d85fc48524a6ebb891c2bf2d1d3d382a3305",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
