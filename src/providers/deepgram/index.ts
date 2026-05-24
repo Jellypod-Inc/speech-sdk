@@ -4,12 +4,15 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+const DEEPGRAM_AURA_RATES = [8000, 16_000, 24_000, 32_000, 48_000] as const;
 
 // Deepgram /v1/speak takes audio-shaping params on the query string; only `text` in body or it returns PAYLOAD_ERROR.
 function buildSpeakUrl(
@@ -143,18 +146,30 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: {
-          encoding: "linear16",
-          sample_rate: 24_000,
-          container: "wav",
-        },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return DEEPGRAM_AURA_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `deepgram/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: {
+        encoding: "linear16",
+        sample_rate: rate,
+        container: "wav",
+      },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -163,25 +178,23 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     }
     switch (output.format) {
       case "wav":
-        return {
-          providerOptions: {
-            encoding: "linear16",
-            container: "wav",
-            sample_rate: 24_000,
-          },
-          expectedMediaType: "audio/wav",
-        };
-      case "pcm":
+      case "pcm": {
         // Deepgram with container=none returns audio/l16 (RFC 2586, big-endian);
         // request container=wav and let the SDK unwrap to little-endian s16.
+        const rate = resolveSampleRate(
+          `deepgram/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
           providerOptions: {
             encoding: "linear16",
             container: "wav",
-            sample_rate: 24_000,
+            sample_rate: rate,
           },
           expectedMediaType: "audio/wav",
         };
+      }
       case "mp3":
         return {
           providerOptions: { encoding: "mp3" },

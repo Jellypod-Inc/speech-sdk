@@ -74,12 +74,12 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Deepgram returns linear16 wav 24k", () => {
+  it("Deepgram returns linear16 wav 48k (highest supported rate) by default", () => {
     const p = new DeepgramSpeechProvider({});
     expect(p.getStitchOptions?.("aura-2")).toEqual({
       providerOptions: {
         encoding: "linear16",
-        sample_rate: 24_000,
+        sample_rate: 48_000,
         container: "wav",
       },
       mediaType: "audio/wav",
