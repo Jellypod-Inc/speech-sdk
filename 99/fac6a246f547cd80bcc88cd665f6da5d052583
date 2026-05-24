@@ -1,0 +1,30 @@
+src/audio-output.ts
+  s_2d7bc864951653::t_b3d6c78b0564f3 52-59
+src/conversation/dispatch.ts
+  s_2d7bc864951653::t_d43a3a502e5f83 1
+  s_2d7bc864951653::t_829a60d8032888 34
+  s_2d7bc864951653::t_d480f87395fbd8 31,33,75-77
+src/generate-conversation.ts
+  s_2d7bc864951653::t_e4d00a4c13d22b 381
+  s_2d7bc864951653::t_64f9e9dfbc6c83 11
+  s_2d7bc864951653::t_d480f87395fbd8 132,380,382
+src/__tests__/conversation-sample-rate-propagation.test.ts
+  s_2d7bc864951653::t_06176d68b44762 1-19,21-51
+  s_2d7bc864951653::t_855dcca525755f 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "99fac6a246f547cd80bcc88cd665f6da5d052583",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
