@@ -1,0 +1,21 @@
+src/audio-output.ts
+  s_2d7bc864951653::t_0c6c6e10f70453 9-15,22,24-28,33-36,41-48,60
+src/__tests__/audio-output.test.ts
+  s_2d7bc864951653::t_04768b4934bff7 61-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "94c4f1c5342915592704f5d5f042d690bcdc59b5",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
