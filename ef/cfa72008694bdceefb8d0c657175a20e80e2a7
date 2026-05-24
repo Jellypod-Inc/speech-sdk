@@ -1,0 +1,25 @@
+src/providers/cartesia/index.ts
+  s_2d7bc864951653::t_5a5aa0038f608a 394-396,398-419,427-432,438,443-449,455,458,460,462-466,477
+  s_2d7bc864951653::t_65ce7b29c1353d 17
+  s_2d7bc864951653::t_5c7bf14f9025ab 36-39
+src/__tests__/provider-stitch-options.test.ts
+  s_2d7bc864951653::t_fdd96f745f3550 64,72
+src/__tests__/cartesia-sample-rate.test.ts
+  s_2d7bc864951653::t_68de840ce114d0 1-10,12-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "efcfa72008694bdceefb8d0c657175a20e80e2a7",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
