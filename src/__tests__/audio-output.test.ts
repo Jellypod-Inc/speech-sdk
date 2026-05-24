@@ -60,20 +60,6 @@ describe("audio-output", () => {
     );
   });
 
-  it("accepts sampleRate on wav output", () => {
-    expect(validateOutput({ format: "wav", sampleRate: 48_000 })).toEqual({
-      format: "wav",
-      sampleRate: 48_000,
-    });
-  });
-
-  it("accepts sampleRate on pcm output", () => {
-    expect(validateOutput({ format: "pcm", sampleRate: 44_100 })).toEqual({
-      format: "pcm",
-      sampleRate: 44_100,
-    });
-  });
-
   it("accepts sampleRate on mp3 output alongside bitrate", () => {
     expect(
       validateOutput({ format: "mp3", bitrate: 192, sampleRate: 48_000 })

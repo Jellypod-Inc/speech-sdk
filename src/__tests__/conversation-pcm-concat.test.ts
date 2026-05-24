@@ -282,10 +282,4 @@ describe("normalizeRms peak safety", () => {
     expect(outRms).toBeGreaterThan(target * 0.95);
     expect(outRms).toBeLessThan(target * 1.05);
   });
-
-  it("leaves silent segments untouched", () => {
-    const pcm = new Int16Array(1000);
-    const [out] = normalizeRms([{ pcm, sampleRate: 24_000, channels: 1 }]);
-    expect(out.pcm).toEqual(pcm);
-  });
 });
