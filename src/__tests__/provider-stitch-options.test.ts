@@ -86,31 +86,31 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Inworld returns LINEAR16 audio_config 24k", () => {
+  it("Inworld returns LINEAR16 audio_config at 48k (highest supported rate) by default", () => {
     const p = new InworldSpeechProvider({});
     const opts = p.getStitchOptions?.("inworld-tts-1.5-max");
     expect(opts?.mediaType).toBe("audio/wav");
     expect(opts?.providerOptions).toEqual({
       audio_config: {
         audio_encoding: "LINEAR16",
-        sample_rate_hertz: 24_000,
+        sample_rate_hertz: 48_000,
       },
     });
   });
 
-  it("Fish Audio returns wav format for s2-pro", () => {
+  it("Fish Audio returns wav format at 44.1k (highest WAV/PCM rate) for s2-pro", () => {
     const p = new FishAudioSpeechProvider({});
     expect(p.getStitchOptions?.("s2-pro")).toEqual({
-      providerOptions: { format: "wav" },
+      providerOptions: { format: "wav", sample_rate: 44_100 },
       mediaType: "audio/wav",
     });
   });
 
-  it("Murf returns wav for GEN2 and FALCON", () => {
+  it("Murf returns wav at 48k (highest supported rate) for GEN2 and FALCON", () => {
     const p = new MurfSpeechProvider({});
     for (const m of ["GEN2", "FALCON"] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
-        providerOptions: {},
+        providerOptions: { format: "WAV", sampleRate: 48_000 },
         mediaType: "audio/wav",
       });
     }
@@ -142,10 +142,10 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("xAI returns wav via output_format.codec", () => {
+  it("xAI returns wav via output_format.codec at 48k (highest supported rate)", () => {
     const p = new XaiSpeechProvider({});
     expect(p.getStitchOptions?.("grok-tts")).toEqual({
-      providerOptions: { output_format: { codec: "wav" } },
+      providerOptions: { output_format: { codec: "wav", sample_rate: 48_000 } },
       mediaType: "audio/wav",
     });
   });

@@ -5,10 +5,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
@@ -188,21 +189,39 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      // Pin precision to PCM_16 — Resemble defaults to PCM_32 (float WAV) which the stitch decoder rejects.
-      return {
-        providerOptions: { precision: "PCM_16" },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    // Resemble public docs do not enumerate sample_rate values; fall back to a single API-native rate.
+    return [44_100];
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    resolveSampleRate(
+      `resemble/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    // Pin precision to PCM_16 — Resemble defaults to PCM_32 (float WAV) which the stitch decoder rejects.
+    return {
+      providerOptions: { precision: "PCM_16" },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    resolveSampleRate(
+      `resemble/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "wav":
         // Pin precision to PCM_16 — Resemble defaults to PCM_32 (float WAV) which downstream decoders reject.

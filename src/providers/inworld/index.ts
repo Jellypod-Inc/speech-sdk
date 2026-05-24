@@ -6,10 +6,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
@@ -40,6 +41,10 @@ interface InworldAudioConfig {
 
 const DEFAULT_AUDIO_ENCODING = "MP3";
 const DEFAULT_SAMPLE_RATE_HERTZ = 48_000;
+
+const INWORLD_SAMPLE_RATES = [
+  8000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
+] as const;
 
 function mediaTypeForEncoding(encoding: string | undefined): string {
   switch ((encoding ?? DEFAULT_AUDIO_ENCODING).toUpperCase()) {
@@ -262,25 +267,42 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: {
-          audio_config: {
-            audio_encoding: "LINEAR16",
-            sample_rate_hertz: 24_000,
-          },
-        },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return INWORLD_SAMPLE_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `inworld/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: {
+        audio_config: {
+          audio_encoding: "LINEAR16",
+          sample_rate_hertz: rate,
+        },
+      },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    const rate = resolveSampleRate(
+      `inworld/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "wav":
       case "pcm":
@@ -289,7 +311,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
           providerOptions: {
             audio_config: {
               audio_encoding: "LINEAR16",
-              sample_rate_hertz: 24_000,
+              sample_rate_hertz: rate,
             },
           },
           expectedMediaType: "audio/wav",
@@ -299,7 +321,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
           providerOptions: {
             audio_config: {
               audio_encoding: "MP3",
-              sample_rate_hertz: 48_000,
+              sample_rate_hertz: rate,
             },
           },
           expectedMediaType: "audio/mpeg",

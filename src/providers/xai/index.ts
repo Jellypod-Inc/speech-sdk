@@ -4,10 +4,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
@@ -19,6 +20,10 @@ export interface XaiSpeechProviderConfig {
 }
 
 export const XAI_PROVIDER_ID = "xai" as const;
+
+const XAI_SAMPLE_RATES = [
+  8000, 16_000, 22_050, 24_000, 44_100, 48_000,
+] as const;
 
 // ISO 639-1 codes; xAI also accepts BCP-47 (e.g. pt-BR) and "auto" via providerOptions.language.
 const XAI_LANGUAGES = [
@@ -184,14 +189,26 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { output_format: { codec: "wav" } },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return XAI_SAMPLE_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `xai/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { output_format: { codec: "wav", sample_rate: rate } },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -199,23 +216,37 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       return;
     }
     switch (output.format) {
-      case "wav":
+      case "wav": {
+        const rate = resolveSampleRate(
+          `xai/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
-          providerOptions: { output_format: { codec: "wav" } },
+          providerOptions: {
+            output_format: { codec: "wav", sample_rate: rate },
+          },
           expectedMediaType: "audio/wav",
         };
+      }
       case "mp3":
         return {
           providerOptions: { output_format: { codec: "mp3" } },
           expectedMediaType: "audio/mpeg",
         };
-      case "pcm":
+      case "pcm": {
+        const rate = resolveSampleRate(
+          `xai/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
           providerOptions: {
-            output_format: { codec: "pcm", sample_rate: 24_000 },
+            output_format: { codec: "pcm", sample_rate: rate },
           },
-          expectedMediaType: "audio/pcm;rate=24000",
+          expectedMediaType: `audio/pcm;rate=${rate}`,
         };
+      }
       default:
         return;
     }

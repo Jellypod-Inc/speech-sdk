@@ -4,7 +4,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type { ResolvedModel, SpeechProvider } from "../../speech-provider.js";
+import {
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
+} from "../../speech-provider.js";
 
 export interface SmallestAISpeechProviderConfig {
   apiKey?: string;
@@ -88,20 +92,38 @@ export class SmallestAISpeechProvider
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { output_format: "wav" },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    // Smallest AI Lightning docs do not enumerate sample rates; fall back to the SDK's existing hardcoded rate.
+    return [24_000];
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    resolveSampleRate(
+      `smallest-ai/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { output_format: "wav" },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    resolveSampleRate(
+      `smallest-ai/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "wav":
         return {
