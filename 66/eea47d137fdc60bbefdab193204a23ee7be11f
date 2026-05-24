@@ -1,0 +1,37 @@
+src/providers/openai/index.ts
+  s_2d7bc864951653::t_f43f37e6b82917 300-309,311-319,326-330
+  s_2d7bc864951653::t_34f3c3c1974ab2 14
+src/providers/google/index.ts
+  s_2d7bc864951653::t_c9054bb4886a72 317-319,321-337,344-348
+  s_2d7bc864951653::t_ef5fd4e00db9c2 19
+src/__tests__/google-sample-rate.test.ts
+  s_2d7bc864951653::t_c6b306a0d8f6e7 1-31
+src/providers/hume/index.ts
+  s_2d7bc864951653::t_d46ae379834882 266-268,270-286,293-297
+  s_2d7bc864951653::t_2eeeccf7d68a3a 10-14
+src/__tests__/openai-sample-rate.test.ts
+  s_2d7bc864951653::t_946313eb93063d 1-31
+src/providers/mistral/index.ts
+  s_2d7bc864951653::t_c681bad8d57274 211-213,215-232,239-243
+  s_2d7bc864951653::t_47535f6121db22 9-13
+src/__tests__/mistral-sample-rate.test.ts
+  s_2d7bc864951653::t_507220d3b5d011 1-31
+src/__tests__/hume-sample-rate.test.ts
+  s_2d7bc864951653::t_1ae5edd73ae8d6 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "66eea47d137fdc60bbefdab193204a23ee7be11f",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
