@@ -1,0 +1,21 @@
+src/speech-provider.ts
+  s_2d7bc864951653::t_d47570ee8a38c4 1
+  s_2d7bc864951653::t_56e826f8e01460 169-192
+  s_2d7bc864951653::t_96fcc090b4296f 93-96,131-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "436baac92bec4fa66044bd849052c58991ee6a5c",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
