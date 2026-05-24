@@ -1,0 +1,24 @@
+src/providers/deepgram/index.ts
+  s_2d7bc864951653::t_4fb0a50e3ad1ed 7-11,15
+  s_2d7bc864951653::t_8118287e288a58 149-151,153-172,181,184-188,193,197
+src/__tests__/provider-stitch-options.test.ts
+  s_2d7bc864951653::t_00435b2b287e28 77,82
+src/__tests__/deepgram-sample-rate.test.ts
+  s_2d7bc864951653::t_a6f49364b24fcd 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "8c56a0590167f09caaa94f504f1a34185a67d7e5",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
