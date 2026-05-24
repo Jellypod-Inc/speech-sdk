@@ -202,13 +202,17 @@ describe("normalizeRms", () => {
     expect(out.pcm[0]).toBe(DEFAULT_TARGET_RMS);
   });
 
-  it("clamps to int16 range when boosting a quiet segment with loud peaks", () => {
+  it("caps gain at peak-safe headroom when boosting a quiet segment with loud peaks", () => {
+    // Previously this test asserted hard-clip to 32767. The peak-safe gain
+    // intentionally backs off so the loud peak lands at ~INT16_MAX * 0.99
+    // instead of clipping — the old behavior was the bug being fixed.
     const pcm = new Int16Array(1000);
     for (let i = 0; i < pcm.length; i++) {
       pcm[i] = i === 0 ? 30_000 : 100;
     }
     const [out] = normalizeRms([mkSeg(pcm)], 10_000);
-    expect(out.pcm[0]).toBe(32_767);
+    expect(out.pcm[0]).toBeLessThanOrEqual(Math.floor(32_767 * 0.99));
+    expect(out.pcm[0]).toBeGreaterThan(32_000);
   });
 
   it("leaves silent segments untouched (no divide-by-zero)", () => {
@@ -221,5 +225,67 @@ describe("normalizeRms", () => {
     const pcm = new Int16Array(1000).fill(1000);
     normalizeRms([mkSeg(pcm)], 5000);
     expect(pcm[0]).toBe(1000);
+  });
+});
+
+describe("normalizeRms peak safety", () => {
+  it("caps gain so peaks do not exceed int16 full scale", () => {
+    // Source: RMS ~1500, peak 20000. Target: -16 dBFS (~5193 int16 RMS) -> desired gain 3.46.
+    // Peak * desired gain = 20000 * 3.46 = 69,200 -> would clip to 32767.
+    // Peak-safe cap: floor(INT16_MAX * 0.99 / 20000) ~= 1.62.
+    const pcm = new Int16Array(2400);
+    for (let i = 0; i < pcm.length; i++) {
+      pcm[i] = Math.round(Math.sin((i / 24_000) * 2 * Math.PI * 440) * 1500);
+    }
+    pcm[100] = 20_000;
+    pcm[200] = -20_000;
+
+    const targetRms = dbfsToInt16Rms(-16);
+    const [out] = normalizeRms(
+      [{ pcm, sampleRate: 24_000, channels: 1 }],
+      targetRms
+    );
+
+    let maxAbs = 0;
+    for (const s of out.pcm) {
+      const a = s < 0 ? -s : s;
+      if (a > maxAbs) {
+        maxAbs = a;
+      }
+    }
+
+    expect(maxAbs).toBeLessThanOrEqual(Math.floor(32_767 * 0.99));
+    // No sample at exactly ±32767 means no hard clip happened.
+    expect(Array.from(out.pcm).some((s) => s === 32_767 || s === -32_768)).toBe(
+      false
+    );
+  });
+
+  it("hits the requested RMS target when peaks have headroom", () => {
+    // Source: clean sine at 1000 amplitude (~707 RMS), peak 1000. Headroom is huge -> no cap.
+    const pcm = new Int16Array(24_000);
+    for (let i = 0; i < pcm.length; i++) {
+      pcm[i] = Math.round(Math.sin((i / 24_000) * 2 * Math.PI * 440) * 1000);
+    }
+    const target = dbfsToInt16Rms(DEFAULT_VOLUME_DBFS);
+    const [out] = normalizeRms(
+      [{ pcm, sampleRate: 24_000, channels: 1 }],
+      target
+    );
+
+    let sumSq = 0;
+    for (const s of out.pcm) {
+      sumSq += s * s;
+    }
+    const outRms = Math.sqrt(sumSq / out.pcm.length);
+
+    expect(outRms).toBeGreaterThan(target * 0.95);
+    expect(outRms).toBeLessThan(target * 1.05);
+  });
+
+  it("leaves silent segments untouched", () => {
+    const pcm = new Int16Array(1000);
+    const [out] = normalizeRms([{ pcm, sampleRate: 24_000, channels: 1 }]);
+    expect(out.pcm).toEqual(pcm);
   });
 });
