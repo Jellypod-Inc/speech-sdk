@@ -1,0 +1,23 @@
+src/__tests__/elevenlabs-speech-model.test.ts
+  s_2d7bc864951653::t_df0732c62a2318 347-397
+src/providers/elevenlabs/index.ts
+  s_2d7bc864951653::t_43fdbbc48f7b6a 435-438
+  s_2d7bc864951653::t_65ff6ea2a5bb23 356-362
+  s_2d7bc864951653::t_ec46a09e5065b6 391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "9d41e846f57d042ca2e0ba5ec432b2c4904d9979",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
