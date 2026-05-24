@@ -1,0 +1,23 @@
+src/conversation/pcm-concat.ts
+  s_2d7bc864951653::t_a221f79dc5c8ec 79-84
+  s_2d7bc864951653::t_8e3fa401e6f20a 28-41
+src/__tests__/conversation-pcm-concat.test.ts
+  s_2d7bc864951653::t_522cccc4276e56 230-251,253-276,278-291
+  s_2d7bc864951653::t_f4229a40a06337 205-208,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "e1b296da62b19bc0796c2ca3f419e35e335167b4",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
