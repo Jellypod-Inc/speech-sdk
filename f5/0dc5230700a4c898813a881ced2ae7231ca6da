@@ -1,0 +1,54 @@
+src/__tests__/inworld-sample-rate.test.ts
+  s_2d7bc864951653::t_07221384e292ef 1-74
+src/__tests__/resemble-sample-rate.test.ts
+  s_2d7bc864951653::t_c569ae9337214a 1-38
+src/providers/inworld/index.ts
+  s_2d7bc864951653::t_f95f4681a9d1f4 270-272,274-294,301-305,314,324
+  s_2d7bc864951653::t_a34dbd1572b6bb 9-13
+  s_2d7bc864951653::t_573e55a59a4e24 45-48
+src/__tests__/murf-sample-rate.test.ts
+  s_2d7bc864951653::t_cb9641c57a3369 1-59
+src/providers/xai/index.ts
+  s_2d7bc864951653::t_36bdbed09044ea 24-27
+  s_2d7bc864951653::t_0ba1f1a3e8877f 7-11
+  s_2d7bc864951653::t_375cbd4ea814d5 192-194,196-211,219-224,226-228,231,237-242,245,247,249
+src/__tests__/fish-audio-sample-rate.test.ts
+  s_2d7bc864951653::t_f7287cd52d5966 1-59
+src/__tests__/smallest-ai-sample-rate.test.ts
+  s_2d7bc864951653::t_216ca81a838022 1-38
+src/providers/murf/index.ts
+  s_2d7bc864951653::t_b1176483121a83 36-37
+  s_2d7bc864951653::t_e559545a6dbf29 8-12
+  s_2d7bc864951653::t_b97b7ab1f90493 220-229,231-239,246-250,254,259,264-265
+src/__tests__/xai-sample-rate.test.ts
+  s_2d7bc864951653::t_2cd96b5da12af8 1-65
+src/__tests__/provider-stitch-options.test.ts
+  s_2d7bc864951653::t_ec94caeb3c88a0 89,96,101,104,109,113
+  s_2d7bc864951653::t_e03e0e63925b64 145,148
+src/providers/resemble/index.ts
+  s_2d7bc864951653::t_55961dcbcea593 192-194,196-213,220-224
+  s_2d7bc864951653::t_7d2caa349b00da 8-12
+src/providers/smallest-ai/index.ts
+  s_2d7bc864951653::t_0e9ce9d69ab900 7-11
+  s_2d7bc864951653::t_802e70c0e6f298 95-97,99-115,122-126
+src/providers/fish-audio/index.ts
+  s_2d7bc864951653::t_40a5c93870214d 12
+  s_2d7bc864951653::t_7fe2c0590aae12 26-28
+  s_2d7bc864951653::t_f5bbb9683420c4 165-167,169-184,192-197,199,202,204,209-214,216,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "f50dc5230700a4c898813a881ced2ae7231ca6da",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
