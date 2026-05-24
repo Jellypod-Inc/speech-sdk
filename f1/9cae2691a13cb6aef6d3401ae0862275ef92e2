@@ -1,0 +1,23 @@
+src/__tests__/conversation-stitch.test.ts
+  s_2d7bc864951653::t_70bbd0a22223e4 179-211
+  s_2d7bc864951653::t_615664580cd224 26-54
+src/conversation/stitch.ts
+  s_2d7bc864951653::t_dceac3d56aabdc 59-62
+  s_2d7bc864951653::t_56522892bf255e 123,126,140,144-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "f19cae2691a13cb6aef6d3401ae0862275ef92e2",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
