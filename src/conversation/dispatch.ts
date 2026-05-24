@@ -1,3 +1,4 @@
+import { type AudioOutput, sampleRateHintFrom } from "../audio-output.js";
 import {
   isSpeechGatewayModel,
   type ResolvedModel,
@@ -27,8 +28,10 @@ export function chooseConversationPath(input: {
   forceStitch?: boolean;
   resolvedPerTurn: readonly ResolvedModel<Voice>[];
   turns: readonly ConversationTurn<Voice>[];
+  output?: AudioOutput;
 }): ConversationPath {
-  const { forceStitch = false, resolvedPerTurn, turns } = input;
+  const { forceStitch = false, resolvedPerTurn, turns, output } = input;
+  const sampleRateHint = sampleRateHintFrom(output);
 
   // Gateway and direct-provider routing can't be combined in one conversation — no coherent ordering/stitching exists across both paths.
   const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
@@ -69,7 +72,9 @@ export function chooseConversationPath(input: {
   }
 
   const stitchOptionsPerTurn = resolvedPerTurn.map((r) => {
-    const opts = r.provider.getStitchOptions?.(r.modelId);
+    const opts = r.provider.getStitchOptions?.(r.modelId, {
+      sampleRate: sampleRateHint,
+    });
     if (!opts) {
       throw new StitchUnsupportedError({
         provider: r.provider.id,

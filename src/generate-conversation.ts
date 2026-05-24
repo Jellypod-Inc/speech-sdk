@@ -8,6 +8,7 @@ import {
 import { computeAudioDuration } from "./audio-duration.js";
 import {
   applyOptionalOutputConversion,
+  sampleRateHintFrom,
   validateOutput,
 } from "./audio-output.js";
 import { resolveMaxConcurrency } from "./concurrency.js";
@@ -128,6 +129,7 @@ export async function generateConversation<
     forceStitch,
     resolvedPerTurn,
     turns: options.turns,
+    output: options.output,
   });
 
   const isGateway = path.kind === "gateway";
@@ -375,7 +377,9 @@ async function runNative<V extends Voice>(args: {
   );
 
   // Force decodable PCM/WAV via getStitchOptions for normalization; if unavailable, emit the provider's mixed audio and warn.
-  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId);
+  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId, {
+    sampleRate: sampleRateHintFrom(options.output),
+  });
   const warnings: string[] = [];
   if (!stitchOpts) {
     warnings.push(

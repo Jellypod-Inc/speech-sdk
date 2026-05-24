@@ -49,6 +49,14 @@ export function validateOutput<T extends AudioOutput | undefined>(
   return output;
 }
 
+export function sampleRateHintFrom(
+  output: AudioOutput | undefined
+): number | undefined {
+  return output != null && "sampleRate" in output
+    ? output.sampleRate
+    : undefined;
+}
+
 export function resolveOutputForLocalConversion(
   output: AudioOutput
 ): ResolvedAudioOutput {
