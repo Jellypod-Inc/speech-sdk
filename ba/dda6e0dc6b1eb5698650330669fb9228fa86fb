@@ -1,0 +1,25 @@
+src/providers/elevenlabs/index.ts
+  s_2d7bc864951653::t_47b260eebc79ab 434-436,438-453,462-467,469-470,472,474-484
+  s_2d7bc864951653::t_1d231fafcc07c9 8,18
+  s_2d7bc864951653::t_f85c86436c8b29 159-162
+src/__tests__/provider-stitch-options.test.ts
+  s_2d7bc864951653::t_42bf0cab796890 28,37-38
+src/__tests__/elevenlabs-sample-rate.test.ts
+  s_2d7bc864951653::t_1c5421236517d8 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "badda6e0dc6b1eb5698650330669fb9228fa86fb",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
