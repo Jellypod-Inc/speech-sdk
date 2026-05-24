@@ -1,0 +1,21 @@
+src/index.ts
+  s_2d7bc864951653::t_2054de0f291304 22
+src/errors.ts
+  s_2d7bc864951653::t_9f7dd61444c5e6 84-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "5161d87845346860e462157fe78ecbc27a6ee101",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
