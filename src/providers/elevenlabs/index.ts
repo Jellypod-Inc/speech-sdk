@@ -471,10 +471,7 @@ export class ElevenLabsSpeechProvider
         };
       }
       case "mp3": {
-        // ElevenLabs MP3 is effectively fixed at 44.1 kHz (the API exposes
-        // mp3_22050_32 and mp3_24000_48 as special cases, but otherwise all
-        // bitrates are gated to mp3_44100_*). If the caller asked for a
-        // different MP3 rate, surface that as unsupported.
+        // ElevenLabs MP3 is gated to 44.1 kHz (the 22050/24000 special cases aren't selectable via bitrate alone).
         if (output.sampleRate != null && output.sampleRate !== 44_100) {
           throw new UnsupportedSampleRateError(
             `elevenlabs/${modelId}`,

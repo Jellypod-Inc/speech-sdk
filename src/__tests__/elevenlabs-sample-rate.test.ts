@@ -12,7 +12,7 @@ describe("ElevenLabs supported sample rates", () => {
     ]);
   });
 
-  it("returns undefined for unknown models", () => {
+  it("returns an empty array for unknown models", () => {
     expect(provider.supportedSampleRates("unknown")).toEqual([]);
   });
 });
