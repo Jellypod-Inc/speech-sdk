@@ -1,0 +1,65 @@
+src/conversation/stitch.ts
+  s_39ce3a8c194f34::t_d18e922de6786e 60-69
+src/providers/resemble/index.ts
+  s_39ce3a8c194f34::t_1f1136cd525f72 35-39
+  s_39ce3a8c194f34::t_3882b5731f211b 201,208,214,216,225,234-238,243,249-253
+CHANGELOG.md
+  s_39ce3a8c194f34::t_26c31866c40b37 10-13,16
+  s_39ce3a8c194f34::t_d6e772fdcca3a9 14-15
+src/__tests__/fish-audio-sample-rate.test.ts
+  s_39ce3a8c194f34::t_f8f4c7d746f845 59-80
+src/__tests__/fal-sample-rate.test.ts
+  s_39ce3a8c194f34::t_fd6765178bfab8 1-34
+src/__tests__/audio-output.test.ts
+  s_39ce3a8c194f34::t_f0228f11a86bb3 160-172
+src/errors.ts
+  s_39ce3a8c194f34::t_396be769164aaa 89-93
+src/__tests__/provider-stitch-options.test.ts
+  s_39ce3a8c194f34::t_a02f572ec4db9f 119,122
+src/__tests__/murf-speech-model.test.ts
+  s_39ce3a8c194f34::t_807a265b27d15c 229-252
+src/encoders/mp3.ts
+  s_39ce3a8c194f34::t_61e801f348eab3 10-11,13
+src/providers/deepgram/index.ts
+  s_39ce3a8c194f34::t_3669886adc5fba 231
+  s_39ce3a8c194f34::t_e088a07dcd68b6 188-189
+  s_39ce3a8c194f34::t_790672d68f7ece 215
+src/__tests__/murf-sample-rate.test.ts
+  s_39ce3a8c194f34::t_6c547a33ed5417 59-76
+src/generate-speech.ts
+  s_39ce3a8c194f34::t_acbcf985bf5567 56-65
+src/providers/fish-audio/index.ts
+  s_39ce3a8c194f34::t_122666d0dd716a 28
+  s_39ce3a8c194f34::t_2cb6e7df44fde5 204-210,212,215
+src/providers/murf/index.ts
+  s_39ce3a8c194f34::t_0ba5c454a31f85 36-39,41
+  s_39ce3a8c194f34::t_a7198500fd7056 156-157,160
+  s_39ce3a8c194f34::t_884d499f76e061 222
+  s_39ce3a8c194f34::t_5e5308c066421f 230-232
+src/providers/fal/index.ts
+  s_39ce3a8c194f34::t_5284bb4a40a67b 3-7
+  s_39ce3a8c194f34::t_0cdd9feb3eee03 162-170,178,181-187
+src/__tests__/e2e/sample-rate-matrix.e2e.test.ts
+  s_39ce3a8c194f34::t_054f2fe9883540 199-203,205,215-217
+  s_39ce3a8c194f34::t_355ef2c0acc68a 3
+  s_39ce3a8c194f34::t_b3bc33fb22f97a 1-2,4-44,47-198,204,206-214,218-242
+  s_39ce3a8c194f34::t_3add69cd08af72 45-46
+src/__tests__/resemble-sample-rate.test.ts
+  s_39ce3a8c194f34::t_d84248dcab4de3 9-12,19-21,26-45,48,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "69dd6b363234f9457cadff8f4f30d302b103387f",
+  "prompts": {},
+  "sessions": {
+    "s_39ce3a8c194f34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67c8e100-1b67-485c-a696-a0218a250284",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
