@@ -50,7 +50,20 @@ import type { GenerateSpeechOptions } from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
 
-const CHUNK_STITCH_SAMPLE_RATE = 24_000;
+function chunkStitchTargetRate(
+  segments: readonly { sampleRate: number }[]
+): number {
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "generateChunkedSpeech: no decoded chunks with a positive sample rate to stitch"
+    );
+  }
+  return rate;
+}
 
 export async function generateSpeech<
   V extends Voice = Voice,
@@ -401,9 +414,10 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   );
 
   const segments = perChunk.map((c) => c.segment);
+  const targetSampleRate = chunkStitchTargetRate(segments);
   const audio = await concatPcmToWav(segments, {
     gapMs: 0,
-    targetSampleRate: CHUNK_STITCH_SAMPLE_RATE,
+    targetSampleRate,
   });
   const durationSeconds = segments.reduce(
     (sum, segment) => sum + segment.pcm.length / segment.sampleRate,
@@ -506,6 +520,11 @@ function resolveProviderOptionsForLocalDecoding(args: {
   const needsStitchWireFormat =
     args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
 
+  const sampleRateHint =
+    args.output != null && "sampleRate" in args.output
+      ? args.output.sampleRate
+      : undefined;
+
   if (!needsStitchWireFormat && args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
       args.resolved.modelId,
@@ -519,7 +538,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
     }
 
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
-      args.resolved.modelId
+      args.resolved.modelId,
+      { sampleRate: sampleRateHint }
     );
     if (!stitchOpts) {
       throw new OutputConversionUnsupportedError(args.modelIdentifier);
@@ -538,7 +558,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
   }
 
   const stitchOpts = args.resolved.provider.getStitchOptions?.(
-    args.resolved.modelId
+    args.resolved.modelId,
+    { sampleRate: sampleRateHint }
   );
   if (!stitchOpts) {
     if (args.shouldChunk && args.maxInputChars != null) {

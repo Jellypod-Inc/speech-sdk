@@ -11,6 +11,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type {
@@ -234,7 +235,10 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const mediaType = openAIMediaTypeFromBody(
+      body,
+      response.headers.get("content-type")
+    );
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -292,24 +296,44 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType: openAIMediaTypeFromBody(
+        body,
+        response.headers.get("content-type")
+      ),
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { response_format: "pcm" },
-        mediaType: "audio/pcm;rate=24000",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return [24_000];
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    resolveSampleRate(
+      `openai/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { response_format: "pcm" },
+      mediaType: "audio/pcm;rate=24000",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    resolveSampleRate(
+      `openai/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "wav":
         return {
@@ -477,6 +501,29 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
       timestamps,
       text: data.text,
     };
+  }
+}
+
+// OpenAI returns bare "audio/pcm" for response_format="pcm"; derive from the requested format so the rate (24kHz, fixed) is always present.
+function openAIMediaTypeFromBody(
+  body: Record<string, unknown>,
+  contentType: string | null
+): string {
+  switch (body.response_format) {
+    case "wav":
+      return "audio/wav";
+    case "mp3":
+      return "audio/mpeg";
+    case "pcm":
+      return "audio/pcm;rate=24000";
+    case "flac":
+      return "audio/flac";
+    case "opus":
+      return "audio/opus";
+    case "aac":
+      return "audio/aac";
+    default:
+      return contentType ?? "audio/mpeg";
   }
 }
 

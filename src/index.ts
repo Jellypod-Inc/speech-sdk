@@ -19,6 +19,7 @@ export {
   StreamingNotSupportedError,
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,
+  UnsupportedSampleRateError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";

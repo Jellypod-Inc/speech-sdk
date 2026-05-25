@@ -25,6 +25,20 @@ function rmsPcm16(pcm: Int16Array): number {
   return Math.sqrt(sumSq / pcm.length);
 }
 
+function peakAbsInt16(pcm: Int16Array): number {
+  let peak = 0;
+  for (const s of pcm) {
+    const a = s < 0 ? -s : s;
+    if (a > peak) {
+      peak = a;
+    }
+  }
+  return peak;
+}
+
+// 0.99 leaves ~−0.09 dBFS headroom so downstream MP3 quantization doesn't push above full scale.
+const PEAK_SAFE_HEADROOM = 0.99;
+
 function clampInt16(value: number): number {
   if (value > INT16_MAX) {
     return INT16_MAX;
@@ -62,7 +76,12 @@ export function normalizeRms(
     if (segRms === 0) {
       return { ...s };
     }
-    return { ...s, pcm: scaleClamp(s.pcm, targetRmsAmplitude / segRms) };
+    const desiredGain = targetRmsAmplitude / segRms;
+    const peak = peakAbsInt16(s.pcm);
+    const peakSafeGain =
+      peak === 0 ? desiredGain : (INT16_MAX * PEAK_SAFE_HEADROOM) / peak;
+    const gain = Math.min(desiredGain, peakSafeGain);
+    return { ...s, pcm: scaleClamp(s.pcm, gain) };
   });
 }
 

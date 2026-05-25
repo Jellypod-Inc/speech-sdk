@@ -14,6 +14,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -31,6 +32,10 @@ export interface CartesiaSpeechProviderConfig {
 }
 
 export const CARTESIA_PROVIDER_ID = "cartesia" as const;
+
+const CARTESIA_PCM_RATES = [
+  8000, 16_000, 22_050, 24_000, 44_100, 48_000,
+] as const;
 
 export const CARTESIA_MODELS: readonly ModelInfo[] = [
   {
@@ -264,7 +269,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/wav";
+    const mediaType = cartesiaMediaTypeForBody(body);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -382,55 +387,83 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/wav",
+      mediaType: cartesiaMediaTypeForBody(body),
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: {
-          output_format: {
-            container: "wav",
-            encoding: "pcm_s16le",
-            sample_rate: 24_000,
-          },
-        },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return CARTESIA_PCM_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `cartesia/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: {
+        output_format: {
+          container: "wav",
+          encoding: "pcm_s16le",
+          sample_rate: rate,
+        },
+      },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
-    const sampleRate = 24_000;
     switch (output.format) {
-      case "wav":
+      case "wav": {
+        const rate = resolveSampleRate(
+          `cartesia/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
           providerOptions: {
             output_format: {
               container: "wav",
               encoding: "pcm_s16le",
-              sample_rate: sampleRate,
+              sample_rate: rate,
             },
           },
           expectedMediaType: "audio/wav",
         };
-      case "pcm":
+      }
+      case "pcm": {
+        const rate = resolveSampleRate(
+          `cartesia/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
           providerOptions: {
             output_format: {
               container: "raw",
               encoding: "pcm_s16le",
-              sample_rate: sampleRate,
+              sample_rate: rate,
             },
           },
-          expectedMediaType: `audio/pcm;rate=${sampleRate}`,
+          expectedMediaType: `audio/pcm;rate=${rate}`,
         };
+      }
       case "mp3": {
+        const rate = resolveSampleRate(
+          `cartesia/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
         const supportedBitrates = [32, 64, 96, 128, 192];
         const closest = supportedBitrates.reduce((prev, curr) =>
@@ -441,7 +474,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
             output_format: {
               container: "mp3",
               bit_rate: closest * 1000,
-              sample_rate: 44_100,
+              sample_rate: rate,
             },
           },
           expectedMediaType: "audio/mpeg",
@@ -464,6 +497,34 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
+}
+
+// Cartesia returns raw bytes when container="raw"; derive mediaType from the requested body so callers always know the rate.
+function cartesiaMediaTypeForBody(body: Record<string, unknown>): string {
+  const output = body.output_format as
+    | { container?: unknown; sample_rate?: unknown; encoding?: unknown }
+    | undefined;
+  const container = output?.container;
+  if (container === "wav") {
+    return "audio/wav";
+  }
+  if (container === "mp3") {
+    return "audio/mpeg";
+  }
+  if (container === "raw") {
+    const rate =
+      typeof output?.sample_rate === "number" ? output.sample_rate : null;
+    if (rate == null) {
+      throw new SpeechSDKError(
+        "cartesia: output_format.container=raw requires output_format.sample_rate"
+      );
+    }
+    const encoding = String(output?.encoding ?? "");
+    return encoding === "pcm_f32le"
+      ? `audio/pcm;rate=${rate};encoding=float32`
+      : `audio/pcm;rate=${rate}`;
+  }
+  return "audio/wav";
 }
 
 interface CartesiaSseEvent {

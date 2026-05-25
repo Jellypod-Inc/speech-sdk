@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
-import { ApiError, StreamingNotSupportedError } from "../../errors.js";
+import {
+  ApiError,
+  StreamingNotSupportedError,
+  UnsupportedSampleRateError,
+} from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -155,8 +159,15 @@ export class FalSpeechProvider
   // fal exposes no format selector and uses path-style model IDs (e.g.
   // "kokoro/american-english"); the registered models[] list only enumerates
   // the well-known prefixes, so we accept any modelId here. All current fal
-  // TTS endpoints return WAV.
-  getStitchOptions(_modelId: string) {
+  // TTS endpoints return WAV at the model's native rate with no rate selection.
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (opts?.sampleRate != null) {
+      throw new UnsupportedSampleRateError(
+        `fal/${modelId}`,
+        opts.sampleRate,
+        []
+      );
+    }
     return {
       providerOptions: {},
       mediaType: "audio/wav",
@@ -164,9 +175,16 @@ export class FalSpeechProvider
   }
 
   resolveOutputFormat(
-    _modelId: string,
+    modelId: string,
     output: AudioOutput
   ): ResolvedOutputFormat | undefined {
+    if (output.sampleRate != null) {
+      throw new UnsupportedSampleRateError(
+        `fal/${modelId}`,
+        output.sampleRate,
+        []
+      );
+    }
     if (output.format === "wav") {
       return { providerOptions: {}, expectedMediaType: "audio/wav" };
     }

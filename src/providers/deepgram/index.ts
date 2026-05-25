@@ -4,12 +4,15 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+const DEEPGRAM_AURA_RATES = [8000, 16_000, 24_000, 32_000, 48_000] as const;
 
 // Deepgram /v1/speak takes audio-shaping params on the query string; only `text` in body or it returns PAYLOAD_ERROR.
 function buildSpeakUrl(
@@ -97,7 +100,10 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const mediaType = deepgramMediaTypeFromProviderOptions(
+      options.providerOptions,
+      response.headers.get("content-type")
+    );
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -139,22 +145,37 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType: deepgramMediaTypeFromProviderOptions(
+        options.providerOptions,
+        response.headers.get("content-type")
+      ),
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: {
-          encoding: "linear16",
-          sample_rate: 24_000,
-          container: "wav",
-        },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return DEEPGRAM_AURA_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `deepgram/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: {
+        encoding: "linear16",
+        sample_rate: rate,
+        container: "wav",
+      },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -163,25 +184,23 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     }
     switch (output.format) {
       case "wav":
+      case "pcm": {
+        // Deepgram with container=none returns raw PCM under an audio/l16
+        // Content-Type; request container=wav so the SDK gets a decodable WAV.
+        const rate = resolveSampleRate(
+          `deepgram/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
           providerOptions: {
             encoding: "linear16",
             container: "wav",
-            sample_rate: 24_000,
+            sample_rate: rate,
           },
           expectedMediaType: "audio/wav",
         };
-      case "pcm":
-        // Deepgram with container=none returns audio/l16 (RFC 2586, big-endian);
-        // request container=wav and let the SDK unwrap to little-endian s16.
-        return {
-          providerOptions: {
-            encoding: "linear16",
-            container: "wav",
-            sample_rate: 24_000,
-          },
-          expectedMediaType: "audio/wav",
-        };
+      }
       case "mp3":
         return {
           providerOptions: { encoding: "mp3" },
@@ -191,6 +210,33 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         return;
     }
   }
+}
+
+// Deepgram returns raw PCM under an `audio/l16` Content-Type for encoding=linear16 without container=wav. Deepgram documents linear16 as little-endian, but the `audio/l16` label (RFC 2586) implies big-endian, so the byte order is ambiguous and the SDK does not decode it — callers must opt in to container=wav for linear16. mp3/opus/aac/flac are self-describing via Content-Type.
+function deepgramMediaTypeFromProviderOptions(
+  providerOptions: Record<string, unknown> | undefined,
+  contentType: string | null
+): string {
+  const encoding = providerOptions?.encoding;
+  const container = providerOptions?.container;
+  const sampleRate = providerOptions?.sample_rate;
+
+  if (encoding === "linear16" && container === "wav") {
+    return "audio/wav";
+  }
+  if (encoding === "linear16") {
+    const rate = typeof sampleRate === "number" ? sampleRate : null;
+    if (rate == null) {
+      throw new Error(
+        "deepgram: encoding=linear16 without container=wav returns raw PCM under an audio/l16 Content-Type, which the SDK does not decode (ambiguous byte order). Pass container=wav, or use encoding=mp3."
+      );
+    }
+    return `audio/l16;rate=${rate}`;
+  }
+  if (encoding === "mp3") {
+    return "audio/mpeg";
+  }
+  return contentType ?? "audio/mpeg";
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {

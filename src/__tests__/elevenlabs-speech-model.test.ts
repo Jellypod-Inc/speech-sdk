@@ -344,4 +344,55 @@ describe("ElevenLabsSpeechProvider", () => {
 
     expect(result.audioDurationMs).toBeUndefined();
   });
+
+  it("derives mediaType from output_format when API returns bare audio/pcm Content-Type", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/pcm" }),
+      arrayBuffer: async () => new Uint8Array(96_000).buffer,
+    });
+
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_multilingual_v2",
+      text: "Hello",
+      voice: "voice-id",
+      providerOptions: { output_format: "pcm_48000" },
+    });
+
+    expect(result.mediaType).toBe("audio/pcm;rate=48000");
+  });
+
+  it("derives stream mediaType from output_format when API returns bare audio/pcm Content-Type", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/pcm" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(4));
+          controller.close();
+        },
+      }),
+    });
+
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.stream({
+      modelId: "eleven_multilingual_v2",
+      text: "Hello",
+      voice: "voice-id",
+      providerOptions: { output_format: "pcm_44100" },
+    });
+
+    expect(result.mediaType).toBe("audio/pcm;rate=44100");
+  });
 });

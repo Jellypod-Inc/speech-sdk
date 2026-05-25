@@ -1,3 +1,4 @@
+import { UnsupportedSampleRateError } from "./errors.js";
 import {
   SPEECH_GATEWAY_PROVIDER_ID,
   type SpeechGatewayProvider,
@@ -89,7 +90,10 @@ export interface SpeechProvider<
     timestamps?: WordTimestamp[];
   }>;
 
-  getStitchOptions?(modelId: string): StitchTurnOptions | undefined;
+  getStitchOptions?(
+    modelId: string,
+    opts?: { sampleRate?: number }
+  ): StitchTurnOptions | undefined;
   id: string;
   models: readonly ModelInfo[];
 
@@ -124,6 +128,15 @@ export interface SpeechProvider<
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }>;
+
+  /**
+   * Sample rates (Hz) the provider's API can natively produce for this model.
+   * `getStitchOptions` and `resolveOutputFormat` validate any caller-supplied
+   * `sampleRate` against this set. The SDK defaults to `max(...)` when the
+   * caller doesn't supply one. Providers that don't expose rate selection may
+   * omit this; a runtime error is thrown if the caller supplies one.
+   */
+  supportedSampleRates?(modelId: string): readonly number[];
 }
 
 export interface ResolvedModel<TVoice extends Voice = Voice> {
@@ -152,4 +165,28 @@ export function modelMaxInputChars(
 ): number | undefined {
   return resolved.provider.models?.find((m) => m.id === resolved.modelId)
     ?.maxInputChars;
+}
+
+/**
+ * Resolves a caller-requested sampleRate against a provider's supported set.
+ * Returns the requested rate if supported, the max supported rate if unspecified,
+ * or throws UnsupportedSampleRateError if the request is not in the set.
+ */
+export function resolveSampleRate(
+  modelIdentifier: string,
+  supported: readonly number[],
+  requested: number | undefined
+): number {
+  if (supported.length === 0) {
+    throw new Error(
+      `${modelIdentifier}: supportedSampleRates returned empty set`
+    );
+  }
+  if (requested == null) {
+    return Math.max(...supported);
+  }
+  if (!supported.includes(requested)) {
+    throw new UnsupportedSampleRateError(modelIdentifier, requested, supported);
+  }
+  return requested;
 }

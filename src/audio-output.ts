@@ -3,31 +3,56 @@ import { parseMediaTypeParam, wrapPcm16Mono } from "./audio-utils.js";
 import { encodePcm16ToMp3 } from "./encoders/mp3.js";
 import { AudioOutputInputError } from "./errors.js";
 
-const DEFAULT_PCM_RATE = 24_000;
-
 export type AudioOutput =
-  | { readonly format: "wav" }
-  | { readonly format: "pcm" }
-  | { readonly format: "mp3"; readonly bitrate?: number };
+  | { readonly format: "wav"; readonly sampleRate?: number }
+  | { readonly format: "pcm"; readonly sampleRate?: number }
+  | {
+      readonly format: "mp3";
+      readonly bitrate?: number;
+      readonly sampleRate?: number;
+    };
 
 export type AudioOutputFormat = AudioOutput["format"];
 
 export const DEFAULT_MP3_BITRATE_KBPS = 96;
 
 export type ResolvedAudioOutput =
-  | { readonly format: "wav" }
+  | { readonly format: "wav"; readonly sampleRate?: number }
   | { readonly format: "pcm"; readonly sampleRate?: number }
-  | { readonly format: "mp3"; readonly bitrate: number };
+  | {
+      readonly format: "mp3";
+      readonly bitrate: number;
+      readonly sampleRate?: number;
+    };
 
 export function validateOutput<T extends AudioOutput | undefined>(
   output: T
 ): T {
-  if (output?.format !== "mp3" && output != null && "bitrate" in output) {
+  if (output == null) {
+    return output;
+  }
+  if (output.format !== "mp3" && "bitrate" in output) {
     throw new AudioOutputInputError(
       `audio-output: bitrate is only valid for format "mp3" (got format="${output.format}")`
     );
   }
+  if ("sampleRate" in output && output.sampleRate != null) {
+    const r = output.sampleRate;
+    if (!Number.isInteger(r) || r <= 0) {
+      throw new AudioOutputInputError(
+        `audio-output: sampleRate must be a positive integer (got ${r})`
+      );
+    }
+  }
   return output;
+}
+
+export function sampleRateHintFrom(
+  output: AudioOutput | undefined
+): number | undefined {
+  return output != null && "sampleRate" in output
+    ? output.sampleRate
+    : undefined;
 }
 
 export function resolveOutputForLocalConversion(
@@ -38,6 +63,7 @@ export function resolveOutputForLocalConversion(
     return {
       format: "mp3",
       bitrate: output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS,
+      ...(output.sampleRate != null && { sampleRate: output.sampleRate }),
     };
   }
   return output;
@@ -104,10 +130,12 @@ export async function convertDecodableAudioToOutput(args: {
     return { audio, mediaType: "audio/mpeg" };
   }
   if (output.format === "pcm" && isPcmSource(mediaType)) {
-    // Some providers (e.g. OpenAI) return bare "audio/pcm" without rate;
-    // normalize to mediaTypeForOutput so callers always know the rate.
-    const sampleRate =
-      parseMediaTypeParam(mediaType, "rate") ?? DEFAULT_PCM_RATE;
+    const sampleRate = parseMediaTypeParam(mediaType, "rate");
+    if (sampleRate == null) {
+      throw new AudioOutputInputError(
+        `convertDecodableAudioToOutput: source mediaType "${mediaType}" is missing a required "rate=<hz>" parameter. Providers must emit the exact rate of the returned bytes.`
+      );
+    }
     return {
       audio,
       mediaType: mediaTypeForOutput({ format: "pcm", sampleRate }),

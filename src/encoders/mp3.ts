@@ -7,8 +7,10 @@ import {
   Output,
 } from "mediabunny";
 
+// MP3 supports the MPEG-1 (32/44.1/48k), MPEG-2 (16/22.05/24k), and
+// MPEG-2.5 (8/11.025/12k) rate families; mediabunny's LAME build encodes all of them.
 const SUPPORTED_SAMPLE_RATES = new Set([
-  16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
+  8000, 11_025, 12_000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
 ]);
 
 let mp3EncoderRegistered: Promise<void> | undefined;

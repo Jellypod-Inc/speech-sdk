@@ -29,7 +29,12 @@ export async function decodeAudioToPcm16(
 const ENCODING_PARAM_RE = /(?:^|;)\s*encoding=([a-z0-9_-]+)(?=$|;|\s)/i;
 
 function decodeRawPcm(bytes: Uint8Array, mediaType: string): DecodedPcm16 {
-  const sampleRate = parseMediaTypeParam(mediaType, "rate") ?? 24_000;
+  const sampleRate = parseMediaTypeParam(mediaType, "rate");
+  if (sampleRate == null) {
+    throw new Error(
+      `audio-decode: raw PCM mediaType "${mediaType}" is missing a required "rate=<hz>" parameter. The provider must emit the exact sample rate it returned; the SDK no longer defaults to 24000 because silent fallback masks rate mismatches (e.g. requesting pcm_48000 but receiving 24000-headered output).`
+    );
+  }
   const channels = parseMediaTypeParam(mediaType, "channels") ?? 1;
   const encoding = mediaType.toLowerCase().match(ENCODING_PARAM_RE)?.[1];
   const format = encoding === "float32" ? "f32" : "s16";

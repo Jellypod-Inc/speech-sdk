@@ -81,6 +81,22 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class UnsupportedSampleRateError extends SpeechSDKError {
+  readonly requested: number;
+  readonly supported: readonly number[];
+
+  constructor(model: string, requested: number, supported: readonly number[]) {
+    const detail =
+      supported.length > 0
+        ? ` Supported rates: ${supported.join(", ")}.`
+        : " This provider does not support sample rate selection.";
+    super(`${model} does not support sampleRate ${requested}.${detail}`);
+    this.name = "UnsupportedSampleRateError";
+    this.requested = requested;
+    this.supported = supported;
+  }
+}
+
 export class OutputConversionUnsupportedError extends SpeechSDKError {
   constructor(model: string) {
     super(

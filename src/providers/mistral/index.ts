@@ -6,10 +6,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
@@ -207,21 +208,39 @@ export class MistralSpeechProvider
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the stitch decoder to convert to int16.
-      return {
-        providerOptions: { response_format: "pcm" },
-        mediaType: "audio/pcm;rate=24000;encoding=float32",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    // voxtral pcm is fixed at 24 kHz mono float32 LE; the API exposes no rate selector.
+    return [24_000];
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    resolveSampleRate(
+      `mistral/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the stitch decoder to convert to int16.
+    return {
+      providerOptions: { response_format: "pcm" },
+      mediaType: "audio/pcm;rate=24000;encoding=float32",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    resolveSampleRate(
+      `mistral/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "mp3":
         return {
