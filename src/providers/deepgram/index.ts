@@ -100,7 +100,10 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const mediaType = deepgramMediaTypeFromProviderOptions(
+      options.providerOptions,
+      response.headers.get("content-type")
+    );
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -142,7 +145,10 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType: deepgramMediaTypeFromProviderOptions(
+        options.providerOptions,
+        response.headers.get("content-type")
+      ),
     };
   }
 
@@ -204,6 +210,33 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
         return;
     }
   }
+}
+
+// Deepgram returns audio/l16 (RFC 2586, big-endian PCM) for encoding=linear16 without container=wav; the SDK can't decode big-endian PCM, so callers must opt in to container=wav for linear16. mp3/opus/aac/flac are self-describing via Content-Type.
+function deepgramMediaTypeFromProviderOptions(
+  providerOptions: Record<string, unknown> | undefined,
+  contentType: string | null
+): string {
+  const encoding = providerOptions?.encoding;
+  const container = providerOptions?.container;
+  const sampleRate = providerOptions?.sample_rate;
+
+  if (encoding === "linear16" && container === "wav") {
+    return "audio/wav";
+  }
+  if (encoding === "linear16") {
+    const rate = typeof sampleRate === "number" ? sampleRate : null;
+    if (rate == null) {
+      throw new Error(
+        "deepgram: encoding=linear16 without container=wav returns audio/l16 (RFC 2586 big-endian PCM), which the SDK does not decode. Pass container=wav, or use encoding=mp3."
+      );
+    }
+    return `audio/l16;rate=${rate}`;
+  }
+  if (encoding === "mp3") {
+    return "audio/mpeg";
+  }
+  return contentType ?? "audio/mpeg";
 }
 
 export function createDeepgram(config: DeepgramSpeechProviderConfig = {}) {

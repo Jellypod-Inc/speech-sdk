@@ -562,7 +562,11 @@ export class ElevenLabsSpeechProvider
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    // ElevenLabs returns bare "audio/pcm" for pcm_<rate> requests; derive from requested output_format.
+    const mediaType =
+      output_format == null
+        ? (response.headers.get("content-type") ?? "audio/mpeg")
+        : elevenLabsFormatToMediaType(String(output_format));
     const requestId = response.headers.get("request-id");
 
     return {

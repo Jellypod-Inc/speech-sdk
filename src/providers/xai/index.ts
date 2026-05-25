@@ -93,12 +93,18 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     return body;
   }
 
-  private mediaTypeForCodec(codec: unknown): string {
+  private mediaTypeForBody(body: Record<string, unknown>): string {
+    const output = body.output_format as
+      | { codec?: unknown; sample_rate?: unknown }
+      | undefined;
+    const codec = output?.codec;
     if (codec === "wav") {
       return "audio/wav";
     }
     if (codec === "pcm") {
-      return "audio/pcm";
+      const rate =
+        typeof output?.sample_rate === "number" ? output.sample_rate : null;
+      return rate == null ? "audio/pcm" : `audio/pcm;rate=${rate}`;
     }
     if (codec === "mulaw") {
       return "audio/basic";
@@ -107,11 +113,6 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       return "audio/alaw";
     }
     return "audio/mpeg";
-  }
-
-  private codecFromBody(body: Record<string, unknown>): unknown {
-    const output = body.output_format as { codec?: unknown } | undefined;
-    return output?.codec;
   }
 
   async generate(options: {
@@ -141,9 +142,8 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType =
-      response.headers.get("content-type") ??
-      this.mediaTypeForCodec(this.codecFromBody(body));
+    // xAI returns bare "audio/pcm" without rate for pcm codec; derive from the requested body so the rate is always present.
+    const mediaType = this.mediaTypeForBody(body);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -183,9 +183,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType:
-        response.headers.get("content-type") ??
-        this.mediaTypeForCodec(this.codecFromBody(body)),
+      mediaType: this.mediaTypeForBody(body),
     };
   }
 

@@ -269,7 +269,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/wav";
+    const mediaType = cartesiaMediaTypeForBody(body);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -387,7 +387,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/wav",
+      mediaType: cartesiaMediaTypeForBody(body),
     };
   }
 
@@ -497,6 +497,34 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
+}
+
+// Cartesia returns raw bytes when container="raw"; derive mediaType from the requested body so callers always know the rate.
+function cartesiaMediaTypeForBody(body: Record<string, unknown>): string {
+  const output = body.output_format as
+    | { container?: unknown; sample_rate?: unknown; encoding?: unknown }
+    | undefined;
+  const container = output?.container;
+  if (container === "wav") {
+    return "audio/wav";
+  }
+  if (container === "mp3") {
+    return "audio/mpeg";
+  }
+  if (container === "raw") {
+    const rate =
+      typeof output?.sample_rate === "number" ? output.sample_rate : null;
+    if (rate == null) {
+      throw new SpeechSDKError(
+        "cartesia: output_format.container=raw requires output_format.sample_rate"
+      );
+    }
+    const encoding = String(output?.encoding ?? "");
+    return encoding === "pcm_f32le"
+      ? `audio/pcm;rate=${rate};encoding=float32`
+      : `audio/pcm;rate=${rate}`;
+  }
+  return "audio/wav";
 }
 
 interface CartesiaSseEvent {

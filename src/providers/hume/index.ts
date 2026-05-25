@@ -144,7 +144,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    const format = (body.format ?? {}) as { type?: string };
+    const mediaType = humeResponseMediaType(
+      format.type,
+      response.headers.get("content-type")
+    );
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -257,9 +261,13 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       throw new Error(`hume/${options.modelId}: response has no body`);
     }
 
+    const format = (body.format ?? {}) as { type?: string };
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType: humeResponseMediaType(
+        format.type,
+        response.headers.get("content-type")
+      ),
     };
   }
 
@@ -365,9 +373,13 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
+    const format = (body.format ?? {}) as { type?: string };
     return {
       audio: new Uint8Array(arrayBuffer),
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType: humeResponseMediaType(
+        format.type,
+        response.headers.get("content-type")
+      ),
     };
   }
 }
@@ -397,4 +409,15 @@ function humeFormatToMediaType(formatType: string | undefined): string {
     return "audio/pcm;rate=48000";
   }
   return "audio/mpeg";
+}
+
+// Hume returns bare "audio/pcm" (no rate) for format.type=pcm, which would fail decoder validation. Always derive PCM mediaType from the requested format; trust Content-Type for everything else.
+function humeResponseMediaType(
+  formatType: string | undefined,
+  contentType: string | null
+): string {
+  if (formatType === "pcm") {
+    return humeFormatToMediaType("pcm");
+  }
+  return contentType ?? humeFormatToMediaType(formatType);
 }
