@@ -81,15 +81,10 @@ export class SmallestAISpeechProvider
       ...options.providerOptions,
       text: options.text,
       output_format: outputFormat,
+      model: isProModel ? "lightning_v3.1_pro" : "lightning_v3.1",
     };
 
-    if (isProModel) {
-      body.model = "lightning_v3.1_pro";
-    }
-
-    const url = isProModel
-      ? `${this.baseURL}/tts`
-      : `${this.baseURL}/${options.modelId}/get_speech`;
+    const url = `${this.baseURL}/tts`;
 
     const response = await this.fetchFn(url, {
       method: "POST",

@@ -11,7 +11,7 @@
 
 | Model                | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                                          |
 | -------------------- | --------- | ---------- | ------------- | ----------------- | ---------------------------------------------- |
-| `lightning-v3.1`     | No        | No         | No            | No                | 44 kHz, 15 languages, auto language detection  |
+| `lightning-v3.1`     | No        | No         | Yes           | No                | 44 kHz, 15 languages, auto language detection  |
 | `lightning_v3.1_pro` | No        | No         | No            | No                | 44 kHz, English + Hindi, curated Pro voice catalog |
 
 Streaming is not supported — `streamSpeech` throws `StreamingNotSupportedError`. `timestamps: true` on a direct factory falls back to the default Whisper STT pass.
