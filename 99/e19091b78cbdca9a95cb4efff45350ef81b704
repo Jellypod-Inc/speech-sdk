@@ -1,0 +1,55 @@
+src/providers/hume/index.ts
+  s_2d7bc864951653::t_bbd8eaf5cb2171 376
+  s_2d7bc864951653::t_52a2bab437ce9e 379-382
+  s_2d7bc864951653::t_8d9091ec0c6662 267-270
+  s_2d7bc864951653::t_a541eb25074df3 413-423
+  s_2d7bc864951653::t_8659bc1dd4ce70 147
+  s_2d7bc864951653::t_967d3603eb16b8 264
+  s_2d7bc864951653::t_43844619f8158e 148-151
+src/providers/cartesia/index.ts
+  s_2d7bc864951653::t_03b24023231b30 502-529
+  s_2d7bc864951653::t_702218f53cc2ec 272
+  s_2d7bc864951653::t_19ebd91530669a 390
+src/__tests__/audio-decode.test.ts
+  s_2d7bc864951653::t_d4cc93ab44824e 1-48
+src/providers/xai/index.ts
+  s_2d7bc864951653::t_29dad0285666c2 186
+  s_2d7bc864951653::t_8e8df476d40ca5 96-100,105-106
+  s_2d7bc864951653::t_f3c4caecd870b2 145-146
+src/__tests__/provider-media-type-regression.test.ts
+  s_2d7bc864951653::t_af5de32b9f53f4 231
+  s_2d7bc864951653::t_b7639be8634df9 12
+src/audio-output.ts
+  s_2d7bc864951653::t_c5ddc6bbff1fb8 133-138
+src/providers/openai/index.ts
+  s_2d7bc864951653::t_aac245714aaede 507-529
+  s_2d7bc864951653::t_ca4644a5baa76a 238-241
+  s_2d7bc864951653::t_84a8b91d15d3bd 299-302
+src/providers/deepgram/index.ts
+  s_2d7bc864951653::t_141fc5452a78ed 148-151
+  s_2d7bc864951653::t_f19b7ece2861cb 215-241
+  s_2d7bc864951653::t_c4820248b35275 103-106
+src/__tests__/e2e/audio-quality.e2e.test.ts
+  s_2d7bc864951653::t_2319a913c2971d 1-24,26-35,37-131,138-145,149-153,161-162
+  s_2d7bc864951653::t_8d08e8bd2f782b 25,36
+src/audio-decode.ts
+  s_2d7bc864951653::t_aadc1d5824b57e 32-37
+src/providers/elevenlabs/index.ts
+  s_2d7bc864951653::t_3dc8630018083d 565-569
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "99e19091b78cbdca9a95cb4efff45350ef81b704",
+  "prompts": {},
+  "sessions": {
+    "s_2d7bc864951653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb2cfa65-7ee9-4e46-abf0-f91b12e8f912",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
