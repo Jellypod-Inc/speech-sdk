@@ -157,6 +157,19 @@ describe("convertDecodableAudioToOutput", () => {
     );
   });
 
+  it("encodes mp3 at 8000 Hz (MPEG-2.5) without throwing", async () => {
+    const pcm = makePcm16Bytes(8000);
+
+    const result = await convertDecodableAudioToOutput({
+      audio: pcm,
+      mediaType: "audio/pcm;rate=8000",
+      output: { format: "mp3", bitrate: DEFAULT_MP3_BITRATE_KBPS },
+    });
+
+    expect(result.mediaType).toBe("audio/mpeg");
+    expect(result.audio[0]).toBe(0xff);
+  });
+
   it("rejects unsupported source media types", async () => {
     await expect(
       convertDecodableAudioToOutput({

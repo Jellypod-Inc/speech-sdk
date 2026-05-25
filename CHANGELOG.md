@@ -7,6 +7,13 @@
 - **New `output.sampleRate` option** on `AudioOutput`. Pass a positive integer to request a specific rate. Providers throw `UnsupportedSampleRateError` if the rate isn't in their documented set.
 - **Fix: `volumeDbfs` no longer hard-clips transient consonants.** `normalizeRms` is now peak-aware: it caps the RMS-targeted gain so post-gain peaks stay ≤0.99 × INT16_MAX. If the source can't reach the requested RMS without clipping, the SDK preserves the source's dynamic range instead of distorting transients.
 - New `UnsupportedSampleRateError` thrown when the caller requests a `sampleRate` the provider's API doesn't expose.
+- **Fix: `output: { format: "mp3", sampleRate }` at 8/11.025/12 kHz no longer crashes the MP3 encoder.** The encoder now accepts the full MPEG-1/2/2.5 rate set; previously a low rate that passed provider validation threw deep in the local MP3-conversion (volume/chunk/conversation-stitch) path.
+- **Fix: Fish Audio MP3 now validates `sampleRate` against its documented MP3 set (32 kHz / 44.1 kHz)** and forwards it, instead of silently dropping the requested rate; out-of-set rates throw `UnsupportedSampleRateError` like every other format.
+- **Fix: Murf FALCON** declares its streaming-endpoint rate set (adds 16 kHz) separately from GEN2's `/speech/generate` set.
+- **Fix: Fal** throws `UnsupportedSampleRateError` when a caller explicitly requests `output.sampleRate` (it has no rate selection) rather than silently returning audio at its native rate.
+- **Fix: Resemble now forwards `sample_rate`.** Resemble's `/synthesize` accepts a documented `sample_rate` string enum (8/16/22.05/32/44.1/48 kHz); the SDK previously sent none and let the API pick an undocumented default (~32 kHz), so requested rates were ignored. It now declares the full set and forwards the chosen rate.
+- **Fix: Murf FALCON `pcm` output.** FALCON's `generate`/`stream` derived mediaType from the response Content-Type (defaulting to `audio/wav`), mislabeling raw headerless PCM as WAV so it failed to decode. It now derives mediaType from the request like GEN2.
+- Stitch and chunk-stitch now throw if no decoded segment carries a positive sample rate, instead of emitting a 0 Hz WAV.
 
 ## 0.10.1
 

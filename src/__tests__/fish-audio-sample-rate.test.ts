@@ -56,4 +56,26 @@ describe("Fish Audio sample rates", () => {
       })
     ).toThrow(UnsupportedSampleRateError);
   });
+
+  it("mp3 defaults to 44100 (highest mp3 rate) and forwards sample_rate", () => {
+    expect(provider.resolveOutputFormat(MODEL, { format: "mp3" })).toEqual({
+      providerOptions: { format: "mp3", sample_rate: 44_100 },
+      expectedMediaType: "audio/mpeg",
+    });
+  });
+
+  it("mp3 honors an explicit rate within the mp3 set (32000)", () => {
+    expect(
+      provider.resolveOutputFormat(MODEL, { format: "mp3", sampleRate: 32_000 })
+    ).toEqual({
+      providerOptions: { format: "mp3", sample_rate: 32_000 },
+      expectedMediaType: "audio/mpeg",
+    });
+  });
+
+  it("mp3 throws for a rate valid for wav/pcm but not mp3 (8000)", () => {
+    expect(() =>
+      provider.resolveOutputFormat(MODEL, { format: "mp3", sampleRate: 8000 })
+    ).toThrow(UnsupportedSampleRateError);
+  });
 });

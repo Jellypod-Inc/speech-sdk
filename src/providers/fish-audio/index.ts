@@ -25,6 +25,7 @@ export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 
 // Fish Audio WAV/PCM accepts 8k–44.1k; MP3 is 32k–44.1k and Opus is 48k only.
 const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
+const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
   {
@@ -200,12 +201,18 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
           expectedMediaType: "audio/wav",
         };
       }
-      case "mp3":
-        // Fish MP3 only supports 32k/44.1k; let the API pick its default and skip SDK-side rate validation.
+      case "mp3": {
+        // Fish MP3 supports a narrower set than WAV/PCM (32k/44.1k only).
+        const rate = resolveSampleRate(
+          `fish-audio/${modelId}`,
+          FISH_AUDIO_MP3_RATES,
+          output.sampleRate
+        );
         return {
-          providerOptions: { format: "mp3" },
+          providerOptions: { format: "mp3", sample_rate: rate },
           expectedMediaType: "audio/mpeg",
         };
+      }
       case "pcm": {
         const rate = resolveSampleRate(
           `fish-audio/${modelId}`,

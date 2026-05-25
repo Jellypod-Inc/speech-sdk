@@ -57,7 +57,16 @@ interface StitchOutput {
 }
 
 function stitchTargetRate(segments: readonly { sampleRate: number }[]): number {
-  return segments.reduce((m, s) => (s.sampleRate > m ? s.sampleRate : m), 0);
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "runStitch: no decoded segments with a positive sample rate to stitch"
+    );
+  }
+  return rate;
 }
 
 const WHITESPACE_RE = /\s+/;

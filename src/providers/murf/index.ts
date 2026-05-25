@@ -33,7 +33,12 @@ export interface MurfSpeechProviderConfig {
 
 export const MURF_PROVIDER_ID = "murf" as const;
 
-const MURF_SAMPLE_RATES = [8000, 24_000, 44_100, 48_000] as const;
+// GEN2 (POST /speech/generate) documents 8000/24000/44100/48000; FALCON streams
+// via POST /speech/stream, which additionally accepts 16000.
+const MURF_GEN2_SAMPLE_RATES = [8000, 24_000, 44_100, 48_000] as const;
+const MURF_FALCON_SAMPLE_RATES = [
+  8000, 16_000, 24_000, 44_100, 48_000,
+] as const;
 
 export const MURF_MODELS: readonly ModelInfo[] = [
   {
@@ -148,10 +153,11 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
     if (isFalcon) {
       const arrayBuffer = await response.arrayBuffer();
-      const mediaType = response.headers.get("content-type") ?? "audio/wav";
+      // FALCON streams raw PCM (headerless) for format=PCM; the Content-Type
+      // header doesn't carry the rate, so derive mediaType from the request like GEN2.
       return {
         audio: new Uint8Array(arrayBuffer),
-        mediaType,
+        mediaType: murfMediaType(body.format, body.sampleRate),
       };
     }
 
@@ -213,7 +219,7 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/wav",
+      mediaType: murfMediaType(body.format, body.sampleRate),
     };
   }
 
@@ -221,7 +227,9 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
     if (!this.models.some((m) => m.id === modelId)) {
       return [];
     }
-    return MURF_SAMPLE_RATES;
+    return modelId === "FALCON"
+      ? MURF_FALCON_SAMPLE_RATES
+      : MURF_GEN2_SAMPLE_RATES;
   }
 
   getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {

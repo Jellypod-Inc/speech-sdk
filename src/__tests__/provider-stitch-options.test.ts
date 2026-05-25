@@ -116,10 +116,10 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("Resemble returns wav with PCM_16 precision (default is PCM_32, not decodable)", () => {
+  it("Resemble returns wav with PCM_16 precision and the default (highest) sample_rate", () => {
     const p = new ResembleSpeechProvider({});
     expect(p.getStitchOptions?.("default")).toEqual({
-      providerOptions: { precision: "PCM_16" },
+      providerOptions: { precision: "PCM_16", sample_rate: "48000" },
       mediaType: "audio/wav",
     });
   });

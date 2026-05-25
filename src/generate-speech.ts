@@ -53,7 +53,16 @@ type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
 function chunkStitchTargetRate(
   segments: readonly { sampleRate: number }[]
 ): number {
-  return segments.reduce((m, s) => (s.sampleRate > m ? s.sampleRate : m), 0);
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "generateChunkedSpeech: no decoded chunks with a positive sample rate to stitch"
+    );
+  }
+  return rate;
 }
 
 export async function generateSpeech<

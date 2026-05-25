@@ -56,4 +56,22 @@ describe("Murf sample rates", () => {
       })
     ).toThrow(UnsupportedSampleRateError);
   });
+
+  it("FALCON publishes the wider streaming rate set (adds 16000)", () => {
+    expect(provider.supportedSampleRates("FALCON")).toEqual([
+      8000, 16_000, 24_000, 44_100, 48_000,
+    ]);
+  });
+
+  it("FALCON accepts 16000 (valid on the /speech/stream endpoint)", () => {
+    expect(
+      provider.resolveOutputFormat("FALCON", {
+        format: "wav",
+        sampleRate: 16_000,
+      })
+    ).toEqual({
+      providerOptions: { format: "WAV", sampleRate: 16_000 },
+      expectedMediaType: "audio/wav",
+    });
+  });
 });

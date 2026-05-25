@@ -185,8 +185,8 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     switch (output.format) {
       case "wav":
       case "pcm": {
-        // Deepgram with container=none returns audio/l16 (RFC 2586, big-endian);
-        // request container=wav and let the SDK unwrap to little-endian s16.
+        // Deepgram with container=none returns raw PCM under an audio/l16
+        // Content-Type; request container=wav so the SDK gets a decodable WAV.
         const rate = resolveSampleRate(
           `deepgram/${modelId}`,
           this.supportedSampleRates(modelId),
@@ -212,7 +212,7 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
   }
 }
 
-// Deepgram returns audio/l16 (RFC 2586, big-endian PCM) for encoding=linear16 without container=wav; the SDK can't decode big-endian PCM, so callers must opt in to container=wav for linear16. mp3/opus/aac/flac are self-describing via Content-Type.
+// Deepgram returns raw PCM under an `audio/l16` Content-Type for encoding=linear16 without container=wav. Deepgram documents linear16 as little-endian, but the `audio/l16` label (RFC 2586) implies big-endian, so the byte order is ambiguous and the SDK does not decode it — callers must opt in to container=wav for linear16. mp3/opus/aac/flac are self-describing via Content-Type.
 function deepgramMediaTypeFromProviderOptions(
   providerOptions: Record<string, unknown> | undefined,
   contentType: string | null
@@ -228,7 +228,7 @@ function deepgramMediaTypeFromProviderOptions(
     const rate = typeof sampleRate === "number" ? sampleRate : null;
     if (rate == null) {
       throw new Error(
-        "deepgram: encoding=linear16 without container=wav returns audio/l16 (RFC 2586 big-endian PCM), which the SDK does not decode. Pass container=wav, or use encoding=mp3."
+        "deepgram: encoding=linear16 without container=wav returns raw PCM under an audio/l16 Content-Type, which the SDK does not decode (ambiguous byte order). Pass container=wav, or use encoding=mp3."
       );
     }
     return `audio/l16;rate=${rate}`;
