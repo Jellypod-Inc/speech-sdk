@@ -16,11 +16,11 @@ export class SmallestAISpeechProvider
   implements SpeechProvider<string, string>
 {
   readonly id = "smallest-ai";
-  readonly defaultModel = "lightning-v3.1";
+  readonly defaultModel = "lightning_v3.1";
 
   readonly models = [
     {
-      id: "lightning-v3.1",
+      id: "lightning_v3.1",
       releaseDate: "2025-01-01",
       languages: [
         "en",
@@ -81,7 +81,7 @@ export class SmallestAISpeechProvider
       ...options.providerOptions,
       text: options.text,
       output_format: outputFormat,
-      model: isProModel ? "lightning_v3.1_pro" : "lightning_v3.1",
+      model: options.modelId,
     };
 
     const url = `${this.baseURL}/tts`;

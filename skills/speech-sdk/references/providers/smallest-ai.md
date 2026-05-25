@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | Prefix | `smallest-ai` |
-| Default model | `lightning-v3.1` |
+| Default model | `lightning_v3.1` |
 | Env var | `SMALLEST_API_KEY` |
 | Official docs | https://waves.smallest.ai/ |
 
@@ -11,18 +11,18 @@
 
 | Model                | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                                          |
 | -------------------- | --------- | ---------- | ------------- | ----------------- | ---------------------------------------------- |
-| `lightning-v3.1`     | No        | No         | Yes           | No                | 44 kHz, 15 languages, auto language detection  |
+| `lightning_v3.1`     | No        | No         | Yes           | No                | 44 kHz, 15 languages, auto language detection  |
 | `lightning_v3.1_pro` | No        | No         | No            | No                | 44 kHz, English + Hindi, curated Pro voice catalog |
 
 Streaming is not supported — `streamSpeech` throws `StreamingNotSupportedError`. `timestamps: true` on a direct factory falls back to the default Whisper STT pass.
 
 ## Usage
 
-### lightning-v3.1
+### lightning_v3.1
 
 ```ts
 await generateSpeech({
-  model: "smallest-ai/lightning-v3.1",
+  model: "smallest-ai/lightning_v3.1",
   text: "Hello!",
   voice: "magnus",
 })
@@ -48,7 +48,7 @@ Pro voice catalog: Indian female — `rhea`, `zariya`, `kareena`, `mishka`, `ina
 
 ```ts
 await generateSpeech({
-  model: "smallest-ai/lightning-v3.1",
+  model: "smallest-ai/lightning_v3.1",
   text: "Hello!",
   voice: "magnus",
   providerOptions: {
@@ -70,7 +70,7 @@ import { createSmallestAI } from "@speech-sdk/core/providers"
 const smallest = createSmallestAI({ apiKey: process.env.SMALLEST_API_KEY })
 
 // Standard model
-await generateSpeech({ model: smallest("lightning-v3.1"), text: "...", voice: "magnus" })
+await generateSpeech({ model: smallest("lightning_v3.1"), text: "...", voice: "magnus" })
 
 // Pro model
 await generateSpeech({ model: smallest("lightning_v3.1_pro"), text: "...", voice: "meher" })
