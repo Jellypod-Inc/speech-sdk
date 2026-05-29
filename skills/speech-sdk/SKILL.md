@@ -31,7 +31,7 @@ result.audio.base64     // lazy-computed base64
 result.audio.mediaType
 ```
 
-Pass `provider/model` strings to dispatch via `SPEECH_GATEWAY_API_KEY` (or the `apiKey` option). Use provider factories from `@speech-sdk/core/providers` to call the upstream provider directly with its own API key. See `references/providers.md` for the list of providers and their factories.
+Pass `provider/model` strings to dispatch via `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`, or the `apiKey` option). Use provider factories from `@speech-sdk/core/providers` to call the upstream provider directly with its own API key. See `references/providers.md` for the list of providers and their factories.
 
 ## Streaming
 

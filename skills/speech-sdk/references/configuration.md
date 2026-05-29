@@ -1,6 +1,6 @@
 # Configuration
 
-String models read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+String models read `SPEECHBASE_API_KEY` (falling back to the legacy `SPEECH_GATEWAY_API_KEY`) from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
 
 ## String Models
 
@@ -9,7 +9,7 @@ await generateSpeech({
   model: "provider/model",
   text: "Hello!",
   voice: "voice-id",
-  apiKey: process.env.SPEECH_GATEWAY_API_KEY,
+  apiKey: process.env.SPEECHBASE_API_KEY,
   timestamps: true,
   volumeDbfs: -20,
 })

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1
+
+- Gateway streaming now targets the dedicated `POST /v1/audio/speech/stream` endpoint instead of the buffered `POST /v1/audio/speech`. `streamSpeech` against the gateway returns true low-latency, chunk-by-chunk audio again; previously it degraded to a single un-chunked response. No public API change; non-streaming models still surface `StreamingNotSupportedError`.
+- Gateway key resolution now reads `SPEECHBASE_API_KEY` first and falls back to `SPEECH_GATEWAY_API_KEY` for backward compatibility. An explicit `apiKey` option still wins over both. The missing-key / 401 error messages now reference `SPEECHBASE_API_KEY`.
+
 ## 0.11.0
 
 - **Breaking: per-provider default sample rate raised.** Providers that natively support higher rates now default to their highest documented rate instead of 24 kHz: ElevenLabs, Cartesia, Deepgram Aura, Inworld, Murf, Fish Audio (44.1 kHz), and xAI. Stitch and chunk-stitch paths now use `max(per-segment rate)` instead of a 24 kHz constant. Single-rate providers (OpenAI 24 kHz, Google 24 kHz, Hume 48 kHz, Mistral 24 kHz, Resemble 44.1 kHz, Smallest-AI 24 kHz) declare their fixed rate and reject mismatches. Fal remains a pass-through with no rate selection.
