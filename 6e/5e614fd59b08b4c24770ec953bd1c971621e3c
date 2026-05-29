@@ -1,0 +1,37 @@
+src/__tests__/gateway.test.ts
+  s_63ecf252d1649d::t_06835bab889779 274-295,431-505,507-509,521-522
+AGENTS.md
+  s_63ecf252d1649d::t_06835bab889779 35
+src/providers/gateway/index.ts
+  s_63ecf252d1649d::t_06835bab889779 55,74-77,79-81,85,88,221-222
+README.md
+  s_63ecf252d1649d::t_06835bab889779 69,81-82,120
+skills/speech-sdk/references/configuration.md
+  s_63ecf252d1649d::t_06835bab889779 3,12
+skills/speech-sdk/SKILL.md
+  s_63ecf252d1649d::t_06835bab889779 34
+package.json
+  s_63ecf252d1649d::t_305952f95ff47b 3
+skills/speech-sdk/references/providers.md
+  s_63ecf252d1649d::t_06835bab889779 3,87
+src/__tests__/stream-speech.test.ts
+  s_63ecf252d1649d::t_06835bab889779 144
+CHANGELOG.md
+  s_63ecf252d1649d::t_336e62b869c288 3-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e5e614fd59b08b4c24770ec953bd1c971621e3c",
+  "prompts": {},
+  "sessions": {
+    "s_63ecf252d1649d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d4a2252-6c5d-4c37-a0df-6899aee167ad",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
