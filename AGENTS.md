@@ -32,7 +32,7 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 - `src/providers/openai/` and `src/providers/elevenlabs/` — provider implementations
 
 **Two paths to a provider** (chosen by how the caller passes `model`):
-- String (`"openai/tts-1"`) → routes through `SpeechGatewayProvider`; needs `SPEECH_GATEWAY_API_KEY`.
+- String (`"openai/tts-1"`) → routes through `SpeechGatewayProvider`; needs `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY` still honored).
 - Factory (`createOpenAI()("tts-1")`) → calls the provider directly; reads the per-provider env var (`OPENAI_API_KEY`) unless an explicit `apiKey` is passed to the factory.
 
 **Gateway invariant:** when routing through `SpeechGatewayProvider`, the SDK is a thin REST wrapper. A call made via the SDK must be byte-equivalent to the same call made via `curl` against `api.speechbase.ai`. The SDK does not add behavior on the gateway path — no client-side recovery, no client-side enrichment, no synthesizing fields from caller input that weren't on the wire, no fallbacks. The gateway server owns its contract; the SDK is a transport. Any new feature must work identically whether the caller uses the SDK or hits the REST API directly.

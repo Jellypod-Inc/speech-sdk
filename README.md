@@ -66,7 +66,7 @@ The SDK has two ways to reach a provider, and the choice is made by **how you pa
 
 ```ts
 // 1. String → routes through Speech Gateway (https://api.speechbase.ai)
-//    Needs SPEECH_GATEWAY_API_KEY (sign up at https://speechbase.ai).
+//    Needs SPEECHBASE_API_KEY (sign up at https://speechbase.ai).
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
 // 2. Factory → calls the provider directly (no proxy hop)
@@ -78,8 +78,8 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 | | Speech Gateway (string) | Direct provider (factory) |
 |---|---|---|
 | When to use | You want a single endpoint and easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
-| Setup | `SPEECH_GATEWAY_API_KEY` only | One env var per provider you use |
-| Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
+| Setup | `SPEECHBASE_API_KEY` only | One env var per provider you use |
+| Key resolution | `apiKey` option → `SPEECHBASE_API_KEY` → `SPEECH_GATEWAY_API_KEY` (legacy) | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
 | Endpoint | `api.speechbase.ai` | Provider's own API |
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
@@ -117,7 +117,7 @@ If the ID is missing, deleted, or belongs to another org, the gateway falls back
 | [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `MISTRAL_API_KEY` |
 | [xAI](https://docs.x.ai/docs/models) | `xai` | `XAI_API_KEY` |
 
-The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECH_GATEWAY_API_KEY` — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
+The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 

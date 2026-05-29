@@ -52,7 +52,7 @@ const gatewayConversationJsonResponseSchema = z.object({
 });
 
 const GATEWAY_401_MESSAGE =
-  "Speech Gateway rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECH_GATEWAY_API_KEY environment variable.";
+  "Speech Gateway rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECHBASE_API_KEY environment variable.";
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
@@ -71,18 +71,21 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   }
 
   private resolveKey(): string {
-    const key =
-      this.apiKey ??
-      (typeof process === "undefined"
+    // SPEECHBASE_API_KEY is the current name; SPEECH_GATEWAY_API_KEY stays as a legacy fallback.
+    // `||` (not `??`) so an empty-string value also falls through to the legacy var.
+    const envKey =
+      typeof process === "undefined"
         ? undefined
-        : process.env?.SPEECH_GATEWAY_API_KEY);
+        : process.env?.SPEECHBASE_API_KEY ||
+          process.env?.SPEECH_GATEWAY_API_KEY;
+    const key = this.apiKey ?? envKey;
     if (!key) {
       const err = new MissingApiKeyError({
         providerName: "Speech Gateway",
-        envVar: "SPEECH_GATEWAY_API_KEY",
+        envVar: "SPEECHBASE_API_KEY",
       });
       err.message =
-        "To use the Speech Gateway, a Wavform AI api key is required. Sign up at https://speechbase.ai/ to get a key, then pass it via the `apiKey` option or set the SPEECH_GATEWAY_API_KEY environment variable.";
+        "To use the Speech Gateway, a Speechbase API key is required. Sign up at https://speechbase.ai/ to get a key, then pass it via the `apiKey` option or set the SPEECHBASE_API_KEY environment variable (the legacy SPEECH_GATEWAY_API_KEY is still honored).";
       throw err;
     }
     return key;
@@ -215,7 +218,8 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       body.moderation_ruleset_id = options.moderationRulesetId;
     }
 
-    const url = `${this.baseURL}/audio/speech`;
+    // Streaming has its own endpoint; /audio/speech is the buffered path (whole-clip).
+    const url = `${this.baseURL}/audio/speech/stream`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
