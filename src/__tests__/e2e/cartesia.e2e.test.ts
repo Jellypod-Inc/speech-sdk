@@ -10,7 +10,11 @@ describe.skipIf(!hasKey)("Cartesia e2e", () => {
   const voice =
     process.env.CARTESIA_VOICE_ID ?? "6ccbfb76-1fc6-48f7-b71d-91ac6298247b";
 
-  describe.each(["sonic-3", "sonic-2"] as const)("model: %s", (modelId) => {
+  describe.each([
+    "sonic-3.5",
+    "sonic-3",
+    "sonic-2",
+  ] as const)("model: %s", (modelId) => {
     it("generates audio via string model identifier", async () => {
       const result = await generateSpeech({
         model: `cartesia/${modelId}`,

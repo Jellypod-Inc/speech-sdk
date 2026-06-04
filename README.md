@@ -129,7 +129,7 @@ Provider-specific parameters pass through via `providerOptions` using each API's
 import { streamSpeech } from '@speech-sdk/core';
 
 const { audio, mediaType } = await streamSpeech({
-  model: 'cartesia/sonic-3',
+  model: 'cartesia/sonic-3.5',
   text: 'Streaming straight to the client.',
   voice: 'voice-id',
 });

@@ -284,4 +284,66 @@ describe("CartesiaSpeechProvider", () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.output_format).toEqual({ container: "wav" });
   });
+
+  describe("sonic-3.5", () => {
+    it("defaults to sonic-3.5", () => {
+      const provider = new CartesiaSpeechProvider({ apiKey: "test-key" });
+      expect(provider.defaultModel).toBe("sonic-3.5");
+    });
+
+    it("registers sonic-3.5 with audio-tag, voice-cloning, and timestamp features", () => {
+      const provider = new CartesiaSpeechProvider({ apiKey: "test-key" });
+      const model = provider.models.find((m) => m.id === "sonic-3.5");
+      expect(model).toBeDefined();
+      expect(model?.features).toEqual([
+        "streaming",
+        "audio-tags",
+        "inline-voice-cloning",
+        "timestamps",
+      ]);
+    });
+
+    it("transforms emotion tags to SSML for sonic-3.5", () => {
+      const provider = new CartesiaSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[angry] How dare you!",
+        "sonic-3.5"
+      );
+      expect(result.text).toBe('<emotion value="angry"/> How dare you!');
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("passes [laughter] through for sonic-3.5", () => {
+      const provider = new CartesiaSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[laughter] That was funny",
+        "sonic-3.5"
+      );
+      expect(result.text).toBe("[laughter] That was funny");
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("sends sonic-3.5 as model_id in the request body", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "audio/wav" }),
+        arrayBuffer: async () => new Uint8Array([1]).buffer,
+      });
+
+      const provider = new CartesiaSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
+
+      await provider.generate({
+        modelId: "sonic-3.5",
+        text: "Hello",
+        voice: "voice-123",
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model_id).toBe("sonic-3.5");
+    });
+  });
 });
