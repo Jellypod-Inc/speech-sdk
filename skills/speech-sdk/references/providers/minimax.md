@@ -3,20 +3,16 @@
 | | |
 | --- | --- |
 | Prefix | `minimax` |
-| Default model | `speech-2.6-hd` |
+| Default model | `speech-2.8-hd` |
 | Env var | `MINIMAX_API_KEY` |
 | Official docs | https://platform.minimax.io/docs/api-reference/speech-t2a-http |
 
 ## Models
 
-| Model              | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                          |
-| ------------------ | --------- | ---------- | ------------- | ----------------- | ------------------------------ |
-| `speech-2.6-hd`    | No        | No         | No            | No                | Current flagship, high fidelity |
-| `speech-2.6-turbo` | No        | No         | No            | No                | Low-latency 2.6                 |
-| `speech-02-hd`     | No        | No         | No            | No                | High fidelity                   |
-| `speech-02-turbo`  | No        | No         | No            | No                | Low-latency 02                  |
-| `speech-01-hd`     | No        | No         | No            | No                | Previous generation             |
-| `speech-01-turbo`  | No        | No         | No            | No                | Previous generation, low latency |
+| Model              | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                                   |
+| ------------------ | --------- | ---------- | ------------- | ----------------- | --------------------------------------- |
+| `speech-2.8-hd`    | No        | No         | No            | No                | Current flagship, broadcast-grade fidelity |
+| `speech-2.8-turbo` | No        | No         | No            | No                | Low-latency, ~2–3× faster than HD       |
 
 Streaming is not exposed — `streamSpeech` throws `StreamingNotSupportedError`. `timestamps: true` on a direct factory falls back to the default Whisper STT pass.
 
@@ -26,7 +22,7 @@ MiniMax returns hex-encoded audio in a JSON envelope; the SDK decodes it to raw 
 
 ```ts
 await generateSpeech({
-  model: "minimax/speech-2.6-hd",
+  model: "minimax/speech-2.8-hd",
   text: "Hello!",
   voice: "Wise_Woman",
 })
@@ -40,7 +36,7 @@ The default voice (when `voice` is omitted) is `Wise_Woman`. MiniMax ships 300+ 
 
 ```ts
 await generateSpeech({
-  model: "minimax/speech-2.6-hd",
+  model: "minimax/speech-2.8-hd",
   text: "Hello!",
   voice: "Wise_Woman",
   providerOptions: {
@@ -64,5 +60,5 @@ Some MiniMax endpoints (notably mainland China, `api.minimaxi.chat`) require a G
 ```ts
 import { createMiniMax } from "@speech-sdk/core/providers"
 const minimax = createMiniMax({ apiKey: process.env.MINIMAX_API_KEY })
-await generateSpeech({ model: minimax("speech-2.6-hd"), text: "...", voice: "Wise_Woman" })
+await generateSpeech({ model: minimax("speech-2.8-hd"), text: "...", voice: "Wise_Woman" })
 ```

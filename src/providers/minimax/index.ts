@@ -63,38 +63,14 @@ const MINIMAX_LANGUAGES = [
 
 export const MINIMAX_MODELS: readonly ModelInfo[] = [
   {
-    id: "speech-2.6-hd",
-    releaseDate: "2025-11-01",
+    id: "speech-2.8-hd",
+    releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
     features: [],
   },
   {
-    id: "speech-2.6-turbo",
-    releaseDate: "2025-11-01",
-    languages: MINIMAX_LANGUAGES,
-    features: [],
-  },
-  {
-    id: "speech-02-hd",
-    releaseDate: "2025-04-30",
-    languages: MINIMAX_LANGUAGES,
-    features: [],
-  },
-  {
-    id: "speech-02-turbo",
-    releaseDate: "2025-04-30",
-    languages: MINIMAX_LANGUAGES,
-    features: [],
-  },
-  {
-    id: "speech-01-hd",
-    releaseDate: "2024-12-01",
-    languages: MINIMAX_LANGUAGES,
-    features: [],
-  },
-  {
-    id: "speech-01-turbo",
-    releaseDate: "2024-12-01",
+    id: "speech-2.8-turbo",
+    releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
     features: [],
   },
@@ -130,7 +106,7 @@ const minimaxResponseSchema = z.object({
 
 export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
   readonly id = MINIMAX_PROVIDER_ID;
-  readonly defaultModel = "speech-2.6-hd";
+  readonly defaultModel = "speech-2.8-hd";
 
   readonly models = MINIMAX_MODELS;
 

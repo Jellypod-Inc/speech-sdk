@@ -153,7 +153,7 @@ describe("getStitchOptions per provider", () => {
 
   it("MiniMax returns pcm at 44.1k (highest supported rate) by default", () => {
     const p = new MiniMaxSpeechProvider({});
-    expect(p.getStitchOptions?.("speech-2.6-hd")).toEqual({
+    expect(p.getStitchOptions?.("speech-2.8-hd")).toEqual({
       providerOptions: {
         audio_setting: { format: "pcm", sample_rate: 44_100, channel: 1 },
       },

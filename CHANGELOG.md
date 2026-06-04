@@ -2,7 +2,7 @@
 
 ## 0.13.0
 
-- Add the **MiniMax** TTS provider (`minimax` prefix, `createMiniMax()` factory, `MINIMAX_API_KEY`). Ships the T2A v2 lineup: `speech-2.6-hd` (default), `speech-2.6-turbo`, `speech-02-hd`, `speech-02-turbo`, `speech-01-hd`, and `speech-01-turbo`. The SDK decodes MiniMax's hex-encoded audio envelope, surfaces logical `base_resp` failures as `ApiError` (rate limits retried), and supports `wav` / `pcm` / `mp3` output at 8/16/22.05/24/32/44.1 kHz. `providerOptions` mirror the T2A request body (`voice_setting`, `audio_setting`, `language_boost`, …). Set `groupId` (or `MINIMAX_GROUP_ID`) for endpoints that require a Group ID.
+- Add the **MiniMax** TTS provider (`minimax` prefix, `createMiniMax()` factory, `MINIMAX_API_KEY`). Ships MiniMax's current flagship T2A v2 models: `speech-2.8-hd` (default) and `speech-2.8-turbo`. The SDK decodes MiniMax's hex-encoded audio envelope, surfaces logical `base_resp` failures as `ApiError` (rate limits retried), and supports `wav` / `pcm` / `mp3` output at 8/16/22.05/24/32/44.1 kHz. `providerOptions` mirror the T2A request body (`voice_setting`, `audio_setting`, `language_boost`, …). Set `groupId` (or `MINIMAX_GROUP_ID`) for endpoints that require a Group ID.
 
 ## 0.12.0
 

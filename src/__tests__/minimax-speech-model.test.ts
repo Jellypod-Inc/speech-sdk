@@ -41,7 +41,7 @@ describe("MiniMaxSpeechProvider", () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: "speech-2.6-hd", text: "Hello world" });
+    await provider.generate({ modelId: "speech-2.8-hd", text: "Hello world" });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
@@ -57,7 +57,7 @@ describe("MiniMaxSpeechProvider", () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: "speech-2.6-hd", text: "Hello" });
+    await provider.generate({ modelId: "speech-2.8-hd", text: "Hello" });
 
     const [url] = mockFetch.mock.calls[0];
     expect(url).toBe("https://api.minimax.io/v1/t2a_v2?GroupId=grp%20123");
@@ -71,14 +71,14 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     await provider.generate({
-      modelId: "speech-02-hd",
+      modelId: "speech-2.8-turbo",
       text: "Hello",
       voice: "Friendly_Person",
     });
 
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body.model).toBe("speech-02-hd");
+    expect(body.model).toBe("speech-2.8-turbo");
     expect(body.text).toBe("Hello");
     expect(body.stream).toBe(false);
     expect(body.output_format).toBe("hex");
@@ -93,7 +93,7 @@ describe("MiniMaxSpeechProvider", () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: "speech-2.6-hd", text: "Hello" });
+    await provider.generate({ modelId: "speech-2.8-hd", text: "Hello" });
 
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse(init.body);
@@ -108,7 +108,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     await provider.generate({
-      modelId: "speech-2.6-hd",
+      modelId: "speech-2.8-hd",
       text: "Hello",
       voice: "Calm_Woman",
       providerOptions: {
@@ -136,7 +136,7 @@ describe("MiniMaxSpeechProvider", () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: "speech-2.6-hd", text: "Hi" });
+    await provider.generate({ modelId: "speech-2.8-hd", text: "Hi" });
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Bearer sk-minimax-1");
@@ -151,7 +151,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     const result = await provider.generate({
-      modelId: "speech-2.6-hd",
+      modelId: "speech-2.8-hd",
       text: "Hello",
     });
 
@@ -170,7 +170,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     const result = await provider.generate({
-      modelId: "speech-2.6-hd",
+      modelId: "speech-2.8-hd",
       text: "Hello",
       providerOptions: {
         audio_setting: { format: "pcm", sample_rate: 44_100 },
@@ -193,7 +193,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     await expect(
-      provider.generate({ modelId: "speech-2.6-hd", text: "Hello" })
+      provider.generate({ modelId: "speech-2.8-hd", text: "Hello" })
     ).rejects.toThrow("MiniMax T2A error 1004");
   });
 
@@ -210,7 +210,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     await expect(
-      provider.generate({ modelId: "speech-2.6-hd", text: "Hello" })
+      provider.generate({ modelId: "speech-2.8-hd", text: "Hello" })
     ).rejects.toThrow("no audio data");
   });
 
@@ -227,7 +227,7 @@ describe("MiniMaxSpeechProvider", () => {
     });
 
     await expect(
-      provider.generate({ modelId: "speech-2.6-hd", text: "Hello" })
+      provider.generate({ modelId: "speech-2.8-hd", text: "Hello" })
     ).rejects.toThrow();
   });
 
@@ -239,7 +239,7 @@ describe("MiniMaxSpeechProvider", () => {
       fetch: mockFetch,
     });
 
-    await provider.generate({ modelId: "speech-2.6-hd", text: "Hello" });
+    await provider.generate({ modelId: "speech-2.8-hd", text: "Hello" });
 
     const [url] = mockFetch.mock.calls[0];
     expect(url).toBe("https://api-uw.minimax.io/v1/t2a_v2");
@@ -248,7 +248,7 @@ describe("MiniMaxSpeechProvider", () => {
   describe("supportedSampleRates", () => {
     it("publishes the documented set for known models", () => {
       const provider = new MiniMaxSpeechProvider({ apiKey: "test" });
-      expect(provider.supportedSampleRates("speech-2.6-hd")).toEqual([
+      expect(provider.supportedSampleRates("speech-2.8-hd")).toEqual([
         8000, 16_000, 22_050, 24_000, 32_000, 44_100,
       ]);
     });
@@ -262,7 +262,7 @@ describe("MiniMaxSpeechProvider", () => {
   describe("getStitchOptions", () => {
     it("returns pcm at the highest supported rate by default", () => {
       const provider = new MiniMaxSpeechProvider({ apiKey: "test" });
-      expect(provider.getStitchOptions("speech-2.6-hd")).toEqual({
+      expect(provider.getStitchOptions("speech-2.8-hd")).toEqual({
         providerOptions: {
           audio_setting: { format: "pcm", sample_rate: 44_100, channel: 1 },
         },
@@ -273,7 +273,7 @@ describe("MiniMaxSpeechProvider", () => {
     it("honors a supported sampleRate hint", () => {
       const provider = new MiniMaxSpeechProvider({ apiKey: "test" });
       expect(
-        provider.getStitchOptions("speech-2.6-hd", { sampleRate: 24_000 })
+        provider.getStitchOptions("speech-2.8-hd", { sampleRate: 24_000 })
       ).toEqual({
         providerOptions: {
           audio_setting: { format: "pcm", sample_rate: 24_000, channel: 1 },
@@ -285,7 +285,7 @@ describe("MiniMaxSpeechProvider", () => {
     it("throws on an unsupported sampleRate hint", () => {
       const provider = new MiniMaxSpeechProvider({ apiKey: "test" });
       expect(() =>
-        provider.getStitchOptions("speech-2.6-hd", { sampleRate: 48_000 })
+        provider.getStitchOptions("speech-2.8-hd", { sampleRate: 48_000 })
       ).toThrow(UnsupportedSampleRateError);
     });
 
@@ -300,7 +300,7 @@ describe("MiniMaxSpeechProvider", () => {
 
     it("requests decodable pcm for wav output", () => {
       expect(
-        provider.resolveOutputFormat("speech-2.6-hd", { format: "wav" })
+        provider.resolveOutputFormat("speech-2.8-hd", { format: "wav" })
       ).toEqual({
         providerOptions: {
           audio_setting: { format: "pcm", sample_rate: 44_100, channel: 1 },
@@ -311,7 +311,7 @@ describe("MiniMaxSpeechProvider", () => {
 
     it("requests pcm for pcm output", () => {
       expect(
-        provider.resolveOutputFormat("speech-2.6-hd", {
+        provider.resolveOutputFormat("speech-2.8-hd", {
           format: "pcm",
           sampleRate: 24_000,
         })
@@ -325,7 +325,7 @@ describe("MiniMaxSpeechProvider", () => {
 
     it("maps mp3 bitrate to the nearest MiniMax option (bps)", () => {
       expect(
-        provider.resolveOutputFormat("speech-2.6-hd", {
+        provider.resolveOutputFormat("speech-2.8-hd", {
           format: "mp3",
           bitrate: 130,
         })
@@ -343,7 +343,7 @@ describe("MiniMaxSpeechProvider", () => {
 
     it("throws on an unsupported sampleRate", () => {
       expect(() =>
-        provider.resolveOutputFormat("speech-2.6-hd", {
+        provider.resolveOutputFormat("speech-2.8-hd", {
           format: "pcm",
           sampleRate: 48_000,
         })

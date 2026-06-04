@@ -9,9 +9,8 @@ describe.skipIf(!hasKey)("MiniMax e2e", () => {
   const voice = process.env.MINIMAX_VOICE_ID ?? "Wise_Woman";
 
   describe.each([
-    "speech-2.6-hd",
-    "speech-2.6-turbo",
-    "speech-02-hd",
+    "speech-2.8-hd",
+    "speech-2.8-turbo",
   ] as const)("model: %s", (modelId) => {
     it("generates audio via string model identifier", async () => {
       const result = await generateSpeech({
@@ -40,7 +39,7 @@ describe.skipIf(!hasKey)("MiniMax e2e", () => {
 
   it("returns metadata with duration", async () => {
     const result = await generateSpeech({
-      model: "minimax/speech-2.6-hd",
+      model: "minimax/speech-2.8-hd",
       text: TEST_TEXT,
       voice,
     });
@@ -52,7 +51,7 @@ describe.skipIf(!hasKey)("MiniMax e2e", () => {
 
   it("produces a RIFF WAV when wav output is requested", async () => {
     const result = await generateSpeech({
-      model: "minimax/speech-2.6-hd",
+      model: "minimax/speech-2.8-hd",
       text: TEST_TEXT,
       voice,
       output: { format: "wav" },

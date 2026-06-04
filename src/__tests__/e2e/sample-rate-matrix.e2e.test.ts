@@ -144,7 +144,7 @@ const providers: ProviderTarget[] = [
   {
     name: "minimax",
     envKey: "MINIMAX_API_KEY",
-    model: () => createMiniMax()("speech-2.6-hd"),
+    model: () => createMiniMax()("speech-2.8-hd"),
     voice: process.env.MINIMAX_VOICE_ID ?? "Wise_Woman",
   },
 ];
