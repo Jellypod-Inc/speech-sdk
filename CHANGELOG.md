@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.0
+
+- Add Cartesia `sonic-3.5` (`cartesia/sonic-3.5`), Cartesia's latest flagship TTS model. It carries the same capabilities as `sonic-3` — streaming, emotion/audio tags via SSML, inline voice cloning, and native word timestamps — across all 42 supported languages, and is a drop-in replacement for `sonic-3`.
+- **Cartesia default model is now `sonic-3.5`** (previously `sonic-3`). Calls that omit the model id (`createCartesia()()` or the bare `"cartesia"` string) now resolve to `sonic-3.5`. Existing voice IDs and prompts work unchanged. Pin `cartesia/sonic-3` explicitly to keep the previous default.
+
 ## 0.11.1
 
 - Gateway streaming now targets the dedicated `POST /v1/audio/speech/stream` endpoint instead of the buffered `POST /v1/audio/speech`. `streamSpeech` against the gateway returns true low-latency, chunk-by-chunk audio again; previously it degraded to a single un-chunked response. No public API change; non-streaming models still surface `StreamingNotSupportedError`.
