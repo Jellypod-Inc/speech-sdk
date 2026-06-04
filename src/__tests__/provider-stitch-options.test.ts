@@ -7,6 +7,7 @@ import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
+import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
 import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
@@ -150,6 +151,16 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
+  it("MiniMax returns pcm at 44.1k (highest supported rate) by default", () => {
+    const p = new MiniMaxSpeechProvider({});
+    expect(p.getStitchOptions?.("speech-2.6-hd")).toEqual({
+      providerOptions: {
+        audio_setting: { format: "pcm", sample_rate: 44_100, channel: 1 },
+      },
+      mediaType: "audio/pcm;rate=44100",
+    });
+  });
+
   it("Smallest AI returns wav for lightning-v3.1", () => {
     const p = new SmallestAISpeechProvider({});
     expect(p.getStitchOptions?.("lightning-v3.1")).toEqual({
@@ -175,6 +186,7 @@ describe("getStitchOptions per provider", () => {
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
       new MistralSpeechProvider({}),
+      new MiniMaxSpeechProvider({}),
       new SmallestAISpeechProvider({}),
     ];
     for (const p of providers) {

@@ -8,6 +8,7 @@ import { createFishAudio } from "../../providers/fish-audio/index.js";
 import { createGoogle } from "../../providers/google/index.js";
 import { createHume } from "../../providers/hume/index.js";
 import { createInworld } from "../../providers/inworld/index.js";
+import { createMiniMax } from "../../providers/minimax/index.js";
 import { createMistral } from "../../providers/mistral/index.js";
 import { createMurf } from "../../providers/murf/index.js";
 import { createOpenAI } from "../../providers/openai/index.js";
@@ -139,6 +140,12 @@ const providers: ProviderTarget[] = [
     envKey: "SMALLEST_API_KEY",
     model: () => createSmallestAI()("lightning-v3.1"),
     voice: process.env.SMALLEST_VOICE_ID ?? "magnus",
+  },
+  {
+    name: "minimax",
+    envKey: "MINIMAX_API_KEY",
+    model: () => createMiniMax()("speech-2.6-hd"),
+    voice: process.env.MINIMAX_VOICE_ID ?? "Wise_Woman",
   },
 ];
 
