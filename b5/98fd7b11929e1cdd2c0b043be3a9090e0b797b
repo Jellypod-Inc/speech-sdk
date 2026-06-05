@@ -1,0 +1,24 @@
+src/generate-conversation.ts
+  s_aa14159cbc9d0b::t_54e1b009a3e58b 21
+src/__tests__/stream-speech.test.ts
+  s_aa14159cbc9d0b::t_ea944c947ea4e3 205
+src/providers/gateway/index.ts
+  s_aa14159cbc9d0b::t_787077ccd5e40a 90
+  s_aa14159cbc9d0b::t_5cda65da07795e 309-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "b598fd7b11929e1cdd2c0b043be3a9090e0b797b",
+  "prompts": {},
+  "sessions": {
+    "s_aa14159cbc9d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7961527c-cd38-4e17-863d-9856fcf91efd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
