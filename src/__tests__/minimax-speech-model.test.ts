@@ -245,6 +245,13 @@ describe("MiniMaxSpeechProvider", () => {
     expect(url).toBe("https://api-uw.minimax.io/v1/t2a_v2");
   });
 
+  it("declares maxInputChars=3000 on every model for auto-chunking", () => {
+    const provider = new MiniMaxSpeechProvider({ apiKey: "test" });
+    for (const model of provider.models) {
+      expect(model.maxInputChars).toBe(3000);
+    }
+  });
+
   describe("supportedSampleRates", () => {
     it("publishes the documented set for known models", () => {
       const provider = new MiniMaxSpeechProvider({ apiKey: "test" });

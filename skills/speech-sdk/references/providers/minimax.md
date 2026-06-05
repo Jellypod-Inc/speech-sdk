@@ -18,6 +18,8 @@ Streaming is not exposed — `streamSpeech` throws `StreamingNotSupportedError`.
 
 MiniMax returns hex-encoded audio in a JSON envelope; the SDK decodes it to raw bytes. Logical errors are tunneled through `base_resp.status_code` (HTTP stays 200) and surfaced as `ApiError` — rate limits (`1002`) are retried.
 
+Both models declare `maxInputChars: 3000` (MiniMax's recommended per-request length; the sync `t2a_v2` endpoint hard-caps at <10,000). Longer text is auto-split on sentence/word boundaries and stitched through PCM. Pass a higher `maxInputChars` to `generateSpeech` to override.
+
 ## Usage
 
 ```ts

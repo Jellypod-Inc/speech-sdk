@@ -67,12 +67,14 @@ export const MINIMAX_MODELS: readonly ModelInfo[] = [
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
     features: [],
+    maxInputChars: 3000,
   },
   {
     id: "speech-2.8-turbo",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
     features: [],
+    maxInputChars: 3000,
   },
 ] as const;
 
