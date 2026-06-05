@@ -1,0 +1,28 @@
+CHANGELOG.md
+  s_aa14159cbc9d0b::t_b3d19503f3ddc7 3-21
+README.md
+  s_aa14159cbc9d0b::t_994af9f1b2a1eb 82
+  s_aa14159cbc9d0b::t_5cc97256cf46da 121
+skills/speech-sdk/SKILL.md
+  s_aa14159cbc9d0b::t_476b1286d93990 34
+package.json
+  s_aa14159cbc9d0b::t_8b0ac3db92143a 3
+skills/speech-sdk/references/providers.md
+  s_aa14159cbc9d0b::t_5959e9201af52f 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "983c89b476aaa07b257c222e9ef817c9759af605",
+  "prompts": {},
+  "sessions": {
+    "s_aa14159cbc9d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7961527c-cd38-4e17-863d-9856fcf91efd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
