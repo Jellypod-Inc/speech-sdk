@@ -20,6 +20,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Mistral      | `mistral`      | `MISTRAL_API_KEY`      |
 | xAI          | `xai`          | `XAI_API_KEY`          |
 | Smallest AI  | `smallest-ai`  | `SMALLEST_API_KEY`     |
+| MiniMax      | `minimax`      | `MINIMAX_API_KEY`      |
 
 ## Capability Matrix
 
@@ -39,6 +40,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Mistral     | Yes            | No                    | Yes            | Via STT     | Yes         |
 | xAI         | Yes            | Yes                   | No             | Via STT     | No          |
 | Smallest AI | No             | No                    | No             | Via STT     | No          |
+| MiniMax     | No             | No                    | No             | Via STT     | No          |
 
 Capabilities are per-model — see each provider file in `providers/<name>.md` for which models within a provider support what.
 

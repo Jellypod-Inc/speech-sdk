@@ -17,6 +17,8 @@ export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
 export { createHume } from "./providers/hume/index.js";
 export type { InworldSpeechProviderConfig } from "./providers/inworld/index.js";
 export { createInworld } from "./providers/inworld/index.js";
+export type { MiniMaxSpeechProviderConfig } from "./providers/minimax/index.js";
+export { createMiniMax } from "./providers/minimax/index.js";
 export type { MistralSpeechProviderConfig } from "./providers/mistral/index.js";
 export { createMistral } from "./providers/mistral/index.js";
 export type { MurfSpeechProviderConfig } from "./providers/murf/index.js";

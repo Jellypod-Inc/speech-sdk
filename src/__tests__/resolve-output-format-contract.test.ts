@@ -8,6 +8,7 @@ import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
+import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
 import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
@@ -30,6 +31,7 @@ const providers: { name: string; provider: SpeechProvider }[] = [
     provider: new CartesiaSpeechProvider({ apiKey: "test" }),
   },
   { name: "mistral", provider: new MistralSpeechProvider({ apiKey: "test" }) },
+  { name: "minimax", provider: new MiniMaxSpeechProvider({ apiKey: "test" }) },
   { name: "xai", provider: new XaiSpeechProvider({ apiKey: "test" }) },
   { name: "hume", provider: new HumeSpeechProvider({ apiKey: "test" }) },
   { name: "fal", provider: new FalSpeechProvider({ apiKey: "test" }) },
