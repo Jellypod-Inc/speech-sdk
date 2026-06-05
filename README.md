@@ -4,7 +4,7 @@
 
 # Speech SDK
 
-**Text-to-speech across 13 providers, one API.**
+**Text-to-speech across 14 providers, one API.**
 
 A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
 

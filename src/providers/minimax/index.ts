@@ -342,13 +342,13 @@ function minimaxMediaType(
 }
 
 // MiniMax tunnels logical errors through base_resp; map the common codes onto HTTP
-// status so p-retry treats rate limits (1002) as retriable and auth/quota as terminal.
+// status so p-retry retries throttling (1002 RPM, 1039 TPM) and treats auth/quota as terminal.
 function minimaxHttpStatus(code: number): number {
   switch (code) {
     case 1002:
+    case 1039:
       return 429;
     case 1004:
-    case 1039:
       return 401;
     case 1008:
       return 402;
@@ -357,21 +357,23 @@ function minimaxHttpStatus(code: number): number {
   }
 }
 
+const HEX_PAYLOAD_RE = /^[0-9a-fA-F]*$/;
+
 function hexToUint8Array(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) {
     throw new SpeechSDKError(
       "minimax: hex audio payload has an odd character count"
     );
   }
+  // parseInt is lenient (e.g. "5g" → 5), so validate the whole string up front.
+  if (!HEX_PAYLOAD_RE.test(hex)) {
+    throw new SpeechSDKError(
+      "minimax: hex audio payload contains non-hex characters"
+    );
+  }
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    if (Number.isNaN(byte)) {
-      throw new SpeechSDKError(
-        "minimax: hex audio payload contains non-hex characters"
-      );
-    }
-    out[i] = byte;
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
 }

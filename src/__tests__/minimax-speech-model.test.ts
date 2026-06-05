@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { UnsupportedSampleRateError } from "../errors.js";
+import { ApiError, UnsupportedSampleRateError } from "../errors.js";
 import { SDK_USER_AGENT } from "../provider-utils.js";
 import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
 
@@ -195,6 +195,43 @@ describe("MiniMaxSpeechProvider", () => {
     await expect(
       provider.generate({ modelId: "speech-2.8-hd", text: "Hello" })
     ).rejects.toThrow("MiniMax T2A error 1004");
+  });
+
+  it("maps the 1039 TPM throttle to a retriable 429", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      okResponse({
+        data: {},
+        base_resp: { status_code: 1039, status_msg: "tpm limit reached" },
+      })
+    );
+    const provider = new MiniMaxSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const error = await provider
+      .generate({ modelId: "speech-2.8-hd", text: "Hello" })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).statusCode).toBe(429);
+  });
+
+  it("rejects malformed hex audio instead of decoding it partially", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      okResponse({
+        // "5g" is even-length but not valid hex; parseInt would otherwise yield 5.
+        data: { audio: "5g", status: 2 },
+        base_resp: { status_code: 0, status_msg: "success" },
+      })
+    );
+    const provider = new MiniMaxSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    await expect(
+      provider.generate({ modelId: "speech-2.8-hd", text: "Hello" })
+    ).rejects.toThrow("non-hex");
   });
 
   it("throws when the response carries no audio", async () => {
