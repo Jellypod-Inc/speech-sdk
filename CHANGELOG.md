@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+### New
+
+- **`generateSpeech({ voiceId, text })`** — pass a Speechbase Voice UUID and the gateway resolves it to the underlying provider call (provider/model/voice/providerOptions are picked from the saved Voice row). Optional `gateway: createSpeechGateway({ apiKey, baseURL })` overrides the env-var key for the call. Mirrored on `streamSpeech` and per-turn in `generateConversation`. Conversations may freely mix Voice turns and inline turns on the gateway path.
+- **`VoiceResolutionError`** with `reason: "not_found" | "incomplete" | "unknown_provider"` for typed handling of Voice-lookup failures. Mapped from server `voice_*` errors on `generateSpeech`, `streamSpeech`, and `generateConversation`.
+- **`createSpeechGateway(...).provider`** — the configured gateway client is now exposed on the factory's return value. Used internally by the Voice path; safe to use externally for direct provider access.
+
+### Wire
+
+- The Voice arm of `streamSpeech` POSTs to `/v1/audio/speech/stream` (the dedicated streaming endpoint introduced in 0.11.1), matching the inline streaming path. No buffered fallback.
+- 401 / missing-key error messages now use the "Speechbase" name consistently. The `SPEECH_GATEWAY_API_KEY` env var continues to be honored as a legacy fallback (introduced in 0.11.1, unchanged here).
+
 ## 0.13.0
 
 - Add the **MiniMax** TTS provider (`minimax` prefix, `createMiniMax()` factory, `MINIMAX_API_KEY`). Ships MiniMax's current flagship T2A v2 models: `speech-2.8-hd` (default) and `speech-2.8-turbo`. The SDK decodes MiniMax's hex-encoded audio envelope, surfaces logical `base_resp` failures as `ApiError` (rate limits retried), and supports `wav` / `pcm` / `mp3` output at 8/16/22.05/24/32/44.1 kHz. `providerOptions` mirror the T2A request body (`voice_setting`, `audio_setting`, `language_boost`, …). Set `groupId` (or `MINIMAX_GROUP_ID`) for endpoints that require a Group ID.
