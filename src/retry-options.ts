@@ -1,5 +1,5 @@
 import type { Options as PRetryOptions } from "p-retry";
-import { ApiError } from "./errors.js";
+import { ApiError, VoiceResolutionError } from "./errors.js";
 import { isRetriableApiError } from "./provider-utils.js";
 
 // Cap server-supplied Retry-After at 60s. A misbehaving upstream sending Retry-After: 86400
@@ -16,8 +16,12 @@ export function buildRetryOptions(args: {
     retries: args.maxRetries,
     signal: args.abortSignal,
     randomize: true,
-    shouldRetry: ({ error }) =>
-      !(error instanceof ApiError) || isRetriableApiError(error),
+    shouldRetry: ({ error }) => {
+      if (error instanceof VoiceResolutionError) {
+        return false;
+      }
+      return !(error instanceof ApiError) || isRetriableApiError(error);
+    },
     onFailedAttempt: async ({ error, retryDelay }) => {
       if (
         !(error instanceof ApiError) ||

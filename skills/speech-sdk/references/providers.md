@@ -86,4 +86,4 @@ await generateSpeech({
 
 ## API Key Resolution
 
-String models read `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`) or use the `apiKey` option. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.
+String models read `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`) or use the `apiKey` option for a per-call override. The `voiceId` path additionally accepts `gateway: createSpeechGateway({ apiKey, baseURL })` for per-call key + base URL overrides. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.

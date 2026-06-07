@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, StreamingNotSupportedError } from "../errors.js";
+import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import { streamSpeech } from "../stream-speech.js";
 
@@ -167,5 +168,40 @@ describe("streamSpeech", () => {
     });
 
     expect(result.warnings).toEqual(["stripped"]);
+  });
+});
+
+describe("streamSpeech voice variant", () => {
+  const VOICE_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+  beforeEach(() => {
+    process.env.SPEECHBASE_API_KEY = "test-key";
+  });
+
+  it("accepts { voiceId, text } and POSTs the Voice wire shape", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      body: bytesStream(new Uint8Array([1, 2, 3])),
+    });
+    const result = await streamSpeech({
+      voiceId: VOICE_ID,
+      text: "Hello",
+      gateway: createSpeechGateway({
+        apiKey: "test-key",
+        fetch: fetchMock as unknown as typeof globalThis.fetch,
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/speech/stream");
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({ voiceId: VOICE_ID, text: "Hello" });
+    expect(body).not.toHaveProperty("mode");
+    expect(body).not.toHaveProperty("model");
+    expect(body).not.toHaveProperty("voice");
+    expect(result.mediaType).toBe("audio/mpeg");
   });
 });

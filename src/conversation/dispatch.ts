@@ -10,8 +10,8 @@ import {
   MixedDispatchError,
   StitchUnsupportedError,
 } from "./errors.js";
-import type { ConversationTurn } from "./types.js";
-import { newVoiceKeyer } from "./validate.js";
+import type { ConversationTurn, InlineConversationTurn } from "./types.js";
+import { isVoiceTurn, newVoiceKeyer } from "./validate.js";
 
 export type StitchFallbackReason = "fallback-from-native";
 
@@ -41,7 +41,9 @@ export function chooseConversationPath(input: {
 
   // Gateway wire takes string voices only; clone voices (`{url}`/`{audio}`) on gateway models fall past every other branch and throw StitchUnsupportedError below.
   if (gatewayCount === resolvedPerTurn.length) {
-    const allVoicesString = turns.every((t) => typeof t.voice === "string");
+    const allVoicesString = turns.every(
+      (t) => isVoiceTurn(t) || typeof t.voice === "string"
+    );
     if (allVoicesString) {
       return { kind: "gateway", resolvedPerTurn };
     }
@@ -99,7 +101,11 @@ function assertNativeConstraints(args: {
   const { provider, modelId, caps, turns } = args;
 
   const keyOf = newVoiceKeyer();
-  const unique = new Set(turns.map((t) => keyOf(t.voice))).size;
+  const unique = new Set(
+    turns.map((t) =>
+      isVoiceTurn(t) ? `v:${t.voiceId}` : keyOf((t as InlineConversationTurn).voice)
+    )
+  ).size;
 
   if (unique < caps.minVoices || unique > caps.maxVoices) {
     const rule =

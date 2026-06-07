@@ -161,6 +161,45 @@ export class MissingApiKeyError extends SpeechSDKError {
   }
 }
 
+export type VoiceResolutionReason =
+  | "not_found"
+  | "incomplete"
+  | "unknown_provider";
+
+export class VoiceResolutionError extends SpeechSDKError {
+  readonly reason: VoiceResolutionReason;
+  readonly voiceId: string;
+
+  constructor(
+    reason: VoiceResolutionReason,
+    voiceId: string,
+    message?: string
+  ) {
+    super(message ?? VoiceResolutionError.defaultMessage(reason, voiceId));
+    this.name = "VoiceResolutionError";
+    this.reason = reason;
+    this.voiceId = voiceId;
+  }
+
+  private static defaultMessage(
+    reason: VoiceResolutionReason,
+    voiceId: string
+  ): string {
+    switch (reason) {
+      case "not_found":
+        return `Voice not found: no Voice with id '${voiceId}' in your organization.`;
+      case "incomplete":
+        return `Voice '${voiceId}' is missing a provider voice_id. Update it in the dashboard or via PUT /v1/voices/{voiceId} before using it.`;
+      case "unknown_provider":
+        return `Voice '${voiceId}' references a provider that this SDK doesn't recognize. The provider may have been deprecated.`;
+      default: {
+        const _exhaustive: never = reason;
+        return _exhaustive;
+      }
+    }
+  }
+}
+
 export class TimestampKeyMissingError extends SpeechSDKError {
   constructor(options: {
     ttsModel: string;

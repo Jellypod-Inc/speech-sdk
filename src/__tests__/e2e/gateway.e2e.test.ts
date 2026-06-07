@@ -6,7 +6,7 @@ import {
   generateSpeech,
 } from "./_save-audio.js";
 
-const hasKey = !!process.env.SPEECH_GATEWAY_API_KEY;
+const hasKey = !!process.env.SPEECHBASE_API_KEY;
 
 describe.skipIf(!hasKey)("Speech Gateway e2e", () => {
   it("generateSpeech through gateway returns audio + timestamps", async () => {

@@ -2,7 +2,7 @@ import type { AudioOutput } from "../audio-output.js";
 import type { PronunciationsFor } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 
-export interface ConversationTurn<V extends Voice = Voice> {
+export interface InlineConversationTurn<V extends Voice = Voice> {
   readonly model?: string | ResolvedModel<V>;
   readonly providerOptions?: Record<string, unknown>;
   // Time-stretch this turn's rendered audio. Range 0.75–1.5. Forces the stitch path. Stacks with top-level `speed`: turn-level applies first, then top-level applies to the merged audio.
@@ -10,6 +10,17 @@ export interface ConversationTurn<V extends Voice = Voice> {
   readonly text: string;
   readonly voice: V;
 }
+
+export interface VoiceConversationTurn {
+  readonly providerOptions?: Record<string, unknown>;
+  readonly speed?: number;
+  readonly text: string;
+  readonly voiceId: string;
+}
+
+export type ConversationTurn<V extends Voice = Voice> =
+  | InlineConversationTurn<V>
+  | VoiceConversationTurn;
 
 export interface GenerateConversationOptions<
   V extends Voice = Voice,

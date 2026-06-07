@@ -8,9 +8,11 @@ import {
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
-import type { PronunciationsFor } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
+import {
+  createSpeechGateway,
+  type SpeechGatewayProvider,
+} from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -21,22 +23,18 @@ import {
   type Voice,
 } from "./speech-provider.js";
 import type { StreamSpeechResult } from "./stream-speech-result.js";
+import type {
+  StreamSpeechOptions,
+  VoiceStreamSpeechOptions,
+} from "./types.js";
 
 export async function streamSpeech<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
->(options: {
-  model: M;
-  text: string;
-  voice: V;
-  apiKey?: string;
-  providerOptions?: Record<string, unknown>;
-  maxRetries?: number;
-  abortSignal?: AbortSignal;
-  headers?: Record<string, string>;
-  pronunciations?: PronunciationsFor<M>;
-  moderationRulesetId?: string;
-}): Promise<StreamSpeechResult> {
+>(options: StreamSpeechOptions<V, M>): Promise<StreamSpeechResult> {
+  if ("voiceId" in options) {
+    return await streamSpeechByVoiceId(options);
+  }
   const { model, voice, providerOptions, abortSignal, headers } = options;
   const maxRetries = options.maxRetries ?? 2;
 
@@ -136,5 +134,47 @@ export async function streamSpeech<
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: warnings.length > 0 ? warnings : undefined,
+  };
+}
+
+async function streamSpeechByVoiceId(
+  options: VoiceStreamSpeechOptions
+): Promise<StreamSpeechResult> {
+  const gateway = options.gateway ?? createSpeechGateway();
+  const body: Record<string, unknown> = {
+    voiceId: options.voiceId,
+    text: options.text,
+  };
+  if (options.providerOptions) {
+    body.providerOptions = options.providerOptions;
+  }
+  if (options.pronunciations) {
+    body.pronunciations = options.pronunciations;
+  }
+  if (options.moderationRulesetId !== undefined) {
+    body.moderation_ruleset_id = options.moderationRulesetId;
+  }
+
+  const maxRetries = options.maxRetries ?? 2;
+  const start = performance.now();
+  const result = await pRetry(
+    () =>
+      gateway.provider.streamRaw({
+        body,
+        abortSignal: options.abortSignal,
+        headers: options.headers,
+      }),
+    buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
+  );
+  const ttfbMs = Math.round(performance.now() - start);
+
+  return {
+    audio: result.stream,
+    mediaType: result.mediaType,
+    metadata: {
+      latencyMs: ttfbMs,
+      ttfbMs,
+      inputChars: options.text.length,
+    },
   };
 }

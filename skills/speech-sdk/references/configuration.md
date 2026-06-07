@@ -5,17 +5,33 @@ String models read `SPEECHBASE_API_KEY` (falling back to the legacy `SPEECH_GATE
 ## String Models
 
 ```ts
+import { generateSpeech } from "@speech-sdk/core"
+
 await generateSpeech({
   model: "provider/model",
-  text: "Hello!",
   voice: "voice-id",
-  apiKey: process.env.SPEECHBASE_API_KEY,
+  text: "Hello!",
   timestamps: true,
   volumeDbfs: -20,
 })
 ```
 
-`apiKey`, `headers`, `abortSignal`, `maxRetries`, `maxConcurrency`, and `maxInputChars` are transport/control fields, not request payload. The SDK reserves the `Content-Type` and `Authorization` request headers — caller-supplied `headers` cannot override them.
+String models read `SPEECHBASE_API_KEY` from the environment automatically. To override the key per-call (or point at a different gateway URL), construct an explicit gateway and pass it via the `gateway` option:
+
+```ts
+import { generateSpeech, createSpeechGateway } from "@speech-sdk/core"
+
+await generateSpeech({
+  voiceId: "550e8400-...",
+  text: "Hello!",
+  gateway: createSpeechGateway({
+    apiKey: process.env.SPEECHBASE_API_KEY,
+    baseURL: "https://api.example.com/v1",
+  }),
+})
+```
+
+`headers`, `abortSignal`, `maxRetries`, `maxConcurrency`, and `maxInputChars` are transport/control fields, not request payload. The SDK reserves the `Content-Type` and `Authorization` request headers — caller-supplied `headers` cannot override them.
 
 ## Factory Functions
 
@@ -63,10 +79,11 @@ The exact set of factories (and any provider-specific config) is exported from `
 - `maxInputChars` — override per-model chunk threshold (direct path only; ignored on the gateway)
 - `maxConcurrency` — chunk request parallelism on the auto-chunking path (default 6, direct path only)
 - `maxRetries` — default 2; retries 5xx, 429 (honors `Retry-After`), and network only
-- `apiKey`
+- `apiKey` — overrides the env-var key for this call (string-model path)
+- `gateway` — explicit `createSpeechGateway({ apiKey, baseURL? })` instance; overrides env-var key and base URL for the `voiceId` path
 - `abortSignal`, `headers`
 
-`streamSpeech` accepts a smaller set: `model`, `text`, `voice`, `providerOptions`, `pronunciations` (rules only — `dictionaryIds` is gateway-only), `moderationRulesetId`, `maxRetries`, `apiKey`, `abortSignal`, `headers`. `output`, `speed`, `volumeDbfs`, `timestamps`, `maxInputChars`, and `maxConcurrency` require buffering and are not accepted.
+`streamSpeech` accepts a smaller set: `model`, `text`, `voice`, `providerOptions`, `pronunciations` (rules only — `dictionaryIds` is gateway-only), `moderationRulesetId`, `maxRetries`, `apiKey`, `gateway`, `abortSignal`, `headers`. `output`, `speed`, `volumeDbfs`, `timestamps`, `maxInputChars`, and `maxConcurrency` require buffering and are not accepted.
 
 ### Custom Fetch
 

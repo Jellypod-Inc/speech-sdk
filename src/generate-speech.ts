@@ -29,7 +29,10 @@ import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
+import {
+  createSpeechGateway,
+  type SpeechGatewayProvider,
+} from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -46,7 +49,10 @@ import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
 import type { WordTimestamp } from "./timestamps.js";
-import type { GenerateSpeechOptions } from "./types.js";
+import type {
+  GenerateSpeechOptions,
+  VoiceGenerateSpeechOptions,
+} from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
 
@@ -69,6 +75,9 @@ export async function generateSpeech<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
 >(options: GenerateSpeechOptions<V, M>): Promise<SpeechResult> {
+  if ("voiceId" in options) {
+    return await generateSpeechByVoiceId(options);
+  }
   const {
     model,
     voice,
@@ -243,6 +252,80 @@ export async function generateSpeech<
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
     timestamps: finalTimestamps,
+  };
+}
+
+async function generateSpeechByVoiceId(
+  options: VoiceGenerateSpeechOptions
+): Promise<SpeechResult> {
+  validateOutput(options.output);
+  validateSpeed(options.speed);
+
+  const gateway = options.gateway ?? createSpeechGateway();
+  const includeTimestamps = options.timestamps === true;
+
+  const body: Record<string, unknown> = {
+    voiceId: options.voiceId,
+    text: options.text,
+  };
+  if (options.providerOptions) {
+    body.providerOptions = options.providerOptions;
+  }
+  if (options.output) {
+    body.output = options.output;
+  }
+  if (options.volumeDbfs != null) {
+    body.volumeDbfs = options.volumeDbfs;
+  }
+  if (options.pronunciations) {
+    body.pronunciations = options.pronunciations;
+  }
+  if (options.moderationRulesetId !== undefined) {
+    body.moderation_ruleset_id = options.moderationRulesetId;
+  }
+  if (options.speed != null) {
+    body.speed = options.speed;
+  }
+
+  const maxRetries = options.maxRetries ?? 2;
+  const startTime = performance.now();
+  const result = await pRetry(
+    () =>
+      gateway.provider.generateRaw({
+        body,
+        includeTimestamps,
+        abortSignal: options.abortSignal,
+        headers: options.headers,
+      }),
+    buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
+  );
+  const latencyMs = Math.round(performance.now() - startTime);
+
+  if (result.audio.length === 0) {
+    throw new NoSpeechGeneratedError();
+  }
+
+  const audio = new DefaultGeneratedAudioFile({
+    data: result.audio,
+    mediaType: result.mediaType,
+  });
+  const audioDurationMs = await computeAudioDuration(
+    audio.uint8Array,
+    result.mediaType
+  );
+  const metadata: SpeechMetadata = {
+    latencyMs,
+    inputChars: options.text.length,
+    ...(audioDurationMs != null && { audioDurationMs }),
+  };
+
+  return {
+    audio,
+    metadata,
+    timestamps: result.timestamps,
+    warnings: result.warnings && result.warnings.length > 0
+      ? [...result.warnings]
+      : undefined,
   };
 }
 

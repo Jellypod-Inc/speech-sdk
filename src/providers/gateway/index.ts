@@ -4,6 +4,8 @@ import {
   ApiError,
   GatewayInputError,
   MissingApiKeyError,
+  VoiceResolutionError,
+  type VoiceResolutionReason,
 } from "../../errors.js";
 import type { PronunciationsInput } from "../../pronunciations/types.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
@@ -52,7 +54,7 @@ const gatewayConversationJsonResponseSchema = z.object({
 });
 
 const GATEWAY_401_MESSAGE =
-  "Speech Gateway rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECHBASE_API_KEY environment variable.";
+  "Speechbase rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECHBASE_API_KEY environment variable.";
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
@@ -81,11 +83,11 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     const key = this.apiKey ?? envKey;
     if (!key) {
       const err = new MissingApiKeyError({
-        providerName: "Speech Gateway",
+        providerName: "Speechbase",
         envVar: "SPEECHBASE_API_KEY",
       });
       err.message =
-        "To use the Speech Gateway, a Speechbase API key is required. Sign up at https://speechbase.ai/ to get a key, then pass it via the `apiKey` option or set the SPEECHBASE_API_KEY environment variable (the legacy SPEECH_GATEWAY_API_KEY is still honored).";
+        "Speechbase requires an API key. Sign up at https://speechbase.ai/ to get a key, then pass it via createSpeechGateway({ apiKey }) or set the SPEECHBASE_API_KEY environment variable (the legacy SPEECH_GATEWAY_API_KEY is still honored).";
       throw err;
     }
     return key;
@@ -117,7 +119,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     const body: Record<string, unknown> = {
-      mode: "inline",
       model: options.modelId,
       voice: options.voice,
       text: options.text,
@@ -181,6 +182,62 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
   }
 
+  // Voice-path entry point: POSTs an arbitrary body to /v1/audio/speech (or /with-timestamps). Used by the `generateSpeech({ voiceId, text })` variant where there's no inline model/voice to massage.
+  async generateRaw(args: {
+    body: Record<string, unknown>;
+    includeTimestamps: boolean;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    audio: Uint8Array;
+    mediaType: string;
+    timestamps?: WordTimestamp[];
+    warnings?: string[];
+  }> {
+    const url = args.includeTimestamps
+      ? `${this.baseURL}/audio/speech/with-timestamps`
+      : `${this.baseURL}/audio/speech`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        ...args.headers,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.resolveKey()}`,
+        "X-User-Agent": SDK_USER_AGENT,
+      },
+      body: JSON.stringify(args.body),
+      signal: args.abortSignal,
+    });
+
+    if (response.status === 401) {
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
+    }
+    const fallbackVoiceId =
+      typeof args.body.voiceId === "string" ? args.body.voiceId : "";
+    try {
+      await handleErrorResponse(response);
+    } catch (err) {
+      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
+      throw err;
+    }
+
+    if (args.includeTimestamps) {
+      const payload = gatewayJsonResponseSchema.parse(await response.json());
+      return {
+        audio: decodeBase64(payload.audio),
+        mediaType: payload.mediaType,
+        timestamps: payload.timestamps,
+        warnings: payload.warnings,
+      };
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      audio: new Uint8Array(arrayBuffer),
+      mediaType: mediaTypeFromHeaders(response.headers),
+    };
+  }
+
   async stream(options: {
     modelId: string;
     text: string;
@@ -203,7 +260,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     const body: Record<string, unknown> = {
-      mode: "inline",
       model: options.modelId,
       voice: options.voice,
       text: options.text,
@@ -250,19 +306,72 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
   }
 
+  // Voice-path streaming entry point. Routes to the dedicated streaming endpoint so the SDK keeps true chunked-transfer streaming on the Voice arm.
+  async streamRaw(args: {
+    body: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
+    const url = `${this.baseURL}/audio/speech/stream`;
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        ...args.headers,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.resolveKey()}`,
+        "X-User-Agent": SDK_USER_AGENT,
+      },
+      body: JSON.stringify(args.body),
+      signal: args.abortSignal,
+    });
+
+    if (response.status === 401) {
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
+    }
+    const fallbackVoiceId =
+      typeof args.body.voiceId === "string" ? args.body.voiceId : "";
+    try {
+      await handleErrorResponse(response);
+    } catch (err) {
+      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
+      throw err;
+    }
+
+    if (!response.body) {
+      throw new Error("speech-gateway: response has no body");
+    }
+
+    return {
+      stream: response.body,
+      mediaType: mediaTypeFromHeaders(response.headers),
+    };
+  }
+
   // Server handles stitching/normalization/alignment so callers never need their own STT key.
-  // Pick one of two wire shapes — mutually exclusive at the request level:
-  //   1. shared model    — `modelId` set, every turn omits `model`
-  //   2. per-turn model  — every turn declares its own `model`, `modelId` omitted (one conversation across providers)
+  // Wire shapes per turn:
+  //   1. shared model    — `modelId` set, inline turns omit `model`
+  //   2. per-turn model  — inline turns declare `model`, `modelId` omitted (one conversation across providers)
+  //   3. voice turn      — turn carries `voiceId` instead of `model`+`voice`; resolved server-side
   async generateConversation(options: {
     modelId?: string;
-    turns: readonly {
-      model?: string;
-      voice: string;
-      text: string;
-      providerOptions?: Record<string, unknown>;
-      speed?: number;
-    }[];
+    turns: readonly (
+      | {
+          model?: string;
+          voice: string;
+          text: string;
+          providerOptions?: Record<string, unknown>;
+          speed?: number;
+        }
+      | {
+          voiceId: string;
+          text: string;
+          providerOptions?: Record<string, unknown>;
+          speed?: number;
+        }
+    )[];
     gapMs?: number;
     volumeDbfs?: number;
     providerOptions?: Record<string, unknown>;
@@ -285,22 +394,29 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         "speech-gateway/conversation: at least one turn is required."
       );
     }
-    if (!options.turns.every((t) => t.voice)) {
+    if (
+      !options.turns.every((t) => "voiceId" in t || ("voice" in t && t.voice))
+    ) {
       throw new GatewayInputError(
-        'speech-gateway/conversation: every turn must specify a "voice" when routing through the speech gateway.'
+        'speech-gateway/conversation: every turn must specify a "voice" or "voiceId" when routing through the speech gateway.'
       );
     }
 
     const sharedModel = options.modelId;
-    const anyTurnModel = options.turns.some((t) => t.model != null);
+    const anyTurnModel = options.turns.some(
+      (t) => "model" in t && t.model != null
+    );
     if (sharedModel != null && anyTurnModel) {
       throw new GatewayInputError(
         "speech-gateway/conversation: pass either a shared `modelId` or per-turn `model` on every turn — not both."
       );
     }
-    if (sharedModel == null && !options.turns.every((t) => t.model)) {
+    if (
+      sharedModel == null &&
+      !options.turns.every((t) => "voiceId" in t || ("model" in t && t.model))
+    ) {
       throw new GatewayInputError(
-        'speech-gateway/conversation: when no shared `modelId` is set, every turn must declare its own "model".'
+        'speech-gateway/conversation: when no shared `modelId` is set, every inline turn must declare its own "model" (voice turns are exempt).'
       );
     }
 
@@ -308,13 +424,23 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     const body: Record<string, unknown> = {
       mode: "conversation",
       ...(sharedModel != null && { model: sharedModel }),
-      turns: options.turns.map((t) => ({
-        ...(t.model != null && { model: t.model }),
-        voice: t.voice,
-        text: t.text,
-        ...(t.providerOptions && { providerOptions: t.providerOptions }),
-        ...(t.speed != null && { speed: t.speed }),
-      })),
+      turns: options.turns.map((t) => {
+        if ("voiceId" in t) {
+          return {
+            voiceId: t.voiceId,
+            text: t.text,
+            ...(t.providerOptions && { providerOptions: t.providerOptions }),
+            ...(t.speed != null && { speed: t.speed }),
+          };
+        }
+        return {
+          ...(t.model != null && { model: t.model }),
+          voice: t.voice,
+          text: t.text,
+          ...(t.providerOptions && { providerOptions: t.providerOptions }),
+          ...(t.speed != null && { speed: t.speed }),
+        };
+      }),
       gapMs: options.gapMs ?? 300,
       volumeDbfs: options.volumeDbfs ?? -20,
     };
@@ -353,7 +479,17 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     if (response.status === 401) {
       throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
     }
-    await handleErrorResponse(response);
+    const firstVoiceTurn = options.turns.find(
+      (t): t is Extract<(typeof options.turns)[number], { voiceId: string }> =>
+        "voiceId" in t
+    );
+    const fallbackVoiceId = firstVoiceTurn?.voiceId ?? "";
+    try {
+      await handleErrorResponse(response);
+    } catch (err) {
+      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
+      throw err;
+    }
 
     if (options.includeTimestamps) {
       const payload = gatewayConversationJsonResponseSchema.parse(
@@ -379,16 +515,25 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   }
 }
 
-export function createSpeechGateway(config: SpeechGatewayProviderConfig = {}) {
+export interface SpeechGateway {
+  (modelId: string): ResolvedModel<string>;
+  readonly provider: SpeechGatewayProvider;
+}
+
+export function createSpeechGateway(
+  config: SpeechGatewayProviderConfig = {}
+): SpeechGateway {
   const provider = new SpeechGatewayProvider(config);
-  return function speechGateway(modelId: string): ResolvedModel<string> {
+  const fn = ((modelId: string): ResolvedModel<string> => {
     if (!modelId) {
       throw new GatewayInputError(
-        'Speech Gateway requires a model ID (e.g., "openai/gpt-4o-mini-tts"). The gateway routes to upstream providers and has no default model.'
+        'Speech Gateway requires a model ID (e.g., "openai/gpt-4o-mini-tts"). For Voice calls, pass `voiceId` on generateSpeech options instead.'
       );
     }
     return { provider, modelId };
-  };
+  }) as SpeechGateway;
+  Object.defineProperty(fn, "provider", { value: provider, enumerable: true });
+  return fn;
 }
 
 function mediaTypeFromHeaders(headers: Headers): string {
@@ -402,4 +547,49 @@ function decodeBase64(value: string): Uint8Array {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+
+// Inspects an ApiError thrown by handleErrorResponse for the gateway's voice_*
+// error codes and re-throws as VoiceResolutionError when matched. Returns
+// without throwing for any other error.
+function maybeMapToVoiceResolutionError(
+  err: unknown,
+  fallbackVoiceId: string
+): void {
+  if (!(err instanceof ApiError)) {
+    return;
+  }
+  // Server returns code on RFC 7807 envelopes; provider-utils.ts surfaces it on ApiError.
+  const code = err.code;
+  const reason = mapVoiceErrorCodeToReason(code);
+  if (!reason) {
+    return;
+  }
+  const voiceId = extractVoiceIdFromMessage(err.message) ?? fallbackVoiceId;
+  throw new VoiceResolutionError(reason, voiceId, err.message);
+}
+
+function mapVoiceErrorCodeToReason(
+  code: string | undefined
+): VoiceResolutionReason | undefined {
+  if (!code) {
+    return;
+  }
+  if (code === "voice_not_found") {
+    return "not_found";
+  }
+  if (code === "voice_incomplete") {
+    return "incomplete";
+  }
+  if (code === "unknown_provider") {
+    return "unknown_provider";
+  }
+  return;
+}
+
+const VOICE_ID_IN_MESSAGE_RE = /'([0-9a-f-]{8,})'/i;
+
+function extractVoiceIdFromMessage(message: string): string | undefined {
+  const match = VOICE_ID_IN_MESSAGE_RE.exec(message);
+  return match?.[1];
 }

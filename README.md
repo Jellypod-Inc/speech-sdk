@@ -65,7 +65,7 @@ Pass a `provider/model` string, or just the provider name to use its default mod
 The SDK has two ways to reach a provider, and the choice is made by **how you pass `model`**:
 
 ```ts
-// 1. String → routes through Speech Gateway (https://api.speechbase.ai)
+// 1. String → routes through Speechbase (https://api.speechbase.ai)
 //    Needs SPEECHBASE_API_KEY (sign up at https://speechbase.ai).
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
@@ -118,7 +118,7 @@ If the ID is missing, deleted, or belongs to another org, the gateway falls back
 | [xAI](https://docs.x.ai/docs/models) | `xai` | `XAI_API_KEY` |
 | [MiniMax](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | `minimax` | `MINIMAX_API_KEY` |
 
-The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
+The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speechbase instead, which reads `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 

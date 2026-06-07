@@ -13,7 +13,7 @@ import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import { concatPcmToWav, dbfsToInt16Rms, normalizeRms } from "./pcm-concat.js";
 import { fillTurnTimestampsProportional } from "./proportional-fill.js";
-import type { ConversationTurn } from "./types.js";
+import type { InlineConversationTurn } from "./types.js";
 
 interface StitchInput<V extends Voice = Voice> {
   readonly abortSignal?: AbortSignal;
@@ -35,7 +35,7 @@ interface StitchInput<V extends Voice = Voice> {
   }[];
   readonly timestamps: boolean;
   readonly topLevelProviderOptions?: Record<string, unknown>;
-  readonly turns: readonly ConversationTurn<V>[];
+  readonly turns: readonly InlineConversationTurn<V>[];
   readonly volumeDbfs?: number;
 }
 

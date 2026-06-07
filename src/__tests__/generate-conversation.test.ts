@@ -475,3 +475,99 @@ describe("generateConversation", () => {
     expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("generateConversation voice turn variant", () => {
+  const VOICE_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+  it("emits voiceId-shaped wire turns when all turns are voice turns", async () => {
+    const audio = new Uint8Array([42]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => audio.buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    await generateConversation({
+      model: gateway("openai/gpt-4o-mini-tts"),
+      turns: [
+        { voiceId: VOICE_ID, text: "Hi." },
+        { voiceId: VOICE_ID, text: "Hello!" },
+      ],
+    });
+
+    expect(fetchFn).toHaveBeenCalledOnce();
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.turns).toEqual([
+      { voiceId: VOICE_ID, text: "Hi." },
+      { voiceId: VOICE_ID, text: "Hello!" },
+    ]);
+  });
+
+  it("mixes voice and inline turns on the gateway path", async () => {
+    const audio = new Uint8Array([7]);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/wav" }),
+      arrayBuffer: async () => audio.buffer,
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    await generateConversation({
+      model: gateway("openai/gpt-4o-mini-tts"),
+      turns: [
+        { voice: "alloy", text: "Hi." },
+        { voiceId: VOICE_ID, text: "Hello!" },
+      ],
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.turns[0]).toMatchObject({
+      voice: "alloy",
+      text: "Hi.",
+    });
+    expect(body.turns[0].voiceId).toBeUndefined();
+    expect(body.turns[1]).toEqual({
+      voiceId: VOICE_ID,
+      text: "Hello!",
+    });
+  });
+
+  it("surfaces VoiceResolutionError on voice_not_found in a conversation", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () =>
+        JSON.stringify({
+          code: "voice_not_found",
+          detail: `no voice with id '${VOICE_ID}'`,
+        }),
+    });
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    await expect(
+      generateConversation({
+        model: gateway("openai/gpt-4o-mini-tts"),
+        turns: [
+          { voice: "alloy", text: "Hi." },
+          { voiceId: VOICE_ID, text: "Hello!" },
+        ],
+      })
+    ).rejects.toMatchObject({
+      name: "VoiceResolutionError",
+      reason: "not_found",
+      voiceId: VOICE_ID,
+    });
+  });
+});

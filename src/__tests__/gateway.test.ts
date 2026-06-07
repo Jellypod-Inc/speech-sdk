@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, GatewayInputError, MissingApiKeyError } from "../errors.js";
+import { generateSpeech } from "../generate-speech.js";
 import {
   createSpeechGateway,
   SpeechGatewayProvider,
@@ -60,7 +61,6 @@ describe("SpeechGatewayProvider", () => {
     expect(url).toBe("https://api.speechbase.ai/v1/audio/speech");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello",
@@ -155,7 +155,6 @@ describe("SpeechGatewayProvider", () => {
     );
     // URL split is the timestamps switch; body carries no `timestamps` field.
     expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello",
@@ -757,5 +756,174 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     const body = JSON.parse(init.body);
     expect(body.output).toEqual({ format: "pcm", sampleRate: 16_000 });
     expect(body.output.sampleRate).toBe(16_000);
+  });
+});
+
+describe("createSpeechGateway return value", () => {
+  it("is callable with a modelId (existing behaviour)", () => {
+    const gw = createSpeechGateway({ apiKey: "test-key" });
+    const resolved = gw("elevenlabs/eleven_v3");
+    expect(resolved.provider.id).toBe("speech-gateway");
+    expect(resolved.modelId).toBe("elevenlabs/eleven_v3");
+  });
+
+  it("exposes its configured provider directly via .provider", () => {
+    const gw = createSpeechGateway({ apiKey: "test-key" });
+    expect(gw.provider).toBeInstanceOf(SpeechGatewayProvider);
+    expect(gw.provider.id).toBe("speech-gateway");
+  });
+
+  it("the same provider instance is shared between calls and .provider", () => {
+    const gw = createSpeechGateway({ apiKey: "test-key" });
+    const resolved = gw("elevenlabs/eleven_v3");
+    expect(resolved.provider).toBe(gw.provider);
+  });
+});
+
+describe("generateSpeech voice variant", () => {
+  const VOICE_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+  beforeEach(() => {
+    process.env.SPEECHBASE_API_KEY = "test-key";
+  });
+
+  it("accepts { voiceId, text } and POSTs the Voice wire shape", async () => {
+    const audioBytes = new Uint8Array([1, 2, 3]);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => audioBytes.buffer,
+    });
+    const result = await generateSpeech({
+      voiceId: VOICE_ID,
+      text: "Hello",
+      gateway: createSpeechGateway({
+        apiKey: "test-key",
+        fetch: fetchMock as unknown as typeof globalThis.fetch,
+      }),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/speech");
+    const body = JSON.parse(init.body);
+    expect(body).toEqual({ voiceId: VOICE_ID, text: "Hello" });
+    expect(body).not.toHaveProperty("mode");
+    expect(body).not.toHaveProperty("model");
+    expect(body).not.toHaveProperty("voice");
+    expect(result.audio.uint8Array).toEqual(audioBytes);
+  });
+
+  it("forwards optional voice-path fields on the wire", async () => {
+    const audioBytes = new Uint8Array([4, 5, 6]);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => audioBytes.buffer,
+    });
+    await generateSpeech({
+      voiceId: VOICE_ID,
+      text: "Hello",
+      providerOptions: { stability: 0.9 },
+      output: { format: "mp3", bitrate: 96 },
+      moderationRulesetId: "11111111-1111-1111-1111-111111111111",
+      gateway: createSpeechGateway({
+        apiKey: "test-key",
+        fetch: fetchMock as unknown as typeof globalThis.fetch,
+      }),
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.providerOptions).toEqual({ stability: 0.9 });
+    expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
+    expect(body.moderation_ruleset_id).toBe(
+      "11111111-1111-1111-1111-111111111111"
+    );
+  });
+
+  it("hits /audio/speech/with-timestamps when timestamps:true", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({
+        audio: btoa("Hi"),
+        mediaType: "audio/mpeg",
+        timestamps: [{ text: "Hi", start: 0, end: 0.2 }],
+        warnings: [],
+      }),
+    });
+    const result = await generateSpeech({
+      voiceId: VOICE_ID,
+      text: "Hi",
+      timestamps: true,
+      gateway: createSpeechGateway({
+        apiKey: "test-key",
+        fetch: fetchMock as unknown as typeof globalThis.fetch,
+      }),
+    });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      "https://api.speechbase.ai/v1/audio/speech/with-timestamps"
+    );
+    expect(result.timestamps).toEqual([{ text: "Hi", start: 0, end: 0.2 }]);
+  });
+
+  it("surfaces VoiceResolutionError on voice_not_found", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () =>
+        JSON.stringify({
+          code: "voice_not_found",
+          detail: `no voice with id '${VOICE_ID}'`,
+        }),
+    });
+    await expect(
+      generateSpeech({
+        voiceId: VOICE_ID,
+        text: "Hi",
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      })
+    ).rejects.toMatchObject({
+      name: "VoiceResolutionError",
+      reason: "not_found",
+      voiceId: VOICE_ID,
+    });
+  });
+
+  it("surfaces VoiceResolutionError on voice_incomplete", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () =>
+        JSON.stringify({
+          code: "voice_incomplete",
+          detail: `voice '${VOICE_ID}' has no provider voice_id`,
+        }),
+    });
+    await expect(
+      generateSpeech({
+        voiceId: VOICE_ID,
+        text: "Hi",
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      })
+    ).rejects.toMatchObject({
+      name: "VoiceResolutionError",
+      reason: "incomplete",
+      voiceId: VOICE_ID,
+    });
   });
 });

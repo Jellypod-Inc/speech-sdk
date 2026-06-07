@@ -1,8 +1,22 @@
+import type { Voice } from "../speech-provider.js";
 import { ConversationInputError } from "./errors.js";
-import type { ConversationTurn, GenerateConversationOptions } from "./types.js";
+import type {
+  ConversationTurn,
+  GenerateConversationOptions,
+  InlineConversationTurn,
+} from "./types.js";
+
+export function isVoiceTurn(turn: ConversationTurn): turn is {
+  readonly providerOptions?: Record<string, unknown>;
+  readonly speed?: number;
+  readonly text: string;
+  readonly voiceId: string;
+} {
+  return "voiceId" in turn;
+}
 
 // Object voices key by reference — distinct buffers with identical content must not collide.
-export function newVoiceKeyer(): (voice: ConversationTurn["voice"]) => string {
+export function newVoiceKeyer(): (voice: Voice) => string {
   const refIds = new WeakMap<object, number>();
   let nextId = 0;
   return (voice) => {
@@ -41,7 +55,12 @@ export function validateConversationInput(
     if (turn.text.trim().length === 0) {
       throw new ConversationInputError(`turns[${i}].text must not be empty.`);
     }
-    const hasTurnModel = turn.model != null;
+    if (isVoiceTurn(turn)) {
+      // Voice turns resolve server-side — no model required at the SDK layer.
+      continue;
+    }
+    const inlineTurn = turn as InlineConversationTurn;
+    const hasTurnModel = inlineTurn.model != null;
     if (hasTopLevel && hasTurnModel) {
       throw new ConversationInputError(
         `turns[${i}].model is set, but options.model is also set. Set the model either at the top level for all turns, or on every turn — not both.`

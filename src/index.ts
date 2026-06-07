@@ -20,6 +20,8 @@ export {
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,
   UnsupportedSampleRateError,
+  VoiceResolutionError,
+  type VoiceResolutionReason,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";
@@ -31,4 +33,11 @@ export type {
 } from "./pronunciations/types.js";
 export { streamSpeech } from "./stream-speech.js";
 export { timestampsToTurns } from "./turns.js";
-export type { GenerateSpeechOptions } from "./types.js";
+export type {
+  GenerateSpeechOptions,
+  InlineGenerateSpeechOptions,
+  InlineStreamSpeechOptions,
+  StreamSpeechOptions,
+  VoiceGenerateSpeechOptions,
+  VoiceStreamSpeechOptions,
+} from "./types.js";

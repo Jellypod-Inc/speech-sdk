@@ -16,8 +16,10 @@ import { chooseConversationPath } from "./conversation/dispatch.js";
 import type {
   ConversationTurn,
   GenerateConversationOptions,
+  InlineConversationTurn,
 } from "./conversation/types.js";
-import { validateConversationInput } from "./conversation/validate.js";
+import { ConversationInputError } from "./conversation/errors.js";
+import { isVoiceTurn, validateConversationInput } from "./conversation/validate.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
@@ -61,6 +63,8 @@ export {
 export type {
   ConversationTurn,
   GenerateConversationOptions,
+  InlineConversationTurn,
+  VoiceConversationTurn,
 } from "./conversation/types.js";
 export type {
   ConversationMetadata,
@@ -84,6 +88,7 @@ export async function generateConversation<
     validateSpeed(turn.speed);
   }
   const hasPerTurnSpeed = options.turns.some((t) => isSpeedActive(t.speed));
+  const hasVoiceTurn = options.turns.some(isVoiceTurn);
 
   // Cache string-model resolutions so turns share one provider instance — dispatch compares by reference.
   const stringResolutionCache = new Map<string, ResolvedModel<V>>();
@@ -106,11 +111,38 @@ export async function generateConversation<
 
   const topLevelResolved =
     options.model == null ? undefined : resolveOnce(options.model);
+
+  // Voice turns can only be served by the gateway. If any turn is a voice turn,
+  // synthesise a top-level gateway resolution so resolvedPerTurn entries for
+  // voice turns share the same gateway provider — dispatch then picks the
+  // gateway path. Mixing voice turns with direct-provider inline turns is not
+  // supported (gateway and direct provider can't be combined).
+  let voiceFallbackResolved: ResolvedModel<V> | undefined;
+  if (hasVoiceTurn) {
+    if (topLevelResolved) {
+      if (!isSpeechGatewayModel(topLevelResolved)) {
+        throw new ConversationInputError(
+          "generateConversation: turns with `voiceId` require the speech gateway. Pass a gateway model (e.g. `model: 'openai/gpt-4o-mini-tts'`) or omit `options.model` entirely."
+        );
+      }
+      voiceFallbackResolved = topLevelResolved;
+    } else {
+      voiceFallbackResolved = resolveOnce("speech-gateway");
+    }
+  }
+
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
-    if (turn.model == null && topLevelResolved) {
+    if (isVoiceTurn(turn)) {
+      if (!voiceFallbackResolved) {
+        throw new Error("generateConversation: voice turn without gateway");
+      }
+      return voiceFallbackResolved;
+    }
+    const inlineTurn = turn as InlineConversationTurn<V>;
+    if (inlineTurn.model == null && topLevelResolved) {
       return topLevelResolved;
     }
-    const model = turn.model;
+    const model = inlineTurn.model;
     if (!model) {
       throw new Error("generateConversation: model is required");
     }
@@ -146,6 +178,11 @@ export async function generateConversation<
   }
 
   if (path.kind === "native") {
+    if (hasVoiceTurn) {
+      throw new ConversationInputError(
+        "generateConversation: turns with `voiceId` require the gateway conversation path; the native dialogue path is not available."
+      );
+    }
     return await applySpeedToConversationResult({
       result: await runNative({
         options,
@@ -157,11 +194,18 @@ export async function generateConversation<
     });
   }
 
+  if (hasVoiceTurn) {
+    throw new ConversationInputError(
+      "generateConversation: turns with `voiceId` require the gateway conversation path. Pass a gateway model (e.g. `model: 'openai/gpt-4o-mini-tts'`) or use voice-only turns."
+    );
+  }
+
   // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
   const stitched = await runStitch({
     resolvedPerTurn,
-    turns: options.turns,
+    // hasVoiceTurn guard above means every turn is inline by this point.
+    turns: options.turns as readonly InlineConversationTurn<V>[],
     stitchOptionsPerTurn: path.stitchOptionsPerTurn,
     topLevelProviderOptions: options.providerOptions,
     apiKey: options.apiKey,
@@ -279,32 +323,55 @@ async function runGateway<V extends Voice>(args: {
 
   const includeTimestamps = options.timestamps ?? false;
 
-  // Pick wire shape: shared model when every turn resolved to the same modelId
-  // (covers both `options.model` and the case where every turn happened to
-  // resolve identically); per-turn model when they diverge.
-  const firstModelId = resolvedPerTurn[0].modelId;
-  const allSameModel = resolvedPerTurn.every((r) => r.modelId === firstModelId);
+  // Voice turns carry no model on the wire. The shared-model wire shape only
+  // applies when every inline turn resolves to the same modelId AND no turn
+  // is a voice turn — otherwise we emit per-turn shapes (voice turns get
+  // `voiceId`; inline turns get their own `model` when modelIds diverge).
+  const inlineResolvedModelIds: string[] = [];
+  for (let i = 0; i < options.turns.length; i++) {
+    if (!isVoiceTurn(options.turns[i])) {
+      inlineResolvedModelIds.push(resolvedPerTurn[i].modelId);
+    }
+  }
+  const allInlineSameModel =
+    inlineResolvedModelIds.length > 0 &&
+    inlineResolvedModelIds.every((m) => m === inlineResolvedModelIds[0]);
+  const onlyVoiceTurns = inlineResolvedModelIds.length === 0;
+  const useSharedModelOnWire = onlyVoiceTurns ? false : allInlineSameModel;
+  const sharedModelId = useSharedModelOnWire
+    ? inlineResolvedModelIds[0]
+    : undefined;
 
-  // Object-shaped voices aren't supported on the gateway conversation path.
   const wireTurns = options.turns.map((t, i) => {
-    if (typeof t.voice !== "string") {
+    if (isVoiceTurn(t)) {
+      return {
+        voiceId: t.voiceId,
+        text: t.text,
+        ...(t.providerOptions && { providerOptions: t.providerOptions }),
+        ...(t.speed != null && { speed: t.speed }),
+      };
+    }
+    const inlineTurn = t as InlineConversationTurn<V>;
+    if (typeof inlineTurn.voice !== "string") {
       throw new Error(
         `speech-gateway/conversation: gateway conversation path requires string voices; turns[${i}].voice is an object.`
       );
     }
     return {
-      ...(allSameModel ? {} : { model: resolvedPerTurn[i].modelId }),
-      voice: t.voice,
-      text: t.text,
-      ...(t.providerOptions && { providerOptions: t.providerOptions }),
-      ...(t.speed != null && { speed: t.speed }),
+      ...(useSharedModelOnWire ? {} : { model: resolvedPerTurn[i].modelId }),
+      voice: inlineTurn.voice,
+      text: inlineTurn.text,
+      ...(inlineTurn.providerOptions && {
+        providerOptions: inlineTurn.providerOptions,
+      }),
+      ...(inlineTurn.speed != null && { speed: inlineTurn.speed }),
     };
   });
 
   const result = await pRetry(
     () =>
       provider.generateConversation({
-        ...(allSameModel && { modelId: firstModelId }),
+        ...(sharedModelId != null && { modelId: sharedModelId }),
         turns: wireTurns,
         gapMs: options.gapMs ?? DEFAULT_GAP_MS,
         volumeDbfs: options.volumeDbfs,
@@ -419,7 +486,11 @@ async function runNative<V extends Voice>(args: {
     ? mergeRules(options.pronunciations.rules)
     : null;
 
-  const substitutedTurns = buildSubstitutedTurns(options.turns, ruleMap);
+  // runNative is unreachable for voice turns — guarded by hasVoiceTurn above.
+  const substitutedTurns = buildSubstitutedTurns(
+    options.turns as readonly InlineConversationTurn<V>[],
+    ruleMap
+  );
 
   const result = await pRetry(
     () =>
@@ -604,7 +675,7 @@ async function buildNativeAudio(args: {
 }
 
 function buildSubstitutedTurns<V extends Voice>(
-  turns: readonly ConversationTurn<V>[],
+  turns: readonly InlineConversationTurn<V>[],
   ruleMap: Map<string, Pronunciation> | null
 ): readonly { voice: V; text: string; edits: readonly Edit[] }[] {
   return turns.map((t) => {

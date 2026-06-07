@@ -1,5 +1,9 @@
 import type { AudioOutput } from "./audio-output.js";
-import type { PronunciationsFor } from "./pronunciations/types.js";
+import type {
+  PronunciationsFor,
+  PronunciationsInput,
+} from "./pronunciations/types.js";
+import type { SpeechGateway } from "./providers/gateway/index.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
@@ -51,7 +55,7 @@ export type {
 } from "./timestamps.js";
 export type { TurnTimestamp } from "./turns.js";
 
-export interface GenerateSpeechOptions<
+export interface InlineGenerateSpeechOptions<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
 > {
@@ -75,3 +79,60 @@ export interface GenerateSpeechOptions<
   voice: V;
   volumeDbfs?: number;
 }
+
+export interface VoiceGenerateSpeechOptions {
+  abortSignal?: AbortSignal;
+  // Optional Speechbase gateway client used to override apiKey/baseURL/fetch for this call. Omit to read SPEECHBASE_API_KEY from the environment.
+  gateway?: SpeechGateway;
+  headers?: Record<string, string>;
+  maxRetries?: number;
+  moderationRulesetId?: string;
+  output?: AudioOutput;
+  pronunciations?: PronunciationsInput;
+  // Shallow-merged onto the Voice's stored provider_options server-side; request keys win per-key.
+  providerOptions?: Record<string, unknown>;
+  speed?: number;
+  text: string;
+  timestamps?: boolean;
+  // Saved Voice UUID. The gateway resolves this to the underlying provider/model/voice at request time.
+  voiceId: string;
+  volumeDbfs?: number;
+}
+
+export type GenerateSpeechOptions<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+> = InlineGenerateSpeechOptions<V, M> | VoiceGenerateSpeechOptions;
+
+export interface InlineStreamSpeechOptions<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+> {
+  abortSignal?: AbortSignal;
+  apiKey?: string;
+  headers?: Record<string, string>;
+  maxRetries?: number;
+  model: M;
+  moderationRulesetId?: string;
+  pronunciations?: PronunciationsFor<M>;
+  providerOptions?: Record<string, unknown>;
+  text: string;
+  voice: V;
+}
+
+export interface VoiceStreamSpeechOptions {
+  abortSignal?: AbortSignal;
+  gateway?: SpeechGateway;
+  headers?: Record<string, string>;
+  maxRetries?: number;
+  moderationRulesetId?: string;
+  pronunciations?: PronunciationsInput;
+  providerOptions?: Record<string, unknown>;
+  text: string;
+  voiceId: string;
+}
+
+export type StreamSpeechOptions<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+> = InlineStreamSpeechOptions<V, M> | VoiceStreamSpeechOptions;
