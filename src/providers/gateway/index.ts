@@ -102,7 +102,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     volumeDbfs?: number;
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
-    moderationRulesetId?: string;
     speed?: number;
   }): Promise<{
     audio: Uint8Array;
@@ -133,9 +132,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
-    }
-    if (options.moderationRulesetId !== undefined) {
-      body.moderation_ruleset_id = options.moderationRulesetId;
     }
     if (options.speed != null) {
       body.speed = options.speed;
@@ -189,7 +185,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
     pronunciations?: PronunciationsInput;
-    moderationRulesetId?: string;
   }): Promise<{
     audioDurationMs?: number;
     stream: ReadableStream<Uint8Array>;
@@ -213,9 +208,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
-    }
-    if (options.moderationRulesetId !== undefined) {
-      body.moderation_ruleset_id = options.moderationRulesetId;
     }
 
     // Streaming has its own endpoint; /audio/speech is the buffered path (whole-clip).
@@ -271,7 +263,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     includeTimestamps?: boolean;
     output?: AudioOutput;
     pronunciations?: PronunciationsInput;
-    moderationRulesetId?: string;
     speed?: number;
   }): Promise<{
     audio: Uint8Array;
@@ -326,9 +317,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
     if (options.pronunciations) {
       body.pronunciations = options.pronunciations;
-    }
-    if (options.moderationRulesetId !== undefined) {
-      body.moderation_ruleset_id = options.moderationRulesetId;
     }
     if (options.speed != null) {
       body.speed = options.speed;

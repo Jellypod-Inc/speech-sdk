@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0
+
+- **Breaking: removed `moderationRulesetId`.** This option only worked on the Speechbase gateway path and had no meaning for direct providers. The SDK is provider-neutral — nothing in it should require the Speechbase gateway — so it has been dropped along with the `ModerationRulesetIdRequiresGatewayError` it threw on direct-provider models. To override a moderation ruleset per request, call the Speechbase REST API directly.
+- **Breaking: removed `pronunciations.dictionaryIds`.** Saved server-side pronunciation dictionaries were a gateway-only feature, so the option and its `DictionaryIdsRequireGatewayError` have been removed for the same provider-neutrality reason. Use the Speechbase REST API directly if you need stored dictionaries.
+- **`pronunciations.rules` is unchanged.** Inline pronunciation rules continue to work on every provider — client-side text substitution on direct providers, server-side on the gateway — on `generateSpeech`, `streamSpeech`, and `generateConversation`.
+
 ## 0.13.0
 
 - Add the **MiniMax** TTS provider (`minimax` prefix, `createMiniMax()` factory, `MINIMAX_API_KEY`). Ships MiniMax's current flagship T2A v2 models: `speech-2.8-hd` (default) and `speech-2.8-turbo`. The SDK decodes MiniMax's hex-encoded audio envelope, surfaces logical `base_resp` failures as `ApiError` (rate limits retried), and supports `wav` / `pcm` / `mp3` output at 8/16/22.05/24/32/44.1 kHz. `providerOptions` mirror the T2A request body (`voice_setting`, `audio_setting`, `language_boost`, …). Set `groupId` (or `MINIMAX_GROUP_ID`) for endpoints that require a Group ID.

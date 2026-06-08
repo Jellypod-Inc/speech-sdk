@@ -6,7 +6,6 @@ import {
 } from "../speech-provider.js";
 import { streamSpeech } from "../stream-speech.js";
 
-const DICTIONARY_IDS_RE = /dictionaryIds/i;
 const EL_EL_EM_RE = /el el em/;
 const PAUSE_TAG_RE = /\[pause\]/;
 
@@ -37,19 +36,6 @@ describe("streamSpeech with pronunciations", () => {
     });
     expect(streamSpy).toHaveBeenCalledTimes(1);
     expect(streamSpy.mock.calls[0][0].text).toBe("What is el el em?");
-  });
-
-  it("throws DictionaryIdsRequireGatewayError on direct path with dictionary ids", async () => {
-    const streamSpy = vi.fn();
-    await expect(() =>
-      streamSpeech({
-        model: fakeStreamingModel(streamSpy),
-        voice: "v1",
-        text: "hi",
-        pronunciations: { dictionaryIds: ["d1"] },
-      })
-    ).rejects.toThrow(DICTIONARY_IDS_RE);
-    expect(streamSpy).not.toHaveBeenCalled();
   });
 
   it("strips audio tags before substituting", async () => {

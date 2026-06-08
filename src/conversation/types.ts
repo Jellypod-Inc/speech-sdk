@@ -1,5 +1,5 @@
 import type { AudioOutput } from "../audio-output.js";
-import type { PronunciationsFor } from "../pronunciations/types.js";
+import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
@@ -26,10 +26,8 @@ export interface GenerateConversationOptions<
   readonly maxInputChars?: number;
   readonly maxRetries?: number;
   readonly model?: M;
-  // Gateway-only. Per-request override for the moderation ruleset; falls back to the org default if omitted or unknown. Throws ModerationRulesetIdRequiresGatewayError on non-gateway conversation paths (native dialogue, local stitch).
-  readonly moderationRulesetId?: string;
   readonly output?: AudioOutput;
-  readonly pronunciations?: PronunciationsFor<M>;
+  readonly pronunciations?: PronunciationsInput;
   readonly providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   readonly speed?: number;

@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
-
-const dictionaryIdsRegex = /dictionaryIds/i;
+import type { Pronunciation, PronunciationsInput } from "../index.js";
 
 describe("public exports — pronunciations", () => {
-  it("exports DictionaryIdsRequireGatewayError as a constructor", async () => {
-    const mod = await import("../index.js");
-    expect(typeof mod.DictionaryIdsRequireGatewayError).toBe("function");
-    const err = new mod.DictionaryIdsRequireGatewayError();
-    expect(err.name).toBe("DictionaryIdsRequireGatewayError");
-    expect(err.message).toMatch(dictionaryIdsRegex);
+  it("exposes PronunciationsInput with a rules array of Pronunciation", () => {
+    const rule: Pronunciation = { word: "LLM", replacement: "el el em" };
+    const input: PronunciationsInput = { rules: [rule] };
+    expect(input.rules?.[0]).toEqual({ word: "LLM", replacement: "el el em" });
   });
 });

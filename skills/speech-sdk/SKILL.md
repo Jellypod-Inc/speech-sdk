@@ -71,7 +71,7 @@ result.audio.mediaType
 
 - **Per-turn overrides**: `{ voice, text, model?, providerOptions?, speed? }` — mix providers across turns.
 - **Volume normalization**: always on — every conversation is RMS-leveled to `-20` dBFS so separate outputs play back at the same loudness. Pass `volumeDbfs: -18` (must be ≤ 0) to retarget.
-- **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `maxInputChars`, `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn), `output`, `speed`, `pronunciations`, `moderationRulesetId`, `timestamps`.
+- **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `maxInputChars`, `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn), `output`, `speed`, `pronunciations`, `timestamps`.
 - **Errors**: `ConversationInputError`, `DialogueConstraintError`, `MixedDispatchError`, `StitchUnsupportedError`. Import from `@speech-sdk/core`.
 
 See `references/conversation.md` for the full API and cross-provider mixing.
@@ -107,7 +107,7 @@ When the input exceeds the model's `maxInputChars`, direct-provider paths split 
 
 ## Pronunciations
 
-Pass `pronunciations: { rules: [{ word, replacement, caseSensitive? }], dictionaryIds? }` to substitute words before synthesis. `dictionaryIds` is gateway-only (throws `DictionaryIdsRequireGatewayError` on direct paths). Word-level timestamps are inverse-aligned back to the original input text. See `references/pronunciations.md`.
+Pass `pronunciations: { rules: [{ word, replacement, caseSensitive? }] }` to substitute words before synthesis. Word-level timestamps are inverse-aligned back to the original input text. See `references/pronunciations.md`.
 
 ## Progressive Disclosure
 
@@ -128,7 +128,7 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 - `references/output-formats.md` — `output: { format, bitrate? }`
 - `references/speed.md` — `speed: 0.75–1.5`, per-turn stacking
 - `references/auto-chunking.md` — `maxInputChars`, sentence-aware splitting
-- `references/pronunciations.md` — `pronunciations: { rules, dictionaryIds? }`
+- `references/pronunciations.md` — `pronunciations: { rules }`
 
 ### Usage
 
@@ -138,7 +138,7 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 
 ## Core Signature
 
-`generateSpeech({ model, text, voice, providerOptions?, output?, speed?, volumeDbfs?, timestamps?, pronunciations?, moderationRulesetId?, maxInputChars?, maxConcurrency?, maxRetries?, apiKey?, abortSignal?, headers? })`
+`generateSpeech({ model, text, voice, providerOptions?, output?, speed?, volumeDbfs?, timestamps?, pronunciations?, maxInputChars?, maxConcurrency?, maxRetries?, apiKey?, abortSignal?, headers? })`
 
 - `model` — `"provider/model"` string or a factory-resolved model
 - `voice` — string voice ID, `{ audio }`, or `{ url }`
@@ -149,6 +149,5 @@ This skill mirrors the public docs at <https://speechsdk.dev/docs>. Read the spe
 - `maxRetries` — default 2; retries 5xx, 429 (honors `Retry-After`), and network only
 - `maxConcurrency` — default 6; caps in-flight chunk requests on the auto-chunking path. Direct paths only.
 - `maxInputChars` — override per-model auto-chunking threshold. Direct paths only.
-- `moderationRulesetId` — gateway-only; throws `ModerationRulesetIdRequiresGatewayError` on direct providers.
 
 The SDK reserves the `Content-Type` and `Authorization` request headers — caller-supplied `headers` cannot override them. Import the exact option / result types from `@speech-sdk/core` / `@speech-sdk/core/types` when you need them; the source is authoritative.

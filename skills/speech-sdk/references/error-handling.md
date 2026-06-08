@@ -23,8 +23,6 @@ import {
 | `MissingApiKeyError`                        | `apiKey` not provided and the per-provider env var is unset                             |
 | `TimestampKeyMissingError`                  | `timestamps: true` STT fallback triggered but no key configured                         |
 | `GatewayInputError`                         | Gateway request invariant violated (e.g. mixing shared + per-turn `model`)              |
-| `ModerationRulesetIdRequiresGatewayError`   | `moderationRulesetId` passed to a non-gateway path                                      |
-| `DictionaryIdsRequireGatewayError`          | `pronunciations.dictionaryIds` passed to a non-gateway path                             |
 | `ConversationInputError`                    | Invalid `generateConversation` input                                                    |
 | `DialogueConstraintError`                   | Provider/model can't satisfy the requested turns (e.g. too many voices)                 |
 | `MixedDispatchError`                        | Mixing gateway-string turns with direct-factory turns                                   |

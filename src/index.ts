@@ -12,7 +12,6 @@ export {
   AudioOutputInputError,
   GatewayInputError,
   MissingApiKeyError,
-  ModerationRulesetIdRequiresGatewayError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   SpeechSDKError,
@@ -24,7 +23,6 @@ export {
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
-export { DictionaryIdsRequireGatewayError } from "./pronunciations/errors.js";
 export type {
   Pronunciation,
   PronunciationsInput,
