@@ -34,7 +34,10 @@ import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
+import {
+  buildVoiceBody,
+  type SpeechGatewayProvider,
+} from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -342,14 +345,16 @@ async function runGateway<V extends Voice>(args: {
     ? inlineResolvedModelIds[0]
     : undefined;
 
-  const wireTurns = options.turns.map((t, i) => {
+  const wireTurns: Parameters<
+    SpeechGatewayProvider["generateConversation"]
+  >[0]["turns"][number][] = options.turns.map((t, i) => {
     if (isVoiceTurn(t)) {
-      return {
+      return buildVoiceBody({
         voiceId: t.voiceId,
         text: t.text,
-        ...(t.providerOptions && { providerOptions: t.providerOptions }),
-        ...(t.speed != null && { speed: t.speed }),
-      };
+        providerOptions: t.providerOptions,
+        speed: t.speed,
+      }) as { voiceId: string; text: string };
     }
     const inlineTurn = t as InlineConversationTurn<V>;
     if (typeof inlineTurn.voice !== "string") {

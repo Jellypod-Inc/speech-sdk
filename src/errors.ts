@@ -166,16 +166,32 @@ export type VoiceResolutionReason =
   | "incomplete"
   | "unknown_provider";
 
-export class VoiceResolutionError extends SpeechSDKError {
+// Extends ApiError so callers catching `err instanceof ApiError && statusCode === 404`
+// keep working; the typed Voice resolution semantics live on `.reason` / `.voiceId`.
+export class VoiceResolutionError extends ApiError {
   readonly reason: VoiceResolutionReason;
   readonly voiceId: string;
 
   constructor(
     reason: VoiceResolutionReason,
     voiceId: string,
-    message?: string
+    options: {
+      statusCode: number;
+      message?: string;
+      code?: string;
+      cause?: unknown;
+      responseBody?: unknown;
+    }
   ) {
-    super(message ?? VoiceResolutionError.defaultMessage(reason, voiceId));
+    super(
+      options.message ?? VoiceResolutionError.defaultMessage(reason, voiceId),
+      {
+        statusCode: options.statusCode,
+        code: options.code,
+        cause: options.cause,
+        responseBody: options.responseBody,
+      }
+    );
     this.name = "VoiceResolutionError";
     this.reason = reason;
     this.voiceId = voiceId;

@@ -56,6 +56,35 @@ const gatewayConversationJsonResponseSchema = z.object({
 const GATEWAY_401_MESSAGE =
   "Speechbase rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECHBASE_API_KEY environment variable.";
 
+// Shape of the voice-arm wire body. Single-shot endpoints use the full set;
+// the conversation per-turn shape is narrower (only voiceId/text/providerOptions/speed)
+// and the helper's spread guards drop the unused fields cleanly.
+export interface VoiceBodyInput {
+  voiceId: string;
+  text: string;
+  providerOptions?: Record<string, unknown>;
+  output?: AudioOutput;
+  volumeDbfs?: number;
+  pronunciations?: PronunciationsInput;
+  moderationRulesetId?: string;
+  speed?: number;
+}
+
+export function buildVoiceBody(input: VoiceBodyInput): Record<string, unknown> {
+  return {
+    voiceId: input.voiceId,
+    text: input.text,
+    ...(input.providerOptions && { providerOptions: input.providerOptions }),
+    ...(input.output && { output: input.output }),
+    ...(input.volumeDbfs != null && { volumeDbfs: input.volumeDbfs }),
+    ...(input.pronunciations && { pronunciations: input.pronunciations }),
+    ...(input.moderationRulesetId !== undefined && {
+      moderation_ruleset_id: input.moderationRulesetId,
+    }),
+    ...(input.speed != null && { speed: input.speed }),
+  };
+}
+
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
   readonly defaultModel = "";
@@ -70,6 +99,47 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.speechbase.ai/v1";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+  }
+
+  // Single chokepoint for every gateway POST: URL + auth + 401 + RFC 7807
+  // error mapping. Pass `voiceIdForErrorMap` on the voice paths so
+  // voice_not_found / voice_incomplete / unknown_provider get surfaced as
+  // VoiceResolutionError instead of generic ApiError.
+  private async postJson(args: {
+    path: string;
+    body: Record<string, unknown>;
+    abortSignal: AbortSignal | undefined;
+    headers: Record<string, string> | undefined;
+    voiceIdForErrorMap?: string;
+  }): Promise<Response> {
+    const response = await this.fetchFn(`${this.baseURL}${args.path}`, {
+      method: "POST",
+      headers: {
+        ...args.headers,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.resolveKey()}`,
+        "X-User-Agent": SDK_USER_AGENT,
+      },
+      body: JSON.stringify(args.body),
+      signal: args.abortSignal,
+    });
+
+    if (response.status === 401) {
+      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
+    }
+
+    if (args.voiceIdForErrorMap !== undefined) {
+      try {
+        await handleErrorResponse(response);
+      } catch (err) {
+        maybeMapToVoiceResolutionError(err, args.voiceIdForErrorMap);
+        throw err;
+      }
+    } else {
+      await handleErrorResponse(response);
+    }
+
+    return response;
   }
 
   private resolveKey(): string {
@@ -143,48 +213,23 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
-    const url = options.includeTimestamps
-      ? `${this.baseURL}/audio/speech/with-timestamps`
-      : `${this.baseURL}/audio/speech`;
+    const path = options.includeTimestamps
+      ? "/audio/speech/with-timestamps"
+      : "/audio/speech";
 
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        ...options.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.resolveKey()}`,
-        "X-User-Agent": SDK_USER_AGENT,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
+    const response = await this.postJson({
+      path,
+      body,
+      abortSignal: options.abortSignal,
+      headers: options.headers,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    await handleErrorResponse(response);
-
-    if (options.includeTimestamps) {
-      const payload = gatewayJsonResponseSchema.parse(await response.json());
-      return {
-        audio: decodeBase64(payload.audio),
-        mediaType: payload.mediaType,
-        timestamps: payload.timestamps,
-        warnings: payload.warnings,
-      };
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-
-    return {
-      audio: new Uint8Array(arrayBuffer),
-      mediaType: mediaTypeFromHeaders(response.headers),
-    };
+    return await readSpeechResponse(response, options.includeTimestamps ?? false);
   }
 
-  // Voice-path entry point: POSTs an arbitrary body to /v1/audio/speech (or /with-timestamps). Used by the `generateSpeech({ voiceId, text })` variant where there's no inline model/voice to massage.
-  async generateRaw(args: {
-    body: Record<string, unknown>;
+  // Voice-path entry point: typed equivalent of generate() for callers that
+  // route by saved-voice UUID. Body shape is owned by buildVoiceBody.
+  async generateByVoiceId(options: VoiceBodyInput & {
     includeTimestamps: boolean;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -194,48 +239,19 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     timestamps?: WordTimestamp[];
     warnings?: string[];
   }> {
-    const url = args.includeTimestamps
-      ? `${this.baseURL}/audio/speech/with-timestamps`
-      : `${this.baseURL}/audio/speech`;
+    const path = options.includeTimestamps
+      ? "/audio/speech/with-timestamps"
+      : "/audio/speech";
 
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        ...args.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.resolveKey()}`,
-        "X-User-Agent": SDK_USER_AGENT,
-      },
-      body: JSON.stringify(args.body),
-      signal: args.abortSignal,
+    const response = await this.postJson({
+      path,
+      body: buildVoiceBody(options),
+      abortSignal: options.abortSignal,
+      headers: options.headers,
+      voiceIdForErrorMap: options.voiceId,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    const fallbackVoiceId =
-      typeof args.body.voiceId === "string" ? args.body.voiceId : "";
-    try {
-      await handleErrorResponse(response);
-    } catch (err) {
-      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
-      throw err;
-    }
-
-    if (args.includeTimestamps) {
-      const payload = gatewayJsonResponseSchema.parse(await response.json());
-      return {
-        audio: decodeBase64(payload.audio),
-        mediaType: payload.mediaType,
-        timestamps: payload.timestamps,
-        warnings: payload.warnings,
-      };
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    return {
-      audio: new Uint8Array(arrayBuffer),
-      mediaType: mediaTypeFromHeaders(response.headers),
-    };
+    return await readSpeechResponse(response, options.includeTimestamps);
   }
 
   async stream(options: {
@@ -275,79 +291,40 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     // Streaming has its own endpoint; /audio/speech is the buffered path (whole-clip).
-    const url = `${this.baseURL}/audio/speech/stream`;
-
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        ...options.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.resolveKey()}`,
-        "X-User-Agent": SDK_USER_AGENT,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
+    const response = await this.postJson({
+      path: "/audio/speech/stream",
+      body,
+      abortSignal: options.abortSignal,
+      headers: options.headers,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    await handleErrorResponse(response);
-
-    if (!response.body) {
-      throw new Error(
-        `speech-gateway/${options.modelId}: response has no body`
-      );
-    }
-
-    return {
-      stream: response.body,
-      mediaType: mediaTypeFromHeaders(response.headers),
-    };
+    return readStreamResponse(response, options.modelId);
   }
 
-  // Voice-path streaming entry point. Routes to the dedicated streaming endpoint so the SDK keeps true chunked-transfer streaming on the Voice arm.
-  async streamRaw(args: {
-    body: Record<string, unknown>;
+  // Voice-path streaming entry point: typed equivalent of stream() for callers
+  // routing by saved-voice UUID. The wire body excludes whole-clip params
+  // (output/volumeDbfs/speed) because the streaming endpoint rejects them.
+  async streamByVoiceId(options: {
+    voiceId: string;
+    text: string;
+    providerOptions?: Record<string, unknown>;
+    pronunciations?: PronunciationsInput;
+    moderationRulesetId?: string;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
   }> {
-    const url = `${this.baseURL}/audio/speech/stream`;
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        ...args.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.resolveKey()}`,
-        "X-User-Agent": SDK_USER_AGENT,
-      },
-      body: JSON.stringify(args.body),
-      signal: args.abortSignal,
+    const response = await this.postJson({
+      path: "/audio/speech/stream",
+      body: buildVoiceBody(options),
+      abortSignal: options.abortSignal,
+      headers: options.headers,
+      voiceIdForErrorMap: options.voiceId,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    const fallbackVoiceId =
-      typeof args.body.voiceId === "string" ? args.body.voiceId : "";
-    try {
-      await handleErrorResponse(response);
-    } catch (err) {
-      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
-      throw err;
-    }
-
-    if (!response.body) {
-      throw new Error("speech-gateway: response has no body");
-    }
-
-    return {
-      stream: response.body,
-      mediaType: mediaTypeFromHeaders(response.headers),
-    };
+    return readStreamResponse(response);
   }
 
   // Server handles stitching/normalization/alignment so callers never need their own STT key.
@@ -426,12 +403,12 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       ...(sharedModel != null && { model: sharedModel }),
       turns: options.turns.map((t) => {
         if ("voiceId" in t) {
-          return {
+          return buildVoiceBody({
             voiceId: t.voiceId,
             text: t.text,
-            ...(t.providerOptions && { providerOptions: t.providerOptions }),
-            ...(t.speed != null && { speed: t.speed }),
-          };
+            providerOptions: t.providerOptions,
+            speed: t.speed,
+          });
         }
         return {
           ...(t.model != null && { model: t.model }),
@@ -460,36 +437,25 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       body.speed = options.speed;
     }
 
-    const url = options.includeTimestamps
-      ? `${this.baseURL}/audio/conversation/with-timestamps`
-      : `${this.baseURL}/audio/conversation`;
+    const path = options.includeTimestamps
+      ? "/audio/conversation/with-timestamps"
+      : "/audio/conversation";
 
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        ...options.headers,
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.resolveKey()}`,
-        "X-User-Agent": SDK_USER_AGENT,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
     const firstVoiceTurn = options.turns.find(
       (t): t is Extract<(typeof options.turns)[number], { voiceId: string }> =>
         "voiceId" in t
     );
-    const fallbackVoiceId = firstVoiceTurn?.voiceId ?? "";
-    try {
-      await handleErrorResponse(response);
-    } catch (err) {
-      maybeMapToVoiceResolutionError(err, fallbackVoiceId);
-      throw err;
-    }
+
+    const response = await this.postJson({
+      path,
+      body,
+      abortSignal: options.abortSignal,
+      headers: options.headers,
+      // Only map voice errors when the request actually carried a voiceId;
+      // an inline-only conversation that 400s with a `voice_*` code would be
+      // misattributed otherwise.
+      ...(firstVoiceTurn && { voiceIdForErrorMap: firstVoiceTurn.voiceId }),
+    });
 
     if (options.includeTimestamps) {
       const payload = gatewayConversationJsonResponseSchema.parse(
@@ -513,6 +479,48 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       mediaType: mediaTypeFromHeaders(response.headers),
     };
   }
+}
+
+async function readSpeechResponse(
+  response: Response,
+  includeTimestamps: boolean
+): Promise<{
+  audio: Uint8Array;
+  mediaType: string;
+  timestamps?: WordTimestamp[];
+  warnings?: string[];
+}> {
+  if (includeTimestamps) {
+    const payload = gatewayJsonResponseSchema.parse(await response.json());
+    return {
+      audio: decodeBase64(payload.audio),
+      mediaType: payload.mediaType,
+      timestamps: payload.timestamps,
+      warnings: payload.warnings,
+    };
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return {
+    audio: new Uint8Array(arrayBuffer),
+    mediaType: mediaTypeFromHeaders(response.headers),
+  };
+}
+
+function readStreamResponse(
+  response: Response,
+  modelId?: string
+): { stream: ReadableStream<Uint8Array>; mediaType: string } {
+  if (!response.body) {
+    throw new Error(
+      modelId
+        ? `speech-gateway/${modelId}: response has no body`
+        : "speech-gateway: response has no body"
+    );
+  }
+  return {
+    stream: response.body,
+    mediaType: mediaTypeFromHeaders(response.headers),
+  };
 }
 
 export interface SpeechGateway {
@@ -551,7 +559,8 @@ function decodeBase64(value: string): Uint8Array {
 
 // Inspects an ApiError thrown by handleErrorResponse for the gateway's voice_*
 // error codes and re-throws as VoiceResolutionError when matched. Returns
-// without throwing for any other error.
+// without throwing for any other error. VoiceResolutionError extends ApiError,
+// so the original `statusCode` / `code` / `responseBody` survive the mapping.
 function maybeMapToVoiceResolutionError(
   err: unknown,
   fallbackVoiceId: string
@@ -559,14 +568,18 @@ function maybeMapToVoiceResolutionError(
   if (!(err instanceof ApiError)) {
     return;
   }
-  // Server returns code on RFC 7807 envelopes; provider-utils.ts surfaces it on ApiError.
-  const code = err.code;
-  const reason = mapVoiceErrorCodeToReason(code);
+  const reason = mapVoiceErrorCodeToReason(err.code);
   if (!reason) {
     return;
   }
   const voiceId = extractVoiceIdFromMessage(err.message) ?? fallbackVoiceId;
-  throw new VoiceResolutionError(reason, voiceId, err.message);
+  throw new VoiceResolutionError(reason, voiceId, {
+    statusCode: err.statusCode,
+    message: err.message,
+    code: err.code,
+    responseBody: err.responseBody,
+    cause: err,
+  });
 }
 
 function mapVoiceErrorCodeToReason(

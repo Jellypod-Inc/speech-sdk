@@ -17,6 +17,7 @@ import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   assertGatewayForModerationRulesetId,
+  GatewayInputError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   TextChunkingUnsupportedError,
@@ -258,41 +259,33 @@ export async function generateSpeech<
 async function generateSpeechByVoiceId(
   options: VoiceGenerateSpeechOptions
 ): Promise<SpeechResult> {
+  if (options.voiceId.length === 0) {
+    throw new GatewayInputError("voiceId must not be empty.");
+  }
+  if (options.text.trim().length === 0) {
+    throw new NoSpeechGeneratedError("Text must not be empty.");
+  }
   validateOutput(options.output);
   validateSpeed(options.speed);
+  // Voice path is always gateway — pass `true` so dictionaryIds are permitted.
+  validatePronunciationsInput(options.pronunciations, true);
 
   const gateway = options.gateway ?? createSpeechGateway();
   const includeTimestamps = options.timestamps === true;
-
-  const body: Record<string, unknown> = {
-    voiceId: options.voiceId,
-    text: options.text,
-  };
-  if (options.providerOptions) {
-    body.providerOptions = options.providerOptions;
-  }
-  if (options.output) {
-    body.output = options.output;
-  }
-  if (options.volumeDbfs != null) {
-    body.volumeDbfs = options.volumeDbfs;
-  }
-  if (options.pronunciations) {
-    body.pronunciations = options.pronunciations;
-  }
-  if (options.moderationRulesetId !== undefined) {
-    body.moderation_ruleset_id = options.moderationRulesetId;
-  }
-  if (options.speed != null) {
-    body.speed = options.speed;
-  }
 
   const maxRetries = options.maxRetries ?? 2;
   const startTime = performance.now();
   const result = await pRetry(
     () =>
-      gateway.provider.generateRaw({
-        body,
+      gateway.provider.generateByVoiceId({
+        voiceId: options.voiceId,
+        text: options.text,
+        providerOptions: options.providerOptions,
+        output: options.output,
+        volumeDbfs: options.volumeDbfs,
+        pronunciations: options.pronunciations,
+        moderationRulesetId: options.moderationRulesetId,
+        speed: options.speed,
         includeTimestamps,
         abortSignal: options.abortSignal,
         headers: options.headers,

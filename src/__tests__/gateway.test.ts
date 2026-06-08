@@ -926,4 +926,89 @@ describe("generateSpeech voice variant", () => {
       voiceId: VOICE_ID,
     });
   });
+
+  // Review-driven: VoiceResolutionError extends ApiError so existing handlers
+  // matching `instanceof ApiError && statusCode === 404` keep working after
+  // the typed-voice mapping fires.
+  it("VoiceResolutionError is an ApiError and carries the source statusCode", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () =>
+        JSON.stringify({
+          code: "voice_not_found",
+          detail: `no voice with id '${VOICE_ID}'`,
+        }),
+    });
+    try {
+      await generateSpeech({
+        voiceId: VOICE_ID,
+        text: "Hi",
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      });
+      expect.fail("expected VoiceResolutionError");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err).toMatchObject({
+        name: "VoiceResolutionError",
+        reason: "not_found",
+        voiceId: VOICE_ID,
+        statusCode: 404,
+        code: "voice_not_found",
+      });
+    }
+  });
+
+  // Review-driven: voice path must guard locally on empty voiceId,
+  // empty/whitespace text, and bad pronunciations input — mirroring the
+  // synchronous-throw symmetry the inline path provides.
+  it("rejects empty voiceId synchronously without hitting the wire", async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      generateSpeech({
+        voiceId: "",
+        text: "hi",
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      })
+    ).rejects.toBeInstanceOf(GatewayInputError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects empty text synchronously without hitting the wire", async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      generateSpeech({
+        voiceId: VOICE_ID,
+        text: "   ",
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      })
+    ).rejects.toThrow(/Text must not be empty/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed pronunciations synchronously without hitting the wire", async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      generateSpeech({
+        voiceId: VOICE_ID,
+        text: "hi",
+        pronunciations: { rules: [{ word: "", replacement: "x" }] },
+        gateway: createSpeechGateway({
+          apiKey: "test-key",
+          fetch: fetchMock as unknown as typeof globalThis.fetch,
+        }),
+      })
+    ).rejects.toThrow(/pronunciations/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

@@ -2,6 +2,7 @@ import pRetry from "p-retry";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import {
   assertGatewayForModerationRulesetId,
+  GatewayInputError,
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
@@ -140,27 +141,26 @@ export async function streamSpeech<
 async function streamSpeechByVoiceId(
   options: VoiceStreamSpeechOptions
 ): Promise<StreamSpeechResult> {
-  const gateway = options.gateway ?? createSpeechGateway();
-  const body: Record<string, unknown> = {
-    voiceId: options.voiceId,
-    text: options.text,
-  };
-  if (options.providerOptions) {
-    body.providerOptions = options.providerOptions;
+  if (options.voiceId.length === 0) {
+    throw new GatewayInputError("voiceId must not be empty.");
   }
-  if (options.pronunciations) {
-    body.pronunciations = options.pronunciations;
+  if (options.text.trim().length === 0) {
+    throw new NoSpeechGeneratedError("Text must not be empty.");
   }
-  if (options.moderationRulesetId !== undefined) {
-    body.moderation_ruleset_id = options.moderationRulesetId;
-  }
+  // Voice path is always gateway — pass `true` so dictionaryIds are permitted.
+  validatePronunciationsInput(options.pronunciations, true);
 
+  const gateway = options.gateway ?? createSpeechGateway();
   const maxRetries = options.maxRetries ?? 2;
   const start = performance.now();
   const result = await pRetry(
     () =>
-      gateway.provider.streamRaw({
-        body,
+      gateway.provider.streamByVoiceId({
+        voiceId: options.voiceId,
+        text: options.text,
+        providerOptions: options.providerOptions,
+        pronunciations: options.pronunciations,
+        moderationRulesetId: options.moderationRulesetId,
         abortSignal: options.abortSignal,
         headers: options.headers,
       }),

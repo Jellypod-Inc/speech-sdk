@@ -4,14 +4,12 @@ import type {
   ConversationTurn,
   GenerateConversationOptions,
   InlineConversationTurn,
+  VoiceConversationTurn,
 } from "./types.js";
 
-export function isVoiceTurn(turn: ConversationTurn): turn is {
-  readonly providerOptions?: Record<string, unknown>;
-  readonly speed?: number;
-  readonly text: string;
-  readonly voiceId: string;
-} {
+export function isVoiceTurn(
+  turn: ConversationTurn
+): turn is VoiceConversationTurn {
   return "voiceId" in turn;
 }
 
@@ -56,6 +54,11 @@ export function validateConversationInput(
       throw new ConversationInputError(`turns[${i}].text must not be empty.`);
     }
     if (isVoiceTurn(turn)) {
+      if (turn.voiceId.length === 0) {
+        throw new ConversationInputError(
+          `turns[${i}].voiceId must not be empty.`
+        );
+      }
       // Voice turns resolve server-side — no model required at the SDK layer.
       continue;
     }

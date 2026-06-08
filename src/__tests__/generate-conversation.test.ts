@@ -570,4 +570,21 @@ describe("generateConversation voice turn variant", () => {
       voiceId: VOICE_ID,
     });
   });
+
+  // Review-driven: voice turn must be validated for non-empty voiceId,
+  // symmetric with inline turn requiring non-empty `voice`.
+  it("rejects an empty voiceId in a voice turn synchronously", async () => {
+    const fetchFn = vi.fn();
+    const gateway = createSpeechGateway({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+    await expect(
+      generateConversation({
+        model: gateway("openai/gpt-4o-mini-tts"),
+        turns: [{ voiceId: "", text: "Hi." }],
+      })
+    ).rejects.toThrow(/voiceId must not be empty/);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
 });
