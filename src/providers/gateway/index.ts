@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { base64ToUint8Array } from "../../audio-utils.js";
 import type { AudioOutput } from "../../audio-output.js";
 import {
   ApiError,
@@ -70,9 +71,64 @@ export interface VoiceBodyInput {
   speed?: number;
 }
 
-export function buildVoiceBody(input: VoiceBodyInput): Record<string, unknown> {
+export interface VoiceWireBody {
+  voiceId: string;
+  text: string;
+  providerOptions?: Record<string, unknown>;
+  output?: AudioOutput;
+  volumeDbfs?: number;
+  pronunciations?: PronunciationsInput;
+  moderation_ruleset_id?: string;
+  speed?: number;
+}
+
+export function buildVoiceBody(input: VoiceBodyInput): VoiceWireBody {
   return {
     voiceId: input.voiceId,
+    text: input.text,
+    ...(input.providerOptions && { providerOptions: input.providerOptions }),
+    ...(input.output && { output: input.output }),
+    ...(input.volumeDbfs != null && { volumeDbfs: input.volumeDbfs }),
+    ...(input.pronunciations && { pronunciations: input.pronunciations }),
+    ...(input.moderationRulesetId !== undefined && {
+      moderation_ruleset_id: input.moderationRulesetId,
+    }),
+    ...(input.speed != null && { speed: input.speed }),
+  };
+}
+
+// Mirror of buildVoiceBody for the inline arm. Single-shot generate uses the
+// full field set; stream omits whole-clip params (output/volumeDbfs/speed);
+// conversation per-turn omits whole-clip params + pronunciations/moderation.
+// In every case the spread guards drop unset fields cleanly.
+export interface InlineBodyInput {
+  model?: string;
+  voice: string;
+  text: string;
+  providerOptions?: Record<string, unknown>;
+  output?: AudioOutput;
+  volumeDbfs?: number;
+  pronunciations?: PronunciationsInput;
+  moderationRulesetId?: string;
+  speed?: number;
+}
+
+export interface InlineWireBody {
+  model?: string;
+  voice: string;
+  text: string;
+  providerOptions?: Record<string, unknown>;
+  output?: AudioOutput;
+  volumeDbfs?: number;
+  pronunciations?: PronunciationsInput;
+  moderation_ruleset_id?: string;
+  speed?: number;
+}
+
+export function buildInlineBody(input: InlineBodyInput): InlineWireBody {
+  return {
+    ...(input.model != null && { model: input.model }),
+    voice: input.voice,
     text: input.text,
     ...(input.providerOptions && { providerOptions: input.providerOptions }),
     ...(input.output && { output: input.output }),
@@ -107,7 +163,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   // VoiceResolutionError instead of generic ApiError.
   private async postJson(args: {
     path: string;
-    body: Record<string, unknown>;
+    body: object;
     abortSignal: AbortSignal | undefined;
     headers: Record<string, string> | undefined;
     voiceIdForErrorMap?: string;
@@ -188,29 +244,17 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const body: Record<string, unknown> = {
+    const body = buildInlineBody({
       model: options.modelId,
       voice: options.voice,
       text: options.text,
-    };
-    if (options.volumeDbfs != null) {
-      body.volumeDbfs = options.volumeDbfs;
-    }
-    if (options.providerOptions) {
-      body.providerOptions = options.providerOptions;
-    }
-    if (options.output) {
-      body.output = options.output;
-    }
-    if (options.pronunciations) {
-      body.pronunciations = options.pronunciations;
-    }
-    if (options.moderationRulesetId !== undefined) {
-      body.moderation_ruleset_id = options.moderationRulesetId;
-    }
-    if (options.speed != null) {
-      body.speed = options.speed;
-    }
+      providerOptions: options.providerOptions,
+      output: options.output,
+      volumeDbfs: options.volumeDbfs,
+      pronunciations: options.pronunciations,
+      moderationRulesetId: options.moderationRulesetId,
+      speed: options.speed,
+    });
 
     // Binary vs JSON-with-timestamps lives at separate URLs; no Accept-header content negotiation.
     const path = options.includeTimestamps
@@ -275,20 +319,14 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const body: Record<string, unknown> = {
+    const body = buildInlineBody({
       model: options.modelId,
       voice: options.voice,
       text: options.text,
-    };
-    if (options.providerOptions) {
-      body.providerOptions = options.providerOptions;
-    }
-    if (options.pronunciations) {
-      body.pronunciations = options.pronunciations;
-    }
-    if (options.moderationRulesetId !== undefined) {
-      body.moderation_ruleset_id = options.moderationRulesetId;
-    }
+      providerOptions: options.providerOptions,
+      pronunciations: options.pronunciations,
+      moderationRulesetId: options.moderationRulesetId,
+    });
 
     // Streaming has its own endpoint; /audio/speech is the buffered path (whole-clip).
     const response = await this.postJson({
@@ -398,26 +436,12 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     // gapMs/volumeDbfs sent explicitly each call (don't rely on server defaults).
+    // Turns are already in wire shape (caller owns shaping via buildVoiceBody /
+    // buildInlineBody); pass them through unchanged.
     const body: Record<string, unknown> = {
       mode: "conversation",
       ...(sharedModel != null && { model: sharedModel }),
-      turns: options.turns.map((t) => {
-        if ("voiceId" in t) {
-          return buildVoiceBody({
-            voiceId: t.voiceId,
-            text: t.text,
-            providerOptions: t.providerOptions,
-            speed: t.speed,
-          });
-        }
-        return {
-          ...(t.model != null && { model: t.model }),
-          voice: t.voice,
-          text: t.text,
-          ...(t.providerOptions && { providerOptions: t.providerOptions }),
-          ...(t.speed != null && { speed: t.speed }),
-        };
-      }),
+      turns: options.turns,
       gapMs: options.gapMs ?? 300,
       volumeDbfs: options.volumeDbfs ?? -20,
     };
@@ -441,20 +465,17 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       ? "/audio/conversation/with-timestamps"
       : "/audio/conversation";
 
-    const firstVoiceTurn = options.turns.find(
-      (t): t is Extract<(typeof options.turns)[number], { voiceId: string }> =>
-        "voiceId" in t
-    );
+    // Only map voice errors when the request actually carried a voiceId;
+    // an inline-only conversation that 400s with a `voice_*` code would be
+    // misattributed otherwise.
+    const firstVoiceId = options.turns.find((t) => "voiceId" in t)?.voiceId;
 
     const response = await this.postJson({
       path,
       body,
       abortSignal: options.abortSignal,
       headers: options.headers,
-      // Only map voice errors when the request actually carried a voiceId;
-      // an inline-only conversation that 400s with a `voice_*` code would be
-      // misattributed otherwise.
-      ...(firstVoiceTurn && { voiceIdForErrorMap: firstVoiceTurn.voiceId }),
+      ...(firstVoiceId !== undefined && { voiceIdForErrorMap: firstVoiceId }),
     });
 
     if (options.includeTimestamps) {
@@ -462,7 +483,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         await response.json()
       );
       return {
-        audio: decodeBase64(payload.audio),
+        audio: base64ToUint8Array(payload.audio),
         mediaType: payload.mediaType,
         timestamps: payload.timestamps,
         warnings: payload.warnings,
@@ -493,7 +514,7 @@ async function readSpeechResponse(
   if (includeTimestamps) {
     const payload = gatewayJsonResponseSchema.parse(await response.json());
     return {
-      audio: decodeBase64(payload.audio),
+      audio: base64ToUint8Array(payload.audio),
       mediaType: payload.mediaType,
       timestamps: payload.timestamps,
       warnings: payload.warnings,
@@ -544,17 +565,17 @@ export function createSpeechGateway(
   return fn;
 }
 
-function mediaTypeFromHeaders(headers: Headers): string {
-  return headers.get("content-type") ?? "audio/mpeg";
+// Lazy default gateway for the no-explicit-gateway voice path. Built on first
+// use and reused; stateless across calls (apiKey is read from env on each
+// request via SpeechGatewayProvider.resolveKey).
+let defaultGatewaySingleton: SpeechGateway | undefined;
+export function getDefaultSpeechGateway(): SpeechGateway {
+  defaultGatewaySingleton ??= createSpeechGateway();
+  return defaultGatewaySingleton;
 }
 
-function decodeBase64(value: string): Uint8Array {
-  const binaryString = atob(value);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
+function mediaTypeFromHeaders(headers: Headers): string {
+  return headers.get("content-type") ?? "audio/mpeg";
 }
 
 // Inspects an ApiError thrown by handleErrorResponse for the gateway's voice_*

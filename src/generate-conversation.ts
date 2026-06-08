@@ -35,6 +35,7 @@ import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import {
+  buildInlineBody,
   buildVoiceBody,
   type SpeechGatewayProvider,
 } from "./providers/gateway/index.js";
@@ -112,34 +113,28 @@ export async function generateConversation<
     return fresh;
   };
 
-  const topLevelResolved =
+  // Voice turns can only be served by the gateway. When any turn is a voice
+  // turn, the top-level resolution must bind to the gateway provider — either
+  // the caller's gateway model, or a synthesised gateway resolution when the
+  // caller omitted `options.model`. validateConversationInput already rejects
+  // inline-no-model + no-top-level, so an inline turn that hits the
+  // `topLevelResolved` fallback below is always a gateway-routed turn when
+  // hasVoiceTurn is true.
+  let topLevelResolved: ResolvedModel<V> | undefined =
     options.model == null ? undefined : resolveOnce(options.model);
-
-  // Voice turns can only be served by the gateway. If any turn is a voice turn,
-  // synthesise a top-level gateway resolution so resolvedPerTurn entries for
-  // voice turns share the same gateway provider — dispatch then picks the
-  // gateway path. Mixing voice turns with direct-provider inline turns is not
-  // supported (gateway and direct provider can't be combined).
-  let voiceFallbackResolved: ResolvedModel<V> | undefined;
   if (hasVoiceTurn) {
-    if (topLevelResolved) {
-      if (!isSpeechGatewayModel(topLevelResolved)) {
-        throw new ConversationInputError(
-          "generateConversation: turns with `voiceId` require the speech gateway. Pass a gateway model (e.g. `model: 'openai/gpt-4o-mini-tts'`) or omit `options.model` entirely."
-        );
-      }
-      voiceFallbackResolved = topLevelResolved;
-    } else {
-      voiceFallbackResolved = resolveOnce("speech-gateway");
+    if (topLevelResolved && !isSpeechGatewayModel(topLevelResolved)) {
+      throw new ConversationInputError(
+        "generateConversation: turns with `voiceId` require the speech gateway. Pass a gateway model (e.g. `model: 'openai/gpt-4o-mini-tts'`) or omit `options.model` entirely."
+      );
     }
+    topLevelResolved ??= resolveOnce("speech-gateway");
   }
 
   const resolvedPerTurn: ResolvedModel<V>[] = options.turns.map((turn) => {
     if (isVoiceTurn(turn)) {
-      if (!voiceFallbackResolved) {
-        throw new Error("generateConversation: voice turn without gateway");
-      }
-      return voiceFallbackResolved;
+      // hasVoiceTurn is true here, which assigned topLevelResolved above.
+      return topLevelResolved as ResolvedModel<V>;
     }
     const inlineTurn = turn as InlineConversationTurn<V>;
     if (inlineTurn.model == null && topLevelResolved) {
@@ -327,23 +322,20 @@ async function runGateway<V extends Voice>(args: {
   const includeTimestamps = options.timestamps ?? false;
 
   // Voice turns carry no model on the wire. The shared-model wire shape only
-  // applies when every inline turn resolves to the same modelId AND no turn
-  // is a voice turn — otherwise we emit per-turn shapes (voice turns get
-  // `voiceId`; inline turns get their own `model` when modelIds diverge).
-  const inlineResolvedModelIds: string[] = [];
+  // applies when every inline turn resolves to the same modelId — otherwise we
+  // emit per-turn shapes (voice turns get `voiceId`; inline turns get their own
+  // `model` when modelIds diverge or when there are no inline turns at all).
+  const inlineModelIds: string[] = [];
   for (let i = 0; i < options.turns.length; i++) {
     if (!isVoiceTurn(options.turns[i])) {
-      inlineResolvedModelIds.push(resolvedPerTurn[i].modelId);
+      inlineModelIds.push(resolvedPerTurn[i].modelId);
     }
   }
-  const allInlineSameModel =
-    inlineResolvedModelIds.length > 0 &&
-    inlineResolvedModelIds.every((m) => m === inlineResolvedModelIds[0]);
-  const onlyVoiceTurns = inlineResolvedModelIds.length === 0;
-  const useSharedModelOnWire = onlyVoiceTurns ? false : allInlineSameModel;
-  const sharedModelId = useSharedModelOnWire
-    ? inlineResolvedModelIds[0]
-    : undefined;
+  const sharedModelId =
+    inlineModelIds.length > 0 &&
+    inlineModelIds.every((m) => m === inlineModelIds[0])
+      ? inlineModelIds[0]
+      : undefined;
 
   const wireTurns: Parameters<
     SpeechGatewayProvider["generateConversation"]
@@ -354,7 +346,7 @@ async function runGateway<V extends Voice>(args: {
         text: t.text,
         providerOptions: t.providerOptions,
         speed: t.speed,
-      }) as { voiceId: string; text: string };
+      });
     }
     const inlineTurn = t as InlineConversationTurn<V>;
     if (typeof inlineTurn.voice !== "string") {
@@ -362,15 +354,13 @@ async function runGateway<V extends Voice>(args: {
         `speech-gateway/conversation: gateway conversation path requires string voices; turns[${i}].voice is an object.`
       );
     }
-    return {
-      ...(useSharedModelOnWire ? {} : { model: resolvedPerTurn[i].modelId }),
+    return buildInlineBody({
+      model: sharedModelId == null ? resolvedPerTurn[i].modelId : undefined,
       voice: inlineTurn.voice,
       text: inlineTurn.text,
-      ...(inlineTurn.providerOptions && {
-        providerOptions: inlineTurn.providerOptions,
-      }),
-      ...(inlineTurn.speed != null && { speed: inlineTurn.speed }),
-    };
+      providerOptions: inlineTurn.providerOptions,
+      speed: inlineTurn.speed,
+    });
   });
 
   const result = await pRetry(

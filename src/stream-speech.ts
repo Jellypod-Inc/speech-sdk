@@ -11,7 +11,7 @@ import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import {
-  createSpeechGateway,
+  getDefaultSpeechGateway,
   type SpeechGatewayProvider,
 } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -150,7 +150,7 @@ async function streamSpeechByVoiceId(
   // Voice path is always gateway — pass `true` so dictionaryIds are permitted.
   validatePronunciationsInput(options.pronunciations, true);
 
-  const gateway = options.gateway ?? createSpeechGateway();
+  const gateway = options.gateway ?? getDefaultSpeechGateway();
   const maxRetries = options.maxRetries ?? 2;
   const start = performance.now();
   const result = await pRetry(

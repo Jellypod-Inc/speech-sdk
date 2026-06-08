@@ -31,7 +31,7 @@ import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
 import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import {
-  createSpeechGateway,
+  getDefaultSpeechGateway,
   type SpeechGatewayProvider,
 } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -270,7 +270,7 @@ async function generateSpeechByVoiceId(
   // Voice path is always gateway — pass `true` so dictionaryIds are permitted.
   validatePronunciationsInput(options.pronunciations, true);
 
-  const gateway = options.gateway ?? createSpeechGateway();
+  const gateway = options.gateway ?? getDefaultSpeechGateway();
   const includeTimestamps = options.timestamps === true;
 
   const maxRetries = options.maxRetries ?? 2;
