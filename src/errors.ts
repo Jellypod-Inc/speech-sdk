@@ -47,6 +47,19 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
 }
 
 export function withTurnIndex(err: unknown, turnIndex: number): unknown {
+  // VoiceResolutionError extends ApiError; check the subclass first so the
+  // typed `.reason` / `.voiceId` contract survives conversation error wrapping.
+  if (err instanceof VoiceResolutionError) {
+    return new VoiceResolutionError(err.reason, err.voiceId, {
+      statusCode: err.statusCode,
+      message: err.message,
+      code: err.code,
+      cause: err,
+      responseBody: err.responseBody,
+      turnIndex,
+      retryAfterMs: err.retryAfterMs,
+    });
+  }
   if (err instanceof ApiError) {
     return new ApiError(err.message, {
       statusCode: err.statusCode,
@@ -181,6 +194,8 @@ export class VoiceResolutionError extends ApiError {
       code?: string;
       cause?: unknown;
       responseBody?: unknown;
+      turnIndex?: number;
+      retryAfterMs?: number;
     }
   ) {
     super(
@@ -190,6 +205,8 @@ export class VoiceResolutionError extends ApiError {
         code: options.code,
         cause: options.cause,
         responseBody: options.responseBody,
+        turnIndex: options.turnIndex,
+        retryAfterMs: options.retryAfterMs,
       }
     );
     this.name = "VoiceResolutionError";
