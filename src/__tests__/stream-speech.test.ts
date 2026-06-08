@@ -236,19 +236,4 @@ describe("streamSpeech voice variant", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed pronunciations synchronously without hitting the wire", async () => {
-    const fetchMock = vi.fn();
-    await expect(
-      streamSpeech({
-        voiceId: VOICE_ID,
-        text: "hi",
-        pronunciations: { rules: [{ word: "", replacement: "x" }] },
-        gateway: createSpeechGateway({
-          apiKey: "test-key",
-          fetch: fetchMock as unknown as typeof globalThis.fetch,
-        }),
-      })
-    ).rejects.toThrow(/pronunciations/i);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
 });

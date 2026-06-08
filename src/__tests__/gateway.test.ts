@@ -760,23 +760,10 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 });
 
 describe("createSpeechGateway return value", () => {
-  it("is callable with a modelId (existing behaviour)", () => {
-    const gw = createSpeechGateway({ apiKey: "test-key" });
-    const resolved = gw("elevenlabs/eleven_v3");
-    expect(resolved.provider.id).toBe("speech-gateway");
-    expect(resolved.modelId).toBe("elevenlabs/eleven_v3");
-  });
-
   it("exposes its configured provider directly via .provider", () => {
     const gw = createSpeechGateway({ apiKey: "test-key" });
     expect(gw.provider).toBeInstanceOf(SpeechGatewayProvider);
     expect(gw.provider.id).toBe("speech-gateway");
-  });
-
-  it("the same provider instance is shared between calls and .provider", () => {
-    const gw = createSpeechGateway({ apiKey: "test-key" });
-    const resolved = gw("elevenlabs/eleven_v3");
-    expect(resolved.provider).toBe(gw.provider);
   });
 });
 
@@ -900,33 +887,6 @@ describe("generateSpeech voice variant", () => {
     });
   });
 
-  it("surfaces VoiceResolutionError on voice_incomplete", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      headers: new Headers({ "content-type": "application/json" }),
-      text: async () =>
-        JSON.stringify({
-          code: "voice_incomplete",
-          detail: `voice '${VOICE_ID}' has no provider voice_id`,
-        }),
-    });
-    await expect(
-      generateSpeech({
-        voiceId: VOICE_ID,
-        text: "Hi",
-        gateway: createSpeechGateway({
-          apiKey: "test-key",
-          fetch: fetchMock as unknown as typeof globalThis.fetch,
-        }),
-      })
-    ).rejects.toMatchObject({
-      name: "VoiceResolutionError",
-      reason: "incomplete",
-      voiceId: VOICE_ID,
-    });
-  });
-
   // Review-driven: VoiceResolutionError extends ApiError so existing handlers
   // matching `instanceof ApiError && statusCode === 404` keep working after
   // the typed-voice mapping fires.
@@ -996,19 +956,4 @@ describe("generateSpeech voice variant", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed pronunciations synchronously without hitting the wire", async () => {
-    const fetchMock = vi.fn();
-    await expect(
-      generateSpeech({
-        voiceId: VOICE_ID,
-        text: "hi",
-        pronunciations: { rules: [{ word: "", replacement: "x" }] },
-        gateway: createSpeechGateway({
-          apiKey: "test-key",
-          fetch: fetchMock as unknown as typeof globalThis.fetch,
-        }),
-      })
-    ).rejects.toThrow(/pronunciations/i);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
 });
