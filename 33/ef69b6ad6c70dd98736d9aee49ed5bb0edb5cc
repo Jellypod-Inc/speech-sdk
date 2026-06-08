@@ -1,0 +1,23 @@
+src/errors.ts
+  s_d5bd287d0fcb5c::t_d5192a8fa56589 50-62
+  s_d5bd287d0fcb5c::t_ad96dc63daf3a4 197-198,208-209
+src/__tests__/conversation-errors.test.ts
+  s_d5bd287d0fcb5c::t_7c8a25742e8762 47-73
+  s_d5bd287d0fcb5c::t_d996b368ed6617 7-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "33ef69b6ad6c70dd98736d9aee49ed5bb0edb5cc",
+  "prompts": {},
+  "sessions": {
+    "s_d5bd287d0fcb5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "324337b8-d603-496f-97f4-3f015af8d675",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
