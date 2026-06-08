@@ -16,7 +16,6 @@ import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   TextChunkingUnsupportedError,
@@ -76,7 +75,6 @@ export async function generateSpeech<
     headers,
     volumeDbfs,
     timestamps = false,
-    moderationRulesetId,
     speed,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
@@ -88,8 +86,7 @@ export async function generateSpeech<
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
-  validatePronunciationsInput(options.pronunciations, isGateway);
-  assertGatewayForModerationRulesetId(moderationRulesetId, isGateway);
+  validatePronunciationsInput(options.pronunciations);
 
   const { text: strippedText, warnings } = preprocessText(
     resolved,
@@ -180,7 +177,6 @@ export async function generateSpeech<
         volumeDbfs,
         output: options.output,
         pronunciations: options.pronunciations,
-        moderationRulesetId,
         speed,
       });
 
@@ -319,7 +315,6 @@ async function generateProviderSpeech<V extends Voice>(args: {
   volumeDbfs?: number;
   output?: AudioOutput;
   pronunciations?: PronunciationsInput;
-  moderationRulesetId?: string;
   speed?: number;
 }): Promise<ProviderGenerateResult> {
   return await pRetry(
@@ -336,7 +331,6 @@ async function generateProviderSpeech<V extends Voice>(args: {
             volumeDbfs: args.volumeDbfs,
             output: args.output,
             pronunciations: args.pronunciations,
-            moderationRulesetId: args.moderationRulesetId,
             speed: args.speed,
           })
         : args.resolved.provider.generate({

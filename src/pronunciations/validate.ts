@@ -1,28 +1,13 @@
 import { SpeechSDKError } from "../errors.js";
-import { DictionaryIdsRequireGatewayError } from "./errors.js";
 import type { PronunciationsInput } from "./types.js";
 
 export function validatePronunciationsInput(
-  input: PronunciationsInput | undefined,
-  isGateway: boolean
+  input: PronunciationsInput | undefined
 ): void {
   if (input === undefined) {
     return;
   }
-  const dictIds = input.dictionaryIds ?? [];
   const rules = input.rules ?? [];
-
-  if (dictIds.length > 0 && !isGateway) {
-    throw new DictionaryIdsRequireGatewayError();
-  }
-
-  for (const id of dictIds) {
-    if (id.length === 0) {
-      throw new SpeechSDKError(
-        "pronunciations.dictionaryIds: every id must be a non-empty string."
-      );
-    }
-  }
 
   for (const rule of rules) {
     if (rule.word.length === 0) {

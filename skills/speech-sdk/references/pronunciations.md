@@ -26,11 +26,10 @@ pronunciations: {
     replacement: string         // text to send to the provider in place of `word`
     caseSensitive?: boolean
   }>
-  dictionaryIds?: string[]      // gateway-only — references stored dictionaries
 }
 ```
 
-Both fields are optional, but at least one must produce a substitution for the option to do anything. Empty `word` or `replacement` strings throw a `SpeechSDKError` synchronously.
+`rules` is optional, but it must produce a substitution for the option to do anything. Empty `word` or `replacement` strings throw a `SpeechSDKError` synchronously.
 
 ## Inline Rules
 
@@ -46,24 +45,6 @@ pronunciations: {
 }
 ```
 
-## Stored Dictionaries (Gateway Only)
-
-`dictionaryIds` references dictionaries stored server-side. It only works through the speech gateway:
-
-```ts
-await generateSpeech({
-  model: "openai/gpt-4o-mini-tts",     // gateway string
-  text: "...",
-  voice: "alloy",
-  pronunciations: {
-    dictionaryIds: ["brand-terms", "product-names"],
-    rules: [{ word: "v0", replacement: "vee zero" }], // also allowed alongside
-  },
-})
-```
-
-Passing `dictionaryIds` to a direct-provider factory throws `DictionaryIdsRequireGatewayError`. The TypeScript types enforce this at compile time too: when `model` is a `ResolvedModel` (factory output), the option type drops `dictionaryIds`.
-
 ## Timestamps
 
 When pronunciation rules substitute words and `timestamps: true` is set, the SDK inverse-aligns the returned timestamps so each entry's `text` and offsets reference the **original** input token rather than the substituted form. Callers consuming timestamps don't need to undo the substitution themselves.
@@ -72,8 +53,7 @@ When pronunciation rules substitute words and `timestamps: true` is set, the SDK
 
 | Error                                | When                                                                  |
 | ------------------------------------ | --------------------------------------------------------------------- |
-| `SpeechSDKError`                     | `word` or `replacement` empty, or `dictionaryIds` entry empty         |
-| `DictionaryIdsRequireGatewayError`   | `dictionaryIds` passed to a direct-provider path                      |
+| `SpeechSDKError`                     | `word` or `replacement` empty                                         |
 
 ## Subpath Export
 

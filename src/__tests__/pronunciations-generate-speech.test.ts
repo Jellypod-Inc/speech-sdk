@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { generateSpeech } from "../generate-speech.js";
 import type { ResolvedModel, SpeechProvider } from "../speech-provider.js";
 
-const DICTIONARY_IDS_PATTERN = /dictionaryIds/i;
 const SUBSTITUTED_PATTERN = /el el em/;
 const AUDIO_TAG_PATTERN = /\[pause\]/;
 
@@ -58,19 +57,6 @@ describe("generateSpeech with pronunciations", () => {
       "is",
       "LLM",
     ]);
-  });
-
-  it("throws DictionaryIdsRequireGatewayError on direct path with dictionary ids", async () => {
-    const generateSpy = vi.fn();
-    await expect(() =>
-      generateSpeech({
-        model: fakeModel(generateSpy),
-        voice: "v1",
-        text: "hi",
-        pronunciations: { dictionaryIds: ["d1"] },
-      })
-    ).rejects.toThrow(DICTIONARY_IDS_PATTERN);
-    expect(generateSpy).not.toHaveBeenCalled();
   });
 });
 

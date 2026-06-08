@@ -1,5 +1,5 @@
 import type { AudioOutput } from "./audio-output.js";
-import type { PronunciationsFor } from "./pronunciations/types.js";
+import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
@@ -63,10 +63,8 @@ export interface GenerateSpeechOptions<
   maxInputChars?: number;
   maxRetries?: number;
   model: M;
-  // Gateway-only. Per-request override for the moderation ruleset; falls back to the org default if omitted or unknown. Throws ModerationRulesetIdRequiresGatewayError on direct-provider transports.
-  moderationRulesetId?: string;
   output?: AudioOutput;
-  pronunciations?: PronunciationsFor<M>;
+  pronunciations?: PronunciationsInput;
   providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;

@@ -129,24 +129,6 @@ export class GatewayInputError extends SpeechSDKError {
   }
 }
 
-export class ModerationRulesetIdRequiresGatewayError extends SpeechSDKError {
-  constructor() {
-    super(
-      "moderationRulesetId requires the gateway path. Use a gateway model string (e.g., 'openai/tts-1') or createSpeechGateway() — the field is meaningless without a gateway in front."
-    );
-    this.name = "ModerationRulesetIdRequiresGatewayError";
-  }
-}
-
-export function assertGatewayForModerationRulesetId(
-  moderationRulesetId: string | undefined,
-  isGateway: boolean
-): void {
-  if (moderationRulesetId !== undefined && !isGateway) {
-    throw new ModerationRulesetIdRequiresGatewayError();
-  }
-}
-
 export class MissingApiKeyError extends SpeechSDKError {
   readonly providerName: string;
   readonly envVar: string;
