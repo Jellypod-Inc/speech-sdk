@@ -1,0 +1,49 @@
+src/stream-speech.ts
+  s_d5bd287d0fcb5c::t_9fa9b33d5f4cb7 144-145,147-148,150-151,153,158-163
+  s_d5bd287d0fcb5c::t_231be34ccf9e69 5
+src/errors.ts
+  s_d5bd287d0fcb5c::t_08a89db1295dd1 169-171,178-184,186-194
+CHANGELOG.md
+  s_d5bd287d0fcb5c::t_5714358e4e3085 8,16-18
+src/__tests__/generate-conversation.test.ts
+  s_d5bd287d0fcb5c::t_4a6a150f4642bf 573-589
+src/generate-conversation.ts
+  s_d5bd287d0fcb5c::t_b311feef81f379 37-40
+  s_d5bd287d0fcb5c::t_059222740a5309 348-350,357
+  s_d5bd287d0fcb5c::t_9e25a4ef301a6b 352,355-356
+src/conversation/validate.ts
+  s_d5bd287d0fcb5c::t_f27fcdff6ba087 7,10-12
+  s_d5bd287d0fcb5c::t_2fb9ce47e7d5ef 57-61
+src/__tests__/gateway.test.ts
+  s_d5bd287d0fcb5c::t_85a0f134e12943 929-1013
+src/providers/gateway/index.ts
+  s_d5bd287d0fcb5c::t_12dabf64e3aa7c 294-298,301,304-312,319-324,327
+  s_d5bd287d0fcb5c::t_e3c3bfff9f6a1a 562-563,571,576-582
+  s_d5bd287d0fcb5c::t_af0e19aae40788 440-442,448-458,484-523
+  s_d5bd287d0fcb5c::t_ab6ac3bc7d7078 104-144
+  s_d5bd287d0fcb5c::t_750ea5b66db16e 59-62,73
+  s_d5bd287d0fcb5c::t_82a0e5b48b45ed 63-72,74-87
+  s_d5bd287d0fcb5c::t_f9fc3ca8a458e1 216-224,227,230-232,242-251,254
+  s_d5bd287d0fcb5c::t_8768047d47fc58 406,409-411
+src/generate-speech.ts
+  s_d5bd287d0fcb5c::t_27b0662c2ee3a9 20
+  s_d5bd287d0fcb5c::t_4fc8b79e8aa714 262-267,270-271,280-288
+src/__tests__/stream-speech.test.ts
+  s_d5bd287d0fcb5c::t_e2f250579d9d14 207-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "8094467386b17f361183519d5c35e0869828e0b8",
+  "prompts": {},
+  "sessions": {
+    "s_d5bd287d0fcb5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "324337b8-d603-496f-97f4-3f015af8d675",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
