@@ -5,7 +5,7 @@ import {
 } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import { SpeechSDKError } from "../../errors.js";
+import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -15,6 +15,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -153,6 +154,10 @@ const ELEVENLABS_V3_LANGUAGES = [
   "ur",
   "vi",
   "cy",
+] as const;
+
+const ELEVENLABS_PCM_WAV_RATES = [
+  8000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
 ] as const;
 
 export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
@@ -348,7 +353,13 @@ export class ElevenLabsSpeechProvider
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    // ElevenLabs returns bare "audio/pcm" without a rate parameter for pcm_<rate>
+    // requests, which would cause downstream decoders to fall back to a default
+    // rate. Prefer what we asked for when output_format is set.
+    const mediaType =
+      outputFormat == null
+        ? (response.headers.get("content-type") ?? "audio/mpeg")
+        : elevenLabsFormatToMediaType(outputFormat);
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -377,7 +388,7 @@ export class ElevenLabsSpeechProvider
       );
     }
 
-    const { body, queryString } = this.buildRequest(
+    const { body, queryString, outputFormat } = this.buildRequest(
       options.text,
       options.modelId,
       options.providerOptions
@@ -421,19 +432,34 @@ export class ElevenLabsSpeechProvider
     return {
       audioDurationMs,
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/mpeg",
+      mediaType:
+        outputFormat == null
+          ? (response.headers.get("content-type") ?? "audio/mpeg")
+          : elevenLabsFormatToMediaType(outputFormat),
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { output_format: "pcm_24000" },
-        mediaType: "audio/pcm;rate=24000",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return ELEVENLABS_PCM_WAV_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `elevenlabs/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { output_format: `pcm_${rate}` },
+      mediaType: `audio/pcm;rate=${rate}`,
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -442,12 +468,26 @@ export class ElevenLabsSpeechProvider
     }
     switch (output.format) {
       case "pcm":
-      case "wav":
+      case "wav": {
+        const rate = resolveSampleRate(
+          `elevenlabs/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
-          providerOptions: { output_format: "pcm_24000" },
-          expectedMediaType: "audio/pcm;rate=24000",
+          providerOptions: { output_format: `pcm_${rate}` },
+          expectedMediaType: `audio/pcm;rate=${rate}`,
         };
+      }
       case "mp3": {
+        // ElevenLabs MP3 is gated to 44.1 kHz (the 22050/24000 special cases aren't selectable via bitrate alone).
+        if (output.sampleRate != null && output.sampleRate !== 44_100) {
+          throw new UnsupportedSampleRateError(
+            `elevenlabs/${modelId}`,
+            output.sampleRate,
+            [44_100]
+          );
+        }
         const bitrate = output.bitrate ?? DEFAULT_MP3_BITRATE_KBPS;
         const supportedBitrates = [32, 64, 96, 128, 192];
         const closest = supportedBitrates.reduce((prev, curr) =>
@@ -522,7 +562,11 @@ export class ElevenLabsSpeechProvider
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
+    // ElevenLabs returns bare "audio/pcm" for pcm_<rate> requests; derive from requested output_format.
+    const mediaType =
+      output_format == null
+        ? (response.headers.get("content-type") ?? "audio/mpeg")
+        : elevenLabsFormatToMediaType(String(output_format));
     const requestId = response.headers.get("request-id");
 
     return {

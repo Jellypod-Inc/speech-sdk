@@ -12,18 +12,17 @@ export {
   AudioOutputInputError,
   GatewayInputError,
   MissingApiKeyError,
-  ModerationRulesetIdRequiresGatewayError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   SpeechSDKError,
   StreamingNotSupportedError,
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,
+  UnsupportedSampleRateError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
-export { DictionaryIdsRequireGatewayError } from "./pronunciations/errors.js";
 export type {
   Pronunciation,
   PronunciationsInput,

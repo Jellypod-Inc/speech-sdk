@@ -16,6 +16,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -313,21 +314,38 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return { stream, mediaType, providerMetadata };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      // Provider wraps Gemini's raw PCM as WAV before returning; stitch decoding uses the WAV codepath.
-      return {
-        providerOptions: {},
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return [DEFAULT_GEMINI_SAMPLE_RATE];
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    resolveSampleRate(
+      `google/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    // Provider wraps Gemini's raw PCM as WAV before returning; stitch decoding uses the WAV codepath.
+    return {
+      providerOptions: {},
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    resolveSampleRate(
+      `google/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     // Gemini TTS endpoint has no format parameter — provider always wraps raw PCM as WAV.
     // SDK conversion path handles pcm-unwrap and mp3-encode from the wav baseline.
     if (

@@ -4,7 +4,7 @@
 
 # Speech SDK
 
-**Text-to-speech across 13 providers, one API.**
+**Text-to-speech across 14 providers, one API.**
 
 A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
 
@@ -66,7 +66,7 @@ The SDK has two ways to reach a provider, and the choice is made by **how you pa
 
 ```ts
 // 1. String → routes through Speech Gateway (https://api.speechbase.ai)
-//    Needs SPEECH_GATEWAY_API_KEY (sign up at https://speechbase.ai).
+//    Needs SPEECHBASE_API_KEY (sign up at https://speechbase.ai).
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
 // 2. Factory → calls the provider directly (no proxy hop)
@@ -78,26 +78,11 @@ await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', vo
 | | Speech Gateway (string) | Direct provider (factory) |
 |---|---|---|
 | When to use | You want a single endpoint and easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
-| Setup | `SPEECH_GATEWAY_API_KEY` only | One env var per provider you use |
-| Key resolution | `apiKey` option → `SPEECH_GATEWAY_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
+| Setup | `SPEECHBASE_API_KEY` only | One env var per provider you use |
+| Key resolution | `apiKey` option → `SPEECHBASE_API_KEY` → `SPEECH_GATEWAY_API_KEY` (legacy) | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
 | Endpoint | `api.speechbase.ai` | Provider's own API |
 
 The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
-
-### Per-request moderation ruleset (gateway only)
-
-Pass an optional `moderationRulesetId` (UUID) on `generateSpeech`, `streamSpeech`, or `generateConversation` to override the org's default moderation ruleset for that one request.
-
-```ts
-await generateSpeech({
-  model: 'openai/tts-1',
-  voice: 'alloy',
-  text: 'Hello.',
-  moderationRulesetId: '11111111-1111-1111-1111-111111111111',
-});
-```
-
-If the ID is missing, deleted, or belongs to another org, the gateway falls back to the org default. Gateway-only — passing it on a direct-provider model or non-gateway conversation path throws `ModerationRulesetIdRequiresGatewayError`.
 
 ## Supported providers
 
@@ -116,8 +101,9 @@ If the ID is missing, deleted, or belongs to another org, the gateway falls back
 | [fal](https://fal.ai/models) | `fal-ai` | `FAL_API_KEY` |
 | [Mistral](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) | `mistral` | `MISTRAL_API_KEY` |
 | [xAI](https://docs.x.ai/docs/models) | `xai` | `XAI_API_KEY` |
+| [MiniMax](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | `minimax` | `MINIMAX_API_KEY` |
 
-The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECH_GATEWAY_API_KEY` — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
+The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 
@@ -129,7 +115,7 @@ Provider-specific parameters pass through via `providerOptions` using each API's
 import { streamSpeech } from '@speech-sdk/core';
 
 const { audio, mediaType } = await streamSpeech({
-  model: 'cartesia/sonic-3',
+  model: 'cartesia/sonic-3.5',
   text: 'Streaming straight to the client.',
   voice: 'voice-id',
 });
@@ -324,22 +310,6 @@ await generateSpeech({
   },
 });
 ```
-
-Stored dictionaries are referenced by ID and resolved server-side (gateway path only):
-
-```ts
-await generateSpeech({
-  model: 'openai/tts-1',
-  voice: 'alloy',
-  text: 'What is LLM?',
-  pronunciations: {
-    dictionaryIds: ['dict_company_terms'],
-    rules: [{ word: 'LLM', replacement: 'el el em' }], // overrides dict matches
-  },
-});
-```
-
-`dictionaryIds` requires the gateway path. On the direct-provider path, passing dictionary IDs throws `DictionaryIdsRequireGatewayError`. Inline `rules` work on both paths.
 
 The same option is available on `streamSpeech` and `generateConversation`. On `generateConversation`, the option applies globally to every turn.
 

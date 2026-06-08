@@ -1,6 +1,6 @@
 # All Providers
 
-SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<prefix>/<model>"`) read `SPEECH_GATEWAY_API_KEY` and dispatch to the hosted backend. Provider factories (`create<Name>()`) call upstream providers directly with provider-specific keys. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. Some providers have no default and require an explicit model path.
+SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<prefix>/<model>"`) read `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) and dispatch to the hosted backend. Provider factories (`create<Name>()`) call upstream providers directly with provider-specific keys. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. Some providers have no default and require an explicit model path.
 
 ## Provider Table
 
@@ -20,6 +20,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Mistral      | `mistral`      | `MISTRAL_API_KEY`      |
 | xAI          | `xai`          | `XAI_API_KEY`          |
 | Smallest AI  | `smallest-ai`  | `SMALLEST_API_KEY`     |
+| MiniMax      | `minimax`      | `MINIMAX_API_KEY`      |
 
 ## Capability Matrix
 
@@ -39,6 +40,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Mistral     | Yes            | No                    | Yes            | Via STT     | Yes         |
 | xAI         | Yes            | Yes                   | No             | Via STT     | No          |
 | Smallest AI | No             | No                    | No             | Via STT     | No          |
+| MiniMax     | No             | No                    | No             | Via STT     | No          |
 
 Capabilities are per-model — see each provider file in `providers/<name>.md` for which models within a provider support what.
 
@@ -84,4 +86,4 @@ await generateSpeech({
 
 ## API Key Resolution
 
-String models read `SPEECH_GATEWAY_API_KEY` or use the `apiKey` option. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.
+String models read `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`) or use the `apiKey` option. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.

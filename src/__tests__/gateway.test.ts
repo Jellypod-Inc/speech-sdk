@@ -105,6 +105,26 @@ describe("SpeechGatewayProvider", () => {
     expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
   });
 
+  it("forwards output.sampleRate to the gateway request body", async () => {
+    const fetchFn = mockFetchOk();
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+      output: { format: "wav", sampleRate: 48_000 },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.output).toEqual({ format: "wav", sampleRate: 48_000 });
+    expect(body.output.sampleRate).toBe(48_000);
+  });
+
   it("hits /audio/speech/with-timestamps and parses base64 audio when timestamps are requested", async () => {
     const fetchFn = mockFetchJson({
       audio: btoa("Hello"),
@@ -251,6 +271,28 @@ describe("SpeechGatewayProvider", () => {
     expect(result.providerMetadata).toBeUndefined();
   });
 
+  it("posts streaming requests to the dedicated /audio/speech/stream endpoint", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>(),
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.stream({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+    });
+
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe("https://api.speechbase.ai/v1/audio/speech/stream");
+  });
+
   it("has an empty models array — gateway server is the source of truth for model capabilities", () => {
     const provider = new SpeechGatewayProvider({});
     expect(provider.models).toEqual([]);
@@ -386,8 +428,85 @@ describe("SpeechGatewayProvider", () => {
     expect(apiError.code).toBeUndefined();
   });
 
+  it("reads SPEECHBASE_API_KEY from the environment", async () => {
+    const savedSpeechbase = process.env.SPEECHBASE_API_KEY;
+    const savedGateway = process.env.SPEECH_GATEWAY_API_KEY;
+    process.env.SPEECHBASE_API_KEY = "speechbase-env-key";
+    process.env.SPEECH_GATEWAY_API_KEY = "";
+    try {
+      const fetchFn = mockFetchOk();
+      const provider = new SpeechGatewayProvider({
+        fetch: fetchFn as unknown as typeof globalThis.fetch,
+      });
+
+      await provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      });
+
+      const [, init] = fetchFn.mock.calls[0];
+      expect(init.headers.Authorization).toBe("Bearer speechbase-env-key");
+    } finally {
+      process.env.SPEECHBASE_API_KEY = savedSpeechbase ?? "";
+      process.env.SPEECH_GATEWAY_API_KEY = savedGateway ?? "";
+    }
+  });
+
+  it("prefers SPEECHBASE_API_KEY over the legacy SPEECH_GATEWAY_API_KEY", async () => {
+    const savedSpeechbase = process.env.SPEECHBASE_API_KEY;
+    const savedGateway = process.env.SPEECH_GATEWAY_API_KEY;
+    process.env.SPEECHBASE_API_KEY = "new-key";
+    process.env.SPEECH_GATEWAY_API_KEY = "legacy-key";
+    try {
+      const fetchFn = mockFetchOk();
+      const provider = new SpeechGatewayProvider({
+        fetch: fetchFn as unknown as typeof globalThis.fetch,
+      });
+
+      await provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      });
+
+      const [, init] = fetchFn.mock.calls[0];
+      expect(init.headers.Authorization).toBe("Bearer new-key");
+    } finally {
+      process.env.SPEECHBASE_API_KEY = savedSpeechbase ?? "";
+      process.env.SPEECH_GATEWAY_API_KEY = savedGateway ?? "";
+    }
+  });
+
+  it("falls back to the legacy SPEECH_GATEWAY_API_KEY when SPEECHBASE_API_KEY is unset", async () => {
+    const savedSpeechbase = process.env.SPEECHBASE_API_KEY;
+    const savedGateway = process.env.SPEECH_GATEWAY_API_KEY;
+    process.env.SPEECHBASE_API_KEY = "";
+    process.env.SPEECH_GATEWAY_API_KEY = "legacy-key";
+    try {
+      const fetchFn = mockFetchOk();
+      const provider = new SpeechGatewayProvider({
+        fetch: fetchFn as unknown as typeof globalThis.fetch,
+      });
+
+      await provider.generate({
+        modelId: "openai/tts-1",
+        text: "Hello",
+        voice: "alloy",
+      });
+
+      const [, init] = fetchFn.mock.calls[0];
+      expect(init.headers.Authorization).toBe("Bearer legacy-key");
+    } finally {
+      process.env.SPEECHBASE_API_KEY = savedSpeechbase ?? "";
+      process.env.SPEECH_GATEWAY_API_KEY = savedGateway ?? "";
+    }
+  });
+
   it("throws a signup-friendly error when no apiKey or env var is set", async () => {
-    const savedKey = process.env.SPEECH_GATEWAY_API_KEY;
+    const savedSpeechbase = process.env.SPEECHBASE_API_KEY;
+    const savedGateway = process.env.SPEECH_GATEWAY_API_KEY;
+    process.env.SPEECHBASE_API_KEY = "";
     process.env.SPEECH_GATEWAY_API_KEY = "";
     try {
       const provider = new SpeechGatewayProvider({});
@@ -399,9 +518,8 @@ describe("SpeechGatewayProvider", () => {
         })
       ).rejects.toBeInstanceOf(MissingApiKeyError);
     } finally {
-      if (savedKey != null) {
-        process.env.SPEECH_GATEWAY_API_KEY = savedKey;
-      }
+      process.env.SPEECHBASE_API_KEY = savedSpeechbase ?? "";
+      process.env.SPEECH_GATEWAY_API_KEY = savedGateway ?? "";
     }
   });
 });
@@ -620,5 +738,24 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body.output).toEqual({ format: "mp3", bitrate: 96 });
+  });
+
+  it("forwards output.sampleRate to the gateway conversation request body", async () => {
+    const fetchFn = mockFetchAudio(new Uint8Array([65, 66, 67]), "audio/wav");
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [{ voice: "alloy", text: "Hi." }],
+      output: { format: "pcm", sampleRate: 16_000 },
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.output).toEqual({ format: "pcm", sampleRate: 16_000 });
+    expect(body.output.sampleRate).toBe(16_000);
   });
 });

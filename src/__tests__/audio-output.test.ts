@@ -11,6 +11,7 @@ import { encodePcm16ToMp3 } from "../encoders/mp3.js";
 import { AudioOutputInputError } from "../errors.js";
 
 const MPEG_FRAME_SYNC_BYTE_2_MASK = 0xe0;
+const SAMPLE_RATE_ERR_RE = /sampleRate/;
 
 function makePcm16Bytes(numSamples: number): Uint8Array {
   const samples = new Int16Array(numSamples);
@@ -57,6 +58,27 @@ describe("audio-output", () => {
     expect(mediaTypeForOutput({ format: "pcm", sampleRate: 24_000 })).toBe(
       "audio/pcm;rate=24000"
     );
+  });
+
+  it("accepts sampleRate on mp3 output alongside bitrate", () => {
+    expect(
+      validateOutput({ format: "mp3", bitrate: 192, sampleRate: 48_000 })
+    ).toEqual({ format: "mp3", bitrate: 192, sampleRate: 48_000 });
+  });
+
+  it("rejects non-positive sampleRate", () => {
+    expect(() => validateOutput({ format: "wav", sampleRate: 0 })).toThrow(
+      SAMPLE_RATE_ERR_RE
+    );
+    expect(() => validateOutput({ format: "pcm", sampleRate: -1 })).toThrow(
+      SAMPLE_RATE_ERR_RE
+    );
+  });
+
+  it("rejects non-integer sampleRate", () => {
+    expect(() =>
+      validateOutput({ format: "wav", sampleRate: 44_100.5 })
+    ).toThrow(SAMPLE_RATE_ERR_RE);
   });
 });
 
@@ -133,6 +155,19 @@ describe("convertDecodableAudioToOutput", () => {
     expect(result.audio[1] & MPEG_FRAME_SYNC_BYTE_2_MASK).toBe(
       MPEG_FRAME_SYNC_BYTE_2_MASK
     );
+  });
+
+  it("encodes mp3 at 8000 Hz (MPEG-2.5) without throwing", async () => {
+    const pcm = makePcm16Bytes(8000);
+
+    const result = await convertDecodableAudioToOutput({
+      audio: pcm,
+      mediaType: "audio/pcm;rate=8000",
+      output: { format: "mp3", bitrate: DEFAULT_MP3_BITRATE_KBPS },
+    });
+
+    expect(result.mediaType).toBe("audio/mpeg");
+    expect(result.audio[0]).toBe(0xff);
   });
 
   it("rejects unsupported source media types", async () => {

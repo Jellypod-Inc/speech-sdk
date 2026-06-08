@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.14.0
+
+- **Breaking: removed `moderationRulesetId`.** This option only worked on the Speechbase gateway path and had no meaning for direct providers. The SDK is provider-neutral — nothing in it should require the Speechbase gateway — so it has been dropped along with the `ModerationRulesetIdRequiresGatewayError` it threw on direct-provider models. To override a moderation ruleset per request, call the Speechbase REST API directly.
+- **Breaking: removed `pronunciations.dictionaryIds`.** Saved server-side pronunciation dictionaries were a gateway-only feature, so the option and its `DictionaryIdsRequireGatewayError` have been removed for the same provider-neutrality reason. Use the Speechbase REST API directly if you need stored dictionaries.
+- **`pronunciations.rules` is unchanged.** Inline pronunciation rules continue to work on every provider — client-side text substitution on direct providers, server-side on the gateway — on `generateSpeech`, `streamSpeech`, and `generateConversation`.
+
+## 0.13.0
+
+- Add the **MiniMax** TTS provider (`minimax` prefix, `createMiniMax()` factory, `MINIMAX_API_KEY`). Ships MiniMax's current flagship T2A v2 models: `speech-2.8-hd` (default) and `speech-2.8-turbo`. The SDK decodes MiniMax's hex-encoded audio envelope, surfaces logical `base_resp` failures as `ApiError` (rate limits retried), and supports `wav` / `pcm` / `mp3` output at 8/16/22.05/24/32/44.1 kHz. `providerOptions` mirror the T2A request body (`voice_setting`, `audio_setting`, `language_boost`, …). Set `groupId` (or `MINIMAX_GROUP_ID`) for endpoints that require a Group ID.
+
+## 0.12.0
+
+- Add Cartesia `sonic-3.5` (`cartesia/sonic-3.5`), Cartesia's latest flagship TTS model. It carries the same capabilities as `sonic-3` — streaming, emotion/audio tags via SSML, inline voice cloning, and native word timestamps — across all 42 supported languages, and is a drop-in replacement for `sonic-3`.
+- **Cartesia default model is now `sonic-3.5`** (previously `sonic-3`). Calls that omit the model id (`createCartesia()()` or the bare `"cartesia"` string) now resolve to `sonic-3.5`. Existing voice IDs and prompts work unchanged. Pin `cartesia/sonic-3` explicitly to keep the previous default.
+
+## 0.11.1
+
+- Gateway streaming now targets the dedicated `POST /v1/audio/speech/stream` endpoint instead of the buffered `POST /v1/audio/speech`. `streamSpeech` against the gateway returns true low-latency, chunk-by-chunk audio again; previously it degraded to a single un-chunked response. No public API change; non-streaming models still surface `StreamingNotSupportedError`.
+- Gateway key resolution now reads `SPEECHBASE_API_KEY` first and falls back to `SPEECH_GATEWAY_API_KEY` for backward compatibility. An explicit `apiKey` option still wins over both. The missing-key / 401 error messages now reference `SPEECHBASE_API_KEY`.
+
+## 0.11.0
+
+- **Breaking: per-provider default sample rate raised.** Providers that natively support higher rates now default to their highest documented rate instead of 24 kHz: ElevenLabs, Cartesia, Deepgram Aura, Inworld, Murf, Fish Audio (44.1 kHz), and xAI. Stitch and chunk-stitch paths now use `max(per-segment rate)` instead of a 24 kHz constant. Single-rate providers (OpenAI 24 kHz, Google 24 kHz, Hume 48 kHz, Mistral 24 kHz, Resemble 44.1 kHz, Smallest-AI 24 kHz) declare their fixed rate and reject mismatches. Fal remains a pass-through with no rate selection.
+  - **ElevenLabs free-tier callers** will see ElevenLabs reject PCM/WAV requests at ≥44.1 kHz. Pass `output: { format: "pcm", sampleRate: 24000 }` to keep the previous behavior.
+- **New `output.sampleRate` option** on `AudioOutput`. Pass a positive integer to request a specific rate. Providers throw `UnsupportedSampleRateError` if the rate isn't in their documented set.
+- **Fix: `volumeDbfs` no longer hard-clips transient consonants.** `normalizeRms` is now peak-aware: it caps the RMS-targeted gain so post-gain peaks stay ≤0.99 × INT16_MAX. If the source can't reach the requested RMS without clipping, the SDK preserves the source's dynamic range instead of distorting transients.
+- New `UnsupportedSampleRateError` thrown when the caller requests a `sampleRate` the provider's API doesn't expose.
+- **Fix: `output: { format: "mp3", sampleRate }` at 8/11.025/12 kHz no longer crashes the MP3 encoder.** The encoder now accepts the full MPEG-1/2/2.5 rate set; previously a low rate that passed provider validation threw deep in the local MP3-conversion (volume/chunk/conversation-stitch) path.
+- **Fix: Fish Audio MP3 now validates `sampleRate` against its documented MP3 set (32 kHz / 44.1 kHz)** and forwards it, instead of silently dropping the requested rate; out-of-set rates throw `UnsupportedSampleRateError` like every other format.
+- **Fix: Murf FALCON** declares its streaming-endpoint rate set (adds 16 kHz) separately from GEN2's `/speech/generate` set.
+- **Fix: Fal** throws `UnsupportedSampleRateError` when a caller explicitly requests `output.sampleRate` (it has no rate selection) rather than silently returning audio at its native rate.
+- **Fix: Resemble now forwards `sample_rate`.** Resemble's `/synthesize` accepts a documented `sample_rate` string enum (8/16/22.05/32/44.1/48 kHz); the SDK previously sent none and let the API pick an undocumented default (~32 kHz), so requested rates were ignored. It now declares the full set and forwards the chosen rate.
+- **Fix: Murf FALCON `pcm` output.** FALCON's `generate`/`stream` derived mediaType from the response Content-Type (defaulting to `audio/wav`), mislabeling raw headerless PCM as WAV so it failed to decode. It now derives mediaType from the request like GEN2.
+- Stitch and chunk-stitch now throw if no decoded segment carries a positive sample rate, instead of emitting a 0 Hz WAV.
+
 ## 0.10.1
 
 - `generateConversation` no longer throws `ConversationInputError` when a turn carries `providerOptions` on a model that dispatches to native dialogue (e.g. `elevenlabs/eleven_v3`, Gemini multi-speaker). Dispatch falls through to the stitch path and surfaces a warning so callers can see they paid for extra API calls instead of one native call.

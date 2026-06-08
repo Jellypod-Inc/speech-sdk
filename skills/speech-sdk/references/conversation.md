@@ -39,8 +39,7 @@ result.audio.mediaType
 - `providerOptions` — top-level; merged with per-turn provider options
 - `output` — `{ format: "wav" | "pcm" | "mp3", bitrate? }`
 - `speed` — `0.75–1.5`, applies to the merged audio. Per-turn `speed` applies first, then top-level applies to the mix.
-- `pronunciations` — `{ rules, dictionaryIds? }` (`dictionaryIds` is gateway-only)
-- `moderationRulesetId` — gateway-only
+- `pronunciations` — `{ rules }`
 - `maxInputChars` — override per-model chunk threshold (direct paths only)
 - `maxConcurrency` — parallel turn requests when stitched, default 6
 - `maxRetries` — per-turn retries, default 2

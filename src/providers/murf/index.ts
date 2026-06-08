@@ -5,10 +5,11 @@ import {
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
-import type {
-  ModelInfo,
-  ResolvedModel,
-  SpeechProvider,
+import {
+  type ModelInfo,
+  type ResolvedModel,
+  resolveSampleRate,
+  type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
@@ -31,6 +32,13 @@ export interface MurfSpeechProviderConfig {
 }
 
 export const MURF_PROVIDER_ID = "murf" as const;
+
+// GEN2 (POST /speech/generate) documents 8000/24000/44100/48000; FALCON streams
+// via POST /speech/stream, which additionally accepts 16000.
+const MURF_GEN2_SAMPLE_RATES = [8000, 24_000, 44_100, 48_000] as const;
+const MURF_FALCON_SAMPLE_RATES = [
+  8000, 16_000, 24_000, 44_100, 48_000,
+] as const;
 
 export const MURF_MODELS: readonly ModelInfo[] = [
   {
@@ -145,10 +153,11 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
     if (isFalcon) {
       const arrayBuffer = await response.arrayBuffer();
-      const mediaType = response.headers.get("content-type") ?? "audio/wav";
+      // FALCON streams raw PCM (headerless) for format=PCM; the Content-Type
+      // header doesn't carry the rate, so derive mediaType from the request like GEN2.
       return {
         audio: new Uint8Array(arrayBuffer),
-        mediaType,
+        mediaType: murfMediaType(body.format, body.sampleRate),
       };
     }
 
@@ -210,40 +219,58 @@ export class MurfSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       stream: response.body,
-      mediaType: response.headers.get("content-type") ?? "audio/wav",
+      mediaType: murfMediaType(body.format, body.sampleRate),
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      // GEN2 base64 WAV and FALCON streamed WAV both yield audio/wav with no overrides needed.
-      return {
-        providerOptions: {},
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return modelId === "FALCON"
+      ? MURF_FALCON_SAMPLE_RATES
+      : MURF_GEN2_SAMPLE_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `murf/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { format: "WAV", sampleRate: rate },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
     if (!this.models.some((m) => m.id === modelId)) {
       return;
     }
+    const rate = resolveSampleRate(
+      `murf/${modelId}`,
+      this.supportedSampleRates(modelId),
+      output.sampleRate
+    );
     switch (output.format) {
       case "wav":
         return {
-          providerOptions: { format: "WAV", sampleRate: 24_000 },
+          providerOptions: { format: "WAV", sampleRate: rate },
           expectedMediaType: "audio/wav",
         };
       case "mp3":
         return {
-          providerOptions: { format: "MP3", sampleRate: 24_000 },
+          providerOptions: { format: "MP3", sampleRate: rate },
           expectedMediaType: "audio/mpeg",
         };
       case "pcm":
         return {
-          providerOptions: { format: "PCM", sampleRate: 24_000 },
-          expectedMediaType: "audio/pcm;rate=24000",
+          providerOptions: { format: "PCM", sampleRate: rate },
+          expectedMediaType: `audio/pcm;rate=${rate}`,
         };
       default:
         return;

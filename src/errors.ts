@@ -81,6 +81,22 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class UnsupportedSampleRateError extends SpeechSDKError {
+  readonly requested: number;
+  readonly supported: readonly number[];
+
+  constructor(model: string, requested: number, supported: readonly number[]) {
+    const detail =
+      supported.length > 0
+        ? ` Supported rates: ${supported.join(", ")}.`
+        : " This provider does not support sample rate selection.";
+    super(`${model} does not support sampleRate ${requested}.${detail}`);
+    this.name = "UnsupportedSampleRateError";
+    this.requested = requested;
+    this.supported = supported;
+  }
+}
+
 export class OutputConversionUnsupportedError extends SpeechSDKError {
   constructor(model: string) {
     super(
@@ -110,24 +126,6 @@ export class GatewayInputError extends SpeechSDKError {
   constructor(message: string) {
     super(message);
     this.name = "GatewayInputError";
-  }
-}
-
-export class ModerationRulesetIdRequiresGatewayError extends SpeechSDKError {
-  constructor() {
-    super(
-      "moderationRulesetId requires the gateway path. Use a gateway model string (e.g., 'openai/tts-1') or createSpeechGateway() — the field is meaningless without a gateway in front."
-    );
-    this.name = "ModerationRulesetIdRequiresGatewayError";
-  }
-}
-
-export function assertGatewayForModerationRulesetId(
-  moderationRulesetId: string | undefined,
-  isGateway: boolean
-): void {
-  if (moderationRulesetId !== undefined && !isGateway) {
-    throw new ModerationRulesetIdRequiresGatewayError();
   }
 }
 

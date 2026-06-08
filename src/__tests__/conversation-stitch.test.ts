@@ -23,6 +23,35 @@ function mockProvider(audioPayload: Int16Array): SpeechProvider {
   };
 }
 
+function mockProviderAtRate(
+  audioPayload: Int16Array,
+  sampleRate: number
+): SpeechProvider {
+  const bytes = new Uint8Array(
+    audioPayload.buffer,
+    audioPayload.byteOffset,
+    audioPayload.byteLength
+  );
+  return {
+    id: "mock",
+    defaultModel: "m",
+    models: [],
+    generate: vi.fn().mockResolvedValue({
+      audio: bytes,
+      mediaType: `audio/pcm;rate=${sampleRate}`,
+    }),
+    getStitchOptions: () => ({
+      providerOptions: { format: `pcm${sampleRate / 1000}k` },
+      mediaType: `audio/pcm;rate=${sampleRate}`,
+    }),
+  };
+}
+
+function readWavSampleRate(wav: Uint8Array): number {
+  const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+  return view.getUint32(24, true);
+}
+
 function readWavFirstSample(wav: Uint8Array): number {
   const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
   let offset = 12;
@@ -146,5 +175,38 @@ describe("runStitch", () => {
     expect(result.metadataPerTurn[0].latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.metadataPerTurn[0].inputChars).toBe("hi".length);
     expect(result.metadataPerTurn[1].inputChars).toBe("hello".length);
+  });
+
+  it("uses the max per-segment rate as the stitch target (no downsample)", async () => {
+    const seg = new Int16Array(4800);
+    seg.fill(7);
+    const provider = mockProviderAtRate(seg, 48_000);
+    const resolved: ResolvedModel[] = [
+      { provider, modelId: "m" },
+      { provider, modelId: "m" },
+    ];
+
+    const result = await runStitch({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "hi" },
+        { voice: "b", text: "hello" },
+      ],
+      stitchOptionsPerTurn: [
+        {
+          providerOptions: { format: "pcm48k" },
+          mediaType: "audio/pcm;rate=48000",
+        },
+        {
+          providerOptions: { format: "pcm48k" },
+          mediaType: "audio/pcm;rate=48000",
+        },
+      ],
+      gapMs: 0,
+      maxConcurrency: 2,
+      maxRetries: 0,
+    });
+
+    expect(readWavSampleRate(result.audio)).toBe(48_000);
   });
 });

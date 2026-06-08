@@ -7,6 +7,7 @@ import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
+import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
 import { MistralSpeechProvider } from "../providers/mistral/index.js";
 import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
@@ -25,7 +26,7 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("ElevenLabs returns pcm_24000 for all supported models", () => {
+  it("ElevenLabs returns pcm_48000 (highest supported rate) for all supported models by default", () => {
     const p = new ElevenLabsSpeechProvider({});
     for (const m of [
       "eleven_v3",
@@ -34,8 +35,8 @@ describe("getStitchOptions per provider", () => {
       "eleven_flash_v2",
     ] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
-        providerOptions: { output_format: "pcm_24000" },
-        mediaType: "audio/pcm;rate=24000",
+        providerOptions: { output_format: "pcm_48000" },
+        mediaType: "audio/pcm;rate=48000",
       });
     }
   });
@@ -61,7 +62,7 @@ describe("getStitchOptions per provider", () => {
     }
   });
 
-  it("Cartesia returns wav pcm_s16le 24k", () => {
+  it("Cartesia returns wav pcm_s16le 48k (highest supported rate) by default", () => {
     const p = new CartesiaSpeechProvider({});
     const opts = p.getStitchOptions?.("sonic-3");
     expect(opts?.mediaType).toBe("audio/wav");
@@ -69,57 +70,57 @@ describe("getStitchOptions per provider", () => {
       output_format: {
         container: "wav",
         encoding: "pcm_s16le",
-        sample_rate: 24_000,
+        sample_rate: 48_000,
       },
     });
   });
 
-  it("Deepgram returns linear16 wav 24k", () => {
+  it("Deepgram returns linear16 wav 48k (highest supported rate) by default", () => {
     const p = new DeepgramSpeechProvider({});
     expect(p.getStitchOptions?.("aura-2")).toEqual({
       providerOptions: {
         encoding: "linear16",
-        sample_rate: 24_000,
+        sample_rate: 48_000,
         container: "wav",
       },
       mediaType: "audio/wav",
     });
   });
 
-  it("Inworld returns LINEAR16 audio_config 24k", () => {
+  it("Inworld returns LINEAR16 audio_config at 48k (highest supported rate) by default", () => {
     const p = new InworldSpeechProvider({});
     const opts = p.getStitchOptions?.("inworld-tts-1.5-max");
     expect(opts?.mediaType).toBe("audio/wav");
     expect(opts?.providerOptions).toEqual({
       audio_config: {
         audio_encoding: "LINEAR16",
-        sample_rate_hertz: 24_000,
+        sample_rate_hertz: 48_000,
       },
     });
   });
 
-  it("Fish Audio returns wav format for s2-pro", () => {
+  it("Fish Audio returns wav format at 44.1k (highest WAV/PCM rate) for s2-pro", () => {
     const p = new FishAudioSpeechProvider({});
     expect(p.getStitchOptions?.("s2-pro")).toEqual({
-      providerOptions: { format: "wav" },
+      providerOptions: { format: "wav", sample_rate: 44_100 },
       mediaType: "audio/wav",
     });
   });
 
-  it("Murf returns wav for GEN2 and FALCON", () => {
+  it("Murf returns wav at 48k (highest supported rate) for GEN2 and FALCON", () => {
     const p = new MurfSpeechProvider({});
     for (const m of ["GEN2", "FALCON"] as const) {
       expect(p.getStitchOptions?.(m)).toEqual({
-        providerOptions: {},
+        providerOptions: { format: "WAV", sampleRate: 48_000 },
         mediaType: "audio/wav",
       });
     }
   });
 
-  it("Resemble returns wav with PCM_16 precision (default is PCM_32, not decodable)", () => {
+  it("Resemble returns wav with PCM_16 precision and the default (highest) sample_rate", () => {
     const p = new ResembleSpeechProvider({});
     expect(p.getStitchOptions?.("default")).toEqual({
-      providerOptions: { precision: "PCM_16" },
+      providerOptions: { precision: "PCM_16", sample_rate: "48000" },
       mediaType: "audio/wav",
     });
   });
@@ -142,15 +143,25 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("xAI returns wav via output_format.codec", () => {
+  it("xAI returns wav via output_format.codec at 48k (highest supported rate)", () => {
     const p = new XaiSpeechProvider({});
     expect(p.getStitchOptions?.("grok-tts")).toEqual({
-      providerOptions: { output_format: { codec: "wav" } },
+      providerOptions: { output_format: { codec: "wav", sample_rate: 48_000 } },
       mediaType: "audio/wav",
     });
   });
 
-  it("Smallest AI returns wav for lightning_v3.1", () => {
+  it("MiniMax returns pcm at 44.1k (highest supported rate) by default", () => {
+    const p = new MiniMaxSpeechProvider({});
+    expect(p.getStitchOptions?.("speech-2.8-hd")).toEqual({
+      providerOptions: {
+        audio_setting: { format: "pcm", sample_rate: 44_100, channel: 1 },
+      },
+      mediaType: "audio/pcm;rate=44100",
+    });
+  });
+
+  it("Smallest AI returns wav for lightning-v3.1", () => {
     const p = new SmallestAISpeechProvider({});
     expect(p.getStitchOptions?.("lightning_v3.1")).toEqual({
       providerOptions: { output_format: "wav" },
@@ -175,6 +186,7 @@ describe("getStitchOptions per provider", () => {
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
       new MistralSpeechProvider({}),
+      new MiniMaxSpeechProvider({}),
       new SmallestAISpeechProvider({}),
     ];
     for (const p of providers) {

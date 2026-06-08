@@ -21,14 +21,12 @@ describe("gateway passthrough of pronunciations", () => {
       voice: "alloy",
       text: "What is LLM?",
       pronunciations: {
-        dictionaryIds: ["d1"],
         rules: [{ word: "LLM", replacement: "el el em" }],
       },
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
     expect(body.pronunciations).toEqual({
-      dictionaryIds: ["d1"],
       rules: [{ word: "LLM", replacement: "el el em" }],
     });
     expect(body.text).toBe("What is LLM?");
@@ -54,10 +52,12 @@ describe("gateway passthrough of pronunciations", () => {
       model: gw("openai/tts-1"),
       voice: "alloy",
       text: "Hi",
-      pronunciations: { dictionaryIds: ["d1"] },
+      pronunciations: { rules: [{ word: "Hi", replacement: "high" }] },
     });
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
-    expect(body.pronunciations).toEqual({ dictionaryIds: ["d1"] });
+    expect(body.pronunciations).toEqual({
+      rules: [{ word: "Hi", replacement: "high" }],
+    });
   });
 
   it("omits the pronunciations field when caller did not pass it", async () => {

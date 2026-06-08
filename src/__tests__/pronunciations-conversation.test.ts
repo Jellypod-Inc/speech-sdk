@@ -112,9 +112,6 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
   });
 });
 
-// Top-level regex per lint rules.
-const DICT_IDS_RE = /dictionaryIds/i;
-
 describe("generateConversation with pronunciations (stitch path)", () => {
   it("applies pronunciation rules to each turn's text before calling provider.generate", async () => {
     // PCM Int16 2400-sample payload (0.1 s at 24kHz) — decodeToPcm16 handles raw PCM.
@@ -174,36 +171,13 @@ describe("generateConversation with pronunciations (gateway path)", () => {
         { text: "T1", voice: "alloy" },
         { text: "T2", voice: "echo" },
       ],
-      pronunciations: { dictionaryIds: ["d1"] },
+      pronunciations: { rules: [{ word: "T1", replacement: "tee one" }] },
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
-    expect(body.pronunciations).toEqual({ dictionaryIds: ["d1"] });
-  });
-
-  it("throws DictionaryIdsRequireGatewayError on stitch path with dictionary ids", async () => {
-    const fakeProvider = {
-      id: "fake",
-      defaultModel: "f1",
-      models: [{ id: "f1", features: [], languages: [], releaseDate: "" }],
-      generate: vi.fn(),
-      getStitchOptions: () => ({
-        providerOptions: {},
-        mediaType: "audio/pcm;rate=24000",
-      }),
-    };
-    const fakeModel = { provider: fakeProvider, modelId: "f1" } as never;
-
-    await expect(() =>
-      generateConversation({
-        model: fakeModel,
-        turns: [
-          { text: "T1", voice: "v1" },
-          { text: "T2", voice: "v2" },
-        ],
-        pronunciations: { dictionaryIds: ["d1"] },
-      })
-    ).rejects.toThrow(DICT_IDS_RE);
+    expect(body.pronunciations).toEqual({
+      rules: [{ word: "T1", replacement: "tee one" }],
+    });
   });
 
   it("is a no-op when pronunciations is undefined (gateway path)", async () => {

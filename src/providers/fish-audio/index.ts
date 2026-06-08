@@ -9,6 +9,7 @@ import {
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
+  resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
@@ -21,6 +22,10 @@ export interface FishAudioSpeechProviderConfig {
 }
 
 export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
+
+// Fish Audio WAV/PCM accepts 8k–44.1k; MP3 is 32k–44.1k and Opus is 48k only.
+const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
+const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
   {
@@ -158,14 +163,26 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  getStitchOptions(modelId: string) {
-    if (this.models.some((m) => m.id === modelId)) {
-      return {
-        providerOptions: { format: "wav" },
-        mediaType: "audio/wav",
-      };
+  supportedSampleRates(modelId: string): readonly number[] {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return [];
     }
-    return;
+    return FISH_AUDIO_WAV_RATES;
+  }
+
+  getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {
+    if (!this.models.some((m) => m.id === modelId)) {
+      return;
+    }
+    const rate = resolveSampleRate(
+      `fish-audio/${modelId}`,
+      this.supportedSampleRates(modelId),
+      opts?.sampleRate
+    );
+    return {
+      providerOptions: { format: "wav", sample_rate: rate },
+      mediaType: "audio/wav",
+    };
   }
 
   resolveOutputFormat(modelId: string, output: AudioOutput) {
@@ -173,21 +190,40 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       return;
     }
     switch (output.format) {
-      case "wav":
+      case "wav": {
+        const rate = resolveSampleRate(
+          `fish-audio/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
-          providerOptions: { format: "wav" },
+          providerOptions: { format: "wav", sample_rate: rate },
           expectedMediaType: "audio/wav",
         };
-      case "mp3":
+      }
+      case "mp3": {
+        // Fish MP3 supports a narrower set than WAV/PCM (32k/44.1k only).
+        const rate = resolveSampleRate(
+          `fish-audio/${modelId}`,
+          FISH_AUDIO_MP3_RATES,
+          output.sampleRate
+        );
         return {
-          providerOptions: { format: "mp3" },
+          providerOptions: { format: "mp3", sample_rate: rate },
           expectedMediaType: "audio/mpeg",
         };
-      case "pcm":
+      }
+      case "pcm": {
+        const rate = resolveSampleRate(
+          `fish-audio/${modelId}`,
+          this.supportedSampleRates(modelId),
+          output.sampleRate
+        );
         return {
-          providerOptions: { format: "wav" },
+          providerOptions: { format: "wav", sample_rate: rate },
           expectedMediaType: "audio/wav",
         };
+      }
       default:
         return;
     }

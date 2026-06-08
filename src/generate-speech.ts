@@ -16,7 +16,6 @@ import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
-  assertGatewayForModerationRulesetId,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   TextChunkingUnsupportedError,
@@ -50,7 +49,20 @@ import type { GenerateSpeechOptions } from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
 
-const CHUNK_STITCH_SAMPLE_RATE = 24_000;
+function chunkStitchTargetRate(
+  segments: readonly { sampleRate: number }[]
+): number {
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "generateChunkedSpeech: no decoded chunks with a positive sample rate to stitch"
+    );
+  }
+  return rate;
+}
 
 export async function generateSpeech<
   V extends Voice = Voice,
@@ -63,7 +75,6 @@ export async function generateSpeech<
     headers,
     volumeDbfs,
     timestamps = false,
-    moderationRulesetId,
     speed,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
@@ -75,8 +86,7 @@ export async function generateSpeech<
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
-  validatePronunciationsInput(options.pronunciations, isGateway);
-  assertGatewayForModerationRulesetId(moderationRulesetId, isGateway);
+  validatePronunciationsInput(options.pronunciations);
 
   const { text: strippedText, warnings } = preprocessText(
     resolved,
@@ -167,7 +177,6 @@ export async function generateSpeech<
         volumeDbfs,
         output: options.output,
         pronunciations: options.pronunciations,
-        moderationRulesetId,
         speed,
       });
 
@@ -306,7 +315,6 @@ async function generateProviderSpeech<V extends Voice>(args: {
   volumeDbfs?: number;
   output?: AudioOutput;
   pronunciations?: PronunciationsInput;
-  moderationRulesetId?: string;
   speed?: number;
 }): Promise<ProviderGenerateResult> {
   return await pRetry(
@@ -323,7 +331,6 @@ async function generateProviderSpeech<V extends Voice>(args: {
             volumeDbfs: args.volumeDbfs,
             output: args.output,
             pronunciations: args.pronunciations,
-            moderationRulesetId: args.moderationRulesetId,
             speed: args.speed,
           })
         : args.resolved.provider.generate({
@@ -401,9 +408,10 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   );
 
   const segments = perChunk.map((c) => c.segment);
+  const targetSampleRate = chunkStitchTargetRate(segments);
   const audio = await concatPcmToWav(segments, {
     gapMs: 0,
-    targetSampleRate: CHUNK_STITCH_SAMPLE_RATE,
+    targetSampleRate,
   });
   const durationSeconds = segments.reduce(
     (sum, segment) => sum + segment.pcm.length / segment.sampleRate,
@@ -506,6 +514,11 @@ function resolveProviderOptionsForLocalDecoding(args: {
   const needsStitchWireFormat =
     args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
 
+  const sampleRateHint =
+    args.output != null && "sampleRate" in args.output
+      ? args.output.sampleRate
+      : undefined;
+
   if (!needsStitchWireFormat && args.output != null) {
     const native = args.resolved.provider.resolveOutputFormat?.(
       args.resolved.modelId,
@@ -519,7 +532,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
     }
 
     const stitchOpts = args.resolved.provider.getStitchOptions?.(
-      args.resolved.modelId
+      args.resolved.modelId,
+      { sampleRate: sampleRateHint }
     );
     if (!stitchOpts) {
       throw new OutputConversionUnsupportedError(args.modelIdentifier);
@@ -538,7 +552,8 @@ function resolveProviderOptionsForLocalDecoding(args: {
   }
 
   const stitchOpts = args.resolved.provider.getStitchOptions?.(
-    args.resolved.modelId
+    args.resolved.modelId,
+    { sampleRate: sampleRateHint }
   );
   if (!stitchOpts) {
     if (args.shouldChunk && args.maxInputChars != null) {

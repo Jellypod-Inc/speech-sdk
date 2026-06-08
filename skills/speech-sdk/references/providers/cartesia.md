@@ -3,16 +3,17 @@
 | | |
 | --- | --- |
 | Prefix | `cartesia` |
-| Default model | `sonic-3` |
+| Default model | `sonic-3.5` |
 | Env var | `CARTESIA_API_KEY` |
 | Official docs | https://docs.cartesia.ai |
 
 ## Models
 
-| Model     | Streaming | Audio Tags     | Voice Cloning | Native Timestamps | Notes                           |
-| --------- | --------- | -------------- | ------------- | ----------------- | ------------------------------- |
-| `sonic-3` | Yes       | Yes (via SSML) | Yes           | Yes               | Current flagship; emotion tags  |
-| `sonic-2` | Yes       | No             | No            | Yes               | Previous generation             |
+| Model       | Streaming | Audio Tags     | Voice Cloning | Native Timestamps | Notes                                       |
+| ----------- | --------- | -------------- | ------------- | ----------------- | ------------------------------------------- |
+| `sonic-3.5` | Yes       | Yes (via SSML) | Yes           | Yes               | Current flagship; drop-in for `sonic-3`     |
+| `sonic-3`   | Yes       | Yes (via SSML) | Yes           | Yes               | Emotion tags                                |
+| `sonic-2`   | Yes       | No             | No            | Yes               | Previous generation                         |
 
 Default output is `audio/wav` at 44.1 kHz.
 
@@ -44,14 +45,14 @@ await generateSpeech({
 
 ## Audio Tags
 
-`sonic-3`:
+`sonic-3.5` / `sonic-3`:
 - Emotion tags (`[happy]`, `[sad]`, `[angry]`, `[excited]`, …) → Cartesia SSML `<emotion>`
 - `[laughter]` passed through
 - Unknown tags stripped with warning
 
 ## Voice Cloning
 
-`sonic-3` supports inline cloning via `voice: { audio: ... }`.
+`sonic-3.5` and `sonic-3` support inline cloning via `voice: { audio: ... }`.
 
 ## Provider Options
 

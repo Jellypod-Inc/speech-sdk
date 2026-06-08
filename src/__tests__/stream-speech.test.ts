@@ -141,7 +141,7 @@ describe("streamSpeech", () => {
 
       expect(result.mediaType).toBe("audio/mpeg");
       const [url, init] = mockFetch.mock.calls[0];
-      expect(url).toBe("https://api.speechbase.ai/v1/audio/speech");
+      expect(url).toBe("https://api.speechbase.ai/v1/audio/speech/stream");
       expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
     } finally {
       globalThis.fetch = savedFetch;

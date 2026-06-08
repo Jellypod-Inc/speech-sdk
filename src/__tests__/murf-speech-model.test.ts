@@ -226,5 +226,29 @@ describe("MurfSpeechProvider", () => {
       expect(new Uint8Array(result.audio as Uint8Array)).toEqual(audioData);
       expect(result.mediaType).toBe("audio/wav");
     });
+
+    it("derives audio/pcm;rate=<hz> for format=PCM instead of trusting Content-Type", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        // FALCON streams raw PCM under a non-PCM/ratless Content-Type.
+        headers: new Headers({ "content-type": "audio/wav" }),
+        arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+      });
+
+      const provider = new MurfSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
+
+      const result = await provider.generate({
+        modelId: "FALCON",
+        text: "Hello",
+        voice: "en-US-natalie",
+        providerOptions: { format: "PCM", sampleRate: 48_000 },
+      });
+
+      expect(result.mediaType).toBe("audio/pcm;rate=48000");
+    });
   });
 });

@@ -56,7 +56,19 @@ interface StitchOutput {
   readonly warnings: readonly string[];
 }
 
-const TARGET_SAMPLE_RATE = 24_000;
+function stitchTargetRate(segments: readonly { sampleRate: number }[]): number {
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "runStitch: no decoded segments with a positive sample rate to stitch"
+    );
+  }
+  return rate;
+}
+
 const WHITESPACE_RE = /\s+/;
 
 export async function runStitch<V extends Voice>(
@@ -117,9 +129,10 @@ export async function runStitch<V extends Voice>(
     input.volumeDbfs == null ? undefined : dbfsToInt16Rms(input.volumeDbfs)
   );
 
+  const targetSampleRate = stitchTargetRate(leveledSegments);
   const audio = await concatPcmToWav(leveledSegments, {
     gapMs: input.gapMs,
-    targetSampleRate: TARGET_SAMPLE_RATE,
+    targetSampleRate,
   });
 
   const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
@@ -133,15 +146,12 @@ export async function runStitch<V extends Voice>(
       (n, p) =>
         n +
         Math.round(
-          (p.segment.pcm.length / p.segment.sampleRate) * TARGET_SAMPLE_RATE
+          (p.segment.pcm.length / p.segment.sampleRate) * targetSampleRate
         ),
       0
     ) +
-    (perTurn.length - 1) *
-      Math.round((input.gapMs / 1000) * TARGET_SAMPLE_RATE);
-  const audioDurationMs = Math.round(
-    (totalSamples / TARGET_SAMPLE_RATE) * 1000
-  );
+    (perTurn.length - 1) * Math.round((input.gapMs / 1000) * targetSampleRate);
+  const audioDurationMs = Math.round((totalSamples / targetSampleRate) * 1000);
 
   const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
   const metadataPerTurn = perTurn.map((p) => p.result.metadata);

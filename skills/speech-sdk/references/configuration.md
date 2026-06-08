@@ -1,6 +1,6 @@
 # Configuration
 
-String models read `SPEECH_GATEWAY_API_KEY` from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+String models read `SPEECHBASE_API_KEY` (falling back to the legacy `SPEECH_GATEWAY_API_KEY`) from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
 
 ## String Models
 
@@ -9,7 +9,7 @@ await generateSpeech({
   model: "provider/model",
   text: "Hello!",
   voice: "voice-id",
-  apiKey: process.env.SPEECH_GATEWAY_API_KEY,
+  apiKey: process.env.SPEECHBASE_API_KEY,
   timestamps: true,
   volumeDbfs: -20,
 })
@@ -58,15 +58,14 @@ The exact set of factories (and any provider-specific config) is exported from `
 - `speed` — `0.75–1.5`, default `1`
 - `volumeDbfs` — RMS target loudness (≤ 0)
 - `timestamps` — boolean, default `false`
-- `pronunciations` — `{ rules, dictionaryIds? }`; `dictionaryIds` is gateway-only
-- `moderationRulesetId` — gateway-only; throws `ModerationRulesetIdRequiresGatewayError` on direct providers
+- `pronunciations` — `{ rules }`
 - `maxInputChars` — override per-model chunk threshold (direct path only; ignored on the gateway)
 - `maxConcurrency` — chunk request parallelism on the auto-chunking path (default 6, direct path only)
 - `maxRetries` — default 2; retries 5xx, 429 (honors `Retry-After`), and network only
 - `apiKey`
 - `abortSignal`, `headers`
 
-`streamSpeech` accepts a smaller set: `model`, `text`, `voice`, `providerOptions`, `pronunciations` (rules only — `dictionaryIds` is gateway-only), `moderationRulesetId`, `maxRetries`, `apiKey`, `abortSignal`, `headers`. `output`, `speed`, `volumeDbfs`, `timestamps`, `maxInputChars`, and `maxConcurrency` require buffering and are not accepted.
+`streamSpeech` accepts a smaller set: `model`, `text`, `voice`, `providerOptions`, `pronunciations`, `maxRetries`, `apiKey`, `abortSignal`, `headers`. `output`, `speed`, `volumeDbfs`, `timestamps`, `maxInputChars`, and `maxConcurrency` require buffering and are not accepted.
 
 ### Custom Fetch
 
