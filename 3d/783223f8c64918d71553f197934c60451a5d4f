@@ -1,0 +1,58 @@
+src/__tests__/pronunciations-gateway-passthrough.test.ts
+  s_e37af8be42667f::t_35846bedfd3eea 55,58-60
+src/__tests__/pronunciations-conversation.test.ts
+  s_e37af8be42667f::t_97f9c4372c8cb5 174,178-180
+skills/speech-sdk/references/configuration.md
+  s_e37af8be42667f::t_c2e9beb3484295 61
+  s_e37af8be42667f::t_5fc98e6a2d5e88 68
+CHANGELOG.md
+  s_e37af8be42667f::t_f96522cb0afaa2 3-8
+src/conversation/types.ts
+  s_e37af8be42667f::t_469739c0b1c703 2
+  s_e37af8be42667f::t_f225119e03fc48 30
+src/__tests__/pronunciations-validate.test.ts
+  s_e37af8be42667f::t_23a56bf8cf596d 9,13-14,19,25
+src/types.ts
+  s_e37af8be42667f::t_9c78dae67aef65 2
+  s_e37af8be42667f::t_2348e077b04456 67
+src/generate-conversation.ts
+  s_e37af8be42667f::t_fc424f68a5d1df 134
+src/stream-speech.ts
+  s_e37af8be42667f::t_52fd26e43d4d8b 10
+  s_e37af8be42667f::t_bc720c0957db17 44
+  s_e37af8be42667f::t_53801a761559ac 36
+src/generate-speech.ts
+  s_e37af8be42667f::t_45dc17fafc4d62 89
+skills/speech-sdk/references/pronunciations.md
+  s_e37af8be42667f::t_d4b98c8dba7832 56
+  s_e37af8be42667f::t_f9c617b262069c 32
+skills/speech-sdk/SKILL.md
+  s_e37af8be42667f::t_06ea8958dce60f 131
+  s_e37af8be42667f::t_5520ffb8c99e82 110
+  s_e37af8be42667f::t_811c86f8567443 141
+  s_e37af8be42667f::t_1af207feb2eb3f 74
+skills/speech-sdk/references/conversation.md
+  s_e37af8be42667f::t_d1cd11f600d930 42
+package.json
+  s_e37af8be42667f::t_31f0c4a0420c81 3
+src/__tests__/pronunciations-exports.test.ts
+  s_e37af8be42667f::t_b099abf54bb0b6 2,5-8
+src/pronunciations/validate.ts
+  s_e37af8be42667f::t_9236937abc78c6 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "3d783223f8c64918d71553f197934c60451a5d4f",
+  "prompts": {},
+  "sessions": {
+    "s_e37af8be42667f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c3447f2-b3d8-447b-8992-0b21f39765f5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
