@@ -20,13 +20,35 @@ export class SmallestAISpeechProvider
   implements SpeechProvider<string, string>
 {
   readonly id = "smallest-ai";
-  readonly defaultModel = "lightning-v3.1";
+  readonly defaultModel = "lightning_v3.1";
 
   readonly models = [
     {
-      id: "lightning-v3.1",
+      id: "lightning_v3.1",
       releaseDate: "2025-01-01",
-      languages: ["en", "hi", "es", "ta"] as const,
+      languages: [
+        "en",
+        "hi",
+        "es",
+        "ta",
+        "kn",
+        "te",
+        "ml",
+        "mr",
+        "gu",
+        "fr",
+        "it",
+        "nl",
+        "sv",
+        "pt",
+        "de",
+      ] as const,
+      features: [],
+    },
+    {
+      id: "lightning_v3.1_pro",
+      releaseDate: "2025-05-01",
+      languages: ["en", "hi"] as const,
       features: [],
     },
   ] as const;
@@ -55,29 +77,31 @@ export class SmallestAISpeechProvider
     const outputFormat =
       (options.providerOptions?.output_format as string | undefined) ?? "wav";
 
+    const isProModel = options.modelId === "lightning_v3.1_pro";
+
     const body: Record<string, unknown> = {
-      voice_id: options.voice ?? "magnus",
+      voice_id: options.voice ?? (isProModel ? "meher" : "magnus"),
       language: "auto",
       ...options.providerOptions,
       text: options.text,
       output_format: outputFormat,
+      model: options.modelId,
     };
 
-    const response = await this.fetchFn(
-      `${this.baseURL}/${options.modelId}/get_speech`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
-          "X-User-Agent": SDK_USER_AGENT,
-          "X-Source": "jellypod-speech-sdk",
-          ...options.headers,
-        },
-        body: JSON.stringify(body),
-        signal: options.abortSignal,
-      }
-    );
+    const url = `${this.baseURL}/tts`;
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        "X-Source": "jellypod-speech-sdk",
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
 
     await handleErrorResponse(response);
 

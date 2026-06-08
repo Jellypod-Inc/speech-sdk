@@ -138,7 +138,7 @@ const providers: ProviderTarget[] = [
   {
     name: "smallest-ai",
     envKey: "SMALLEST_API_KEY",
-    model: () => createSmallestAI()("lightning-v3.1"),
+    model: () => createSmallestAI()("lightning_v3.1"),
     voice: process.env.SMALLEST_VOICE_ID ?? "magnus",
   },
   {
