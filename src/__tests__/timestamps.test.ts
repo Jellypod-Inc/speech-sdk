@@ -229,6 +229,35 @@ describe("generateSpeech timestamps option", () => {
     }
   });
 
+  it("forwards the synthesized source text to the STT fallback for forced alignment", async () => {
+    let receivedText: string | undefined;
+    const provider = createTTSProvider({});
+    const stt: SpeechToTextProvider = {
+      id: "align-stt",
+      defaultModel: "m",
+      models: [{ id: "m", releaseDate: "2025-01-01", languages: ["en"] }],
+      transcribe: vi.fn().mockImplementation((opts: { text?: string }) => {
+        receivedText = opts.text;
+        return Promise.resolve({
+          timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+        });
+      }),
+    };
+
+    await generateSpeech({
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello world",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(receivedText).toBe("Hello world");
+  });
+
   it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
     const transcribe = vi.fn().mockResolvedValue({
       timestamps: [{ text: "hi", start: 0, end: 0.1 }],

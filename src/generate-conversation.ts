@@ -530,6 +530,9 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       ttsModel: args.ttsModel,
       audio: args.audio,
       mediaType: args.mediaType,
+      // Combined turn text matching the stitched audio, in turn order, so a
+      // fallback can force-align; turnIndex attribution happens downstream.
+      text: args.substitutedTurnTexts.join(" "),
       timestampFallback: fallback,
       abortSignal: args.abortSignal,
     });

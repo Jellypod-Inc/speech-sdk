@@ -15,6 +15,10 @@ export interface SpeechToTextProvider {
     modelId: string;
     audio: Uint8Array;
     mediaType: string;
+    // Source text that was synthesized into `audio`. Lets a fallback perform
+    // forced alignment (known text → audio) instead of blind transcription.
+    // Pure STT providers ignore it.
+    text?: string;
     language?: string;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;

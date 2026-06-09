@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+
+- **STT timestamp fallback now receives the synthesized source text.** When `generateSpeech` / `generateConversation` derive word timestamps via the STT fallback (a model with no native alignment), the SDK now passes the exact text it rendered as an optional `text` field on `SpeechToTextProvider.transcribe`. A fallback can use it to perform **forced alignment** (align known text → audio) instead of blind transcription. For conversations, `text` is the combined turn text (in turn order) matching the stitched audio; `turnIndex` attribution is unchanged. The field is optional everywhere and fully backward compatible — pure STT providers (the default OpenAI Whisper fallback included) ignore it and behave identically.
+
 ## 0.14.0
 
 - **Breaking: removed `moderationRulesetId`.** This option only worked on the Speechbase gateway path and had no meaning for direct providers. The SDK is provider-neutral — nothing in it should require the Speechbase gateway — so it has been dropped along with the `ModerationRulesetIdRequiresGatewayError` it threw on direct-provider models. To override a moderation ruleset per request, call the Speechbase REST API directly.

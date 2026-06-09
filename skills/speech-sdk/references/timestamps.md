@@ -68,7 +68,7 @@ await generateSpeech({
 })
 ```
 
-There is no per-call `timestampProvider` option — `fallbackSTT` is the only override mechanism, and it lives on the TTS factory config. To use an STT provider that the SDK doesn't ship, implement the `SpeechToTextProvider` interface (see `@speech-sdk/core/types`) and pass a `ResolvedSTTModel` you construct yourself as `fallbackSTT`.
+There is no per-call `timestampProvider` option — `fallbackSTT` is the only override mechanism, and it lives on the TTS factory config. To use an STT provider that the SDK doesn't ship, implement the `SpeechToTextProvider` interface (see `@speech-sdk/core/types`) and pass a `ResolvedSTTModel` you construct yourself as `fallbackSTT`. `transcribe` also receives the synthesized source `text` (optional, safe to ignore), so a custom provider can drive a forced-alignment API like ElevenLabs instead of blind transcription.
 
 ## Conversations
 

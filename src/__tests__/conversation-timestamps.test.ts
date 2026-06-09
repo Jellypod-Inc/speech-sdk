@@ -379,6 +379,40 @@ describe("generateConversation timestamps — native path", () => {
     expect(result.timestamps?.[0]?.text).toBe("Hello");
   });
 
+  it("forwards the combined turn text to the STT fallback for forced alignment", async () => {
+    let receivedText: string | undefined;
+    const stt: SpeechToTextProvider = {
+      id: "align-stt",
+      defaultModel: "m",
+      models: [{ id: "m", releaseDate: "2025-01-01", languages: ["en"] }],
+      transcribe: vi.fn().mockImplementation((opts: { text?: string }) => {
+        receivedText = opts.text;
+        return Promise.resolve({
+          timestamps: [
+            { text: "Hello", start: 0, end: 0.3 },
+            { text: "there", start: 0.35, end: 0.7 },
+          ],
+        });
+      }),
+    };
+    const provider = nativeTTS({});
+
+    await generateConversation({
+      model: {
+        provider,
+        modelId: "m",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      turns: [
+        { voice: "a", text: "Hello" },
+        { voice: "b", text: "there" },
+      ],
+      timestamps: true,
+    });
+
+    expect(receivedText).toBe("Hello there");
+  });
+
   it("off mode: never populates timestamps even when native is available", async () => {
     const provider = nativeTTS({
       feature: "timestamps",

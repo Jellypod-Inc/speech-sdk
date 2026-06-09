@@ -6,6 +6,7 @@ export async function deriveTimestampsViaSTT(args: {
   ttsModel: string;
   audio: Uint8Array;
   mediaType: string;
+  text?: string;
   timestampFallback: ResolvedSTTModel;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[]> {
@@ -16,6 +17,7 @@ export async function deriveTimestampsViaSTT(args: {
       modelId: sttModel.modelId,
       audio: args.audio,
       mediaType: args.mediaType,
+      ...(args.text !== undefined && { text: args.text }),
       abortSignal: args.abortSignal,
     });
     return timestamps;
