@@ -229,6 +229,73 @@ describe("generateSpeech timestamps option", () => {
     }
   });
 
+  it("forwards the synthesized source text to the STT fallback for forced alignment", async () => {
+    let receivedText: string | undefined;
+    const provider = createTTSProvider({});
+    const stt: SpeechToTextProvider = {
+      id: "align-stt",
+      defaultModel: "m",
+      models: [{ id: "m", releaseDate: "2025-01-01", languages: ["en"] }],
+      transcribe: vi.fn().mockImplementation((opts: { text?: string }) => {
+        receivedText = opts.text;
+        return Promise.resolve({
+          timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+        });
+      }),
+    };
+
+    await generateSpeech({
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello world",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(receivedText).toBe("Hello world");
+  });
+
+  it("regression: an STT provider that ignores `text` behaves identically", async () => {
+    const provider = createTTSProvider({});
+    const transcribe = vi
+      .fn()
+      .mockImplementation((opts: { modelId: string; audio: Uint8Array }) => {
+        // Pure STT: reads only audio/modelId, never `text`.
+        expect(opts.modelId).toBe("m");
+        expect(opts.audio).toBeInstanceOf(Uint8Array);
+        return Promise.resolve({
+          timestamps: [
+            { text: "Hello", start: 0, end: 0.4 },
+            { text: "world", start: 0.45, end: 0.9 },
+          ],
+        });
+      });
+    const stt: SpeechToTextProvider = {
+      id: "pure-stt",
+      defaultModel: "m",
+      models: [{ id: "m", releaseDate: "2025-01-01", languages: ["en"] }],
+      transcribe,
+    };
+
+    const result = await generateSpeech({
+      model: {
+        provider,
+        modelId: "t-model",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "Hello world",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(transcribe).toHaveBeenCalledOnce();
+    expect(result.timestamps).toHaveLength(2);
+    expect(result.timestamps?.[0]?.text).toBe("Hello");
+  });
+
   it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
     const transcribe = vi.fn().mockResolvedValue({
       timestamps: [{ text: "hi", start: 0, end: 0.1 }],

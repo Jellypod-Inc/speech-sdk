@@ -215,6 +215,7 @@ export async function generateSpeech<
       resultTimestamps: maybeScale(result.timestamps, localSpeed),
       audio: audio.uint8Array,
       mediaType: stretched.mediaType,
+      text: textToSend,
       abortSignal,
     }),
   ]);
@@ -465,6 +466,7 @@ async function resolveTimestamps(args: {
   resultTimestamps: readonly WordTimestamp[] | undefined;
   audio: Uint8Array;
   mediaType: string;
+  text: string;
   abortSignal: AbortSignal | undefined;
 }): Promise<readonly WordTimestamp[] | undefined> {
   if (!args.timestamps) {
@@ -484,6 +486,7 @@ async function resolveTimestamps(args: {
     ttsModel: args.modelIdentifier,
     audio: args.audio,
     mediaType: args.mediaType,
+    text: args.text,
     timestampFallback: fallback,
     abortSignal: args.abortSignal,
   });

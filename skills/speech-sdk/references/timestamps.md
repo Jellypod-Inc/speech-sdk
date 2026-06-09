@@ -70,6 +70,24 @@ await generateSpeech({
 
 There is no per-call `timestampProvider` option — `fallbackSTT` is the only override mechanism, and it lives on the TTS factory config. To use an STT provider that the SDK doesn't ship, implement the `SpeechToTextProvider` interface (see `@speech-sdk/core/types`) and pass a `ResolvedSTTModel` you construct yourself as `fallbackSTT`.
 
+### Forced alignment
+
+When the SDK invokes the fallback, it passes the exact text it synthesized as an optional `text` field on `transcribe`. A fallback can use it to perform **forced alignment** (align known text to audio) instead of blind transcription, which is typically faster and more accurate. For conversations, `text` is the combined turn text (in turn order) matching the stitched audio handed to the fallback; `turnIndex` attribution still happens inside the SDK downstream.
+
+```ts
+transcribe(options: {
+  modelId: string
+  audio: Uint8Array
+  mediaType: string
+  text?: string // synthesized source text — present on the fallback path
+  language?: string
+  abortSignal?: AbortSignal
+  headers?: Record<string, string>
+}): Promise<{ timestamps: WordTimestamp[]; text?: string; providerMetadata?: Record<string, unknown> }>
+```
+
+`text` is optional and safe to ignore — transcription-only providers (the default OpenAI Whisper fallback included) behave identically whether or not it's present.
+
 ## Conversations
 
 `generateConversation` accepts the same boolean `timestamps` option and returns a flat list of words across all turns. Each word carries a `turnIndex` — the index into the input `turns[]` array that produced it.
