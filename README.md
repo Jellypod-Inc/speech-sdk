@@ -221,23 +221,20 @@ const turnTimestamps = timestampsToTurns(result.timestamps ?? []);
 
 ### Captions (SRT / WebVTT)
 
-`timestampsToCaptions()` converts word-level timestamps into a caption file. SRT is the default; pass `format: 'vtt'` for WebVTT.
+Pass a `captions` request to `generateSpeech` and the result carries a ready-to-write caption file as `captions`. Captions are derived from the word timestamps, so they require (and imply) `timestamps` — set `format` to `'srt'` or `'vtt'`.
 
 ```ts
-import { generateSpeech, timestampsToCaptions } from '@speech-sdk/core';
+import { generateSpeech } from '@speech-sdk/core';
 
-const { timestamps } = await generateSpeech({
+const { captions } = await generateSpeech({
   model: 'elevenlabs/eleven_v3',
   text: 'Hello world. This is a test.',
   voice: 'JBFqnCBsd6RMkjVDRZzb',
-  timestamps: true,
+  captions: { format: 'srt' },
 });
-
-const srt = timestampsToCaptions(timestamps ?? []);
-const vtt = timestampsToCaptions(timestamps ?? [], { format: 'vtt' });
 ```
 
-Cues break on sentence boundaries, then subdivide long sentences by character count, cue duration, and soft comma breaks. Pass `CaptionsOptions` to customize `format`, `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, or `longPhraseCommaBreakChars`.
+Cues break on sentence boundaries, then subdivide long sentences by character count, cue duration, and soft comma breaks. Beyond the required `format`, the `captions` request takes `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, and `longPhraseCommaBreakChars`. Requesting `captions` with `timestamps: false` is rejected, since captions need word timings.
 
 ## Volume normalization
 
@@ -364,7 +361,6 @@ import {
   generateSpeech,
   streamSpeech,
   generateConversation,
-  timestampsToCaptions,
   ApiError,
 } from '@speech-sdk/core';
 ```

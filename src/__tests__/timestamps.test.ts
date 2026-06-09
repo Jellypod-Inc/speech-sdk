@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { timestampsToCaptions } from "../captions.js";
 import { TimestampKeyMissingError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
@@ -265,6 +266,102 @@ describe("generateSpeech timestamps option", () => {
 
     expect(transcribe).toHaveBeenCalledTimes(1);
     expect(result.timestamps).toEqual([{ text: "hi", start: 0, end: 0.1 }]);
+  });
+});
+
+describe("generateSpeech captions option", () => {
+  const words: WordTimestamp[] = [
+    { text: "Hello", start: 0, end: 0.4 },
+    { text: "world.", start: 0.45, end: 0.9 },
+  ];
+
+  it("returns captions derived from the resolved timestamps", async () => {
+    const provider = createTTSProvider({
+      feature: "timestamps",
+      timestamps: words,
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "t-model" },
+      text: "Hello world.",
+      voice: "v",
+      captions: { format: "srt" },
+    });
+
+    expect(result.captions).toBe(
+      timestampsToCaptions(words, { format: "srt" })
+    );
+    expect(result.timestamps).toEqual(words);
+  });
+
+  it("implies timestamps when captions requested without an explicit timestamps flag", async () => {
+    let captured: boolean | undefined;
+    const provider = createTTSProvider({
+      feature: "timestamps",
+      timestamps: words,
+      captureIncludeTimestamps: (v) => {
+        captured = v;
+      },
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "t-model" },
+      text: "Hello world.",
+      voice: "v",
+      captions: { format: "vtt" },
+    });
+
+    expect(captured).toBe(true);
+    expect(result.captions).toBe(
+      timestampsToCaptions(words, { format: "vtt" })
+    );
+  });
+
+  it('rejects captions paired with "timestamps": false', async () => {
+    const provider = createTTSProvider({
+      feature: "timestamps",
+      timestamps: words,
+    });
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "t-model" },
+        text: "Hello world.",
+        voice: "v",
+        timestamps: false,
+        captions: { format: "srt" },
+      })
+    ).rejects.toThrow('captions cannot be requested with "timestamps": "off".');
+  });
+
+  it("omits captions when none requested", async () => {
+    const provider = createTTSProvider({
+      feature: "timestamps",
+      timestamps: words,
+    });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "t-model" },
+      text: "Hello world.",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(result.captions).toBeUndefined();
+  });
+
+  it("omits captions when no timestamps resolve", async () => {
+    const provider = createTTSProvider({ id: "speech-gateway" });
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "openai/tts-1" },
+      text: "Hello world.",
+      voice: "v",
+      captions: { format: "srt" },
+    });
+
+    expect(result.timestamps).toBeUndefined();
+    expect(result.captions).toBeUndefined();
   });
 });
 

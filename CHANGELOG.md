@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.0
+
+- **New `captions` option on `generateSpeech`.** Pass `captions: { format: "srt" | "vtt", ... }` and the buffered result carries a ready-to-write caption file as `captions`. Cues are derived from the final word timestamps (after pronunciation inverse-alignment, so cue text reflects the original input words), giving byte-for-byte parity with the Speechbase REST API's `POST /v1/audio/speech/with-timestamps` `captions` field. The same `CaptionsOptions` knobs apply (`maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, `longPhraseCommaBreakChars`), with `format` required. Requesting `captions` requires (and implies) timestamps — pairing it with `timestamps: false` throws.
+- **Breaking: removed the standalone `timestampsToCaptions` export.** Caption generation is now driven through the `captions` option on `generateSpeech` rather than a separate post-processing call. The `CaptionsOptions` type export is likewise removed; use `CaptionsRequest` (the `captions` option shape) instead.
+
 ## 0.14.0
 
 - **Breaking: removed `moderationRulesetId`.** This option only worked on the Speechbase gateway path and had no meaning for direct providers. The SDK is provider-neutral — nothing in it should require the Speechbase gateway — so it has been dropped along with the `ModerationRulesetIdRequiresGatewayError` it threw on direct-provider models. To override a moderation ruleset per request, call the Speechbase REST API directly.

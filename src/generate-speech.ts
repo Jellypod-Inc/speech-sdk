@@ -12,6 +12,8 @@ import {
   validateOutput,
 } from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
+import type { CaptionsRequest } from "./captions.js";
+import { timestampsToCaptions } from "./captions.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
@@ -74,10 +76,15 @@ export async function generateSpeech<
     abortSignal,
     headers,
     volumeDbfs,
-    timestamps = false,
     speed,
+    captions: captionsOption,
   } = options;
   const maxRetries = options.maxRetries ?? 2;
+
+  const timestamps = resolveTimestampsEnabled(
+    options.timestamps,
+    captionsOption
+  );
 
   validateOutput(options.output);
   validateSpeed(speed);
@@ -227,6 +234,8 @@ export async function generateSpeech<
       ? inverseAlign(resolvedTimestamps, textToSend, pronunciationEdits)
       : resolvedTimestamps;
 
+  const captions = deriveCaptions(captionsOption, finalTimestamps);
+
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: options.text.length,
@@ -239,7 +248,29 @@ export async function generateSpeech<
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
     timestamps: finalTimestamps,
+    captions,
   };
+}
+
+// Captions are derived from timestamps, so requesting captions requires (and implies) timestamps.
+function resolveTimestampsEnabled(
+  timestamps: boolean | undefined,
+  captions: CaptionsRequest | undefined
+): boolean {
+  if (captions != null && timestamps === false) {
+    throw new Error('captions cannot be requested with "timestamps": "off".');
+  }
+  return timestamps ?? captions != null;
+}
+
+// Derived from post-alignment timestamps so cue text reflects the original input words.
+function deriveCaptions(
+  captions: CaptionsRequest | undefined,
+  timestamps: readonly WordTimestamp[] | undefined
+): string | undefined {
+  return captions && timestamps?.length
+    ? timestampsToCaptions(timestamps, captions)
+    : undefined;
 }
 
 function mergeWarnings(

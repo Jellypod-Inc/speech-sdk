@@ -125,15 +125,16 @@ Natural input for chat-bubble UIs, speaker-attributed captions, or karaoke-style
 
 ## Captions
 
-Use `timestampsToCaptions` to format word timestamps as SRT or VTT:
+Pass a `captions` request to get a caption file (SRT or VTT) on the result. Captions are derived from the word timestamps, so they require (and imply) `timestamps`; pairing `captions` with `timestamps: false` throws.
 
 ```ts
-import { generateSpeech, timestampsToCaptions } from "@speech-sdk/core"
+import { generateSpeech } from "@speech-sdk/core"
 
-const result = await generateSpeech({ ..., timestamps: true })
-const srt = timestampsToCaptions(result.timestamps ?? [], { format: "srt" })
-const vtt = timestampsToCaptions(result.timestamps ?? [], { format: "vtt" })
+const srt = (await generateSpeech({ ..., captions: { format: "srt" } })).captions
+const vtt = (await generateSpeech({ ..., captions: { format: "vtt" } })).captions
 ```
+
+Knobs (all optional except `format`): `maxLineLength`, `maxLinesPerCue`, `maxCharsPerCue`, `maxCueDurationMs`, `longPhraseCommaBreakChars`.
 
 ## Speed
 

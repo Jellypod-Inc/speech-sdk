@@ -9,6 +9,8 @@ export interface GeneratedAudioFile {
 
 export interface SpeechResult {
   readonly audio: GeneratedAudioFile;
+  // Present only when `captions` was requested and timestamps resolved to a non-empty set.
+  readonly captions?: string;
   readonly metadata: SpeechMetadata;
   readonly providerMetadata?: Record<string, unknown>;
   readonly timestamps?: readonly WordTimestamp[];

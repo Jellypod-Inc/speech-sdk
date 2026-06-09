@@ -1,9 +1,10 @@
 import type { AudioOutput } from "./audio-output.js";
+import type { CaptionsRequest } from "./captions.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
-export type { CaptionFormat, CaptionsOptions } from "./captions.js";
+export type { CaptionFormat, CaptionsRequest } from "./captions.js";
 export type {
   ConversationTurn,
   GenerateConversationOptions,
@@ -57,6 +58,8 @@ export interface GenerateSpeechOptions<
 > {
   abortSignal?: AbortSignal;
   apiKey?: string;
+  // Derive a caption file (SRT/VTT) from the final word timestamps and return it as `captions` on the result. Requires timestamps — when set, timestamps are implied; passing `timestamps: false` alongside is rejected.
+  captions?: CaptionsRequest;
   headers?: Record<string, string>;
   // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck). Ignored on the gateway path — the gateway server owns request processing.
   maxConcurrency?: number;

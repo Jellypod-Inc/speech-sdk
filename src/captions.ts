@@ -196,6 +196,10 @@ export interface CaptionsOptions {
   readonly maxLinesPerCue?: number;
 }
 
+export interface CaptionsRequest extends Omit<CaptionsOptions, "format"> {
+  readonly format: CaptionFormat;
+}
+
 const DEFAULT_MAX_LINE_LENGTH = 42;
 const DEFAULT_MAX_LINES_PER_CUE = 2;
 const DEFAULT_MAX_CUE_DURATION_MS = 7000;
