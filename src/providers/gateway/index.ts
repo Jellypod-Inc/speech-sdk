@@ -116,7 +116,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     const body: Record<string, unknown> = {
-      mode: "inline",
       model: options.modelId,
       voice: options.voice,
       text: options.text,
@@ -198,7 +197,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     }
 
     const body: Record<string, unknown> = {
-      mode: "inline",
       model: options.modelId,
       voice: options.voice,
       text: options.text,
@@ -297,7 +295,6 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
 
     // gapMs/volumeDbfs sent explicitly each call (don't rely on server defaults).
     const body: Record<string, unknown> = {
-      mode: "conversation",
       ...(sharedModel != null && { model: sharedModel }),
       turns: options.turns.map((t) => ({
         ...(t.model != null && { model: t.model }),

@@ -258,7 +258,6 @@ describe("generateSpeech", () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
     const [, init] = fetchFn.mock.calls[0];
     expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "First sentence. Second sentence.",
@@ -825,7 +824,6 @@ describe("generateSpeech", () => {
       expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
       const body = JSON.parse(init.body);
       expect(body).toEqual({
-        mode: "inline",
         model: "openai/tts-1",
         voice: "alloy",
         text: "Hello",
@@ -862,7 +860,6 @@ describe("generateSpeech", () => {
       expect(result.audio.mediaType).toBe("audio/mpeg");
       const [, init] = mockFetch.mock.calls[0];
       expect(JSON.parse(init.body)).toEqual({
-        mode: "inline",
         model: "openai/tts-1",
         voice: "alloy",
         text: "Hello",

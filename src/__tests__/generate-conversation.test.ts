@@ -319,7 +319,7 @@ describe("generateConversation", () => {
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe("https://api.speechbase.ai/v1/audio/conversation");
     const body = JSON.parse(init.body);
-    expect(body.mode).toBe("conversation");
+    expect(body).not.toHaveProperty("mode");
     // Shared shape — every turn resolves to the same model, so the wire carries
     // a top-level `model` and turns omit it.
     expect(body.model).toBe("openai/gpt-4o-mini-tts");
