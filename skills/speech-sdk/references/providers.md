@@ -13,6 +13,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Hume         | `hume`         | `HUME_API_KEY`         |
 | Google       | `google`       | `GOOGLE_API_KEY`       |
 | Fish Audio   | `fish-audio`   | `FISH_AUDIO_API_KEY`   |
+| Gradium      | `gradium`      | `GRADIUM_API_KEY`      |
 | Inworld      | `inworld`      | `INWORLD_API_KEY`      |
 | Murf         | `murf`         | `MURF_API_KEY`         |
 | Resemble     | `resemble`     | `RESEMBLE_API_KEY`     |
@@ -33,6 +34,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Hume        | Yes            | No                    | Yes            | Native      | No          |
 | Google      | Yes            | Model-specific        | No             | Via STT     | No          |
 | Fish Audio  | Yes            | Yes                   | Yes            | Via STT     | Yes         |
+| Gradium     | Yes            | No                    | No             | Via STT     | No          |
 | Inworld     | Yes            | No                    | No             | Native      | No          |
 | Murf        | Yes            | No                    | No             | Native      | No          |
 | Resemble    | Yes            | No                    | Yes            | Native      | Yes         |

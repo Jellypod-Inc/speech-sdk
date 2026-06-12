@@ -20,6 +20,7 @@ export type { FalSpeechProviderConfig } from "./providers/fal/index.js";
 export type { FishAudioSpeechProviderConfig } from "./providers/fish-audio/index.js";
 export type { SpeechGatewayProviderConfig } from "./providers/gateway/index.js";
 export type { GoogleSpeechProviderConfig } from "./providers/google/index.js";
+export type { GradiumSpeechProviderConfig } from "./providers/gradium/index.js";
 export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
 export type { InworldSpeechProviderConfig } from "./providers/inworld/index.js";
 export type { MistralSpeechProviderConfig } from "./providers/mistral/index.js";

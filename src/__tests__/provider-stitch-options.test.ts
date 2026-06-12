@@ -5,6 +5,7 @@ import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
 import { FalSpeechProvider } from "../providers/fal/index.js";
 import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
+import { GradiumSpeechProvider } from "../providers/gradium/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
 import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
@@ -107,6 +108,14 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
+  it("Gradium returns pcm_48000 (highest supported rate) for the default model", () => {
+    const p = new GradiumSpeechProvider({});
+    expect(p.getStitchOptions?.("default")).toEqual({
+      providerOptions: { output_format: "pcm_48000" },
+      mediaType: "audio/pcm;rate=48000",
+    });
+  });
+
   it("Murf returns wav at 48k (highest supported rate) for GEN2 and FALCON", () => {
     const p = new MurfSpeechProvider({});
     for (const m of ["GEN2", "FALCON"] as const) {
@@ -182,6 +191,7 @@ describe("getStitchOptions per provider", () => {
       new DeepgramSpeechProvider({}),
       new InworldSpeechProvider({}),
       new FishAudioSpeechProvider({}),
+      new GradiumSpeechProvider({}),
       new MurfSpeechProvider({}),
       new ResembleSpeechProvider({}),
       new XaiSpeechProvider({}),
