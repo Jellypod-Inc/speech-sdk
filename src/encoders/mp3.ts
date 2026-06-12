@@ -63,7 +63,11 @@ export async function encodePcm16ToMp3(args: {
     sampleRate,
     timestamp: 0,
   });
-  await source.add(sample);
+  try {
+    await source.add(sample);
+  } finally {
+    sample.close();
+  }
   source.close();
 
   await output.finalize();
