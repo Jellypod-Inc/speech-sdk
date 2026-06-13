@@ -68,23 +68,27 @@ function decodeRawPcm(bytes: Uint8Array, mediaType: string): DecodedPcm16 {
     timestamp: 0,
   });
 
-  const monoFrames = sample.numberOfFrames;
-  const out = new Int16Array(monoFrames);
-  if (channels === 1) {
-    sample.copyTo(out, { format: "s16", planeIndex: 0 });
-    return { pcm: out, sampleRate, channels: 1 };
-  }
-
-  const interleaved = new Int16Array(monoFrames * channels);
-  sample.copyTo(interleaved, { format: "s16", planeIndex: 0 });
-  for (let f = 0; f < monoFrames; f++) {
-    let sum = 0;
-    for (let c = 0; c < channels; c++) {
-      sum += interleaved[f * channels + c];
+  try {
+    const monoFrames = sample.numberOfFrames;
+    const out = new Int16Array(monoFrames);
+    if (channels === 1) {
+      sample.copyTo(out, { format: "s16", planeIndex: 0 });
+      return { pcm: out, sampleRate, channels: 1 };
     }
-    out[f] = Math.round(sum / channels);
+
+    const interleaved = new Int16Array(monoFrames * channels);
+    sample.copyTo(interleaved, { format: "s16", planeIndex: 0 });
+    for (let f = 0; f < monoFrames; f++) {
+      let sum = 0;
+      for (let c = 0; c < channels; c++) {
+        sum += interleaved[f * channels + c];
+      }
+      out[f] = Math.round(sum / channels);
+    }
+    return { pcm: out, sampleRate, channels: 1 };
+  } finally {
+    sample.close();
   }
-  return { pcm: out, sampleRate, channels: 1 };
 }
 
 async function decodeContainerized(

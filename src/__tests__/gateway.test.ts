@@ -60,7 +60,6 @@ describe("SpeechGatewayProvider", () => {
     expect(url).toBe("https://api.speechbase.ai/v1/audio/speech");
     expect(init.headers.Authorization).toBe("Bearer gw-key");
     expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello",
@@ -84,6 +83,58 @@ describe("SpeechGatewayProvider", () => {
     const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body).not.toHaveProperty("output");
+  });
+
+  // The gateway's .strict() schemas reject unknown keys; a legacy `mode` discriminator surfaces as a root-level 400.
+  it("never serializes a `mode` key on generate, stream, or generateConversation", async () => {
+    const generateFetch = mockFetchOk();
+    const generateProvider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: generateFetch as unknown as typeof globalThis.fetch,
+    });
+    await generateProvider.generate({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+    });
+    expect(JSON.parse(generateFetch.mock.calls[0][1].body)).not.toHaveProperty(
+      "mode"
+    );
+
+    const streamFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>(),
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+    });
+    const streamProvider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: streamFetch as unknown as typeof globalThis.fetch,
+    });
+    await streamProvider.stream({
+      modelId: "openai/tts-1",
+      text: "Hello",
+      voice: "alloy",
+    });
+    expect(JSON.parse(streamFetch.mock.calls[0][1].body)).not.toHaveProperty(
+      "mode"
+    );
+
+    const conversationFetch = mockFetchAudio(
+      new Uint8Array([65, 66, 67]),
+      "audio/wav"
+    );
+    const conversationProvider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: conversationFetch as unknown as typeof globalThis.fetch,
+    });
+    await conversationProvider.generateConversation({
+      modelId: "openai/gpt-4o-mini-tts",
+      turns: [{ voice: "alloy", text: "Hi." }],
+    });
+    expect(
+      JSON.parse(conversationFetch.mock.calls[0][1].body)
+    ).not.toHaveProperty("mode");
   });
 
   it("forwards the caller's exact `output` object verbatim in the body", async () => {
@@ -155,7 +206,6 @@ describe("SpeechGatewayProvider", () => {
     );
     // URL split is the timestamps switch; body carries no `timestamps` field.
     expect(JSON.parse(init.body)).toEqual({
-      mode: "inline",
       model: "openai/tts-1",
       voice: "alloy",
       text: "Hello",
@@ -545,7 +595,6 @@ describe("SpeechGatewayProvider.generateConversation", () => {
 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
-      mode: "conversation",
       model: "openai/gpt-4o-mini-tts",
       turns: [
         { voice: "alloy", text: "Hi." },
@@ -576,7 +625,6 @@ describe("SpeechGatewayProvider.generateConversation", () => {
     const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body).toEqual({
-      mode: "conversation",
       turns: [
         { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
         { model: "elevenlabs/eleven_v3", voice: "rachel", text: "Hello!" },
