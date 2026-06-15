@@ -44,7 +44,7 @@ Each factory accepts a config object with these common fields:
 - `fetch` — custom fetch implementation
 - `fallbackSTT` — resolved STT model (from `<otherFactory>().stt(...)`) used when `timestamps: true` and the chosen TTS model has no native alignment
 
-The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config. Factories: `createOpenAI`, `createElevenLabs`, `createDeepgram`, `createCartesia`, `createHume`, `createGoogle`, `createFishAudio`, `createInworld`, `createMurf`, `createResemble`, `createFal`, `createMistral`, `createXai`, `createSmallestAI`, `createSpeechGateway`.
+The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config. Factories: `createOpenAI`, `createElevenLabs`, `createDeepgram`, `createCartesia`, `createHume`, `createGoogle`, `createFishAudio`, `createGradium`, `createInworld`, `createMurf`, `createResemble`, `createFal`, `createMistral`, `createXai`, `createSmallestAI`, `createSpeechGateway`.
 
 ## Request Options
 

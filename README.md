@@ -4,7 +4,7 @@
 
 # Speech SDK
 
-**Text-to-speech across 14 providers, one API.**
+**Text-to-speech across 15 providers, one API.**
 
 A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
 
@@ -96,6 +96,7 @@ The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want 
 | [Inworld](https://docs.inworld.ai/tts) | `inworld` | `INWORLD_API_KEY` |
 | [Google Gemini TTS](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `GOOGLE_API_KEY` |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `FISH_AUDIO_API_KEY` |
+| [Gradium](https://docs.gradium.ai) | `gradium` | `GRADIUM_API_KEY` |
 | [Murf](https://murf.ai/api/docs) | `murf` | `MURF_API_KEY` |
 | [Resemble](https://docs.resemble.ai) | `resemble` | `RESEMBLE_API_KEY` |
 | [fal](https://fal.ai/models) | `fal-ai` | `FAL_API_KEY` |
@@ -376,6 +377,7 @@ import {
   createOpenAI,
   createElevenLabs,
   createCartesia,
+  createGradium,
   createSpeechGateway,
 } from '@speech-sdk/core/providers';
 ```

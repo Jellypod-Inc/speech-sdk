@@ -6,6 +6,7 @@ import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
 import { FalSpeechProvider } from "../providers/fal/index.js";
 import { FishAudioSpeechProvider } from "../providers/fish-audio/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
+import { GradiumSpeechProvider } from "../providers/gradium/index.js";
 import { HumeSpeechProvider } from "../providers/hume/index.js";
 import { InworldSpeechProvider } from "../providers/inworld/index.js";
 import { MiniMaxSpeechProvider } from "../providers/minimax/index.js";
@@ -39,6 +40,7 @@ const providers: { name: string; provider: SpeechProvider }[] = [
     name: "fish-audio",
     provider: new FishAudioSpeechProvider({ apiKey: "test" }),
   },
+  { name: "gradium", provider: new GradiumSpeechProvider({ apiKey: "test" }) },
   { name: "inworld", provider: new InworldSpeechProvider({ apiKey: "test" }) },
   {
     name: "deepgram",

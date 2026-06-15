@@ -13,6 +13,8 @@ export type { SpeechGatewayProviderConfig } from "./providers/gateway/index.js";
 export { createSpeechGateway } from "./providers/gateway/index.js";
 export type { GoogleSpeechProviderConfig } from "./providers/google/index.js";
 export { createGoogle } from "./providers/google/index.js";
+export type { GradiumSpeechProviderConfig } from "./providers/gradium/index.js";
+export { createGradium } from "./providers/gradium/index.js";
 export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
 export { createHume } from "./providers/hume/index.js";
 export type { InworldSpeechProviderConfig } from "./providers/inworld/index.js";
