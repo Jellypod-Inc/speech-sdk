@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0
+
+- Add the **Gradium** TTS provider (`gradium` prefix, `createGradium()` factory, `GRADIUM_API_KEY`). Ships Gradium's `default` model with streaming support across English, French, German, Spanish, and Portuguese, and up to 20,000 input characters per request. Supports `wav` and `pcm` output natively at 8/16/22.05/24/44.1/48 kHz (default 48 kHz); `mp3` is produced by decoding Gradium's wav/pcm locally. The provider is registered in `aggregatedModels()` so `gradium/default` is discoverable through the gateway path.
+
 ## 0.15.1
 
 - **Fix: gateway requests no longer send the legacy top-level `mode` discriminator.** The gateway's strict schemas reject the redundant key now that the server-side compatibility shim was removed, so every inline SDK request was failing with a root-level `400 invalid_input`. The key is dropped from all gateway request bodies, with a wire-shape regression test asserting it never returns.
