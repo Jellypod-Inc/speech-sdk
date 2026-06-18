@@ -4,6 +4,7 @@ import {
 } from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
+import { cloneSampleFilename } from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -13,6 +14,7 @@ import {
 import {
   hasFeature,
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -87,13 +89,25 @@ export const CARTESIA_MODELS: readonly ModelInfo[] = [
     id: "sonic-3.5",
     releaseDate: "2026-05-04",
     languages: SONIC_LANGUAGES,
-    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "inline-voice-cloning",
+      "voice-cloning",
+      "timestamps",
+    ],
   },
   {
     id: "sonic-3",
     releaseDate: "2025-10-27",
     languages: SONIC_LANGUAGES,
-    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "inline-voice-cloning",
+      "voice-cloning",
+      "timestamps",
+    ],
   },
   {
     id: "sonic-2",
@@ -492,6 +506,66 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
         return;
     }
   }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const warnings: string[] = [];
+    let language = options.language;
+    if (language == null) {
+      language = "en";
+      warnings.push(
+        "cartesia requires a language; defaulted to 'en' — pass `language` if the sample isn't English."
+      );
+    }
+
+    const sample = options.samples[0];
+    const form = new FormData();
+    form.append("name", options.name);
+    form.append("language", language);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      form.append(key, coerceFormValue(value));
+    }
+    form.append(
+      "clip",
+      new Blob([sample.bytes], { type: sample.mediaType }),
+      cloneSampleFilename(sample, 0)
+    );
+
+    const response = await this.fetchFn(`${this.baseURL}/voices/clone`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
+        "Cartesia-Version": "2026-03-01",
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        `cartesia/${options.modelId}: clone response missing id`
+      );
+    }
+
+    return { voiceId, warnings, providerMetadata: json };
+  }
 }
 
 export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
@@ -505,6 +579,17 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
+}
+
+function coerceFormValue(value: unknown): string {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 // Cartesia returns raw bytes when container="raw"; derive mediaType from the requested body so callers always know the rate.

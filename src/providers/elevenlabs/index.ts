@@ -5,6 +5,7 @@ import {
 } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
+import { cloneSampleFilename } from "../../clone-voice.js";
 import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -14,6 +15,7 @@ import {
 import {
   hasFeature,
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -165,28 +167,28 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
     id: "eleven_v3",
     releaseDate: "2025-06-08",
     languages: ELEVENLABS_V3_LANGUAGES,
-    features: ["streaming", "audio-tags", "timestamps"],
+    features: ["streaming", "audio-tags", "timestamps", "voice-cloning"],
     maxInputChars: 5000,
   },
   {
     id: "eleven_multilingual_v2",
     releaseDate: "2023-08-22",
     languages: ELEVENLABS_V2_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 10_000,
   },
   {
     id: "eleven_flash_v2_5",
     releaseDate: "2024-12-01",
     languages: ELEVENLABS_FLASH_V2_5_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 40_000,
   },
   {
     id: "eleven_flash_v2",
     releaseDate: "2024-12-01",
     languages: ["en"] as const,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 30_000,
   },
 ] as const;
@@ -575,6 +577,65 @@ export class ElevenLabsSpeechProvider
       providerMetadata: requestId ? { requestId } : undefined,
     };
   }
+
+  maxCloneSamples(_modelId: string): number {
+    return 25;
+  }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const form = new FormData();
+    form.append("name", options.name);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      form.append(key, coerceFormValue(value));
+    }
+    for (let i = 0; i < options.samples.length; i++) {
+      const sample = options.samples[i];
+      form.append(
+        "files",
+        new Blob([sample.bytes], { type: sample.mediaType }),
+        cloneSampleFilename(sample, i)
+      );
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/voices/add`, {
+      method: "POST",
+      headers: {
+        "xi-api-key": resolveApiKey(
+          this.apiKey,
+          "ELEVENLABS_API_KEY",
+          "ElevenLabs"
+        ),
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        `elevenlabs/${options.modelId}: clone response missing voice_id`
+      );
+    }
+
+    return { voiceId, providerMetadata: json };
+  }
 }
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
@@ -588,6 +649,17 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
+}
+
+function coerceFormValue(value: unknown): string {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 // Unknown formats fall back to mp3 (the endpoint's default).

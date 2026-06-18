@@ -299,6 +299,7 @@ describe("CartesiaSpeechProvider", () => {
         "streaming",
         "audio-tags",
         "inline-voice-cloning",
+        "voice-cloning",
         "timestamps",
       ]);
     });

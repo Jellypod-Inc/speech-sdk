@@ -1,5 +1,6 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
+import { cloneSampleFilename } from "../../clone-voice.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -8,6 +9,7 @@ import {
 import {
   hasFeature,
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -27,6 +29,21 @@ export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
 const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
+function appendProviderOption(form: FormData, key: string, value: unknown) {
+  if (value == null) {
+    return;
+  }
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    form.append(key, String(value));
+    return;
+  }
+  form.append(key, JSON.stringify(value));
+}
+
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
   {
     id: "s2-pro",
@@ -37,6 +54,7 @@ export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
       "audio-tags",
       "open-source",
       "inline-voice-cloning",
+      "voice-cloning",
     ],
   },
 ] as const;
@@ -227,6 +245,67 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  maxCloneSamples(): number {
+    return 10;
+  }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const form = new FormData();
+    form.append("type", "tts");
+    form.append("title", options.name);
+    form.append("train_mode", "fast");
+    form.append("visibility", "private");
+
+    for (let i = 0; i < options.samples.length; i++) {
+      const s = options.samples[i];
+      form.append(
+        "voices",
+        new Blob([s.bytes], { type: s.mediaType }),
+        cloneSampleFilename(s, i)
+      );
+      if (s.transcript != null) {
+        form.append("texts", s.transcript);
+      }
+    }
+
+    if (options.providerOptions) {
+      for (const [key, value] of Object.entries(options.providerOptions)) {
+        appendProviderOption(form, key, value);
+      }
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/model`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    return {
+      voiceId: String(json._id),
+      providerMetadata: json,
+    };
   }
 
   dialogueCapabilities(modelId: string) {
