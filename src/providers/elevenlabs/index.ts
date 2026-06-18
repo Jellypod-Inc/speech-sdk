@@ -604,7 +604,7 @@ export class ElevenLabsSpeechProvider
       const sample = options.samples[i];
       form.append(
         "files",
-        new Blob([sample.bytes], { type: sample.mediaType }),
+        new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
         cloneSampleFilename(sample, i)
       );
     }

@@ -254,7 +254,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     const sample = options.samples[0];
     form.append(
       "file",
-      new Blob([sample.bytes], { type: sample.mediaType }),
+      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
       cloneSampleFilename(sample, 0)
     );
 

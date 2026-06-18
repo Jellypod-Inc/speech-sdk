@@ -1,14 +1,19 @@
 import type { AudioOutput } from "../../audio-output.js";
+import { cloneSampleFilename } from "../../clone-voice.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
+
+const SMALLEST_CLONE_URL =
+  "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice";
 
 export interface SmallestAISpeechProviderConfig {
   apiKey?: string;
@@ -43,13 +48,13 @@ export class SmallestAISpeechProvider
         "pt",
         "de",
       ] as const,
-      features: [],
+      features: ["voice-cloning"],
     },
     {
       id: "lightning_v3.1_pro",
       releaseDate: "2025-05-01",
       languages: ["en", "hi"] as const,
-      features: [],
+      features: ["voice-cloning"],
     },
   ] as const;
 
@@ -116,6 +121,61 @@ export class SmallestAISpeechProvider
     };
   }
 
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const form = new FormData();
+    form.append("displayName", options.name);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      form.append(key, coerceFormValue(value));
+    }
+    const sample = options.samples[0];
+    form.append(
+      "file",
+      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
+      cloneSampleFilename(sample, 0)
+    );
+
+    const response = await this.fetchFn(SMALLEST_CLONE_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      voiceId?: unknown;
+      data?: { voiceId?: unknown };
+    };
+    const voiceId = json.voiceId ?? json.data?.voiceId;
+    if (typeof voiceId !== "string") {
+      throw new Error(
+        `smallest-ai/${options.modelId}: clone response missing voiceId`
+      );
+    }
+
+    return {
+      voiceId,
+      providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
   supportedSampleRates(modelId: string): readonly number[] {
     if (!this.models.some((m) => m.id === modelId)) {
       return [];
@@ -168,6 +228,17 @@ export class SmallestAISpeechProvider
         return;
     }
   }
+}
+
+function coerceFormValue(value: unknown): string {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 function smallestAIMediaType(format: unknown, sampleRate: unknown): string {

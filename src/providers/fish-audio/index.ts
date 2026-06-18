@@ -274,7 +274,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       const s = options.samples[i];
       form.append(
         "voices",
-        new Blob([s.bytes], { type: s.mediaType }),
+        new Blob([s.bytes as BlobPart], { type: s.mediaType }),
         cloneSampleFilename(s, i)
       );
       if (s.transcript != null) {

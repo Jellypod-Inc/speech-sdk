@@ -170,6 +170,7 @@ export function sniffAudioMediaType(bytes: Uint8Array): string {
   ) {
     return "audio/mpeg";
   }
+  // biome-ignore lint/suspicious/noBitwiseOperators: MP3 frame sync requires masking the top 3 bits of the second byte.
   if (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) {
     return "audio/mpeg";
   }

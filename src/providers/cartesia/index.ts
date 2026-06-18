@@ -538,7 +538,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     }
     form.append(
       "clip",
-      new Blob([sample.bytes], { type: sample.mediaType }),
+      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
       cloneSampleFilename(sample, 0)
     );
 

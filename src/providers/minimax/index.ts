@@ -3,7 +3,12 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
-import { ApiError, SpeechSDKError } from "../../errors.js";
+import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  ApiError,
+  InvalidCloneFieldError,
+  SpeechSDKError,
+} from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -11,10 +16,13 @@ import {
 } from "../../provider-utils.js";
 import {
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
+
+const MINIMAX_VOICE_ID_RE = /^[A-Za-z][A-Za-z0-9_-]{6,254}[A-Za-z0-9]$/;
 
 export interface MiniMaxSpeechProviderConfig {
   apiKey?: string;
@@ -66,14 +74,14 @@ export const MINIMAX_MODELS: readonly ModelInfo[] = [
     id: "speech-2.8-hd",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: [],
+    features: ["voice-cloning"],
     maxInputChars: 3000,
   },
   {
     id: "speech-2.8-turbo",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: [],
+    features: ["voice-cloning"],
     maxInputChars: 3000,
   },
 ] as const;
@@ -290,13 +298,141 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
   }
 
   private endpoint(): string {
-    const url = `${this.baseURL}/t2a_v2`;
+    return this.endpointFor("t2a_v2");
+  }
+
+  private endpointFor(path: string): string {
+    const url = `${this.baseURL}/${path}`;
     const groupId =
       this.groupId ??
       (typeof process === "undefined"
         ? undefined
         : process.env?.MINIMAX_GROUP_ID);
     return groupId ? `${url}?GroupId=${encodeURIComponent(groupId)}` : url;
+  }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    if (!MINIMAX_VOICE_ID_RE.test(options.name)) {
+      throw new InvalidCloneFieldError(
+        "minimax",
+        "name",
+        "MiniMax voice IDs must be 8–256 characters, start with a letter, use only letters/digits/-/_, and not end in - or _."
+      );
+    }
+
+    const authHeader = `Bearer ${resolveApiKey(this.apiKey, "MINIMAX_API_KEY", "MiniMax")}`;
+
+    const fileId = await this.uploadCloneSample(
+      options.samples[0],
+      authHeader,
+      options
+    );
+
+    const cloneBody: Record<string, unknown> = {
+      ...options.providerOptions,
+      file_id: fileId,
+      voice_id: options.name,
+    };
+
+    const response = await this.fetchFn(this.endpointFor("voice_clone"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(cloneBody),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    this.assertOk(json.base_resp, options.modelId);
+
+    return {
+      voiceId: options.name,
+      providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
+  private async uploadCloneSample(
+    sample: NormalizedSample,
+    authHeader: string,
+    options: {
+      modelId: string;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    }
+  ): Promise<string> {
+    const form = new FormData();
+    form.append("purpose", "voice_clone");
+    form.append(
+      "file",
+      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
+      cloneSampleFilename(sample, 0)
+    );
+
+    const response = await this.fetchFn(this.endpointFor("files/upload"), {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      file?: { file_id?: unknown };
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    this.assertOk(json.base_resp, options.modelId);
+
+    const fileId = json.file?.file_id;
+    if (typeof fileId !== "string" && typeof fileId !== "number") {
+      throw new SpeechSDKError(
+        `minimax/${options.modelId}: upload response missing file.file_id`
+      );
+    }
+    return String(fileId);
+  }
+
+  private assertOk(
+    baseResp: { status_code?: number; status_msg?: string } | undefined,
+    modelId: string
+  ): void {
+    if (
+      baseResp &&
+      baseResp.status_code !== 0 &&
+      baseResp.status_code != null
+    ) {
+      throw new ApiError(
+        `MiniMax error ${baseResp.status_code}: ${baseResp.status_msg ?? "unknown error"} (minimax/${modelId})`,
+        {
+          statusCode: minimaxHttpStatus(baseResp.status_code),
+          code: String(baseResp.status_code),
+        }
+      );
+    }
   }
 }
 
