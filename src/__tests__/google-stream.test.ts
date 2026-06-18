@@ -24,10 +24,9 @@ async function collect(
 }
 
 describe("GoogleSpeechProvider.stream", () => {
-  // Gemini's streamGenerateContent endpoint buffers the full synthesis
-  // server-side, so our stream() delegates to generate() and wraps the
-  // resulting WAV in a single-chunk ReadableStream. These tests assert
-  // that behavior.
+  // 2.5 TTS has no progressive streaming endpoint, so stream() delegates to
+  // generate() and wraps the buffered WAV in a single-chunk ReadableStream.
+  // 3.1+ streams for real via /interactions (covered separately below).
 
   it("delegates to generateContent and returns a single-chunk WAV stream", async () => {
     // 4 bytes of 16-bit PCM (2 samples of silence)
@@ -92,6 +91,58 @@ describe("GoogleSpeechProvider.stream", () => {
       decoded.byteLength
     );
     expect(view.getUint32(24, true)).toBe(24_000);
+  });
+
+  it("streams gemini-3.1 via the /interactions endpoint as raw PCM chunks", async () => {
+    // Two base64 PCM deltas: "QUI=" -> "AB", "Q0Q=" -> "CD"
+    const sse = [
+      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","data":"QUI="}}\n\n',
+      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","data":"Q0Q="}}\n\n',
+      'event: step.completed\ndata: {"event_type":"step.completed"}\n\n',
+    ].join("");
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(encoder.encode(sse));
+            c.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } }
+      )
+    );
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "gg-test",
+      fetch: fetchMock as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.stream?.({
+      modelId: "gemini-3.1-flash-tts-preview",
+      text: "hi",
+      voice: "Kore",
+    });
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("/interactions");
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body.stream).toBe(true);
+    expect(body.model).toBe("gemini-3.1-flash-tts-preview");
+    expect(body.generation_config.speech_config).toEqual([{ voice: "Kore" }]);
+    expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(
+      "gg-test"
+    );
+
+    if (!result) {
+      throw new Error("no result");
+    }
+    expect(result.mediaType).toBe("audio/pcm;rate=24000");
+
+    const decoded = await collect(result.stream);
+    // Raw PCM passthrough, no WAV header.
+    expect(new TextDecoder().decode(decoded)).toBe("ABCD");
   });
 
   it("honors non-default sample rate from the response mimeType", async () => {
