@@ -20,6 +20,15 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+import { parseSseBase64Stream } from "../../sse-stream.js";
+
+function safeParseJson(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return null;
+  }
+}
 
 // Both /generateContent endpoints share the same shape; tolerate missing intermediate fields for nullability differences.
 const generateContentResponseSchema = z.object({
@@ -45,6 +54,18 @@ const generateContentResponseSchema = z.object({
 });
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
+
+// Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
+// The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
+const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
+
+// /interactions step.delta events carry base64 PCM in delta.data, tagged by delta.mime_type (e.g. "audio/l16"). Non-audio deltas are ignored.
+const interactionAudioDeltaSchema = z.object({
+  delta: z.object({
+    mime_type: z.string(),
+    data: z.string(),
+  }),
+});
 
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
@@ -291,7 +312,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  // streamGenerateContent flushes the full clip in one burst; we wrap generate() output as a single-chunk stream. Progressive Gemini TTS requires the Live API (not wired up here).
   async stream(options: {
     modelId: string;
     text: string;
@@ -304,6 +324,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    if (INTERACTIONS_STREAMING_MODELS.has(options.modelId)) {
+      return this.streamInteractions(options);
+    }
+
+    // 2.5 TTS has no progressive streaming endpoint; wrap the buffered generate() output as a single-chunk stream.
     const { audio, mediaType, providerMetadata } = await this.generate(options);
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -312,6 +337,72 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     });
     return { stream, mediaType, providerMetadata };
+  }
+
+  // Real-time TTS streaming is served by /interactions with stream:true (Gemini 3.1+); chunks are raw 16-bit mono PCM @ 24kHz.
+  private async streamInteractions(options: {
+    modelId: string;
+    text: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
+    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
+
+    const voiceName = options.voice ?? "Kore";
+
+    const body: Record<string, unknown> = {
+      model: options.modelId,
+      input: options.text,
+      response_format: { type: "audio" },
+      generation_config: {
+        speech_config: [{ voice: voiceName }],
+        ...options.providerOptions,
+      },
+      stream: true,
+    };
+
+    const response = await this.fetchFn(`${this.baseURL}/interactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+        "Api-Revision": "2026-05-20",
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    if (!response.body) {
+      throw new Error(`google/${options.modelId}: response has no body`);
+    }
+
+    const { stream } = parseSseBase64Stream(response.body, {
+      extractBase64(eventData) {
+        const result = interactionAudioDeltaSchema.safeParse(
+          safeParseJson(eventData)
+        );
+        if (!result.success) {
+          return null;
+        }
+        return result.data.delta.mime_type.startsWith("audio/")
+          ? result.data.delta.data
+          : null;
+      },
+    });
+
+    return {
+      stream,
+      mediaType: `audio/pcm;rate=${DEFAULT_GEMINI_SAMPLE_RATE}`,
+    };
   }
 
   supportedSampleRates(modelId: string): readonly number[] {

@@ -33,7 +33,9 @@ Gemini returns raw PCM. `mediaType` is `audio/L16;rate=24000`, bytes are passed 
 
 ## Streaming
 
-Gemini's streaming is server-buffered SSE — chunks may arrive in larger batches than with true chunked providers.
+`gemini-3.1-flash-tts-preview` streams for real via Gemini's `/interactions` endpoint (`stream: true`), emitting raw 16-bit mono PCM chunks at 24 kHz (`mediaType` `audio/pcm;rate=24000`). Wrap in WAV yourself if you need a container.
+
+The 2.5 models have no progressive streaming endpoint — `streamSpeech` still works, but the full clip is buffered server-side and delivered as a single WAV chunk (`audio/wav`).
 
 ## Provider Options
 

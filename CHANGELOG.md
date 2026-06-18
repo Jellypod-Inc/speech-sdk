@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0
+
+- **Real progressive streaming for `gemini-3.1-flash-tts-preview`.** `streamSpeech` on the Google provider now streams audio as it's generated via Gemini's `/interactions` endpoint (`stream: true`), decoding SSE `step.delta` events into raw 16-bit mono PCM at 24 kHz (`audio/pcm;rate=24000`). Previously `stream()` buffered the full clip through `:generateContent` and emitted it as a single chunk. The 2.5 TTS models keep the buffer-and-wrap single-chunk WAV fallback, as they have no progressive streaming endpoint.
+
 ## 0.16.0
 
 - Add the **Gradium** TTS provider (`gradium` prefix, `createGradium()` factory, `GRADIUM_API_KEY`). Ships Gradium's `default` model with streaming support across English, French, German, Spanish, and Portuguese, and up to 20,000 input characters per request. Supports `wav` and `pcm` output natively at 8/16/22.05/24/44.1/48 kHz (default 48 kHz); `mp3` is produced by decoding Gradium's wav/pcm locally. The provider is registered in `aggregatedModels()` so `gradium/default` is discoverable through the gateway path.
