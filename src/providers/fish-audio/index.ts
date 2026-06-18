@@ -249,9 +249,6 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
     for (const [i, s] of options.samples.entries()) {
       appendSampleBlob(form, "voices", s, i);
-      if (s.transcript != null) {
-        form.append("texts", s.transcript);
-      }
     }
 
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {

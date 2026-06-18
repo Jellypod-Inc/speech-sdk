@@ -48,7 +48,6 @@ export const FEATURES = {
 export interface NormalizedSample {
   bytes: Uint8Array;
   mediaType: string;
-  transcript?: string;
 }
 
 export interface CloneVoiceProviderRequest {

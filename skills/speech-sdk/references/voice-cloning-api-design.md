@@ -38,8 +38,8 @@ multipart transport, a locale enum) is absorbed by the per-provider adapter.
 ```ts
 export type VoiceSample =
   | Uint8Array
-  | { audio: string | Uint8Array; mediaType?: string; transcript?: string }
-  | { url: string; transcript?: string };
+  | { audio: string | Uint8Array; mediaType?: string }
+  | { url: string };
 
 export interface CloneVoiceOptions {
   model: ResolvedModel;                 // factory only in v1; a string throws
@@ -73,9 +73,8 @@ export function cloneVoice(options: CloneVoiceOptions): Promise<ClonedVoice>;
   provider-scoped for almost every provider (the lone model-binding case is
   Smallest, below).
 - **`files` mirrors the inline forms** (`Uint8Array` / `{ audio }` / `{ url }`),
-  plus optional per-file `transcript` (Inworld/Fish quality) and `mediaType`
-  (multipart Content-Type, Mistral `sample_filename`). Accepts one value or an
-  array. No Blob/File/streams.
+  plus an optional per-file `mediaType` (multipart Content-Type, Mistral
+  `sample_filename`). Accepts one value or an array. No Blob/File/streams.
 - **`name` is required.** Every provider needs it; maps to `title` (Fish) /
   `displayName` (Inworld, Smallest) / `name`. For MiniMax it *is* the voice ID.
 - **`language` is optional and defaults to `"en"`.** For the three providers that
@@ -100,7 +99,7 @@ export function cloneVoice(options: CloneVoiceOptions): Promise<ClonedVoice>;
 
 1. Resolve `model` → provider; throw `VoiceCloningUnsupportedError` if it's a
    gateway/string model (factory-only in v1) or a provider without clone support.
-2. Normalize `files` → `NormalizedSample[]` (`{ bytes, mediaType, transcript? }`):
+2. Normalize `files` → `NormalizedSample[]` (`{ bytes, mediaType }`):
    fetch `{ url }` (honoring `abortSignal`, deriving `mediaType` from
    `Content-Type`, throwing `CloneSampleFetchError` on failure), decode base64.
 3. Validate structurally: non-empty `files`, non-empty `name`, sample count ≤

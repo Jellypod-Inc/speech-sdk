@@ -53,7 +53,7 @@ describe("FishAudioSpeechProvider.cloneVoice", () => {
 
     await provider.cloneVoice({
       modelId: "s2-pro",
-      samples: [{ ...sample, transcript: "hello there" }],
+      samples: [sample],
       name: "Narrator",
     });
 
@@ -62,7 +62,6 @@ describe("FishAudioSpeechProvider.cloneVoice", () => {
     expect(form.get("type")).toBe("tts");
     expect(form.get("train_mode")).toBe("fast");
     expect(form.get("visibility")).toBe("private");
-    expect(form.get("texts")).toBe("hello there");
     expect(form.get("voices")).toBeInstanceOf(Blob);
   });
 

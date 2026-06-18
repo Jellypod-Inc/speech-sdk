@@ -9,8 +9,8 @@ import type { NormalizedSample, ResolvedModel } from "./speech-provider.js";
 
 export type VoiceSample =
   | Uint8Array
-  | { audio: string | Uint8Array; mediaType?: string; transcript?: string }
-  | { url: string; transcript?: string };
+  | { audio: string | Uint8Array; mediaType?: string }
+  | { url: string };
 
 export interface CloneVoiceOptions {
   abortSignal?: AbortSignal;
@@ -109,7 +109,7 @@ async function normalizeSample(
     return { bytes: file, mediaType: sniffAudioMediaType(file) };
   }
   if ("url" in file) {
-    return await fetchSample(file.url, file.transcript, abortSignal);
+    return await fetchSample(file.url, abortSignal);
   }
   const bytes =
     file.audio instanceof Uint8Array
@@ -118,13 +118,11 @@ async function normalizeSample(
   return {
     bytes,
     mediaType: file.mediaType ?? sniffAudioMediaType(bytes),
-    ...(file.transcript != null && { transcript: file.transcript }),
   };
 }
 
 async function fetchSample(
   url: string,
-  transcript: string | undefined,
   abortSignal: AbortSignal | undefined
 ): Promise<NormalizedSample> {
   let response: Response;
@@ -147,7 +145,6 @@ async function fetchSample(
       headerType && headerType.length > 0
         ? headerType
         : sniffAudioMediaType(bytes),
-    ...(transcript != null && { transcript }),
   };
 }
 

@@ -41,7 +41,7 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
-  it("sends the body shape with base64 sample and transcription", async () => {
+  it("sends the body shape with base64 sample", async () => {
     const mockFetch = mockCloneFetch();
     const provider = new InworldSpeechProvider({
       apiKey: "k",
@@ -50,7 +50,7 @@ describe("InworldSpeechProvider.cloneVoice", () => {
 
     await provider.cloneVoice({
       modelId: "inworld-tts-1.5-max",
-      samples: [{ ...SAMPLE, transcript: "hello there" }],
+      samples: [SAMPLE],
       name: "My Voice",
       language: "en",
     });
@@ -62,7 +62,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     expect(body.voiceSamples[0].audioData).toBe(
       uint8ArrayToBase64(SAMPLE.bytes)
     );
-    expect(body.voiceSamples[0].transcription).toBe("hello there");
   });
 
   it("maps language 'es' to ES_ES", async () => {

@@ -387,9 +387,6 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
 
     const voiceSamples = options.samples.map((sample) => ({
       audioData: uint8ArrayToBase64(sample.bytes),
-      ...(sample.transcript !== undefined && {
-        transcription: sample.transcript,
-      }),
     }));
 
     const body: Record<string, unknown> = {
