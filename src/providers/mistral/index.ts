@@ -8,6 +8,7 @@ import {
 } from "../../provider-utils.js";
 import {
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -52,7 +53,12 @@ export const MISTRAL_MODELS: readonly ModelInfo[] = [
     id: "voxtral-mini-tts-2603",
     releaseDate: "2026-03-23",
     languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
-    features: ["streaming", "open-source", "inline-voice-cloning"],
+    features: [
+      "streaming",
+      "open-source",
+      "inline-voice-cloning",
+      "voice-cloning",
+    ],
   },
 ] as const;
 
@@ -258,6 +264,71 @@ export class MistralSpeechProvider
         return;
     }
   }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const sample = options.samples[0];
+
+    const body: Record<string, unknown> = {
+      name: options.name,
+      sample_audio: uint8ArrayToBase64(sample.bytes),
+      ...options.providerOptions,
+    };
+
+    const filename = cloneSampleFilename(sample.mediaType);
+    if (filename !== undefined) {
+      body.sample_filename = filename;
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/audio/voices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as { id?: unknown };
+    const voiceId = json.id;
+    if (typeof voiceId !== "string") {
+      throw new Error(`mistral/${options.modelId}: clone response missing id`);
+    }
+
+    return { voiceId, providerMetadata: json as Record<string, unknown> };
+  }
+}
+
+const MEDIA_TYPE_EXTENSIONS: Record<string, string> = {
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/flac": "flac",
+  "audio/ogg": "ogg",
+  "audio/opus": "opus",
+  "audio/webm": "webm",
+};
+
+function cloneSampleFilename(mediaType: string): string | undefined {
+  const ext = MEDIA_TYPE_EXTENSIONS[mediaType.split(";")[0].trim()];
+  return ext === undefined ? undefined : `sample.${ext}`;
 }
 
 function mediaTypeForResponseFormat(format: unknown): string {

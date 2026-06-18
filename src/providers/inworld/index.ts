@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
-import { base64ToUint8Array } from "../../audio-utils.js";
+import { base64ToUint8Array, uint8ArrayToBase64 } from "../../audio-utils.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -8,6 +8,7 @@ import {
 } from "../../provider-utils.js";
 import {
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -85,19 +86,44 @@ const INWORLD_PRIMARY_LANGUAGES = [
   "es",
 ] as const;
 
+// Inworld's clone endpoint wants a locale enum, not a raw BCP-47 tag. Map the
+// base language subtag to Inworld's locale; unmapped languages fall back to AUTO.
+const INWORLD_LANG_CODE_MAP: Record<string, string> = {
+  en: "EN_US",
+  es: "ES_ES",
+  fr: "FR_FR",
+  de: "DE_DE",
+  it: "IT_IT",
+  pt: "PT_BR",
+  ja: "JA_JP",
+  ko: "KO_KR",
+  nl: "NL_NL",
+  pl: "PL_PL",
+  zh: "ZH_CN",
+  ru: "RU_RU",
+  ar: "AR_SA",
+  hi: "HI_IN",
+  he: "HE_IL",
+};
+
+function toInworldLangCode(language: string): string {
+  const base = language.toLowerCase().split("-")[0];
+  return INWORLD_LANG_CODE_MAP[base] ?? "AUTO";
+}
+
 export const INWORLD_MODELS: readonly ModelInfo[] = [
   {
     id: "inworld-tts-1.5-max",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
   {
@@ -109,7 +135,7 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     id: "inworld-tts-2",
     releaseDate: "2026-05-05",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
 ] as const;
@@ -329,6 +355,86 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  maxCloneSamples(_modelId: string): number {
+    return 10;
+  }
+
+  async cloneVoice(options: {
+    modelId: string;
+    samples: NormalizedSample[];
+    name: string;
+    language?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    voiceId: string;
+    warnings?: string[];
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const opts = options.providerOptions ?? {};
+    const warnings: string[] = [];
+
+    let langCode = opts.langCode;
+    if (langCode === undefined) {
+      let language = options.language;
+      if (language == null) {
+        language = "en";
+        warnings.push(
+          "inworld requires a language; defaulted to 'en' — pass `language` if the sample isn't English."
+        );
+      }
+      langCode = toInworldLangCode(language);
+    }
+
+    const voiceSamples = options.samples.map((sample) => ({
+      audioData: uint8ArrayToBase64(sample.bytes),
+      ...(sample.transcript !== undefined && {
+        transcription: sample.transcript,
+      }),
+    }));
+
+    const body: Record<string, unknown> = {
+      displayName: options.name,
+      langCode,
+      voiceSamples,
+      ...opts,
+    };
+
+    const response = await this.fetchFn(
+      `${this.baseURL}/voices/v1/voices:clone`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${resolveApiKey(this.apiKey, "INWORLD_API_KEY", "Inworld")}`,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify(body),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      voice?: { voiceId?: unknown };
+    };
+    const voiceId = json.voice?.voiceId;
+    if (typeof voiceId !== "string") {
+      throw new Error(
+        `inworld/${options.modelId}: clone response missing voice.voiceId`
+      );
+    }
+
+    return {
+      voiceId,
+      ...(warnings.length > 0 && { warnings }),
+      providerMetadata: json as Record<string, unknown>,
+    };
   }
 }
 
