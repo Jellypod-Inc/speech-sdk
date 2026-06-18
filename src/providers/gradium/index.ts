@@ -1,8 +1,5 @@
 import type { AudioOutput } from "../../audio-output.js";
-import {
-  appendProviderOption,
-  cloneSampleFilename,
-} from "../../clone-voice.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -10,8 +7,9 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -82,30 +80,16 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const form = new FormData();
     form.append("name", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
       appendProviderOption(form, key, value);
     }
     const sample = options.samples[0];
-    form.append(
-      "audio_file",
-      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
-      cloneSampleFilename(sample, 0)
-    );
+    appendSampleBlob(form, "audio_file", sample, 0);
 
     const response = await this.fetchFn(`${this.baseURL}/voices/`, {
       method: "POST",

@@ -5,10 +5,7 @@ import {
 } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import {
-  appendProviderOption,
-  cloneSampleFilename,
-} from "../../clone-voice.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
 import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -16,9 +13,10 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   hasFeature,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -585,30 +583,16 @@ export class ElevenLabsSpeechProvider
     return 25;
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const form = new FormData();
     form.append("name", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
       appendProviderOption(form, key, value);
     }
     for (const [i, sample] of options.samples.entries()) {
-      form.append(
-        "files",
-        new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
-        cloneSampleFilename(sample, i)
-      );
+      appendSampleBlob(form, "files", sample, i);
     }
 
     const response = await this.fetchFn(`${this.baseURL}/voices/add`, {

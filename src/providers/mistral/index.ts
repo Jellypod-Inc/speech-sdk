@@ -2,14 +2,16 @@ import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { uint8ArrayToBase64 } from "../../audio-utils.js";
 import { extensionForMediaType } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -266,28 +268,17 @@ export class MistralSpeechProvider
     }
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const sample = options.samples[0];
 
     const body: Record<string, unknown> = {
       name: options.name,
       sample_audio: uint8ArrayToBase64(sample.bytes),
       ...options.providerOptions,
+      sample_filename: `sample.${extensionForMediaType(sample.mediaType)}`,
     };
-
-    body.sample_filename = `sample.${extensionForMediaType(sample.mediaType)}`;
 
     const response = await this.fetchFn(`${this.baseURL}/audio/voices`, {
       method: "POST",
@@ -306,7 +297,9 @@ export class MistralSpeechProvider
     const json = (await response.json()) as { id?: unknown };
     const voiceId = json.id;
     if (typeof voiceId !== "string") {
-      throw new Error(`mistral/${options.modelId}: clone response missing id`);
+      throw new SpeechSDKError(
+        `mistral/${options.modelId}: clone response missing id`
+      );
     }
 
     return { voiceId, providerMetadata: json as Record<string, unknown> };

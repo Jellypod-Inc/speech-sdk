@@ -1,9 +1,6 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
-import {
-  appendProviderOption,
-  cloneSampleFilename,
-} from "../../clone-voice.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -11,9 +8,10 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   hasFeature,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -240,19 +238,9 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     return 10;
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const form = new FormData();
     form.append("type", "tts");
     form.append("title", options.name);
@@ -260,20 +248,14 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     form.append("visibility", "private");
 
     for (const [i, s] of options.samples.entries()) {
-      form.append(
-        "voices",
-        new Blob([s.bytes as BlobPart], { type: s.mediaType }),
-        cloneSampleFilename(s, i)
-      );
+      appendSampleBlob(form, "voices", s, i);
       if (s.transcript != null) {
         form.append("texts", s.transcript);
       }
     }
 
-    if (options.providerOptions) {
-      for (const [key, value] of Object.entries(options.providerOptions)) {
-        appendProviderOption(form, key, value);
-      }
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
     }
 
     const response = await this.fetchFn(`${this.baseURL}/model`, {

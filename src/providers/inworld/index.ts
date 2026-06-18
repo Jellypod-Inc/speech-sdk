@@ -1,14 +1,17 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array, uint8ArrayToBase64 } from "../../audio-utils.js";
+import { defaultCloneLanguage } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -360,32 +363,20 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     return 10;
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const { langCode: langCodeOverride, ...restOpts } =
       options.providerOptions ?? {};
     const warnings: string[] = [];
 
     let langCode = langCodeOverride;
     if (langCode === undefined) {
-      let language = options.language;
-      if (language == null) {
-        language = "en";
-        warnings.push(
-          "inworld requires a language; defaulted to 'en' — pass `language` if the sample isn't English."
-        );
-      }
+      const language = defaultCloneLanguage(
+        "inworld",
+        options.language,
+        warnings
+      );
       langCode = toInworldLangCode(language);
       if (langCode === "AUTO") {
         warnings.push(
@@ -430,7 +421,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     };
     const voiceId = json.voice?.voiceId;
     if (typeof voiceId !== "string") {
-      throw new Error(
+      throw new SpeechSDKError(
         `inworld/${options.modelId}: clone response missing voice.voiceId`
       );
     }

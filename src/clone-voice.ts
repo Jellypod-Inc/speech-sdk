@@ -255,3 +255,35 @@ export function appendProviderOption(
       : JSON.stringify(value);
   form.append(key, encoded);
 }
+
+/** Appends a reference sample to a multipart form under the given field name. */
+export function appendSampleBlob(
+  form: FormData,
+  field: string,
+  sample: NormalizedSample,
+  index: number
+): void {
+  form.append(
+    field,
+    new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
+    cloneSampleFilename(sample, index)
+  );
+}
+
+/**
+ * Returns the caller's language, or defaults to "en" and pushes a warning, for
+ * providers that require a language at clone time.
+ */
+export function defaultCloneLanguage(
+  provider: string,
+  language: string | undefined,
+  warnings: string[]
+): string {
+  if (language != null) {
+    return language;
+  }
+  warnings.push(
+    `${provider} requires a language; defaulted to 'en' — pass \`language\` if the sample isn't English.`
+  );
+  return "en";
+}

@@ -3,7 +3,7 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import { appendSampleBlob } from "../../clone-voice.js";
 import {
   ApiError,
   InvalidCloneFieldError,
@@ -15,6 +15,8 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
   type NormalizedSample,
   type ResolvedModel,
@@ -301,19 +303,9 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
     return groupId ? `${url}?GroupId=${encodeURIComponent(groupId)}` : url;
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     if (!MINIMAX_VOICE_ID_RE.test(options.name)) {
       throw new InvalidCloneFieldError(
         "minimax",
@@ -372,11 +364,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
   ): Promise<string> {
     const form = new FormData();
     form.append("purpose", "voice_clone");
-    form.append(
-      "file",
-      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
-      cloneSampleFilename(sample, 0)
-    );
+    appendSampleBlob(form, "file", sample, 0);
 
     const response = await this.fetchFn(this.endpointFor("files/upload"), {
       method: "POST",
@@ -395,7 +383,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       file?: { file_id?: unknown };
       base_resp?: { status_code?: number; status_msg?: string };
     };
-    assertMiniMaxOk(json.base_resp, "clone");
+    assertMiniMaxOk(json.base_resp, "upload");
 
     const fileId = json.file?.file_id;
     if (typeof fileId !== "string" && typeof fileId !== "number") {

@@ -1,15 +1,14 @@
 import type { AudioOutput } from "../../audio-output.js";
-import {
-  appendProviderOption,
-  cloneSampleFilename,
-} from "../../clone-voice.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
-  type NormalizedSample,
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -124,30 +123,16 @@ export class SmallestAISpeechProvider
     };
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const form = new FormData();
     form.append("displayName", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
       appendProviderOption(form, key, value);
     }
     const sample = options.samples[0];
-    form.append(
-      "file",
-      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
-      cloneSampleFilename(sample, 0)
-    );
+    appendSampleBlob(form, "file", sample, 0);
 
     const response = await this.fetchFn(SMALLEST_CLONE_URL, {
       method: "POST",
@@ -168,7 +153,7 @@ export class SmallestAISpeechProvider
     };
     const voiceId = json.voiceId ?? json.data?.voiceId;
     if (typeof voiceId !== "string") {
-      throw new Error(
+      throw new SpeechSDKError(
         `smallest-ai/${options.modelId}: clone response missing voiceId`
       );
     }

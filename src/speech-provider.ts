@@ -51,6 +51,22 @@ export interface NormalizedSample {
   transcript?: string;
 }
 
+export interface CloneVoiceProviderRequest {
+  abortSignal?: AbortSignal;
+  headers?: Record<string, string>;
+  language?: string;
+  modelId: string;
+  name: string;
+  providerOptions?: Record<string, unknown>;
+  samples: NormalizedSample[];
+}
+
+export interface CloneVoiceProviderResult {
+  providerMetadata?: Record<string, unknown>;
+  voiceId: string;
+  warnings?: string[];
+}
+
 export function hasFeature(model: ModelInfo, id: string): boolean {
   return model.features.some((f) =>
     typeof f === "string" ? f === id : f.id === id
@@ -69,19 +85,9 @@ export interface SpeechProvider<
    * Language-requiring providers default `language` to "en" themselves and
    * report it via `warnings`.
    */
-  cloneVoice?(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }>;
+  cloneVoice?(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult>;
   defaultModel: TModel;
 
   dialogueCapabilities?(modelId: string):

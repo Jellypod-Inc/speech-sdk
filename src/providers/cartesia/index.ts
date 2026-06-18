@@ -6,7 +6,8 @@ import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
 import {
   appendProviderOption,
-  cloneSampleFilename,
+  appendSampleBlob,
+  defaultCloneLanguage,
 } from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -15,9 +16,10 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   hasFeature,
   type ModelInfo,
-  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
@@ -510,27 +512,15 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     }
   }
 
-  async cloneVoice(options: {
-    modelId: string;
-    samples: NormalizedSample[];
-    name: string;
-    language?: string;
-    providerOptions?: Record<string, unknown>;
-    abortSignal?: AbortSignal;
-    headers?: Record<string, string>;
-  }): Promise<{
-    voiceId: string;
-    warnings?: string[];
-    providerMetadata?: Record<string, unknown>;
-  }> {
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
     const warnings: string[] = [];
-    let language = options.language;
-    if (language == null) {
-      language = "en";
-      warnings.push(
-        "cartesia requires a language; defaulted to 'en' — pass `language` if the sample isn't English."
-      );
-    }
+    const language = defaultCloneLanguage(
+      "cartesia",
+      options.language,
+      warnings
+    );
 
     const sample = options.samples[0];
     const form = new FormData();
@@ -539,11 +529,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
       appendProviderOption(form, key, value);
     }
-    form.append(
-      "clip",
-      new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
-      cloneSampleFilename(sample, 0)
-    );
+    appendSampleBlob(form, "clip", sample, 0);
 
     const response = await this.fetchFn(`${this.baseURL}/voices/clone`, {
       method: "POST",
@@ -567,7 +553,11 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    return { voiceId, warnings, providerMetadata: json };
+    return {
+      voiceId,
+      providerMetadata: json,
+      ...(warnings.length ? { warnings } : {}),
+    };
   }
 }
 
