@@ -190,17 +190,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
 
     const payload = minimaxResponseSchema.parse(await response.json());
 
-    // MiniMax returns HTTP 200 even for logical failures; the real status lives in base_resp.
-    if (payload.base_resp && payload.base_resp.status_code !== 0) {
-      const { status_code, status_msg } = payload.base_resp;
-      throw new ApiError(
-        `MiniMax T2A error ${status_code}: ${status_msg ?? "unknown error"}`,
-        {
-          statusCode: minimaxHttpStatus(status_code),
-          code: String(status_code),
-        }
-      );
-    }
+    assertMiniMaxOk(payload.base_resp, "T2A");
 
     const hexAudio = payload.data?.audio;
     if (!hexAudio) {
@@ -363,7 +353,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as {
       base_resp?: { status_code?: number; status_msg?: string };
     };
-    this.assertOk(json.base_resp, options.modelId);
+    assertMiniMaxOk(json.base_resp, "clone");
 
     return {
       voiceId: options.name,
@@ -405,7 +395,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       file?: { file_id?: unknown };
       base_resp?: { status_code?: number; status_msg?: string };
     };
-    this.assertOk(json.base_resp, options.modelId);
+    assertMiniMaxOk(json.base_resp, "clone");
 
     const fileId = json.file?.file_id;
     if (typeof fileId !== "string" && typeof fileId !== "number") {
@@ -414,25 +404,6 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       );
     }
     return String(fileId);
-  }
-
-  private assertOk(
-    baseResp: { status_code?: number; status_msg?: string } | undefined,
-    modelId: string
-  ): void {
-    if (
-      baseResp &&
-      baseResp.status_code !== 0 &&
-      baseResp.status_code != null
-    ) {
-      throw new ApiError(
-        `MiniMax error ${baseResp.status_code}: ${baseResp.status_msg ?? "unknown error"} (minimax/${modelId})`,
-        {
-          statusCode: minimaxHttpStatus(baseResp.status_code),
-          code: String(baseResp.status_code),
-        }
-      );
-    }
   }
 }
 
@@ -475,6 +446,23 @@ function minimaxMediaType(
     default:
       return "audio/mpeg";
   }
+}
+
+// MiniMax returns HTTP 200 even for logical failures; the real status lives in base_resp.
+function assertMiniMaxOk(
+  baseResp: { status_code?: number; status_msg?: string } | undefined,
+  label: string
+): void {
+  if (baseResp?.status_code == null || baseResp.status_code === 0) {
+    return;
+  }
+  throw new ApiError(
+    `MiniMax ${label} error ${baseResp.status_code}: ${baseResp.status_msg ?? "unknown error"}`,
+    {
+      statusCode: minimaxHttpStatus(baseResp.status_code),
+      code: String(baseResp.status_code),
+    }
+  );
 }
 
 // MiniMax tunnels logical errors through base_resp; map the common codes onto HTTP

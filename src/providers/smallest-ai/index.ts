@@ -1,5 +1,8 @@
 import type { AudioOutput } from "../../audio-output.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -137,7 +140,7 @@ export class SmallestAISpeechProvider
     const form = new FormData();
     form.append("displayName", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
-      form.append(key, coerceFormValue(value));
+      appendProviderOption(form, key, value);
     }
     const sample = options.samples[0];
     form.append(
@@ -228,17 +231,6 @@ export class SmallestAISpeechProvider
         return;
     }
   }
-}
-
-function coerceFormValue(value: unknown): string {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  return JSON.stringify(value);
 }
 
 function smallestAIMediaType(format: unknown, sampleRate: unknown): string {

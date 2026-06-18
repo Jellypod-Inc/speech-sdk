@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { uint8ArrayToBase64 } from "../../audio-utils.js";
+import { extensionForMediaType } from "../../clone-voice.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -286,10 +287,7 @@ export class MistralSpeechProvider
       ...options.providerOptions,
     };
 
-    const filename = cloneSampleFilename(sample.mediaType);
-    if (filename !== undefined) {
-      body.sample_filename = filename;
-    }
+    body.sample_filename = `sample.${extensionForMediaType(sample.mediaType)}`;
 
     const response = await this.fetchFn(`${this.baseURL}/audio/voices`, {
       method: "POST",
@@ -313,22 +311,6 @@ export class MistralSpeechProvider
 
     return { voiceId, providerMetadata: json as Record<string, unknown> };
   }
-}
-
-const MEDIA_TYPE_EXTENSIONS: Record<string, string> = {
-  "audio/wav": "wav",
-  "audio/x-wav": "wav",
-  "audio/mpeg": "mp3",
-  "audio/mp3": "mp3",
-  "audio/flac": "flac",
-  "audio/ogg": "ogg",
-  "audio/opus": "opus",
-  "audio/webm": "webm",
-};
-
-function cloneSampleFilename(mediaType: string): string | undefined {
-  const ext = MEDIA_TYPE_EXTENSIONS[mediaType.split(";")[0].trim()];
-  return ext === undefined ? undefined : `sample.${ext}`;
 }
 
 function mediaTypeForResponseFormat(format: unknown): string {

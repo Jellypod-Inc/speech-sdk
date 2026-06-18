@@ -53,8 +53,10 @@ export async function cloneVoice(
     throw new InvalidCloneFieldError(provider.id, "name", "must not be empty.");
   }
 
-  const samples = await normalizeSamples(options.files, options.abortSignal);
-  if (samples.length === 0) {
+  const fileList = Array.isArray(options.files)
+    ? options.files
+    : [options.files];
+  if (fileList.length === 0) {
     throw new InvalidCloneFieldError(
       provider.id,
       "files",
@@ -62,10 +64,13 @@ export async function cloneVoice(
     );
   }
 
+  // Enforce the count before normalizing so oversized requests don't fetch every URL first.
   const max = provider.maxCloneSamples?.(modelId) ?? 1;
-  if (samples.length > max) {
-    throw new TooManyCloneSamplesError(provider.id, max, samples.length);
+  if (fileList.length > max) {
+    throw new TooManyCloneSamplesError(provider.id, max, fileList.length);
   }
+
+  const samples = await normalizeSamples(fileList, options.abortSignal);
 
   const result = await provider.cloneVoice({
     modelId,
@@ -88,12 +93,11 @@ export async function cloneVoice(
 }
 
 async function normalizeSamples(
-  files: VoiceSample | VoiceSample[],
+  files: VoiceSample[],
   abortSignal: AbortSignal | undefined
 ): Promise<NormalizedSample[]> {
-  const list = Array.isArray(files) ? files : [files];
   return await Promise.all(
-    list.map((file) => normalizeSample(file, abortSignal))
+    files.map((file) => normalizeSample(file, abortSignal))
   );
 }
 
@@ -228,4 +232,26 @@ export function cloneSampleFilename(
   index: number
 ): string {
   return `sample-${index}.${extensionForMediaType(sample.mediaType)}`;
+}
+
+/**
+ * Appends a providerOptions entry to a multipart form. Nullish values are
+ * skipped (so an unset optional field isn't sent as the literal "null"), and
+ * non-primitives are JSON-encoded.
+ */
+export function appendProviderOption(
+  form: FormData,
+  key: string,
+  value: unknown
+): void {
+  if (value == null) {
+    return;
+  }
+  const encoded =
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+      ? String(value)
+      : JSON.stringify(value);
+  form.append(key, encoded);
 }

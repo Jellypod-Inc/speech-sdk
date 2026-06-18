@@ -4,7 +4,10 @@ import {
 } from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -534,7 +537,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     form.append("name", options.name);
     form.append("language", language);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
-      form.append(key, coerceFormValue(value));
+      appendProviderOption(form, key, value);
     }
     form.append(
       "clip",
@@ -579,17 +582,6 @@ export function createCartesia(config: CartesiaSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
-}
-
-function coerceFormValue(value: unknown): string {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  return JSON.stringify(value);
 }
 
 // Cartesia returns raw bytes when container="raw"; derive mediaType from the requested body so callers always know the rate.

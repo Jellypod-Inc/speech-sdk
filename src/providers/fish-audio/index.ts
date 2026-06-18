@@ -1,6 +1,10 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -28,21 +32,6 @@ export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 // Fish Audio WAV/PCM accepts 8k–44.1k; MP3 is 32k–44.1k and Opus is 48k only.
 const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
 const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
-
-function appendProviderOption(form: FormData, key: string, value: unknown) {
-  if (value == null) {
-    return;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    form.append(key, String(value));
-    return;
-  }
-  form.append(key, JSON.stringify(value));
-}
 
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
   {
@@ -270,8 +259,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     form.append("train_mode", "fast");
     form.append("visibility", "private");
 
-    for (let i = 0; i < options.samples.length; i++) {
-      const s = options.samples[i];
+    for (const [i, s] of options.samples.entries()) {
       form.append(
         "voices",
         new Blob([s.bytes as BlobPart], { type: s.mediaType }),
@@ -302,10 +290,13 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const json = (await response.json()) as Record<string, unknown>;
-    return {
-      voiceId: String(json._id),
-      providerMetadata: json,
-    };
+    const voiceId = json._id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        `fish-audio/${options.modelId}: clone response missing _id`
+      );
+    }
+    return { voiceId, providerMetadata: json };
   }
 
   dialogueCapabilities(modelId: string) {

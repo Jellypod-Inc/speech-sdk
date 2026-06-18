@@ -5,7 +5,10 @@ import {
 } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
 import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -598,10 +601,9 @@ export class ElevenLabsSpeechProvider
     const form = new FormData();
     form.append("name", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
-      form.append(key, coerceFormValue(value));
+      appendProviderOption(form, key, value);
     }
-    for (let i = 0; i < options.samples.length; i++) {
-      const sample = options.samples[i];
+    for (const [i, sample] of options.samples.entries()) {
       form.append(
         "files",
         new Blob([sample.bytes as BlobPart], { type: sample.mediaType }),
@@ -649,17 +651,6 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
       ...(fallbackSTT && { fallbackSTT }),
     };
   };
-}
-
-function coerceFormValue(value: unknown): string {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  return JSON.stringify(value);
 }
 
 // Unknown formats fall back to mp3 (the endpoint's default).

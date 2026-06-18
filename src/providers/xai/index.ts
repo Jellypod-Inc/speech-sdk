@@ -1,5 +1,9 @@
 import type { AudioOutput } from "../../audio-output.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -46,21 +50,6 @@ const XAI_LANGUAGES = [
   "tr",
   "vi",
 ] as const;
-
-function appendProviderOption(form: FormData, key: string, value: unknown) {
-  if (value == null) {
-    return;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    form.append(key, String(value));
-    return;
-  }
-  form.append(key, JSON.stringify(value));
-}
 
 export const XAI_MODELS: readonly ModelInfo[] = [
   {
@@ -278,8 +267,14 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
 
     const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        `xai/${options.modelId}: clone response missing voice_id`
+      );
+    }
     return {
-      voiceId: String(json.voice_id),
+      voiceId,
       ...(warnings.length ? { warnings } : {}),
       providerMetadata: json,
     };

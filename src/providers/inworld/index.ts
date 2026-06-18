@@ -86,8 +86,7 @@ const INWORLD_PRIMARY_LANGUAGES = [
   "es",
 ] as const;
 
-// Inworld's clone endpoint wants a locale enum, not a raw BCP-47 tag. Map the
-// base language subtag to Inworld's locale; unmapped languages fall back to AUTO.
+// Inworld's clone endpoint wants a locale enum (EN_US), not a raw BCP-47 tag (en).
 const INWORLD_LANG_CODE_MAP: Record<string, string> = {
   en: "EN_US",
   es: "ES_ES",
@@ -374,10 +373,11 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     warnings?: string[];
     providerMetadata?: Record<string, unknown>;
   }> {
-    const opts = options.providerOptions ?? {};
+    const { langCode: langCodeOverride, ...restOpts } =
+      options.providerOptions ?? {};
     const warnings: string[] = [];
 
-    let langCode = opts.langCode;
+    let langCode = langCodeOverride;
     if (langCode === undefined) {
       let language = options.language;
       if (language == null) {
@@ -387,6 +387,11 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
         );
       }
       langCode = toInworldLangCode(language);
+      if (langCode === "AUTO") {
+        warnings.push(
+          `inworld has no locale for language '${language}'; using AUTO so the provider detects it — pass providerOptions.langCode to override.`
+        );
+      }
     }
 
     const voiceSamples = options.samples.map((sample) => ({
@@ -397,10 +402,10 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     }));
 
     const body: Record<string, unknown> = {
+      ...restOpts,
       displayName: options.name,
       langCode,
       voiceSamples,
-      ...opts,
     };
 
     const response = await this.fetchFn(

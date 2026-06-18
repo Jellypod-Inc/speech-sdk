@@ -1,5 +1,8 @@
 import type { AudioOutput } from "../../audio-output.js";
-import { cloneSampleFilename } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  cloneSampleFilename,
+} from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -95,7 +98,7 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
     const form = new FormData();
     form.append("name", options.name);
     for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
-      form.append(key, coerceFormValue(value));
+      appendProviderOption(form, key, value);
     }
     const sample = options.samples[0];
     form.append(
@@ -275,17 +278,6 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(response);
     return response;
   }
-}
-
-function coerceFormValue(value: unknown): string {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  return JSON.stringify(value);
 }
 
 function gradiumPcmOutputFormat(rate: number): string {
