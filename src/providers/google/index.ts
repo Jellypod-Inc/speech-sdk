@@ -59,10 +59,10 @@ const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
 
-// /interactions stream events carry base64 PCM in delta.data; tolerate the event_type living on the SSE `event:` line.
+// /interactions step.delta events carry base64 PCM in delta.data, tagged by delta.mime_type (e.g. "audio/l16"). Non-audio deltas are ignored.
 const interactionAudioDeltaSchema = z.object({
   delta: z.object({
-    type: z.literal("audio"),
+    mime_type: z.string(),
     data: z.string(),
   }),
 });
@@ -390,7 +390,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         const result = interactionAudioDeltaSchema.safeParse(
           safeParseJson(eventData)
         );
-        return result.success ? result.data.delta.data : null;
+        if (!result.success) {
+          return null;
+        }
+        return result.data.delta.mime_type.startsWith("audio/")
+          ? result.data.delta.data
+          : null;
       },
     });
 

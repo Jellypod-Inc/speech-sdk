@@ -96,9 +96,11 @@ describe("GoogleSpeechProvider.stream", () => {
   it("streams gemini-3.1 via the /interactions endpoint as raw PCM chunks", async () => {
     // Two base64 PCM deltas: "QUI=" -> "AB", "Q0Q=" -> "CD"
     const sse = [
-      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","data":"QUI="}}\n\n',
-      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","data":"Q0Q="}}\n\n',
-      'event: step.completed\ndata: {"event_type":"step.completed"}\n\n',
+      'event: step.start\ndata: {"index":0,"step":{"type":"model_output"},"event_type":"step.start"}\n\n',
+      'event: step.delta\ndata: {"index":0,"delta":{"mime_type":"audio/l16","data":"QUI="},"event_type":"step.delta"}\n\n',
+      'event: step.delta\ndata: {"index":0,"delta":{"mime_type":"audio/l16","data":"Q0Q="},"event_type":"step.delta"}\n\n',
+      'event: step.stop\ndata: {"index":0,"event_type":"step.stop"}\n\n',
+      "event: done\ndata: [DONE]\n\n",
     ].join("");
     const encoder = new TextEncoder();
     const fetchMock = vi.fn().mockResolvedValue(
