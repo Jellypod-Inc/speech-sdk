@@ -1,0 +1,45 @@
+src/providers/fish-audio/index.ts
+  s_b45bad0e3f1124::t_0c39e8991506f5 39
+CHANGELOG.md
+  s_b45bad0e3f1124::t_3079f61ab2699c 5-7
+src/conversation/validate.ts
+  s_b45bad0e3f1124::t_c6f8e5e3f8ad15 5
+src/providers/fal/index.ts
+  s_b45bad0e3f1124::t_f349c31b9719ed 193
+  s_b45bad0e3f1124::t_db0e0396b1ee60 101
+  s_b45bad0e3f1124::t_1bb825da077f44 42
+  s_b45bad0e3f1124::t_3099fc8229f82d 59
+  s_b45bad0e3f1124::t_8cbe91a28fe99b 78
+src/providers/cartesia/index.ts
+  s_b45bad0e3f1124::t_0c39e8991506f5 97,103
+  s_b45bad0e3f1124::t_5e423dc8b45a67 109
+src/providers/resemble/index.ts
+  s_b45bad0e3f1124::t_0c39e8991506f5 69
+src/providers/hume/index.ts
+  s_b45bad0e3f1124::t_8f5f0f6036939d 57
+src/speech-provider.ts
+  s_b45bad0e3f1124::t_92d1852fbf8664 9
+src/providers/mistral/index.ts
+  s_b45bad0e3f1124::t_0c39e8991506f5 59,303
+  s_b45bad0e3f1124::t_531a44bc06b11b 81,134
+  s_b45bad0e3f1124::t_3c8538e6276dee 98,152
+  s_b45bad0e3f1124::t_0e42130d8f3f28 63
+src/conversation/dispatch.ts
+  s_b45bad0e3f1124::t_67576d2b2a755e 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "40741309c3d4a64b002fd03242958bc22b79eb5c",
+  "prompts": {},
+  "sessions": {
+    "s_b45bad0e3f1124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f233220f-3573-4d12-a07f-477c0a8f8ba9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
