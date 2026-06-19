@@ -25,7 +25,6 @@ describe("CartesiaSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "sonic-3.5",
       samples: [sample],
       name: "My Voice",
       language: "en",
@@ -56,7 +55,6 @@ describe("CartesiaSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "sonic-3.5",
       samples: [sample],
       name: "My Voice",
       language: "en",
@@ -74,7 +72,6 @@ describe("CartesiaSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "sonic-3.5",
       samples: [sample],
       name: "My Voice",
     });
@@ -94,7 +91,6 @@ describe("CartesiaSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "sonic-3.5",
       samples: [sample],
       name: "My Voice",
       language: "en",

@@ -153,9 +153,7 @@ export class SmallestAISpeechProvider
     };
     const voiceId = json.voiceId ?? json.data?.voiceId;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `smallest-ai/${options.modelId}: clone response missing voiceId`
-      );
+      throw new SpeechSDKError("smallest-ai: clone response missing voiceId");
     }
 
     return {

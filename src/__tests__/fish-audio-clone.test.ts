@@ -22,7 +22,6 @@ describe("FishAudioSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "s2-pro",
       samples: [sample],
       name: "My Voice",
     });
@@ -52,7 +51,6 @@ describe("FishAudioSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "s2-pro",
       samples: [sample],
       name: "Narrator",
     });
@@ -84,7 +82,6 @@ describe("FishAudioSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "s2-pro",
       samples: [sample],
       name: "Opts",
       providerOptions: { enhance_audio: true, tags: ["a", "b"] },

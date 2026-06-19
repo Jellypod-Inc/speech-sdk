@@ -53,7 +53,6 @@ export interface CloneVoiceProviderRequest {
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
   language?: string;
-  modelId: string;
   name: string;
   providerOptions?: Record<string, unknown>;
   samples: NormalizedSample[];
@@ -134,8 +133,8 @@ export interface SpeechProvider<
   ): StitchTurnOptions | undefined;
   id: string;
 
-  /** Max reference samples this model accepts for cloning. Default 1. */
-  maxCloneSamples?(modelId: string): number;
+  /** Max reference samples this provider accepts for cloning. Default 1. */
+  maxCloneSamples?(): number;
   models: readonly ModelInfo[];
 
   processAudioTags?(

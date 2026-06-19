@@ -359,7 +359,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     }
   }
 
-  maxCloneSamples(_modelId: string): number {
+  maxCloneSamples(): number {
     return 10;
   }
 
@@ -418,9 +418,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     };
     const voiceId = json.voice?.voiceId;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `inworld/${options.modelId}: clone response missing voice.voiceId`
-      );
+      throw new SpeechSDKError("inworld: clone response missing voice.voiceId");
     }
 
     return {

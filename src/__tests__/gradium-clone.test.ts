@@ -22,7 +22,6 @@ describe("GradiumSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "default",
       samples: [sample],
       name: "My Voice",
       providerOptions: { description: "warm narrator", language: "en" },
@@ -60,7 +59,7 @@ describe("GradiumSpeechProvider.cloneVoice", () => {
     });
 
     await expect(
-      provider.cloneVoice({ modelId: "default", samples: [sample], name: "x" })
+      provider.cloneVoice({ samples: [sample], name: "x" })
     ).rejects.toThrow();
   });
 });

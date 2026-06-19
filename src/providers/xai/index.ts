@@ -249,9 +249,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.voice_id;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `xai/${options.modelId}: clone response missing voice_id`
-      );
+      throw new SpeechSDKError("xai: clone response missing voice_id");
     }
     return {
       voiceId,

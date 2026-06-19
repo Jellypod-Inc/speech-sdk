@@ -536,9 +536,7 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.id;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `cartesia/${options.modelId}: clone response missing id`
-      );
+      throw new SpeechSDKError("cartesia: clone response missing id");
     }
 
     return {

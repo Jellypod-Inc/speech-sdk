@@ -357,7 +357,6 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
     sample: NormalizedSample,
     authHeader: string,
     options: {
-      modelId: string;
       abortSignal?: AbortSignal;
       headers?: Record<string, string>;
     }
@@ -387,9 +386,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
 
     const fileId = json.file?.file_id;
     if (typeof fileId !== "string" && typeof fileId !== "number") {
-      throw new SpeechSDKError(
-        `minimax/${options.modelId}: upload response missing file.file_id`
-      );
+      throw new SpeechSDKError("minimax: upload response missing file.file_id");
     }
     // MiniMax /voice_clone rejects a stringified file_id (2013 invalid params); echo back the int64 it returned.
     return typeof fileId === "number" ? fileId : Number(fileId);

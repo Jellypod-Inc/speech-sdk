@@ -272,9 +272,7 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as { id?: unknown };
     const voiceId = json.id;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `mistral/${options.modelId}: clone response missing id`
-      );
+      throw new SpeechSDKError("mistral: clone response missing id");
     }
 
     return { voiceId, providerMetadata: json as Record<string, unknown> };

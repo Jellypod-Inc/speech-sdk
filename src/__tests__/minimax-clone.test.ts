@@ -45,7 +45,6 @@ describe("MiniMaxSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "speech-2.8-hd",
       samples: [sample],
       name: "MyCloneVoice01",
     });
@@ -87,7 +86,6 @@ describe("MiniMaxSpeechProvider.cloneVoice", () => {
 
     await expect(
       provider.cloneVoice({
-        modelId: "speech-2.8-hd",
         samples: [sample],
         name: "bob",
       })
@@ -117,7 +115,6 @@ describe("MiniMaxSpeechProvider.cloneVoice", () => {
 
     await expect(
       provider.cloneVoice({
-        modelId: "speech-2.8-hd",
         samples: [sample],
         name: "MyCloneVoice01",
       })

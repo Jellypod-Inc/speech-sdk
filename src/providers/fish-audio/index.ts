@@ -265,9 +265,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json._id;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `fish-audio/${options.modelId}: clone response missing _id`
-      );
+      throw new SpeechSDKError("fish-audio: clone response missing _id");
     }
     return { voiceId, providerMetadata: json };
   }

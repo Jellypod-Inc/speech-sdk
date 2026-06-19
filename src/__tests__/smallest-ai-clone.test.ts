@@ -22,7 +22,6 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "lightning_v3.1",
       samples: [sample],
       name: "My Voice",
     });
@@ -63,7 +62,6 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "lightning_v3.1",
       samples: [sample],
       name: "My Voice",
     });
@@ -86,7 +84,6 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
 
     await expect(
       provider.cloneVoice({
-        modelId: "lightning_v3.1",
         samples: [sample],
         name: "x",
       })

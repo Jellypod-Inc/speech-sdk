@@ -41,7 +41,7 @@ export interface ClonedVoice {
 export async function cloneVoice(
   options: CloneVoiceOptions
 ): Promise<ClonedVoice> {
-  const { provider, modelId } = options.provider();
+  const { provider } = options.provider();
 
   if (!provider.cloneVoice) {
     throw new VoiceCloningUnsupportedError(provider.id);
@@ -63,7 +63,7 @@ export async function cloneVoice(
   }
 
   // Enforce the count before normalizing so oversized requests don't fetch every URL first.
-  const max = provider.maxCloneSamples?.(modelId) ?? 1;
+  const max = provider.maxCloneSamples?.() ?? 1;
   if (fileList.length > max) {
     throw new TooManyCloneSamplesError(provider.id, max, fileList.length);
   }
@@ -71,7 +71,6 @@ export async function cloneVoice(
   const samples = await normalizeSamples(fileList, options.abortSignal);
 
   const result = await provider.cloneVoice({
-    modelId,
     samples,
     name: options.name,
     language: options.language,

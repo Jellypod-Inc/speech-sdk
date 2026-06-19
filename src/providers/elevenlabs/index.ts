@@ -579,7 +579,7 @@ export class ElevenLabsSpeechProvider
     };
   }
 
-  maxCloneSamples(_modelId: string): number {
+  maxCloneSamples(): number {
     return 25;
   }
 
@@ -615,9 +615,7 @@ export class ElevenLabsSpeechProvider
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.voice_id;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `elevenlabs/${options.modelId}: clone response missing voice_id`
-      );
+      throw new SpeechSDKError("elevenlabs: clone response missing voice_id");
     }
 
     return { voiceId, providerMetadata: json };

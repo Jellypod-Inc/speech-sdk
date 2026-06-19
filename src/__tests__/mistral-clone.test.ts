@@ -26,7 +26,6 @@ describe("MistralSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "voxtral-mini-tts-2603",
       samples: [SAMPLE],
       name: "My Voice",
     });
@@ -48,7 +47,6 @@ describe("MistralSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "voxtral-mini-tts-2603",
       samples: [SAMPLE],
       name: "My Voice",
     });
@@ -67,7 +65,6 @@ describe("MistralSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "voxtral-mini-tts-2603",
       samples: [SAMPLE],
       name: "v",
       providerOptions: { description: "narrator" },
@@ -84,7 +81,6 @@ describe("MistralSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "voxtral-mini-tts-2603",
       samples: [SAMPLE],
       name: "v",
     });

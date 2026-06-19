@@ -26,7 +26,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "My Voice",
       language: "en",
@@ -49,7 +48,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "My Voice",
       language: "en",
@@ -72,7 +70,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "v",
       language: "es",
@@ -90,7 +87,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "v",
       language: "fi",
@@ -108,7 +104,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "v",
     });
@@ -127,7 +122,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "v",
       language: "es",
@@ -145,7 +139,6 @@ describe("InworldSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "inworld-tts-1.5-max",
       samples: [SAMPLE],
       name: "v",
       language: "en",
@@ -157,7 +150,7 @@ describe("InworldSpeechProvider.cloneVoice", () => {
 
   it("accepts up to 10 clone samples", () => {
     const provider = new InworldSpeechProvider({ apiKey: "k" });
-    expect(provider.maxCloneSamples("inworld-tts-1.5-max")).toBe(10);
+    expect(provider.maxCloneSamples()).toBe(10);
   });
 
   it("tags clone-capable models with voice-cloning", () => {

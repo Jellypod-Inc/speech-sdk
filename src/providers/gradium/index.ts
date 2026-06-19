@@ -107,9 +107,7 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.uid;
     if (typeof voiceId !== "string") {
-      throw new SpeechSDKError(
-        `gradium/${options.modelId}: clone response missing uid`
-      );
+      throw new SpeechSDKError("gradium: clone response missing uid");
     }
 
     return { voiceId, providerMetadata: json };

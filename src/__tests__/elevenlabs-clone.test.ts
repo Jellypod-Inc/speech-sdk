@@ -27,7 +27,6 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "eleven_multilingual_v2",
       samples: [sample],
       name: "My Voice",
     });
@@ -54,7 +53,6 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "eleven_multilingual_v2",
       samples: [sample, sample, sample],
       name: "Multi",
     });
@@ -72,7 +70,6 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "eleven_multilingual_v2",
       samples: [sample],
       name: "My Voice",
     });
@@ -83,7 +80,7 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
 
   it("allows up to 25 samples", () => {
     const provider = new ElevenLabsSpeechProvider({ apiKey: "el-key-123" });
-    expect(provider.maxCloneSamples("eleven_multilingual_v2")).toBe(25);
+    expect(provider.maxCloneSamples()).toBe(25);
   });
 
   it("appends providerOptions as string fields", async () => {
@@ -94,7 +91,6 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "eleven_multilingual_v2",
       samples: [sample],
       name: "My Voice",
       providerOptions: { remove_background_noise: true, description: "warm" },

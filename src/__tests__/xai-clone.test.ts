@@ -22,7 +22,6 @@ describe("XaiSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "grok-tts",
       samples: [sample],
       name: "My Voice",
       language: "es",
@@ -60,7 +59,6 @@ describe("XaiSpeechProvider.cloneVoice", () => {
     });
 
     const result = await provider.cloneVoice({
-      modelId: "grok-tts",
       samples: [sample],
       name: "Default Lang",
     });
@@ -85,7 +83,6 @@ describe("XaiSpeechProvider.cloneVoice", () => {
     });
 
     await provider.cloneVoice({
-      modelId: "grok-tts",
       samples: [sample],
       name: "Opts",
       language: "en",
