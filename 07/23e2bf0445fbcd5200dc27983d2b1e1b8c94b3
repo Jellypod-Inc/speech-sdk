@@ -1,0 +1,22 @@
+src/providers/smallest-ai/index.ts
+  s_cd4a08421f46ca::t_3108a8ea3150f9 71,74-78
+  s_cd4a08421f46ca::t_ce0632d14989cf 17
+src/__tests__/smallest-ai-clone.test.ts
+  s_cd4a08421f46ca::t_0c3f799c60c726 73-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "0723e2bf0445fbcd5200dc27983d2b1e1b8c94b3",
+  "prompts": {},
+  "sessions": {
+    "s_cd4a08421f46ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc9d3c5a-c765-469c-b47e-b0a72186fd95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
