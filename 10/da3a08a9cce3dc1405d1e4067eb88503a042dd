@@ -1,0 +1,32 @@
+CHANGELOG.md
+  s_b45bad0e3f1124::t_8610921bced0e5 5
+  s_b45bad0e3f1124::t_a26a825bba28d0 9
+src/clone-voice.ts
+  s_b45bad0e3f1124::t_e4f21763000f4a 15-17,25-30
+  s_b45bad0e3f1124::t_e4c61e51e59cc5 44
+src/__tests__/e2e/clone-voice.e2e.test.ts
+  s_b45bad0e3f1124::t_641b76e8fb10a5 42,55,69,80,93,107,120,134,148
+src/index.ts
+  s_b45bad0e3f1124::t_f3de756873a19d 7
+src/types.ts
+  s_b45bad0e3f1124::t_ae9546a1162f41 10
+src/__tests__/e2e/clone-voice-save.e2e.test.ts
+  s_b45bad0e3f1124::t_5c0b6d0699542b 40-42,45,52,58,66-67,96-97,106-107,114,122-123
+  s_b45bad0e3f1124::t_59df4c02099a25 5,76-77,86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "10da3a08a9cce3dc1405d1e4067eb88503a042dd",
+  "prompts": {},
+  "sessions": {
+    "s_b45bad0e3f1124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f233220f-3573-4d12-a07f-477c0a8f8ba9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
