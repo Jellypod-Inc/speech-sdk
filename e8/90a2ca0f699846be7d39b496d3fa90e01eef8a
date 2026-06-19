@@ -1,0 +1,48 @@
+src/providers/minimax/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 389
+src/providers/elevenlabs/index.ts
+  s_b45bad0e3f1124::t_ec6641f87ba4f7 582
+  s_b45bad0e3f1124::t_b1d43c247daba3 618
+src/__tests__/gradium-clone.test.ts
+  s_b45bad0e3f1124::t_0b4021c1c285b1 62
+src/__tests__/inworld-clone.test.ts
+  s_b45bad0e3f1124::t_0b4021c1c285b1 153
+src/providers/gradium/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 110
+src/providers/cartesia/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 539
+src/__tests__/elevenlabs-clone.test.ts
+  s_b45bad0e3f1124::t_0b4021c1c285b1 83
+src/clone-voice.ts
+  s_b45bad0e3f1124::t_6c8c146f94fa26 44
+  s_b45bad0e3f1124::t_a73ece812078c7 66
+src/providers/fish-audio/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 268
+src/providers/smallest-ai/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 156
+src/providers/inworld/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 421
+  s_b45bad0e3f1124::t_ec6641f87ba4f7 362
+src/providers/mistral/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 275
+src/speech-provider.ts
+  s_b45bad0e3f1124::t_176ba857b3125b 136-137
+src/providers/xai/index.ts
+  s_b45bad0e3f1124::t_b1d43c247daba3 252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "e890a2ca0f699846be7d39b496d3fa90e01eef8a",
+  "prompts": {},
+  "sessions": {
+    "s_b45bad0e3f1124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f233220f-3573-4d12-a07f-477c0a8f8ba9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
