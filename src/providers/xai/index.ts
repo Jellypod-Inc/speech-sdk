@@ -1,10 +1,18 @@
 import type { AudioOutput } from "../../audio-output.js";
 import {
+  appendProviderOption,
+  appendSampleBlob,
+  defaultCloneLanguage,
+} from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
+import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -50,7 +58,7 @@ export const XAI_MODELS: readonly ModelInfo[] = [
     id: "grok-tts",
     releaseDate: "2025-11-01",
     languages: XAI_LANGUAGES,
-    features: ["streaming", "audio-tags"],
+    features: ["streaming", "audio-tags", "voice-cloning"],
     maxInputChars: 15_000,
   },
 ] as const;
@@ -206,6 +214,47 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
     return {
       providerOptions: { output_format: { codec: "wav", sample_rate: rate } },
       mediaType: "audio/wav",
+    };
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const warnings: string[] = [];
+    const language = defaultCloneLanguage("xai", options.language, warnings);
+
+    const form = new FormData();
+    form.append("name", options.name);
+    form.append("language", language);
+    const sample = options.samples[0];
+    appendSampleBlob(form, "file", sample, 0);
+
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/custom-voices`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "XAI_API_KEY", "xAI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("xai: clone response missing voice_id");
+    }
+    return {
+      voiceId,
+      ...(warnings.length ? { warnings } : {}),
+      providerMetadata: json,
     };
   }
 

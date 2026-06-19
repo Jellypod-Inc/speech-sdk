@@ -1,12 +1,16 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
-import { base64ToUint8Array } from "../../audio-utils.js";
+import { base64ToUint8Array, uint8ArrayToBase64 } from "../../audio-utils.js";
+import { defaultCloneLanguage } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -85,19 +89,43 @@ const INWORLD_PRIMARY_LANGUAGES = [
   "es",
 ] as const;
 
+// Inworld's clone endpoint wants a locale enum (EN_US), not a raw BCP-47 tag (en).
+const INWORLD_LANG_CODE_MAP: Record<string, string> = {
+  en: "EN_US",
+  es: "ES_ES",
+  fr: "FR_FR",
+  de: "DE_DE",
+  it: "IT_IT",
+  pt: "PT_BR",
+  ja: "JA_JP",
+  ko: "KO_KR",
+  nl: "NL_NL",
+  pl: "PL_PL",
+  zh: "ZH_CN",
+  ru: "RU_RU",
+  ar: "AR_SA",
+  hi: "HI_IN",
+  he: "HE_IL",
+};
+
+function toInworldLangCode(language: string): string {
+  const base = language.toLowerCase().split("-")[0];
+  return INWORLD_LANG_CODE_MAP[base] ?? "AUTO";
+}
+
 export const INWORLD_MODELS: readonly ModelInfo[] = [
   {
     id: "inworld-tts-1.5-max",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
   {
@@ -109,7 +137,7 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     id: "inworld-tts-2",
     releaseDate: "2026-05-05",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-cloning"],
     maxInputChars: 2000,
   },
 ] as const;
@@ -329,6 +357,75 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  maxCloneSamples(): number {
+    return 10;
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const { langCode: langCodeOverride, ...restOpts } =
+      options.providerOptions ?? {};
+    const warnings: string[] = [];
+
+    let langCode = langCodeOverride;
+    if (langCode === undefined) {
+      const language = defaultCloneLanguage(
+        "inworld",
+        options.language,
+        warnings
+      );
+      langCode = toInworldLangCode(language);
+      if (langCode === "AUTO") {
+        warnings.push(
+          `inworld has no locale for language '${language}'; using AUTO so the provider detects it — pass providerOptions.langCode to override.`
+        );
+      }
+    }
+
+    const voiceSamples = options.samples.map((sample) => ({
+      audioData: uint8ArrayToBase64(sample.bytes),
+    }));
+
+    const body: Record<string, unknown> = {
+      ...restOpts,
+      displayName: options.name,
+      langCode,
+      voiceSamples,
+    };
+
+    const response = await this.fetchFn(
+      `${this.baseURL}/voices/v1/voices:clone`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${resolveApiKey(this.apiKey, "INWORLD_API_KEY", "Inworld")}`,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify(body),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      voice?: { voiceId?: unknown };
+    };
+    const voiceId = json.voice?.voiceId;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("inworld: clone response missing voice.voiceId");
+    }
+
+    return {
+      voiceId,
+      ...(warnings.length > 0 && { warnings }),
+      providerMetadata: json as Record<string, unknown>,
+    };
   }
 }
 

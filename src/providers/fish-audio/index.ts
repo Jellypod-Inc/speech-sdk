@@ -1,11 +1,15 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -32,12 +36,7 @@ export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
     id: "s2-pro",
     releaseDate: "2026-03-09",
     languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
-    features: [
-      "streaming",
-      "audio-tags",
-      "open-source",
-      "inline-voice-cloning",
-    ],
+    features: ["streaming", "audio-tags", "open-source", "voice-cloning"],
   },
 ] as const;
 
@@ -227,6 +226,48 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  maxCloneSamples(): number {
+    return 10;
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const form = new FormData();
+    form.append("type", "tts");
+    form.append("title", options.name);
+    form.append("train_mode", "fast");
+    form.append("visibility", "private");
+
+    for (const [i, s] of options.samples.entries()) {
+      appendSampleBlob(form, "voices", s, i);
+    }
+
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/model`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json._id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("fish-audio: clone response missing _id");
+    }
+    return { voiceId, providerMetadata: json };
   }
 
   dialogueCapabilities(modelId: string) {

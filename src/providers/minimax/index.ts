@@ -3,18 +3,28 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
-import { ApiError, SpeechSDKError } from "../../errors.js";
+import { appendSampleBlob } from "../../clone-voice.js";
+import {
+  ApiError,
+  InvalidCloneFieldError,
+  SpeechSDKError,
+} from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
+  type NormalizedSample,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
+
+const MINIMAX_VOICE_ID_RE = /^[A-Za-z][A-Za-z0-9_-]{6,254}[A-Za-z0-9]$/;
 
 export interface MiniMaxSpeechProviderConfig {
   apiKey?: string;
@@ -66,14 +76,14 @@ export const MINIMAX_MODELS: readonly ModelInfo[] = [
     id: "speech-2.8-hd",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: [],
+    features: ["voice-cloning"],
     maxInputChars: 3000,
   },
   {
     id: "speech-2.8-turbo",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: [],
+    features: ["voice-cloning"],
     maxInputChars: 3000,
   },
 ] as const;
@@ -182,17 +192,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
 
     const payload = minimaxResponseSchema.parse(await response.json());
 
-    // MiniMax returns HTTP 200 even for logical failures; the real status lives in base_resp.
-    if (payload.base_resp && payload.base_resp.status_code !== 0) {
-      const { status_code, status_msg } = payload.base_resp;
-      throw new ApiError(
-        `MiniMax T2A error ${status_code}: ${status_msg ?? "unknown error"}`,
-        {
-          statusCode: minimaxHttpStatus(status_code),
-          code: String(status_code),
-        }
-      );
-    }
+    assertMiniMaxOk(payload.base_resp, "T2A");
 
     const hexAudio = payload.data?.audio;
     if (!hexAudio) {
@@ -290,13 +290,106 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
   }
 
   private endpoint(): string {
-    const url = `${this.baseURL}/t2a_v2`;
+    return this.endpointFor("t2a_v2");
+  }
+
+  private endpointFor(path: string): string {
+    const url = `${this.baseURL}/${path}`;
     const groupId =
       this.groupId ??
       (typeof process === "undefined"
         ? undefined
         : process.env?.MINIMAX_GROUP_ID);
     return groupId ? `${url}?GroupId=${encodeURIComponent(groupId)}` : url;
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    if (!MINIMAX_VOICE_ID_RE.test(options.name)) {
+      throw new InvalidCloneFieldError(
+        "minimax",
+        "name",
+        "MiniMax voice IDs must be 8–256 characters, start with a letter, use only letters/digits/-/_, and not end in - or _."
+      );
+    }
+
+    const authHeader = `Bearer ${resolveApiKey(this.apiKey, "MINIMAX_API_KEY", "MiniMax")}`;
+
+    const fileId = await this.uploadCloneSample(
+      options.samples[0],
+      authHeader,
+      options
+    );
+
+    const cloneBody: Record<string, unknown> = {
+      ...options.providerOptions,
+      file_id: fileId,
+      voice_id: options.name,
+    };
+
+    const response = await this.fetchFn(this.endpointFor("voice_clone"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(cloneBody),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    assertMiniMaxOk(json.base_resp, "clone");
+
+    return {
+      voiceId: options.name,
+      providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
+  private async uploadCloneSample(
+    sample: NormalizedSample,
+    authHeader: string,
+    options: {
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    }
+  ): Promise<number> {
+    const form = new FormData();
+    form.append("purpose", "voice_clone");
+    appendSampleBlob(form, "file", sample, 0);
+
+    const response = await this.fetchFn(this.endpointFor("files/upload"), {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      file?: { file_id?: unknown };
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    assertMiniMaxOk(json.base_resp, "upload");
+
+    const fileId = json.file?.file_id;
+    if (typeof fileId !== "string" && typeof fileId !== "number") {
+      throw new SpeechSDKError("minimax: upload response missing file.file_id");
+    }
+    // MiniMax /voice_clone rejects a stringified file_id (2013 invalid params); echo back the int64 it returned.
+    return typeof fileId === "number" ? fileId : Number(fileId);
   }
 }
 
@@ -339,6 +432,23 @@ function minimaxMediaType(
     default:
       return "audio/mpeg";
   }
+}
+
+// MiniMax returns HTTP 200 even for logical failures; the real status lives in base_resp.
+function assertMiniMaxOk(
+  baseResp: { status_code?: number; status_msg?: string } | undefined,
+  label: string
+): void {
+  if (baseResp?.status_code == null || baseResp.status_code === 0) {
+    return;
+  }
+  throw new ApiError(
+    `MiniMax ${label} error ${baseResp.status_code}: ${baseResp.status_msg ?? "unknown error"}`,
+    {
+      statusCode: minimaxHttpStatus(baseResp.status_code),
+      code: String(baseResp.status_code),
+    }
+  );
 }
 
 // MiniMax tunnels logical errors through base_resp; map the common codes onto HTTP

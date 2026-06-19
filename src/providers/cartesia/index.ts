@@ -4,6 +4,11 @@ import {
 } from "../../audio-output.js";
 import { detectAudioTags, stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array, wrapPcm16Mono } from "../../audio-utils.js";
+import {
+  appendProviderOption,
+  appendSampleBlob,
+  defaultCloneLanguage,
+} from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -11,6 +16,8 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -87,19 +94,19 @@ export const CARTESIA_MODELS: readonly ModelInfo[] = [
     id: "sonic-3.5",
     releaseDate: "2026-05-04",
     languages: SONIC_LANGUAGES,
-    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
+    features: ["streaming", "audio-tags", "voice-cloning", "timestamps"],
   },
   {
     id: "sonic-3",
     releaseDate: "2025-10-27",
     languages: SONIC_LANGUAGES,
-    features: ["streaming", "audio-tags", "inline-voice-cloning", "timestamps"],
+    features: ["streaming", "audio-tags", "voice-cloning", "timestamps"],
   },
   {
     id: "sonic-2",
     releaseDate: "2025-03-13",
     languages: ["en"],
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "voice-cloning", "timestamps"],
   },
 ] as const;
 
@@ -491,6 +498,52 @@ export class CartesiaSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const warnings: string[] = [];
+    const language = defaultCloneLanguage(
+      "cartesia",
+      options.language,
+      warnings
+    );
+
+    const sample = options.samples[0];
+    const form = new FormData();
+    form.append("name", options.name);
+    form.append("language", language);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
+    }
+    appendSampleBlob(form, "clip", sample, 0);
+
+    const response = await this.fetchFn(`${this.baseURL}/voices/clone`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": resolveApiKey(this.apiKey, "CARTESIA_API_KEY", "Cartesia"),
+        "Cartesia-Version": "2026-03-01",
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("cartesia: clone response missing id");
+    }
+
+    return {
+      voiceId,
+      providerMetadata: json,
+      ...(warnings.length ? { warnings } : {}),
+    };
   }
 }
 

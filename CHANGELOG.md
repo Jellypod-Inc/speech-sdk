@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.0
+
+- Add **instant voice cloning** via a new top-level `cloneVoice()` function. Pass a `provider` factory (e.g. `createElevenLabs()`), a `name`, and one or more audio `files` (raw `Uint8Array`, `{ audio, mediaType }`, or `{ url }`), and the SDK creates a reusable voice on the provider, returning `{ voiceId, provider, warnings?, providerMetadata? }`. The returned `voiceId` is passed straight back as `voice` to `generateSpeech()`. Cloning is provider-level — no model id is needed, and the voice works across all of that provider's models. Supported on nine providers — ElevenLabs, Cartesia, Fish Audio, Inworld, Mistral, xAI, Gradium, Smallest AI, and MiniMax — each marked with the `voice-cloning` capability on every model.
+- **Breaking: removed inline voice cloning.** The `voice` field is now `string` only (a voice id) — `Voice` was `string | { url } | { audio }`. Only Mistral and fal ever honored the inline `{ audio }` / `{ url }` form; the other ~14 providers silently coerced the object into a string id and failed at runtime, so the type promised a feature that didn't exist. All voice cloning now goes through `cloneVoice()`, which returns a reusable `voiceId`. The `"inline-voice-cloning"` capability flag (`FEATURES.INLINE_VOICE_CLONING`) is removed accordingly.
+- **Fix: ElevenLabs voice cloning targeted the wrong endpoint.** The instant-voice-clone request posted to `/voices/add` (missing the `/v1` prefix every other ElevenLabs endpoint uses), returning `404` against the live API. Now posts to `/v1/voices/add`.
+- **Fix: MiniMax voice cloning sent `file_id` as a string.** MiniMax's `/voice_clone` returns the uploaded `file_id` as a JSON integer and rejects a stringified value with `2013 invalid params`. The SDK now echoes the int64 back un-stringified.
+- Cloning through the gateway provider (`createSpeechGateway()`) is not supported yet and throws `VoiceCloningUnsupportedError`.
+
 ## 0.17.0
 
 - **Real progressive streaming for `gemini-3.1-flash-tts-preview`.** `streamSpeech` on the Google provider now streams audio as it's generated via Gemini's `/interactions` endpoint (`stream: true`), decoding SSE `step.delta` events into raw 16-bit mono PCM at 24 kHz (`audio/pcm;rate=24000`). Previously `stream()` buffered the full clip through `:generateContent` and emitted it as a single chunk. The 2.5 TTS models keep the buffer-and-wrap single-chunk WAV fallback, as they have no progressive streaming endpoint.

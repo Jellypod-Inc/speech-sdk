@@ -298,7 +298,7 @@ describe("CartesiaSpeechProvider", () => {
       expect(model?.features).toEqual([
         "streaming",
         "audio-tags",
-        "inline-voice-cloning",
+        "voice-cloning",
         "timestamps",
       ]);
     });

@@ -1,12 +1,16 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { uint8ArrayToBase64 } from "../../audio-utils.js";
+import { extensionForMediaType } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -52,13 +56,11 @@ export const MISTRAL_MODELS: readonly ModelInfo[] = [
     id: "voxtral-mini-tts-2603",
     releaseDate: "2026-03-23",
     languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
-    features: ["streaming", "open-source", "inline-voice-cloning"],
+    features: ["streaming", "open-source", "voice-cloning"],
   },
 ] as const;
 
-export class MistralSpeechProvider
-  implements SpeechProvider<string, string | { audio: string | Uint8Array }>
-{
+export class MistralSpeechProvider implements SpeechProvider<string, string> {
   readonly id = MISTRAL_PROVIDER_ID;
   readonly defaultModel = "voxtral-mini-tts-2603";
   readonly models = MISTRAL_MODELS;
@@ -76,7 +78,7 @@ export class MistralSpeechProvider
   async generate(options: {
     modelId: string;
     text: string;
-    voice?: string | { audio: string | Uint8Array };
+    voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -93,16 +95,7 @@ export class MistralSpeechProvider
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === "string") {
-        body.voice_id = options.voice;
-      } else if ("audio" in options.voice) {
-        const audio = options.voice.audio;
-        if (audio instanceof Uint8Array) {
-          body.ref_audio = uint8ArrayToBase64(audio);
-        } else {
-          body.ref_audio = audio;
-        }
-      }
+      body.voice_id = options.voice;
     }
 
     const url = `${this.baseURL}/audio/speech`;
@@ -138,7 +131,7 @@ export class MistralSpeechProvider
   async stream(options: {
     modelId: string;
     text: string;
-    voice?: string | { audio: string | Uint8Array };
+    voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -156,16 +149,7 @@ export class MistralSpeechProvider
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === "string") {
-        body.voice_id = options.voice;
-      } else if ("audio" in options.voice) {
-        const audio = options.voice.audio;
-        if (audio instanceof Uint8Array) {
-          body.ref_audio = uint8ArrayToBase64(audio);
-        } else {
-          body.ref_audio = audio;
-        }
-      }
+      body.voice_id = options.voice;
     }
 
     const url = `${this.baseURL}/audio/speech`;
@@ -258,6 +242,41 @@ export class MistralSpeechProvider
         return;
     }
   }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const sample = options.samples[0];
+
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      name: options.name,
+      sample_audio: uint8ArrayToBase64(sample.bytes),
+      sample_filename: `sample.${extensionForMediaType(sample.mediaType)}`,
+    };
+
+    const response = await this.fetchFn(`${this.baseURL}/audio/voices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "MISTRAL_API_KEY", "Mistral")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as { id?: unknown };
+    const voiceId = json.id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("mistral: clone response missing id");
+    }
+
+    return { voiceId, providerMetadata: json as Record<string, unknown> };
+  }
 }
 
 function mediaTypeForResponseFormat(format: unknown): string {
@@ -279,9 +298,7 @@ function mediaTypeForResponseFormat(format: unknown): string {
 export function createMistral(config: MistralSpeechProviderConfig = {}) {
   const provider = new MistralSpeechProvider(config);
   const fallbackSTT = config.fallbackSTT;
-  return function mistral(
-    modelId?: string
-  ): ResolvedModel<string | { audio: string | Uint8Array }> {
+  return function mistral(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,

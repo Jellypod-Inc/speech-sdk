@@ -6,7 +6,7 @@ import {
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
-export type Voice = string | { url: string } | { audio: string | Uint8Array };
+export type Voice = string;
 
 export interface StitchTurnOptions {
   mediaType: string;
@@ -33,10 +33,36 @@ export interface ModelInfo {
 export const FEATURES = {
   STREAMING: "streaming",
   AUDIO_TAGS: "audio-tags",
-  INLINE_VOICE_CLONING: "inline-voice-cloning",
+  VOICE_CLONING: "voice-cloning",
   OPEN_SOURCE: "open-source",
   TIMESTAMPS: "timestamps",
 } as const;
+
+/**
+ * A reference audio sample after the SDK has resolved every input form
+ * (bytes / base64 / fetched URL) down to raw bytes. `cloneVoice()` hands these
+ * to a provider's `cloneVoice` method; adapters only marshal them to the wire
+ * format (multipart vs base64).
+ */
+export interface NormalizedSample {
+  bytes: Uint8Array;
+  mediaType: string;
+}
+
+export interface CloneVoiceProviderRequest {
+  abortSignal?: AbortSignal;
+  headers?: Record<string, string>;
+  language?: string;
+  name: string;
+  providerOptions?: Record<string, unknown>;
+  samples: NormalizedSample[];
+}
+
+export interface CloneVoiceProviderResult {
+  providerMetadata?: Record<string, unknown>;
+  voiceId: string;
+  warnings?: string[];
+}
 
 export function hasFeature(model: ModelInfo, id: string): boolean {
   return model.features.some((f) =>
@@ -48,6 +74,17 @@ export interface SpeechProvider<
   TModel extends string = string,
   TVoice extends Voice = Voice,
 > {
+  /**
+   * Create a persisted cloned voice from reference samples and return a reusable
+   * voice ID. Providers that can't clone omit this; `cloneVoice()` throws
+   * `VoiceCloningUnsupportedError` for them. The SDK has already normalized the
+   * samples, enforced `name`, and validated the sample count before this runs.
+   * Language-requiring providers default `language` to "en" themselves and
+   * report it via `warnings`.
+   */
+  cloneVoice?(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult>;
   defaultModel: TModel;
 
   dialogueCapabilities?(modelId: string):
@@ -95,6 +132,9 @@ export interface SpeechProvider<
     opts?: { sampleRate?: number }
   ): StitchTurnOptions | undefined;
   id: string;
+
+  /** Max reference samples this provider accepts for cloning. Default 1. */
+  maxCloneSamples?(): number;
   models: readonly ModelInfo[];
 
   processAudioTags?(

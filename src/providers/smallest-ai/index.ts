@@ -1,14 +1,22 @@
 import type { AudioOutput } from "../../audio-output.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ResolvedModel,
   resolveSampleRate,
   type SpeechProvider,
 } from "../../speech-provider.js";
+
+const SMALLEST_DEFAULT_BASE_URL = "https://api.smallest.ai/waves/v1";
+const SMALLEST_CLONE_URL =
+  "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice";
 
 export interface SmallestAISpeechProviderConfig {
   apiKey?: string;
@@ -43,23 +51,31 @@ export class SmallestAISpeechProvider
         "pt",
         "de",
       ] as const,
-      features: [],
+      features: ["voice-cloning"],
     },
     {
       id: "lightning_v3.1_pro",
       releaseDate: "2025-05-01",
       languages: ["en", "hi"] as const,
-      features: [],
+      features: ["voice-cloning"],
     },
   ] as const;
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
+  private readonly cloneURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
 
   constructor(config: SmallestAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? "https://api.smallest.ai/waves/v1";
+    this.baseURL = config.baseURL ?? SMALLEST_DEFAULT_BASE_URL;
+    // The clone endpoint lives on a different smallest.ai host by default; a custom
+    // baseURL (proxy/self-host) must route clone traffic too, so derive it from baseURL.
+    // The default base resolves to the documented clone host, not a derived path.
+    this.cloneURL =
+      config.baseURL && config.baseURL !== SMALLEST_DEFAULT_BASE_URL
+        ? `${config.baseURL}/lightning-large/add_voice`
+        : SMALLEST_CLONE_URL;
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -113,6 +129,45 @@ export class SmallestAISpeechProvider
     return {
       audio: new Uint8Array(arrayBuffer),
       mediaType,
+    };
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const form = new FormData();
+    form.append("displayName", options.name);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
+    }
+    const sample = options.samples[0];
+    appendSampleBlob(form, "file", sample, 0);
+
+    const response = await this.fetchFn(this.cloneURL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      voiceId?: unknown;
+      data?: { voiceId?: unknown };
+    };
+    const voiceId = json.voiceId ?? json.data?.voiceId;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("smallest-ai: clone response missing voiceId");
+    }
+
+    return {
+      voiceId,
+      providerMetadata: json as Record<string, unknown>,
     };
   }
 

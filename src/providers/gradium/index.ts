@@ -1,10 +1,14 @@
 import type { AudioOutput } from "../../audio-output.js";
+import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type CloneVoiceProviderRequest,
+  type CloneVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -32,7 +36,7 @@ export const GRADIUM_MODELS: readonly ModelInfo[] = [
     id: "default",
     releaseDate: "2026-02-01",
     languages: ["en", "fr", "de", "es", "pt"],
-    features: ["streaming"],
+    features: ["streaming", "voice-cloning"],
     maxInputChars: 20_000,
   },
 ] as const;
@@ -74,6 +78,39 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
         response.headers.get("content-type")
       ),
     };
+  }
+
+  async cloneVoice(
+    options: CloneVoiceProviderRequest
+  ): Promise<CloneVoiceProviderResult> {
+    const form = new FormData();
+    form.append("name", options.name);
+    for (const [key, value] of Object.entries(options.providerOptions ?? {})) {
+      appendProviderOption(form, key, value);
+    }
+    const sample = options.samples[0];
+    appendSampleBlob(form, "audio_file", sample, 0);
+
+    const response = await this.fetchFn(`${this.baseURL}/voices/`, {
+      method: "POST",
+      headers: {
+        "x-api-key": resolveApiKey(this.apiKey, "GRADIUM_API_KEY", "Gradium"),
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: form,
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as Record<string, unknown>;
+    const voiceId = json.uid;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError("gradium: clone response missing uid");
+    }
+
+    return { voiceId, providerMetadata: json };
   }
 
   async stream(options: {

@@ -66,12 +66,7 @@ export const RESEMBLE_MODELS: readonly ModelInfo[] = [
       "tr",
       "zh",
     ],
-    features: [
-      "streaming",
-      "open-source",
-      "inline-voice-cloning",
-      "timestamps",
-    ],
+    features: ["streaming", "open-source", "timestamps"],
   },
 ] as const;
 

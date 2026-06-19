@@ -1,6 +1,13 @@
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 // biome-ignore lint/performance/noBarrelFile: public API entry point
 export { timestampsToCaptions } from "./captions.js";
+export type {
+  ClonedVoice,
+  CloneVoiceOptions,
+  SpeechProviderFactory,
+  VoiceSample,
+} from "./clone-voice.js";
+export { cloneVoice } from "./clone-voice.js";
 export {
   ConversationInputError,
   DialogueConstraintError,
@@ -10,7 +17,9 @@ export {
 export {
   ApiError,
   AudioOutputInputError,
+  CloneSampleFetchError,
   GatewayInputError,
+  InvalidCloneFieldError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
@@ -18,7 +27,9 @@ export {
   StreamingNotSupportedError,
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,
+  TooManyCloneSamplesError,
   UnsupportedSampleRateError,
+  VoiceCloningUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";
