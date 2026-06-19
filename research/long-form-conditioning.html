@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Long-form TTS conditioning across all providers — investigation</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --panel2:#1b212b; --ink:#e6e9ef; --muted:#9aa4b2;
+    --line:#2a3340; --accent:#6ea8fe; --accent2:#7ee0c0;
+    --ok:#2ea043; --warn:#d29922; --no:#e5534b; --unk:#8b6fd6;
+    --okbg:rgba(46,160,67,.14); --warnbg:rgba(210,153,34,.14); --nobg:rgba(229,83,75,.14); --unkbg:rgba(139,111,214,.14);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{display:grid;grid-template-columns:260px 1fr;max-width:1500px;margin:0 auto;}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}
+  nav h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav a{display:block;padding:5px 8px;border-radius:7px;color:var(--ink);font-size:13.5px}
+  nav a:hover{background:var(--panel2);text-decoration:none}
+  main{padding:40px 48px 120px;min-width:0}
+  header.hero{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:30px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 10px}
+  h2{font-size:23px;margin:42px 0 14px;padding-top:10px;border-top:1px solid var(--line)}
+  h3{font-size:17.5px;margin:26px 0 10px;color:#cdd6e3}
+  h4{font-size:15px;margin:18px 0 6px;color:var(--accent2)}
+  p,li{color:#dde3ec}
+  .muted{color:var(--muted)}
+  .meta{color:var(--muted);font-size:13px}
+  code{background:#0b0e13;border:1px solid var(--line);border-radius:5px;padding:.5px 5px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e9d9a8}
+  pre{background:#0b0e13;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto}
+  pre code{border:0;background:none;padding:0;color:#cfe3ff}
+  .callout{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:14px 18px;margin:18px 0}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.bad{border-left-color:var(--no)}
+  .grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card .big{font-size:26px;font-weight:700}
+  .card .lbl{color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+  .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;margin:16px 0}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th:last-child,td:last-child{border-right:0}
+  thead th{position:sticky;top:0;background:var(--panel2);z-index:2;font-size:12px;letter-spacing:.02em}
+  tbody tr:nth-child(odd){background:rgba(255,255,255,.012)}
+  tbody tr:hover{background:rgba(110,168,254,.07)}
+  td.prov{font-weight:600;white-space:nowrap;color:#fff}
+  .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .s-ok{background:var(--okbg);color:#82e0a3}
+  .s-warn{background:var(--warnbg);color:#f0c869}
+  .s-no{background:var(--nobg);color:#ff9a93}
+  .s-unk{background:var(--unkbg);color:#c3aef5}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 4px}
+  .legend span{font-size:12.5px;color:var(--muted)}
+  .tier-best{border-left:3px solid var(--ok)}
+  .tier-good{border-left:3px solid var(--accent)}
+  .tier-ok{border-left:3px solid var(--warn)}
+  .tier-away{border-left:3px solid var(--no)}
+  .small{font-size:12.5px}
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:3px 0}
+  .cite{font-size:12px;color:var(--muted);word-break:break-all}
+  .toc-foot{margin-top:24px;font-size:12px;color:var(--muted)}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 14px;margin:10px 0}
+  summary{cursor:pointer;font-weight:600;padding:8px 0;color:#cdd6e3}
+  details[open] summary{border-bottom:1px solid var(--line);margin-bottom:8px}
+  @media (max-width:980px){.wrap{grid-template-columns:1fr}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="meta"><strong>Investigation</strong><br>Long-form TTS conditioning</div>
+  <h2>Sections</h2>
+  <a href="#tldr">TL;DR</a>
+  <a href="#step1">1 · What we support & do today</a>
+  <a href="#matrix">2 · The conditioning matrix</a>
+  <a href="#gap">3 · The gap</a>
+  <a href="#changes">4.2 · SDK code changes</a>
+  <a href="#default">4.3 · Default + fallback</a>
+  <a href="#open">4.4 · Open questions</a>
+  <a href="#appendixA">Appendix A · Per-provider detail</a>
+  <a href="#appendixB">Appendix B · Code references</a>
+  <div class="toc-foot">Research date 2026-06-19.<br>Claims cited to provider docs;<br>unverifiable items flagged.</div>
+</nav>
+<main>
+<header class="hero">
+  <h1>Long-form TTS conditioning across all providers</h1>
+  <p class="meta">Research + recommendations · no code changed yet · 16 TTS backends + Speechbase gateway · verified against current provider docs.</p>
+</header>
+
+<section id="tldr">
+<h2>TL;DR</h2>
+<div class="grid-cards">
+  <div class="card"><div class="lbl">TTS backends</div><div class="big">16<span class="muted" style="font-size:15px"> + gateway</span></div></div>
+  <div class="card"><div class="lbl">Cross-boundary conditioning today</div><div class="big" style="color:#ff9a93">0</div></div>
+  <div class="card"><div class="lbl">Threadable on batch path</div><div class="big" style="color:#82e0a3">3</div><div class="small muted">ElevenLabs · Hume · (Cartesia/Fish via WS)</div></div>
+</div>
+<ul class="tight">
+  <li>The SDK integrates <strong>16 TTS backends + the Speechbase gateway</strong> — not the four in the brief. Derived from <code>src/providers/</code>: OpenAI, ElevenLabs, Deepgram (Aura), Google (Gemini TTS), Cartesia, Fish Audio, FAL (f5-tts/kokoro/orpheus), Gradium, Hume, Inworld, MiniMax, Mistral (Voxtral), Murf, Resemble, Smallest AI, xAI (Grok).</li>
+  <li><strong>Core defect (confirmed in code): nothing is carried across chunk or turn boundaries.</strong> Both long-form paths fire <em>independent, parallel</em> requests and concatenate audio. No <code>previous_text</code>, no <code>context_id</code>, no request-ID chaining, no audio prefix, no persistent streaming session. Voice identity is held only by re-passing the same voice string.</li>
+  <li><strong>Only three providers</strong> expose cross-request prosodic conditioning the SDK could thread on its existing batch paths: <strong>ElevenLabs</strong> (request stitching), <strong>Hume</strong> (<code>context.generation_id</code>, one step back), and <strong>Cartesia/Fish</strong> via WebSocket sessions the SDK does not implement.</li>
+  <li><strong>Biggest no-new-protocol win:</strong> prefer a single request up to each model's real max input. Stop chunking models whose true window is far larger than declared — <strong>MiniMax: SDK says 3 000 chars, real cap is 10 000</strong>.</li>
+  <li><strong>Latent correctness bug:</strong> Murf, Resemble and Mistral have hard per-request caps but declare <em>no</em> <code>maxInputChars</code>, so long inputs are sent in one request and rejected by the provider — they never reach the stitch path.</li>
+</ul>
+<div class="callout">
+  <strong>Provider-capable ≠ reachable through the SDK.</strong> Cartesia (WebSocket continuations) and Inworld TTS-2 (prior-audio conditioning) <em>do</em> condition across outputs — but only via WebSocket/Realtime sessions. The SDK uses single-shot REST/<code>stream()</code>, so those surfaces are <strong>not wired today</strong>. The matrix tracks both the provider capability and whether it is reachable on the SDK path.
+</div>
+</section>
+
+<section id="step1">
+<h2>Step 1 — What we support, and what we do across boundaries today</h2>
+
+<h3>1a · Provider / model inventory <span class="muted small">(from <code>src/providers/*/index.ts</code>)</span></h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Provider (<code>id</code>)</th><th>Factory</th><th>Models exposed (exact ids)</th><th>SDK <code>maxInputChars</code></th><th><code>stream</code></th><th><code>generateDialogue</code></th></tr></thead>
+<tbody>
+<tr><td class="prov">openai</td><td><code>createOpenAI</code></td><td><code>gpt-4o-mini-tts</code>, <code>tts-1</code>, <code>tts-1-hd</code></td><td>4096</td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">elevenlabs</td><td><code>createElevenLabs</code></td><td><code>eleven_v3</code>, <code>eleven_multilingual_v2</code>, <code>eleven_flash_v2_5</code>, <code>eleven_flash_v2</code></td><td>5000 / 10000 / 40000 / 30000</td><td>yes</td><td>yes (v3)</td></tr>
+<tr><td class="prov">deepgram</td><td><code>createDeepgram</code></td><td><code>aura-2</code></td><td>2000</td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">google</td><td><code>createGoogle</code></td><td><code>gemini-3.1-flash-tts-preview</code>, <code>gemini-2.5-flash-preview-tts</code>, <code>gemini-2.5-pro-preview-tts</code></td><td>—</td><td>yes</td><td>yes</td></tr>
+<tr><td class="prov">cartesia</td><td><code>createCartesia</code></td><td><code>sonic-3.5</code>, <code>sonic-3</code>, <code>sonic-2</code></td><td>—</td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">fish-audio</td><td><code>createFishAudio</code></td><td><code>s2-pro</code></td><td>—</td><td>yes</td><td>yes</td></tr>
+<tr><td class="prov">fal-ai</td><td><code>createFal</code></td><td><code>f5-tts</code>, <code>kokoro</code>, <code>orpheus-tts</code></td><td>5000 (f5 only)</td><td><span class="pill s-no">no</span></td><td>no</td></tr>
+<tr><td class="prov">gradium</td><td><code>createGradium</code></td><td><code>default</code></td><td>20000 <span class="pill s-unk">unverified</span></td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">hume</td><td><code>createHume</code></td><td><code>octave-2</code>, <code>octave-1</code></td><td>5000</td><td>yes</td><td>yes</td></tr>
+<tr><td class="prov">inworld</td><td><code>createInworld</code></td><td><code>inworld-tts-2</code>, <code>inworld-tts-1.5-max</code>, <code>inworld-tts-1.5-mini</code></td><td>2000</td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">minimax</td><td><code>createMiniMax</code></td><td><code>speech-2.8-hd</code>, <code>speech-2.8-turbo</code></td><td>3000 <span class="pill s-warn">real 10000</span></td><td><span class="pill s-no">no</span></td><td>no</td></tr>
+<tr><td class="prov">mistral</td><td><code>createMistral</code></td><td><code>voxtral-mini-tts-2603</code></td><td>— <span class="pill s-warn">~300 words</span></td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">murf</td><td><code>createMurf</code></td><td><code>GEN2</code>, <code>FALCON</code> (Falcon 2)</td><td>— <span class="pill s-warn">real 3000</span></td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">resemble</td><td><code>createResemble</code></td><td><code>default</code> (Chatterbox / <code>tts-v4</code>)</td><td>— <span class="pill s-warn">real 2000/3000</span></td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">smallest-ai</td><td><code>createSmallestAI</code></td><td><code>lightning_v3.1</code>, <code>lightning_v3.1_pro</code></td><td>—</td><td><span class="pill s-no">no</span></td><td>no</td></tr>
+<tr><td class="prov">xai</td><td><code>createXai</code></td><td><code>grok-tts</code></td><td>15000</td><td>yes</td><td>no</td></tr>
+<tr><td class="prov">gateway</td><td><code>createSpeechGateway</code></td><td>namespaced, e.g. <code>openai/tts-1</code></td><td>server-owned</td><td>yes</td><td>yes (upstream)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>1b · How long text is sent today</h3>
+<h4>Single-speaker — <code>generateChunkedSpeech</code> (<code>src/generate-speech.ts:353</code>)</h4>
+<ul class="tight">
+  <li><code>splitTextByMaxChars</code> splits at the best boundary (paragraph › line › sentence › whitespace, penalty-ranked). Boundary selection is good.</li>
+  <li>Chunks generated with <strong><code>mapWithConcurrency</code> — in parallel</strong> (default 6).</li>
+  <li>Each chunk is an <strong>independent <code>provider.generate()</code></strong>; only the voice string + <code>providerOptions</code> are shared.</li>
+  <li>Decoded to PCM16 and concatenated at <strong><code>gapMs: 0</code></strong> — no crossfade, no level match, no conditioning.</li>
+</ul>
+<h4>Multi-speaker — <code>runStitch</code> (<code>src/conversation/stitch.ts:74</code>)</h4>
+<ul class="tight">
+  <li>Per-turn independent <code>generateSpeech()</code> calls, also parallel, concatenated with <code>gapMs</code> (default 300) + RMS level-normalization. No cross-turn conditioning.</li>
+  <li>A <strong>native</strong> single-call dialogue path exists for <code>generateDialogue</code> providers (ElevenLabs v3, Gemini, Fish s2-pro, Hume) — but any per-turn <code>providerOptions</code> force the lossy independent-request fallback (<code>dispatch.ts:64</code>).</li>
+</ul>
+<div class="callout bad">
+  <strong>What's carried across boundaries today: nothing.</strong> Grepping every provider for <code>context_id</code>, <code>previous_text</code>, <code>continue</code>, <code>seed</code>, <code>session</code>, <code>wss://</code>, <code>prefix</code>, <code>continuation</code> yields no state-threading. <code>stream()</code> is one request per call — there is no persistent WS/session abstraction anywhere in the SDK.
+</div>
+<div class="callout warn">
+  <strong>Gateway invariant.</strong> On the gateway path the SDK must be byte-equivalent to <code>curl</code> against <code>api.speechbase.ai</code>. Any conditioning we add must be implemented client-side for direct factories <em>and</em> expressible on the gateway wire so the server can mirror it — never a client-only behavior on the gateway path.
+</div>
+</section>
+
+<section id="matrix">
+<h2>Step 2 / 4.1 — The conditioning matrix</h2>
+<p class="small muted">Surfaces: <strong>1</strong> cross-chunk text · <strong>2</strong> prior-output reference (IDs) · <strong>3</strong> audio-prefix/continuation · <strong>4</strong> persistent streaming session · <strong>5</strong> whole-document single-pass (max input) · <strong>6</strong> voice-identity lock · <strong>7</strong> multi-speaker/dialogue · <strong>8</strong> live-audio (S2S).</p>
+<div class="legend">
+  <span><span class="pill s-ok">✅ supported</span></span>
+  <span><span class="pill s-warn">⚠️ partial / caveated</span></span>
+  <span><span class="pill s-no">❌ not supported</span></span>
+  <span><span class="pill s-unk">❓ unverified</span></span>
+  <span class="muted">Cells reflect the <em>provider</em> capability; the right two columns summarize long-form / real-time.</span>
+</div>
+<div class="tablewrap">
+<table>
+<thead><tr>
+<th>Provider · model(s)</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5 max single-pass</th><th>6</th><th>7</th><th>8</th><th>Long-form</th><th>Real-time</th>
+</tr></thead>
+<tbody>
+<tr><td class="prov">ElevenLabs <span class="small muted">multilingual_v2, flash_v2_5, flash_v2</span></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>previous_text</code>/<code>next_text</code></div></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>previous_request_ids</code> (≤3, ≤2h)</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>/multi-stream-input</code></div></td>
+<td>10k / 40k / 30k</td>
+<td><span class="pill s-ok">✅</span><div class="small">voice_id, clone, <code>seed</code></div></td>
+<td><span class="pill s-no">❌</span><div class="small">use v3</div></td>
+<td><span class="pill s-ok">✅</span><div class="small">S2S <code>*_sts_v2</code></div></td>
+<td><strong>Strong</strong></td><td>✅ ~75ms, WS</td></tr>
+
+<tr><td class="prov">ElevenLabs <span class="small muted">eleven_v3</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">Alpha, no WS</div></td>
+<td>5 000 <span class="pill s-unk">❓ vs 3 000</span></td>
+<td><span class="pill s-ok">✅</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">Text-to-Dialogue ≤2k, ≤10 voices</div></td>
+<td>n/a</td><td>⚠️ window only</td><td><span class="pill s-no">❌</span> not real-time</td></tr>
+
+<tr><td class="prov">OpenAI <span class="small muted">gpt-4o-mini-tts, tts-1(-hd)</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">Realtime separate</div></td>
+<td>4 096 <span class="pill s-unk">❓</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">presets; no seed/clone; <code>instructions</code></div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">Realtime API</div></td>
+<td><span class="pill s-no">Weak</span></td><td>⚠️ stream only</td></tr>
+
+<tr><td class="prov">Cartesia <span class="small muted">sonic-3.5, sonic-3</span></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small"><code>context_id</code> (live; ctx expires 1s)</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">WS continuations: <code>context_id</code>+<code>continue</code>, <code>flush</code>, <code>max_buffer_delay_ms</code></div></td>
+<td><span class="pill s-unk">❓ no cap</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">voice.id, clone; no seed</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">Voice Changer (batch)</div></td>
+<td><strong>Strong via WS</strong></td><td>✅ ~90ms</td></tr>
+
+<tr><td class="prov">Cartesia <span class="small muted">sonic-2</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-unk">❓</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-unk">❓ not in enum</span></td><td><span class="pill s-unk">❓</span></td><td><span class="pill s-ok">✅</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-warn">⚠️</span></td><td>⚠️ legacy</td><td>✅</td></tr>
+
+<tr><td class="prov">Fish Audio <span class="small muted">s2-pro</span></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>condition_on_previous_chunks</code> (within req/session)</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">WS <code>tts-live</code></div></td>
+<td><span class="pill s-unk">❓ no cap</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">reference_id/clone; no seed</div></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>&lt;|speaker:N|&gt;</code> + reference_id[]</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><strong>Strong</strong></td><td>✅ WS</td></tr>
+
+<tr><td class="prov">Google Gemini TTS <span class="small muted">3.1 / 2.5 *-tts</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">single-request stream</div></td>
+<td><strong>~32k tokens</strong></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">30 presets; no clone/seed</div></td>
+<td><span class="pill s-ok">✅</span><div class="small">multi_speaker (max 2) + in-text tags</div></td>
+<td><span class="pill s-no">❌</span><div class="small">Live API only</div></td>
+<td><strong>Strong</strong></td><td>✅ stream (3.1)</td></tr>
+
+<tr><td class="prov">Google Live API <span class="small muted">(separate)</span></td>
+<td>n/a</td><td>n/a</td><td><span class="pill s-ok">✅</span><div class="small">live audio in</div></td><td><span class="pill s-ok">✅</span><div class="small">stateful WS</div></td><td>streaming</td><td>speechConfig</td><td>turn-based</td><td><span class="pill s-ok">✅</span><div class="small">native S2S</div></td><td>n/a</td><td>✅</td></tr>
+
+<tr><td class="prov">Hume Octave <span class="small muted">octave-2, octave-1</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">context utterances</div></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>context.generation_id</code> (one step back)</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">id-based, not live session</div></td>
+<td><strong>5 000 / utt.</strong></td>
+<td><span class="pill s-ok">✅</span><div class="small">id/name, clone 15s</div></td>
+<td><span class="pill s-ok">✅</span><div class="small"><code>utterances[]</code> multi-voice</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><strong>Strong</strong> <span class="small muted">(best id-chaining)</span></td><td>✅ stream</td></tr>
+
+<tr><td class="prov">Inworld <span class="small muted">tts-2, 1.5-max, 1.5-mini</span></td>
+<td><span class="pill s-no">❌</span><div class="small">REST</div></td><td><span class="pill s-no">❌</span><div class="small">REST</div></td><td><span class="pill s-no">❌</span><div class="small">REST</div></td>
+<td><span class="pill s-ok">✅</span><div class="small">but only via <em>separate Realtime WS</em></div></td>
+<td><strong>2 000</strong></td>
+<td><span class="pill s-ok">✅</span><div class="small">voiceId, clone; no seed</div></td>
+<td><span class="pill s-unk">❓</span><div class="small">no per-speaker REST field</div></td>
+<td><span class="pill s-ok">✅</span><div class="small">TTS-2 — Realtime API only</div></td>
+<td>⚠️ chunk-only (REST)</td><td>✅ REST stream; live via Realtime</td></tr>
+
+<tr><td class="prov">MiniMax <span class="small muted">speech-2.8-hd / -turbo</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-warn">⚠️</span><div class="small">clone prompt only</div></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">WS chunks; carry-over ❓</div></td>
+<td><strong>10 000</strong> <span class="pill s-warn">SDK caps 3k!</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">voice_id, <code>timbre_weights</code> mix; no seed</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><strong>Strong</strong></td><td>✅ WS / low-latency host</td></tr>
+
+<tr><td class="prov">Mistral Voxtral <span class="small muted">voxtral-mini-tts-2603</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">ref_audio = clone</div></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-unk">❓ ~300 words</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">voice_id/ref_audio; no seed</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-no">Weak</span></td><td>✅ SSE ~0.8s</td></tr>
+
+<tr><td class="prov">Murf <span class="small muted">GEN2, Falcon 2</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">context_id = turn tag</div></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">no cross-turn acoustic state</div></td>
+<td><strong>3 000</strong></td>
+<td><span class="pill s-ok">✅</span><div class="small">voiceId; no seed; clone=enterprise</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">Voice Changer (batch)</div></td>
+<td><span class="pill s-no">Weak</span></td><td>✅ Falcon 2 ~55ms</td></tr>
+
+<tr><td class="prov">Resemble <span class="small muted">default (Chatterbox tts-v4)</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">request_id = correlation</div></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">WS; no cross-msg state</div></td>
+<td><strong>2 000</strong> / <strong>3 000</strong> (WS)</td>
+<td><span class="pill s-ok">✅</span><div class="small">voice_uuid, clone; req seed ❓</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">batch S2S (URL)</div></td>
+<td><span class="pill s-no">Weak</span></td><td>✅ Turbo ~75ms</td></tr>
+
+<tr><td class="prov">Smallest AI <span class="small muted">lightning_v3.1(_pro)</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">correlation ids</div></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">WS buffer; carry-over ❓</div></td>
+<td><span class="pill s-unk">❓ no cap</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">clone; no seed</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td>⚠️ chunk-only</td><td>✅ SSE/WS</td></tr>
+
+<tr><td class="prov">xAI Grok <span class="small muted">grok-tts</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">WS (one synthesis)</div></td>
+<td><strong>15 000</strong></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">5 presets; no seed/clone</div></td>
+<td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-ok">✅</span><div class="small">separate <code>grok-voice-latest</code> agent</div></td>
+<td><span class="pill s-ok">Good</span></td><td>✅ WS; separate S2S</td></tr>
+
+<tr><td class="prov">Gradium <span class="small muted">default</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span><div class="small">client_req_id = mux</div></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">WS realtime; carry-over ❓</div></td>
+<td><span class="pill s-unk">❓ (SDK 20k ❓)</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">voice_id, clone; no seed</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td>⚠️ chunk-only</td><td>✅ WS realtime</td></tr>
+
+<tr><td class="prov">FAL <span class="small muted">f5-tts</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">ref_audio = <strong>clone, not continuation</strong></div></td>
+<td><span class="pill s-no">❌</span><div class="small">async job</div></td>
+<td><strong>5 000</strong></td>
+<td><span class="pill s-ok">✅</span><div class="small">zero-shot clone; no seed</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-no">Very weak</span></td><td><span class="pill s-no">❌</span></td></tr>
+
+<tr><td class="prov">FAL <span class="small muted">kokoro, orpheus-tts</span></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-unk">❓</span></td>
+<td><span class="pill s-warn">⚠️</span><div class="small">preset enum only</div></td>
+<td><span class="pill s-no">❌</span></td><td><span class="pill s-no">❌</span></td>
+<td><span class="pill s-no">Very weak</span></td><td><span class="pill s-no">❌</span></td></tr>
+</tbody>
+</table>
+</div>
+<p class="small muted">Exact params and the doc URLs behind every cell are in <a href="#appendixA">Appendix A</a>.</p>
+</section>
+
+<section id="gap">
+<h2>Step 3 — The gap, mapped to mechanisms</h2>
+
+<h3>(a) Cross-chunk prosodic continuity for one speaker</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Provider</th><th>Best mechanism for (a)</th><th>On SDK path?</th><th>SDK shortfall</th></tr></thead>
+<tbody>
+<tr><td class="prov">ElevenLabs (non-v3)</td><td>Request stitching: <code>previous_text</code>/<code>next_text</code> + <code>previous_request_ids</code></td><td><span class="pill s-warn">batch, needs serial + request-id capture</span></td><td>Chunks run in parallel; request-id never captured/threaded</td></tr>
+<tr><td class="prov">Hume Octave</td><td><code>context.generation_id</code> chaining</td><td><span class="pill s-warn">batch, needs serial</span></td><td>Not threaded; <code>context</code> not surfaced</td></tr>
+<tr><td class="prov">Cartesia</td><td>WS continuations (<code>context_id</code>+<code>continue</code>, <code>flush</code>)</td><td><span class="pill s-no">no — needs WS session</span></td><td>SDK has no persistent WS session</td></tr>
+<tr><td class="prov">Fish Audio</td><td><code>condition_on_previous_chunks</code> / WS <code>tts-live</code></td><td><span class="pill s-warn">partly — only within one request</span></td><td>SDK splits into independent requests, defeating it</td></tr>
+<tr><td class="prov">MiniMax / xAI / Gemini / flash_v2_5</td><td><strong>Avoid chunking</strong> — single request up to the real cap</td><td><span class="pill s-ok">yes, trivially</span></td><td>MiniMax cap under-declared (3k vs 10k)</td></tr>
+<tr><td class="prov">OpenAI / Mistral / Murf / Resemble / Smallest / Gradium / FAL</td><td>None — no cross-request conditioning exists</td><td>n/a</td><td>Stuck with independent-chunk concat; document as best-effort</td></tr>
+</tbody>
+</table></div>
+
+<h3>(b) Multi-speaker scripted dialogue continuity</h3>
+<p>Best mechanism is a <strong>single native dialogue call</strong> so the model conditions all speakers together: ElevenLabs <code>eleven_v3</code> Text-to-Dialogue (≤2 000 chars, ≤10 voices), Gemini multi-speaker (max 2), Fish <code>s2-pro</code> speaker tags (SDK caps 4), Hume <code>utterances[]</code> (SDK caps 4). The SDK already routes to these — <strong>but any per-turn <code>providerOptions</code> force the lossy independent-request stitch path</strong> (<code>dispatch.ts:64</code>), throwing away cross-speaker conditioning. Everything else can only be stitched.</p>
+
+<h3>(c) Conditioning on a live user's incoming audio (S2S)</h3>
+<p>No provider offers this on the plain TTS endpoints the SDK calls. It lives in <em>separate</em> products: Gemini Live, OpenAI Realtime, Inworld Realtime, xAI Voice agent, ElevenLabs Speech-to-Speech, and batch voice-changers (Cartesia, Murf, Resemble). <strong>The SDK has no S2S/live surface at all</strong> — this is a green-field module, not a tweak to <code>generateSpeech</code>.</p>
+</section>
+
+<section id="changes">
+<h2>Step 4.2 — Specific SDK code changes</h2>
+<p class="muted small">All changes honor the gateway invariant: implement client-side for direct factories, and add the same fields to the gateway wire so the server can mirror them.</p>
+
+<h4>Change 1 — Long-form strategy descriptor on <code>SpeechProvider</code></h4>
+<pre><code>type LongFormStrategy =
+  | { mode: "single-pass" }      // send one request up to maxInputChars
+  | { mode: "request-stitch" }   // previous_text/next_text + previous_request_ids
+  | { mode: "context-id" }       // chain on a returned generation/context id
+  | { mode: "ws-continuation" }  // persistent WS session (future)
+  | { mode: "independent" };     // current behavior; seams expected
+
+interface SpeechProvider {
+  longFormStrategy?(modelId: string): LongFormStrategy;
+}</code></pre>
+
+<h4>Change 2 — Thread conditioning through <code>generate()</code> and capture prior-output ids</h4>
+<pre><code>generate(options: {
+  conditioning?: {
+    previousText?: string; nextText?: string;
+    previousRequestIds?: string[];   // ElevenLabs
+    contextGenerationId?: string;    // Hume context.generation_id
+  };
+}): Promise&lt;{ requestId?: string; generationId?: string; /* ...existing */ }&gt;;</code></pre>
+<ul class="tight">
+  <li><strong>ElevenLabs</strong>: map to <code>previous_text</code>/<code>next_text</code>/<code>previous_request_ids</code>; read the <code>request-id</code> response header. Return <code>single-pass</code> for <code>eleven_v3</code>.</li>
+  <li><strong>Hume</strong>: map <code>contextGenerationId</code> → <code>{ context: { generation_id } }</code>; return the new id. Same-version only.</li>
+</ul>
+
+<h4>Change 3 — Make <code>generateChunkedSpeech</code> strategy-aware <span class="muted">(the central fix)</span></h4>
+<ul class="tight">
+  <li><code>request-stitch</code>/<code>context-id</code>: run chunks <strong>serially</strong> and thread state forward (prev text + prev request-id / generation-id). Fixes seams for ElevenLabs &amp; Hume.</li>
+  <li><code>single-pass</code>: don't chunk if text fits the (corrected) cap.</li>
+  <li><code>independent</code>/unset: keep current parallel concat as fallback; add a short equal-power crossfade in <code>concatPcmToWav</code> to soften energy jumps.</li>
+</ul>
+
+<h4>Change 4 — Correct <code>maxInputChars</code> + add missing caps</h4>
+<ul class="tight">
+  <li><strong>MiniMax</strong> <code>3000 → 10000</code>. <strong>Murf</strong> add <code>3000</code>. <strong>Resemble</strong> add <code>2000</code>. <strong>Mistral</strong> add conservative cap. <strong>Gradium</strong> <code>20000</code> is unverified — lower or mark provisional.</li>
+</ul>
+
+<h4>Change 5 — (Larger) Persistent streaming-session abstraction</h4>
+<p class="small">Add an <code>openSession()</code>-style API (distinct from one-shot <code>stream()</code>) holding a connection + <code>context_id</code> + <code>push()</code>/<code>flush()</code>/<code>finish()</code>, surfacing <code>max_buffer_delay_ms</code>. Unlocks Cartesia continuations, Fish <code>tts-live</code>, Deepgram/Murf/MiniMax/Gradium/Smallest WS, and is the right home for capability (c). Its own milestone — Changes 1–4 deliver most of the win without it.</p>
+
+<h4>Change 6 — Preserve native dialogue conditioning under per-turn options</h4>
+<p class="small">In <code>dispatch.ts:64</code>, where a provider can express per-utterance options in its native dialogue call (Hume <code>utterances[]</code>, Fish per-speaker), pass them through natively instead of falling back to stitch.</p>
+</section>
+
+<section id="default">
+<h2>Step 4.3 — Recommended default + per-provider fallback</h2>
+<h4>Default policy (single speaker)</h4>
+<ol class="tight">
+  <li>If text fits the model's real <code>maxInputChars</code>, <strong>send one request</strong> — best coherence. Big-window models (Gemini ~32k tok, flash_v2_5 40k, xAI 15k, MiniMax 10k, multilingual_v2 10k) cover most long agent turns this way.</li>
+  <li>Else chunk + apply the best conditioning: ElevenLabs (non-v3) → request stitching (serial); Hume → <code>generation_id</code> chaining; Cartesia/Fish → WS continuation once Change 5 lands.</li>
+  <li>Else (no primitive) → independent-chunk concat + crossfade, voice id held constant. Seams expected.</li>
+</ol>
+<h4>Routing tiers</h4>
+<div class="tablewrap"><table>
+<thead><tr><th>Tier</th><th>Providers</th><th>Long-form route</th></tr></thead>
+<tbody>
+<tr class="tier-best"><td><strong>Best for long narration</strong></td><td>ElevenLabs (flash_v2_5 / multilingual_v2), Hume Octave, Gemini TTS, MiniMax</td><td>big single pass and/or native conditioning</td></tr>
+<tr class="tier-good"><td><strong>Good via WS</strong> (after Change 5)</td><td>Cartesia, Fish Audio</td><td>continuation sessions</td></tr>
+<tr class="tier-ok"><td><strong>Usable, no conditioning</strong></td><td>xAI (15k window), Gradium, Smallest, Mistral, Murf</td><td>single pass where it fits; else best-effort concat</td></tr>
+<tr class="tier-away"><td><strong>Route long-form AWAY from</strong></td><td>OpenAI (4 096 cap), Resemble (2–3k cap), FAL (independent async jobs)</td><td>short turns only; not for audiobook/podcast</td></tr>
+</tbody>
+</table></div>
+<p class="small"><strong>Cannot do long-form conditioning at all</strong> (independent requests only): OpenAI, FAL (all), Resemble, Mistral, Murf, Smallest, Gradium, MiniMax (beyond its 10k single pass), Deepgram, Inworld (REST path). For these, long-form coherence = hold the voice id constant and accept seams.</p>
+<p class="small"><strong>Multi-speaker default:</strong> prefer the native dialogue call (ElevenLabs v3, Gemini, Fish, Hume); everything else → stitch with <code>gapMs</code>. <strong>Live audio (c):</strong> out of scope for <code>generateSpeech</code>; build a separate realtime module if needed.</p>
+</section>
+
+<section id="open">
+<h2>Step 4.4 — Open questions needing empirical testing</h2>
+<ol class="tight">
+  <li><strong>Boundary artifacts</strong>: measure pitch drift / energy jump at <code>gapMs:0</code> joins per provider, with/without crossfade; quantify how much ElevenLabs stitching &amp; Hume chaining actually remove.</li>
+  <li><strong>eleven_v3 char cap</strong>: Models page says 5 000, help center says 3 000 — confirm against a live 422.</li>
+  <li><strong>Request-id availability</strong>: verify the <code>request-id</code> header on our tier; confirm zero-retention disables stitching.</li>
+  <li><strong>Cartesia context expiry (1s)</strong>: measure buffering latency cost; tune <code>max_buffer_delay_ms</code> (0–5000, def 3000).</li>
+  <li><strong>Fish <code>condition_on_previous_chunks</code></strong>: does it reduce seams across separate WS messages, or only within one generation?</li>
+  <li><strong>Serial vs parallel cost</strong>: serial chunking (needed for stitching) raises wall-clock latency — quantify the trade.</li>
+  <li><strong>Unverified caps</strong>: empirically find true max for Gradium, Smallest, MiniMax (confirm 10k), kokoro, orpheus, Mistral.</li>
+  <li><strong>WS cross-message state</strong> (Deepgram, Murf, MiniMax, Gradium, Smallest): docs silent — test before claiming continuity.</li>
+  <li><strong>Gateway parity</strong>: every conditioning field added client-side must be mirrored by the Speechbase server.</li>
+</ol>
+</section>
+
+<section id="appendixA">
+<h2>Appendix A — Per-provider detail with citations</h2>
+<p class="small muted">Each entry: existence check, exact params, doc URLs. <span class="pill s-unk">❓</span> = not confirmable from a first-party page.</p>
+
+<details open><summary>ElevenLabs <span class="muted small">(api.elevenlabs.io)</span></summary>
+<ul class="tight">
+<li>Models all Active: <code>eleven_v3</code> (5 000 chars per Models doc; help-center says 3 000 — reconcile), <code>eleven_multilingual_v2</code> (10 000), <code>eleven_flash_v2_5</code> (40 000), <code>eleven_flash_v2</code> (30 000).</li>
+<li><strong>Request stitching</strong>: <code>previous_text</code>/<code>next_text</code> AND <code>previous_request_ids</code>/<code>next_request_ids</code> (≤3 each, ids ≤2h, referenced request fully processed). Both text+ids given → text ignored. <strong>Not on eleven_v3.</strong> Disabled under zero-retention (<code>enable_logging=false</code>).</li>
+<li><strong>WebSocket</strong>: <code>/stream-input</code> and <code>/multi-stream-input</code> (per-<code>context_id</code> state). Not for v3.</li>
+<li><strong>Voice lock</strong>: <code>voice_id</code> + clone (IVC/PVC) + <code>seed</code> (best-effort).</li>
+<li><strong>Dialogue</strong>: <code>POST /v1/text-to-dialogue</code>, <code>inputs[]</code> of {text, voice_id}, ≤2 000 chars total, ≤10 voices, default <code>eleven_v3</code>; batch.</li>
+<li><strong>S2S</strong>: <code>POST /v1/speech-to-speech/{voice_id}</code>, <code>eleven_english_sts_v2</code>.</li>
+</ul>
+<p class="cite">convert · /api-reference/text-to-speech/convert &nbsp;|&nbsp; stitching · /eleven-api/guides/how-to/text-to-speech/request-stitching &nbsp;|&nbsp; models · /overview/models &nbsp;|&nbsp; dialogue · /api-reference/text-to-dialogue/convert &nbsp;|&nbsp; multi-context WS · /api-reference/multi-context-text-to-speech/... &nbsp;|&nbsp; S2S · /api-reference/speech-to-speech/convert &nbsp;|&nbsp; zero-retention · /eleven-api/resources/zero-retention-mode</p>
+</details>
+
+<details><summary>OpenAI <span class="muted small">(api.openai.com)</span></summary>
+<p class="small"><code>POST /v1/audio/speech</code>. No cross-request conditioning, no seed, no clone. <code>instructions</code> steering documented for <code>gpt-4o-mini-tts</code> only. Max 4 096 chars (community-reported, ❓ first-party); gpt-4o-mini-tts page lists a 2 000-token cap. Realtime API (<code>gpt-realtime</code>, WS/WebRTC at <code>/v1/realtime</code>) is the separate S2S product.</p>
+<p class="cite">TTS · developers.openai.com/api/docs/guides/text-to-speech &nbsp;|&nbsp; gpt-4o-mini-tts model page &nbsp;|&nbsp; Realtime · /guides/realtime-websocket</p>
+</details>
+
+<details><summary>Cartesia <span class="muted small">(api.cartesia.ai)</span></summary>
+<p class="small"><code>sonic-3.5</code>, <code>sonic-3</code> confirmed; <code>sonic-2</code> legacy, absent from current WS/bytes model enums (❓). No <code>previous_text</code>/<code>next_text</code>, no audio prefix, no <code>seed</code>, no dialogue. <strong>WS continuations</strong>: <code>context_id</code>, <code>continue</code>, <code>flush</code>+<code>flush_id</code>, <code>max_buffer_delay_ms</code> (0–5000, def 3000). Contexts <strong>expire 1s</strong> after last audio. Voice lock <code>voice.mode="id"</code>/<code>voice.id</code> + clone. S2S <code>POST /voice-changer/bytes</code> (batch). No per-request char cap (❓).</p>
+<p class="cite">continuations · /build-with-cartesia/capability-guides/stream-inputs-using-continuations &nbsp;|&nbsp; bytes · /api-reference/tts/bytes &nbsp;|&nbsp; contexts · /api-reference/tts/working-with-web-sockets/contexts &nbsp;|&nbsp; voice-changer · /api-reference/voice-changer/bytes</p>
+</details>
+
+<details><summary>Fish Audio <span class="muted small">(api.fish.audio)</span></summary>
+<p class="small"><code>s2-pro</code>. <code>condition_on_previous_chunks</code> (bool, default true) carries audio context within a request/session. WS <code>tts-live</code> = one coherent generation. Dialogue via <code>&lt;|speaker:N|&gt;</code> + <code>reference_id[]</code>. Clone via <code>reference_id</code> or inline <code>references</code>. No seed. No per-request char cap (❓; internal <code>chunk_length</code> 300). SDK uses REST only — WS not implemented.</p>
+<p class="cite">TTS · /api-reference/endpoint/openapi-v1/text-to-speech &nbsp;|&nbsp; WS · /api-reference/endpoint/websocket/tts-live</p>
+</details>
+
+<details><summary>Google — Gemini TTS / Live / Cloud Chirp 3</summary>
+<p class="small"><strong>Gemini TTS</strong>: text-in/audio-out only. ~32k-token context. Multi-speaker via <code>multi_speaker_voice_config.speaker_voice_configs</code> (max 2); style/scene/audio-tags in text. 30 preset voices, no clone/seed. Streaming (Interactions API) on 3.1 only. No cross-request conditioning, no S2S. <strong>Gemini Live API</strong> (separate): native-audio S2S, stateful WS, live audio in — surfaces 4 &amp; 8 for Google. <strong>Cloud TTS Chirp 3 HD</strong> (separate): text-only, no multi-speaker/clone; max input ❓.</p>
+<p class="cite">speech-gen · ai.google.dev/gemini-api/docs/interactions/speech-generation &nbsp;|&nbsp; generateContent · /docs/speech-generation &nbsp;|&nbsp; Live · /docs/live-guide &nbsp;|&nbsp; Chirp 3 · cloud.google.com/text-to-speech/docs/chirp3-hd</p>
+</details>
+
+<details><summary>Hume Octave <span class="muted small">(api.hume.ai)</span></summary>
+<p class="small"><code>octave-2</code>, <code>octave-1</code>. <code>context.generation_id</code> continues prosody from the immediately preceding generation (one step back; octave-1↔2 can't chain). 5 000 chars/utterance (description ≤1 000). Multi-voice <code>utterances[]</code>. Voice by id/name + clone (15s). No S2S. <code>context</code> currently passable only via raw <code>providerOptions</code>. Octave version selector field name ❓.</p>
+<p class="cite">continuation · dev.hume.ai/docs/text-to-speech-tts/continuation &nbsp;|&nbsp; overview · /overview &nbsp;|&nbsp; voice · /voice</p>
+</details>
+
+<details><summary>Inworld <span class="muted small">(api.inworld.ai)</span></summary>
+<p class="small"><code>inworld-tts-2</code>, <code>1.5-max</code>, <code>1.5-mini</code>. REST <code>/tts/v1/voice</code>(+<code>:stream</code>): 2 000 chars; no context/prior-id/audio field. Clone <code>/voices/v1/voices:clone</code> (5–15s). NL direction via inline <code>[...]</code> tags. TTS-2's "hears the exchange" + live audio = <strong>separate Realtime WS session</strong>, not the REST path the SDK calls. No seed. Multi-speaker on REST ❓.</p>
+<p class="cite">intro · docs.inworld.ai/tts/tts &nbsp;|&nbsp; synthesize · /api-reference/ttsAPI/texttospeech/synthesize-speech &nbsp;|&nbsp; realtime · inworld.ai/blog/realtime-tts-2</p>
+</details>
+
+<details><summary>MiniMax <span class="muted small">(api.minimax.io)</span></summary>
+<p class="small"><code>speech-2.8-hd</code>, <code>speech-2.8-turbo</code> confirmed. <code>POST /v1/t2a_v2</code>. <strong>10 000 char</strong> max (SDK under-declares 3 000). No context/prior-id/cross-chunk fields. Voice lock via <code>voice_id</code> + <code>timbre_weights</code> (mix ≤4); clone <code>/v1/voice_clone</code>. <strong>No speech seed</strong> (seed is Music-only). WS <code>t2a_v2</code> chunks; carry-over ❓. No dialogue, no S2S.</p>
+<p class="cite">HTTP · platform.minimax.io/docs/api-reference/speech-t2a-http &nbsp;|&nbsp; WS · /speech-t2a-websocket &nbsp;|&nbsp; clone · /guides/speech-voice-clone</p>
+</details>
+
+<details><summary>Mistral Voxtral <span class="muted small">(api.mistral.ai)</span></summary>
+<p class="small"><code>voxtral-mini-tts-2603</code>. <code>POST /v1/audio/speech</code>. Fields: <code>input</code>, <code>voice_id</code>, <code>ref_audio</code> (clone prompt, not continuation), <code>response_format</code>, <code>stream</code>. <strong>No seed</strong>. No context/prior-id/dialogue/S2S. No documented char cap — "under 300 words" (❓ numeric). SSE streaming.</p>
+<p class="cite">docs.mistral.ai/api/endpoint/audio/speech &nbsp;|&nbsp; /capabilities/audio/text_to_speech</p>
+</details>
+
+<details><summary>Murf <span class="muted small">(api.murf.ai)</span></summary>
+<p class="small"><code>gen2</code> (REST <code>/v1/speech/generate</code>), <code>falcon-2</code> (<code>/v1/speech/stream</code>, WS). <strong>3 000 chars</strong>. <code>context_id</code> is a turn tag, not acoustic conditioning. WS sets <code>voice_config</code> once; no cross-turn acoustic state. No seed; clone = enterprise. No dialogue API. Voice Changer = batch S2S (≤3 min). Falcon 2 ~55ms.</p>
+<p class="cite">generate · murf.ai/api/docs/api-reference/text-to-speech/generate &nbsp;|&nbsp; WS · /text-to-speech/web-sockets &nbsp;|&nbsp; context-id · /web-sockets/context-id &nbsp;|&nbsp; voice changer · /capabilities/voice-changer</p>
+</details>
+
+<details><summary>Resemble <span class="muted small">(f.cluster.resemble.ai)</span></summary>
+<p class="small"><code>default</code> → Chatterbox (<code>tts-v4</code>); Turbo = <code>tts-v4-turbo</code>. Sync <code>/synthesize</code> (2 000), HTTP <code>/stream</code> (2 000), WS (3 000, excl. tags). No context/prior-id/continuation. <code>request_id</code> = correlation. Voice lock <code>voice_uuid</code> + clone; request-level <code>seed</code> ❓ (response only). S2S via <code>&lt;resemble:convert src="WAV URL"&gt;</code> (batch).</p>
+<p class="cite">models · docs.resemble.ai/getting-started/model-versions &nbsp;|&nbsp; stream · /api-reference/text-to-speech/stream-synthesize &nbsp;|&nbsp; WS · /voice-generation/text-to-speech/streaming-websocket &nbsp;|&nbsp; S2S · /voice-generation/speech-to-speech</p>
+</details>
+
+<details><summary>Smallest AI <span class="muted small">(api.smallest.ai/waves/v1)</span></summary>
+<p class="small"><code>lightning_v3.1</code>, <code>lightning_v3.1_pro</code>. <code>POST /tts</code>; SSE + WS <code>/tts/live</code> (SSE deprecating 2026-07-14). No documented char cap (the "~250" is outdated; ❓). <code>session_id</code>/<code>request_id</code> = correlation. Clone (5–15s), no seed. No dialogue/S2S. WS cross-message state ❓.</p>
+<p class="cite">synthesize · docs.smallest.ai/waves/api-reference/.../synthesize-lightning-v-31-speech &nbsp;|&nbsp; SSE · .../stream-lightning-v-31-speech</p>
+</details>
+
+<details><summary>xAI Grok <span class="muted small">(api.x.ai/v1)</span></summary>
+<p class="small"><code>grok-tts</code> confirmed public. <code>POST /tts</code>, <strong>15 000 chars</strong>. Audio tags (<code>[pause]</code>, <code>[laugh]</code>, <code>&lt;whisper&gt;…</code>). 5 preset voices (<code>eve</code> default), no seed/clone. WS streaming for one synthesis (message types ❓). No cross-request conditioning, no dialogue. Live S2S = separate <code>grok-voice-latest</code> realtime agent.</p>
+<p class="cite">TTS · docs.x.ai/developers/model-capabilities/audio/text-to-speech &nbsp;|&nbsp; voice · /audio/voice</p>
+</details>
+
+<details><summary>Gradium <span class="muted small">(api.gradium.ai)</span></summary>
+<p class="small"><code>default</code>. <code>/api/post/speech/tts</code>; WS <code>tts_realtime</code>/<code>tts_stream</code>/<code>tts</code>. <code>client_req_id</code>/<code>request_id</code> = multiplexing/correlation, not conditioning. <code>voice_id</code> + <code>json_config</code>; no seed. No documented char cap (SDK's 20 000 ❓). No dialogue/S2S. WS cross-message state ❓.</p>
+<p class="cite">docs.gradium.ai/guides/text-to-speech</p>
+</details>
+
+<details><summary>FAL <span class="muted small">(fal.run)</span></summary>
+<p class="small"><code>f5-tts</code>: <code>gen_text</code> (5 000 chars), <code>ref_audio_url</code>+<code>ref_text</code> = zero-shot cloning, not continuation. <code>kokoro</code>/<code>orpheus-tts</code>: preset voice enums; orpheus has emotive tags. All three are stateless async jobs — no streaming, no session, no cross-request conditioning, no S2S. kokoro/orpheus max length ❓.</p>
+<p class="cite">f5 · fal.ai/models/fal-ai/f5-tts/api &nbsp;|&nbsp; kokoro · /kokoro/american-english/api &nbsp;|&nbsp; orpheus · /orpheus-tts/api</p>
+</details>
+</section>
+
+<section id="appendixB">
+<h2>Appendix B — SDK code references (seams to change)</h2>
+<ul class="tight">
+<li><code>src/generate-speech.ts:353</code> — <code>generateChunkedSpeech</code> (parallel, <code>gapMs:0</code> concat). <strong>Primary change site</strong> (Change 3).</li>
+<li><code>src/text-chunker.ts:55</code> — <code>splitTextByMaxChars</code> boundary logic (keep).</li>
+<li><code>src/conversation/stitch.ts:74</code> — <code>runStitch</code> (parallel per-turn). Multi-speaker seam site.</li>
+<li><code>src/conversation/dispatch.ts:64</code> — per-turn <code>providerOptions</code> force stitch fallback (Change 6).</li>
+<li><code>src/conversation/pcm-concat.ts</code> — <code>concatPcmToWav</code> (add crossfade option).</li>
+<li><code>src/speech-provider.ts</code> — <code>SpeechProvider.generate()</code> options/result; add <code>longFormStrategy</code> + <code>conditioning</code> (Changes 1–2).</li>
+<li><code>src/stream-speech.ts</code> + provider <code>stream()</code> — single-shot today; home for the future <code>openSession()</code> WS abstraction (Change 5).</li>
+<li><code>src/providers/gateway/index.ts</code> — any new conditioning field must be added to the gateway request body to preserve byte-equivalence.</li>
+</ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>
