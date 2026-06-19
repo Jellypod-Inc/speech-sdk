@@ -39,7 +39,7 @@ export const FAL_MODELS: readonly ModelInfo[] = [
     id: "f5-tts",
     releaseDate: "2024-10-08",
     languages: ["en", "zh", "fr", "it", "hi", "ja", "ru", "es", "fi"],
-    features: ["open-source", "inline-voice-cloning"],
+    features: ["open-source"],
     maxInputChars: 5000,
   },
   {
@@ -56,9 +56,7 @@ export const FAL_MODELS: readonly ModelInfo[] = [
   },
 ] as const;
 
-export class FalSpeechProvider
-  implements SpeechProvider<string, string | { url: string }>
-{
+export class FalSpeechProvider implements SpeechProvider<string, string> {
   readonly id = FAL_PROVIDER_ID;
   readonly defaultModel = "";
 
@@ -77,7 +75,7 @@ export class FalSpeechProvider
   async generate(options: {
     modelId: string;
     text: string;
-    voice?: string | { url: string };
+    voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -100,11 +98,7 @@ export class FalSpeechProvider
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === "string") {
-        body.voice = options.voice;
-      } else if ("url" in options.voice) {
-        body.audio_url = options.voice.url;
-      }
+      body.voice = options.voice;
     }
 
     const response = await this.fetchFn(url, {
@@ -196,9 +190,7 @@ export function createFal(config: FalSpeechProviderConfig = {}) {
   const provider = new FalSpeechProvider(config);
   const fallbackSTT = config.fallbackSTT;
 
-  return function fal(
-    modelId?: string
-  ): ResolvedModel<string | { url: string }> {
+  return function fal(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,

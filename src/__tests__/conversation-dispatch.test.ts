@@ -296,19 +296,4 @@ describe("chooseConversationPath", () => {
       })
     ).toThrow(MixedDispatchError);
   });
-
-  it("falls through past gateway when any turn uses an object-shaped voice (clone ref)", () => {
-    const gateway = createSpeechGateway({ apiKey: "k" });
-    // Gateway wire contract accepts string voices only; clones go through stitch.
-    const resolved = gateway("openai/gpt-4o-mini-tts");
-    expect(() =>
-      chooseConversationPath({
-        resolvedPerTurn: [resolved, resolved],
-        turns: [
-          { voice: "alloy", text: "Hi." },
-          { voice: { url: "https://example.com/clone.wav" }, text: "Hello." },
-        ],
-      })
-    ).toThrow(StitchUnsupportedError);
-  });
 });

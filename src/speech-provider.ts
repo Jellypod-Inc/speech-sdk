@@ -6,7 +6,7 @@ import {
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
-export type Voice = string | { url: string } | { audio: string | Uint8Array };
+export type Voice = string;
 
 export interface StitchTurnOptions {
   mediaType: string;
@@ -33,7 +33,6 @@ export interface ModelInfo {
 export const FEATURES = {
   STREAMING: "streaming",
   AUDIO_TAGS: "audio-tags",
-  INLINE_VOICE_CLONING: "inline-voice-cloning",
   VOICE_CLONING: "voice-cloning",
   OPEN_SOURCE: "open-source",
   TIMESTAMPS: "timestamps",

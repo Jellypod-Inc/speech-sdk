@@ -94,31 +94,19 @@ export const CARTESIA_MODELS: readonly ModelInfo[] = [
     id: "sonic-3.5",
     releaseDate: "2026-05-04",
     languages: SONIC_LANGUAGES,
-    features: [
-      "streaming",
-      "audio-tags",
-      "inline-voice-cloning",
-      "voice-cloning",
-      "timestamps",
-    ],
+    features: ["streaming", "audio-tags", "voice-cloning", "timestamps"],
   },
   {
     id: "sonic-3",
     releaseDate: "2025-10-27",
     languages: SONIC_LANGUAGES,
-    features: [
-      "streaming",
-      "audio-tags",
-      "inline-voice-cloning",
-      "voice-cloning",
-      "timestamps",
-    ],
+    features: ["streaming", "audio-tags", "voice-cloning", "timestamps"],
   },
   {
     id: "sonic-2",
     releaseDate: "2025-03-13",
     languages: ["en"],
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "voice-cloning", "timestamps"],
   },
 ] as const;
 

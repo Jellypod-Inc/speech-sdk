@@ -39,12 +39,8 @@ export function chooseConversationPath(input: {
     throw new MixedDispatchError();
   }
 
-  // Gateway wire takes string voices only; clone voices (`{url}`/`{audio}`) on gateway models fall past every other branch and throw StitchUnsupportedError below.
   if (gatewayCount === resolvedPerTurn.length) {
-    const allVoicesString = turns.every((t) => typeof t.voice === "string");
-    if (allVoicesString) {
-      return { kind: "gateway", resolvedPerTurn };
-    }
+    return { kind: "gateway", resolvedPerTurn };
   }
 
   // Compare by provider instance reference so two factories with different apiKey/baseURL/fetch configs aren't silently merged.

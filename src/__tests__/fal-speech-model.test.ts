@@ -94,38 +94,6 @@ describe("FalSpeechProvider", () => {
     expect(body.audio_url).toBeUndefined();
   });
 
-  it("maps { url } voice to audio_url field in body", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: async () => ({ audio: { url: "https://cdn.fal.ai/audio.mp3" } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "audio/mpeg" }),
-        arrayBuffer: async () => new Uint8Array([1]).buffer,
-      });
-
-    const provider = new FalSpeechProvider({
-      apiKey: "test-key",
-      fetch: mockFetch,
-    });
-
-    await provider.generate({
-      modelId: "inworld-tts",
-      text: "Hello",
-      voice: { url: "https://example.com/ref.wav" },
-    });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.audio_url).toBe("https://example.com/ref.wav");
-    expect(body.voice).toBeUndefined();
-  });
-
   it("performs two-step fetch: JSON then audio download", async () => {
     const audioData = new Uint8Array([10, 20, 30]);
     const mockFetch = vi

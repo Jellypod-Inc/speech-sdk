@@ -50,43 +50,6 @@ describe("MistralSpeechProvider", () => {
     expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
   });
 
-  it("maps { audio: string } voice to ref_audio", async () => {
-    const mockFetch = mockJsonResponse({ audio_data: "dGVzdA==" });
-    const provider = new MistralSpeechProvider({
-      apiKey: "test-key",
-      fetch: mockFetch,
-    });
-
-    await provider.generate({
-      modelId: "voxtral-mini-tts-2603",
-      text: "Hello",
-      voice: { audio: "base64audiodata" },
-    });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.ref_audio).toBe("base64audiodata");
-    expect(body.voice_id).toBeUndefined();
-  });
-
-  it("maps { audio: Uint8Array } voice to base64 ref_audio", async () => {
-    const mockFetch = mockJsonResponse({ audio_data: "dGVzdA==" });
-    const provider = new MistralSpeechProvider({
-      apiKey: "test-key",
-      fetch: mockFetch,
-    });
-
-    const audioBytes = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
-    await provider.generate({
-      modelId: "voxtral-mini-tts-2603",
-      text: "Hello",
-      voice: { audio: audioBytes },
-    });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.ref_audio).toBe(btoa("Hello"));
-    expect(body.voice_id).toBeUndefined();
-  });
-
   it("sends no voice_id or ref_audio when voice is omitted", async () => {
     const mockFetch = mockJsonResponse({ audio_data: "dGVzdA==" });
     const provider = new MistralSpeechProvider({

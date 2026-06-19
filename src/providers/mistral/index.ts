@@ -56,18 +56,11 @@ export const MISTRAL_MODELS: readonly ModelInfo[] = [
     id: "voxtral-mini-tts-2603",
     releaseDate: "2026-03-23",
     languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
-    features: [
-      "streaming",
-      "open-source",
-      "inline-voice-cloning",
-      "voice-cloning",
-    ],
+    features: ["streaming", "open-source", "voice-cloning"],
   },
 ] as const;
 
-export class MistralSpeechProvider
-  implements SpeechProvider<string, string | { audio: string | Uint8Array }>
-{
+export class MistralSpeechProvider implements SpeechProvider<string, string> {
   readonly id = MISTRAL_PROVIDER_ID;
   readonly defaultModel = "voxtral-mini-tts-2603";
   readonly models = MISTRAL_MODELS;
@@ -85,7 +78,7 @@ export class MistralSpeechProvider
   async generate(options: {
     modelId: string;
     text: string;
-    voice?: string | { audio: string | Uint8Array };
+    voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -102,16 +95,7 @@ export class MistralSpeechProvider
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === "string") {
-        body.voice_id = options.voice;
-      } else if ("audio" in options.voice) {
-        const audio = options.voice.audio;
-        if (audio instanceof Uint8Array) {
-          body.ref_audio = uint8ArrayToBase64(audio);
-        } else {
-          body.ref_audio = audio;
-        }
-      }
+      body.voice_id = options.voice;
     }
 
     const url = `${this.baseURL}/audio/speech`;
@@ -147,7 +131,7 @@ export class MistralSpeechProvider
   async stream(options: {
     modelId: string;
     text: string;
-    voice?: string | { audio: string | Uint8Array };
+    voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -165,16 +149,7 @@ export class MistralSpeechProvider
     };
 
     if (options.voice != null) {
-      if (typeof options.voice === "string") {
-        body.voice_id = options.voice;
-      } else if ("audio" in options.voice) {
-        const audio = options.voice.audio;
-        if (audio instanceof Uint8Array) {
-          body.ref_audio = uint8ArrayToBase64(audio);
-        } else {
-          body.ref_audio = audio;
-        }
-      }
+      body.voice_id = options.voice;
     }
 
     const url = `${this.baseURL}/audio/speech`;
@@ -325,9 +300,7 @@ function mediaTypeForResponseFormat(format: unknown): string {
 export function createMistral(config: MistralSpeechProviderConfig = {}) {
   const provider = new MistralSpeechProvider(config);
   const fallbackSTT = config.fallbackSTT;
-  return function mistral(
-    modelId?: string
-  ): ResolvedModel<string | { audio: string | Uint8Array }> {
+  return function mistral(modelId?: string): ResolvedModel<string> {
     return {
       provider,
       modelId: modelId ?? provider.defaultModel,

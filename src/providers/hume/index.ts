@@ -54,7 +54,7 @@ export const HUME_MODELS: readonly ModelInfo[] = [
       "ar",
       "ru",
     ] as const,
-    features: ["streaming", "inline-voice-cloning", "timestamps"],
+    features: ["streaming", "timestamps"],
     maxInputChars: 5000,
   },
   {

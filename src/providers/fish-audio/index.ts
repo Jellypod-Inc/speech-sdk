@@ -36,13 +36,7 @@ export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
     id: "s2-pro",
     releaseDate: "2026-03-09",
     languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
-    features: [
-      "streaming",
-      "audio-tags",
-      "open-source",
-      "inline-voice-cloning",
-      "voice-cloning",
-    ],
+    features: ["streaming", "audio-tags", "open-source", "voice-cloning"],
   },
 ] as const;
 
