@@ -85,6 +85,21 @@ export function normalizeRms(
   });
 }
 
+export function stitchTargetRate(
+  segments: readonly { sampleRate: number }[]
+): number {
+  const rate = segments.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (rate <= 0) {
+    throw new Error(
+      "stitchTargetRate: no decoded segments with a positive sample rate to stitch"
+    );
+  }
+  return rate;
+}
+
 export async function concatPcmToWav(
   segments: readonly Pcm16Segment[],
   options: { gapMs: number; targetSampleRate: number }

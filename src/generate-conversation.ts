@@ -13,6 +13,7 @@ import {
 } from "./audio-output.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
+import type { Pcm16Segment } from "./conversation/pcm-concat.js";
 import type {
   ConversationTurn,
   GenerateConversationOptions,
@@ -605,6 +606,7 @@ async function runNativeSplit<V extends Voice>(args: {
         resolved,
         abortSignal: signal,
         substitutedTurnTexts: blockTurns.map((t) => t.text),
+        pcmSegment: segment,
       });
       return {
         segment,
@@ -616,22 +618,15 @@ async function runNativeSplit<V extends Voice>(args: {
     { signal: options.abortSignal }
   );
 
-  const { concatPcmToWav, dbfsToInt16Rms, normalizeRms } = await import(
-    "./conversation/pcm-concat.js"
-  );
+  const { concatPcmToWav, dbfsToInt16Rms, normalizeRms, stitchTargetRate } =
+    await import("./conversation/pcm-concat.js");
 
   const segments = perBlock.map((p) => p.segment);
   const leveled = normalizeRms(
     segments,
     options.volumeDbfs == null ? undefined : dbfsToInt16Rms(options.volumeDbfs)
   );
-  const targetSampleRate = leveled.reduce(
-    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
-    0
-  );
-  if (targetSampleRate <= 0) {
-    throw new NoSpeechGeneratedError();
-  }
+  const targetSampleRate = stitchTargetRate(leveled);
   const wav = await concatPcmToWav(leveled, { gapMs, targetSampleRate });
 
   const timestamps = requestTimestamps
@@ -655,10 +650,17 @@ async function runNativeSplit<V extends Voice>(args: {
     mediaType: converted.mediaType,
   });
 
-  const audioDurationMs = await computeAudioDuration(
-    finalAudio.uint8Array,
-    converted.mediaType
-  );
+  // Derive duration from the PCM sample counts (resampled to the stitch rate plus gaps)
+  // instead of re-decoding the merged audio — matches the stitch path.
+  const gapSamples = Math.round((gapMs / 1000) * targetSampleRate);
+  const totalSamples =
+    leveled.reduce(
+      (n, s) =>
+        n + Math.round((s.pcm.length / s.sampleRate) * targetSampleRate),
+      0
+    ) +
+    (leveled.length - 1) * gapSamples;
+  const audioDurationMs = Math.round((totalSamples / targetSampleRate) * 1000);
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
   const metadata: SpeechMetadata = {
@@ -680,7 +682,7 @@ async function runNativeSplit<V extends Voice>(args: {
 
 function composeBlockTimestamps(args: {
   perBlock: readonly {
-    segment: { pcm: { length: number }; sampleRate: number };
+    segment: Pcm16Segment;
     timestamps: readonly ConversationWordTimestamp[] | undefined;
   }[];
   blocks: readonly (readonly number[])[];
@@ -723,6 +725,8 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   substitutedTurnTexts: readonly string[];
+  // Already-decoded PCM for the same audio, when the caller has it, to skip a redundant decode.
+  pcmSegment?: Pcm16Segment;
 }): Promise<{
   timestamps: readonly ConversationWordTimestamp[] | undefined;
   warnings: readonly string[];
@@ -750,7 +754,6 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     });
   }
 
-  const { decodeAudioToPcm16 } = await import("./audio-decode.js");
   const { detectSilenceGaps } = await import(
     "./conversation/silence-detection.js"
   );
@@ -761,7 +764,11 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
     [];
   try {
-    const segment = await decodeAudioToPcm16(args.audio, args.mediaType);
+    const segment =
+      args.pcmSegment ??
+      (await (
+        await import("./audio-decode.js")
+      ).decodeAudioToPcm16(args.audio, args.mediaType));
     const gaps = detectSilenceGaps(segment.pcm, {
       sampleRate: segment.sampleRate,
       minDurationMs: 150,

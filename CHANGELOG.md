@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.19.0
+## 0.18.1
 
 - **Long native dialogue is now rendered in parallel native-dialogue blocks instead of failing.** Native multi-speaker providers cap how much text one call can render (e.g. Gemini TTS shares a 32k-token window between input and generated audio). When a `generateConversation` request exceeds the provider's per-call limit, the SDK now keeps the native rendering: it partitions the turns into blocks at turn boundaries — each block under the limit and still satisfying the provider's unique-voice rule — renders each block as its own native-dialogue call **in parallel** (bounded by `maxConcurrency`), then RMS-normalizes and stitches the blocks into one file (`gapMs` applies at block seams only). Word timestamps are composed across blocks with `turnIndex` remapped to the global turn list. This improves latency for long conversations while preserving the native multi-speaker sound. The per-call budget is owned by each provider via `dialogueCapabilities().maxTotalChars`; Google's Gemini TTS models now declare one (`5000`). If a conversation can't be split into voice-valid blocks (a single turn longer than the limit, or a long single-speaker run on a two-voice model), it falls back to the local-stitch path with a warning. The gateway path is unchanged — the gateway server owns its own chunking.
 
