@@ -71,7 +71,7 @@ describe("MiniMaxSpeechProvider.cloneVoice", () => {
     expect(cloneInit.headers["Content-Type"]).toBe("application/json");
     const cloneBody = JSON.parse(cloneInit.body);
     expect(cloneBody.voice_id).toBe("MyCloneVoice01");
-    expect(cloneBody.file_id).toBe("12345");
+    expect(cloneBody.file_id).toBe(12_345);
 
     expect(result.voiceId).toBe("MyCloneVoice01");
   });

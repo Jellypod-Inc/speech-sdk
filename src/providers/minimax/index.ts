@@ -361,7 +361,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       abortSignal?: AbortSignal;
       headers?: Record<string, string>;
     }
-  ): Promise<string> {
+  ): Promise<number> {
     const form = new FormData();
     form.append("purpose", "voice_clone");
     appendSampleBlob(form, "file", sample, 0);
@@ -391,7 +391,8 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
         `minimax/${options.modelId}: upload response missing file.file_id`
       );
     }
-    return String(fileId);
+    // MiniMax /voice_clone rejects a stringified file_id (2013 invalid params); echo back the int64 it returned.
+    return typeof fileId === "number" ? fileId : Number(fileId);
   }
 }
 
