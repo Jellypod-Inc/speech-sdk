@@ -249,9 +249,9 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
     const sample = options.samples[0];
 
     const body: Record<string, unknown> = {
+      ...options.providerOptions,
       name: options.name,
       sample_audio: uint8ArrayToBase64(sample.bytes),
-      ...options.providerOptions,
       sample_filename: `sample.${extensionForMediaType(sample.mediaType)}`,
     };
 

@@ -74,6 +74,24 @@ describe("MistralSpeechProvider.cloneVoice", () => {
     expect(body.description).toBe("narrator");
   });
 
+  it("does not let providerOptions overwrite required payload fields", async () => {
+    const mockFetch = mockCloneFetch();
+    const provider = new MistralSpeechProvider({
+      apiKey: "k",
+      fetch: mockFetch,
+    });
+
+    await provider.cloneVoice({
+      samples: [SAMPLE],
+      name: "Real Name",
+      providerOptions: { name: "hijacked", sample_audio: "hijacked" },
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.name).toBe("Real Name");
+    expect(body.sample_audio).toBe(uint8ArrayToBase64(SAMPLE.bytes));
+  });
+
   it("extracts voiceId from id", async () => {
     const provider = new MistralSpeechProvider({
       apiKey: "k",

@@ -62,11 +62,17 @@ export class SmallestAISpeechProvider
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
+  private readonly cloneURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
 
   constructor(config: SmallestAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.smallest.ai/waves/v1";
+    // The clone endpoint lives on a different smallest.ai host by default; a custom
+    // baseURL (proxy/self-host) must route clone traffic too, so derive it from baseURL.
+    this.cloneURL = config.baseURL
+      ? `${config.baseURL}/lightning-large/add_voice`
+      : SMALLEST_CLONE_URL;
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -134,7 +140,7 @@ export class SmallestAISpeechProvider
     const sample = options.samples[0];
     appendSampleBlob(form, "file", sample, 0);
 
-    const response = await this.fetchFn(SMALLEST_CLONE_URL, {
+    const response = await this.fetchFn(this.cloneURL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resolveApiKey(this.apiKey, "SMALLEST_API_KEY", "Smallest AI")}`,

@@ -18,23 +18,24 @@ const SAMPLE_TEXT =
 
 let sampleAudio: { audio: Uint8Array; mediaType: string };
 
-beforeAll(async () => {
-  const result = await generateSpeech({
-    model: createOpenAI()("gpt-4o-mini-tts"),
-    text: SAMPLE_TEXT,
-    voice: "alloy",
-  });
-  sampleAudio = {
-    audio: result.audio.uint8Array,
-    mediaType: result.audio.mediaType,
-  };
-}, 60_000);
-
 function files() {
   return { audio: sampleAudio.audio, mediaType: sampleAudio.mediaType };
 }
 
-describe("voice cloning e2e", () => {
+// The clone sample is generated via OpenAI, so the whole suite depends on OPENAI_API_KEY.
+describe.skipIf(!process.env.OPENAI_API_KEY)("voice cloning e2e", () => {
+  beforeAll(async () => {
+    const result = await generateSpeech({
+      model: createOpenAI()("gpt-4o-mini-tts"),
+      text: SAMPLE_TEXT,
+      voice: "alloy",
+    });
+    sampleAudio = {
+      audio: result.audio.uint8Array,
+      mediaType: result.audio.mediaType,
+    };
+  }, 60_000);
+
   it.skipIf(!process.env.ELEVENLABS_API_KEY)(
     "clones a voice on ElevenLabs",
     async () => {

@@ -48,6 +48,28 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     });
   });
 
+  it("routes clone through a custom baseURL when configured", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ voiceId: "s1" }),
+    });
+
+    const provider = new SmallestAISpeechProvider({
+      apiKey: "smallest-key",
+      baseURL: "https://proxy.internal/smallest",
+      fetch: mockFetch,
+    });
+
+    await provider.cloneVoice({ samples: [sample], name: "My Voice" });
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe(
+      "https://proxy.internal/smallest/lightning-large/add_voice"
+    );
+  });
+
   it("extracts voiceId from a nested data object", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
