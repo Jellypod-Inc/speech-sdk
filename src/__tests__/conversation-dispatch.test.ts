@@ -201,6 +201,128 @@ describe("chooseConversationPath", () => {
     ).toThrow(DialogueConstraintError);
   });
 
+  it("splits an over-limit native dialogue into parallel voice-valid blocks", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({
+        minVoices: 2,
+        maxVoices: 2,
+        maxTotalChars: 12,
+      }),
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: "audio/wav",
+      }),
+    });
+    const resolved = Array.from({ length: 6 }, () => ({
+      provider,
+      modelId: "gemini-3.1-flash-tts-preview",
+    }));
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "Hi" },
+        { voice: "b", text: "Yo" },
+        { voice: "a", text: "Hello" },
+        { voice: "b", text: "World" },
+        { voice: "a", text: "Foo" },
+        { voice: "b", text: "Bar" },
+      ],
+    });
+    expect(result.kind).toBe("native");
+    if (result.kind === "native") {
+      expect(result.blocks).toEqual([
+        [0, 1, 2],
+        [3, 4, 5],
+      ]);
+    }
+  });
+
+  it("returns native without blocks when the dialogue fits the native limit", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({
+        minVoices: 2,
+        maxVoices: 2,
+        maxTotalChars: 5000,
+      }),
+      getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
+    });
+    const resolved = [
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+    ];
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "b", text: "Hello." },
+      ],
+    });
+    expect(result.kind).toBe("native");
+    if (result.kind === "native") {
+      expect(result.blocks).toBeUndefined();
+    }
+  });
+
+  it("falls back to stitch when a single turn exceeds the native limit", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({
+        minVoices: 2,
+        maxVoices: 2,
+        maxTotalChars: 5,
+      }),
+      getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
+    });
+    const resolved = [
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+    ];
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "HelloWorld" },
+        { voice: "b", text: "Hi" },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+    if (result.kind === "stitch") {
+      expect(result.reason).toBe("fallback-from-native-oversized");
+    }
+  });
+
+  it("falls back to stitch when a block can't satisfy the unique-voice rule", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({
+        minVoices: 2,
+        maxVoices: 2,
+        maxTotalChars: 8,
+      }),
+      getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
+    });
+    const resolved = [
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+    ];
+    // A long single-speaker run fills a block, stranding it at 1 unique voice on a 2-voice model.
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "AAAA" },
+        { voice: "a", text: "BBBB" },
+        { voice: "b", text: "CC" },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+  });
+
   it("throws StitchUnsupportedError when stitch path hits a provider without getStitchOptions", () => {
     const provider = mockProvider({ id: "openai" });
     expect(() =>

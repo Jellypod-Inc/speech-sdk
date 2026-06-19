@@ -11,7 +11,7 @@ import {
   sampleRateHintFrom,
   validateOutput,
 } from "./audio-output.js";
-import { resolveMaxConcurrency } from "./concurrency.js";
+import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
 import type {
   ConversationTurn,
@@ -144,10 +144,10 @@ export async function generateConversation<
 
   if (path.kind === "native") {
     return await applySpeedToConversationResult({
-      result: await runNative({
+      result: await runNativeDispatch({
         options,
         resolved: path.resolved,
-        maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
+        blocks: path.blocks,
       }),
       speed: options.speed,
       output: options.output,
@@ -189,10 +189,12 @@ export async function generateConversation<
     perTurn: stitched.metadataPerTurn,
   };
 
-  const fallbackWarning =
-    path.reason === "fallback-from-native"
-      ? `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`
-      : undefined;
+  let fallbackWarning: string | undefined;
+  if (path.reason === "fallback-from-native") {
+    fallbackWarning = `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`;
+  } else if (path.reason === "fallback-from-native-oversized") {
+    fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
+  }
   const combinedWarnings = fallbackWarning
     ? [fallbackWarning, ...stitched.warnings]
     : stitched.warnings;
@@ -500,6 +502,216 @@ async function runNative<V extends Voice>(args: {
     warnings: mergedWarnings,
     timestamps,
   };
+}
+
+async function runNativeDispatch<V extends Voice>(args: {
+  options: GenerateConversationOptions<V>;
+  resolved: ResolvedModel<V>;
+  blocks: readonly (readonly number[])[] | undefined;
+}): Promise<ConversationResult> {
+  const { options, resolved, blocks } = args;
+  const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+  if (blocks && blocks.length > 1) {
+    return await runNativeSplit({
+      options,
+      resolved,
+      blocks,
+      gapMs: options.gapMs ?? DEFAULT_GAP_MS,
+      maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
+      maxRetries,
+    });
+  }
+  return await runNative({ options, resolved, maxRetries });
+}
+
+async function runNativeSplit<V extends Voice>(args: {
+  options: GenerateConversationOptions<V>;
+  resolved: ResolvedModel<V>;
+  blocks: readonly (readonly number[])[];
+  gapMs: number;
+  maxConcurrency: number;
+  maxRetries: number;
+}): Promise<ConversationResult> {
+  const { options, resolved, blocks, gapMs, maxConcurrency, maxRetries } = args;
+  const start = performance.now();
+
+  if (!resolved.provider.generateDialogue) {
+    throw new Error(
+      `generateConversation: ${resolved.provider.id}/${resolved.modelId} dispatched to native-split but generateDialogue missing`
+    );
+  }
+  const generateDialogue = resolved.provider.generateDialogue.bind(
+    resolved.provider
+  );
+
+  // Splitting decodes each block to PCM to stitch — dispatch only picks this path when a decodable mode exists.
+  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId, {
+    sampleRate: sampleRateHintFrom(options.output),
+  });
+  if (!stitchOpts) {
+    throw new Error(
+      `generateConversation: ${resolved.provider.id}/${resolved.modelId} native-split requires a decodable PCM/WAV mode`
+    );
+  }
+
+  // Stitch options must win — caller-supplied response_format would break the decoder.
+  const dialogueProviderOptions = {
+    ...options.providerOptions,
+    ...stitchOpts.providerOptions,
+  };
+
+  const requestTimestamps = options.timestamps ?? false;
+  const shouldRequestNative =
+    requestTimestamps && modelDeclaresNativeTimestamps(resolved);
+
+  const ruleMap = options.pronunciations?.rules?.length
+    ? mergeRules(options.pronunciations.rules)
+    : null;
+  const substitutedTurns = buildSubstitutedTurns(options.turns, ruleMap);
+  const ttsModel = `${resolved.provider.id}/${resolved.modelId}`;
+
+  const { decodeAudioToPcm16 } = await import("./audio-decode.js");
+
+  const perBlock = await mapWithConcurrency(
+    blocks,
+    maxConcurrency,
+    async (indices, _blockIndex, signal) => {
+      const blockTurns = indices.map((i) => substitutedTurns[i]);
+      const result = await pRetry(
+        () =>
+          generateDialogue({
+            modelId: resolved.modelId,
+            turns: blockTurns.map((t) => ({ voice: t.voice, text: t.text })),
+            providerOptions: dialogueProviderOptions,
+            abortSignal: signal,
+            headers: options.headers,
+            includeTimestamps: shouldRequestNative,
+          }),
+        buildRetryOptions({ maxRetries, abortSignal: signal })
+      );
+      if (result.audio.length === 0) {
+        throw new NoSpeechGeneratedError();
+      }
+      const segment = await decodeAudioToPcm16(
+        result.audio as Uint8Array,
+        stitchOpts.mediaType
+      );
+      const { timestamps, warnings } = await resolveNativeDialogueTimestamps({
+        requestTimestamps,
+        nativeTimestamps: result.timestamps,
+        audio: result.audio as Uint8Array,
+        mediaType: stitchOpts.mediaType,
+        ttsModel,
+        resolved,
+        abortSignal: signal,
+        substitutedTurnTexts: blockTurns.map((t) => t.text),
+      });
+      return {
+        segment,
+        timestamps,
+        warnings,
+        providerMetadata: result.providerMetadata,
+      };
+    },
+    { signal: options.abortSignal }
+  );
+
+  const { concatPcmToWav, dbfsToInt16Rms, normalizeRms } = await import(
+    "./conversation/pcm-concat.js"
+  );
+
+  const segments = perBlock.map((p) => p.segment);
+  const leveled = normalizeRms(
+    segments,
+    options.volumeDbfs == null ? undefined : dbfsToInt16Rms(options.volumeDbfs)
+  );
+  const targetSampleRate = leveled.reduce(
+    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
+    0
+  );
+  if (targetSampleRate <= 0) {
+    throw new NoSpeechGeneratedError();
+  }
+  const wav = await concatPcmToWav(leveled, { gapMs, targetSampleRate });
+
+  const timestamps = requestTimestamps
+    ? composeBlockTimestamps({
+        perBlock,
+        blocks,
+        gapMs,
+        ruleMap,
+        substitutedTurns,
+      })
+    : undefined;
+
+  const deferOutput = isSpeedActive(options.speed);
+  const converted = await applyOptionalOutputConversion({
+    audio: wav,
+    mediaType: "audio/wav",
+    output: deferOutput ? undefined : options.output,
+  });
+  const finalAudio = new DefaultGeneratedAudioFile({
+    data: converted.audio,
+    mediaType: converted.mediaType,
+  });
+
+  const audioDurationMs = await computeAudioDuration(
+    finalAudio.uint8Array,
+    converted.mediaType
+  );
+
+  const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
+  const metadata: SpeechMetadata = {
+    latencyMs: Math.round(performance.now() - start),
+    inputChars,
+    ...(audioDurationMs != null && { audioDurationMs }),
+  };
+
+  const warnings = perBlock.flatMap((p) => p.warnings);
+
+  return {
+    audio: finalAudio,
+    metadata,
+    providerMetadata: { blocks: perBlock.map((p) => p.providerMetadata) },
+    warnings: warnings.length > 0 ? [...warnings] : undefined,
+    timestamps,
+  };
+}
+
+function composeBlockTimestamps(args: {
+  perBlock: readonly {
+    segment: { pcm: { length: number }; sampleRate: number };
+    timestamps: readonly ConversationWordTimestamp[] | undefined;
+  }[];
+  blocks: readonly (readonly number[])[];
+  gapMs: number;
+  ruleMap: Map<string, Pronunciation> | null;
+  substitutedTurns: readonly { text: string; edits: readonly Edit[] }[];
+}): readonly ConversationWordTimestamp[] | undefined {
+  const { perBlock, blocks, gapMs, ruleMap, substitutedTurns } = args;
+  const composed: ConversationWordTimestamp[] = [];
+  const gapSeconds = gapMs / 1000;
+  let offsetSec = 0;
+  for (let b = 0; b < perBlock.length; b++) {
+    const indices = blocks[b];
+    const blockTs = perBlock[b].timestamps;
+    if (blockTs) {
+      for (const w of blockTs) {
+        const globalTurnIndex = indices[w.turnIndex] ?? indices.at(-1) ?? 0;
+        composed.push({
+          text: w.text,
+          start: w.start + offsetSec,
+          end: w.end + offsetSec,
+          turnIndex: globalTurnIndex,
+        });
+      }
+    }
+    const seg = perBlock[b].segment;
+    offsetSec += seg.pcm.length / seg.sampleRate + gapSeconds;
+  }
+  return ruleMap
+    ? inverseAlignDialogueTimestamps(composed, substitutedTurns)
+    : composed;
 }
 
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
