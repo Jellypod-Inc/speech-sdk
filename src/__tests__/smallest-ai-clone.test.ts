@@ -70,6 +70,28 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     );
   });
 
+  it("uses the documented clone host when baseURL equals the default", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ voiceId: "s1" }),
+    });
+
+    const provider = new SmallestAISpeechProvider({
+      apiKey: "smallest-key",
+      baseURL: "https://api.smallest.ai/waves/v1",
+      fetch: mockFetch,
+    });
+
+    await provider.cloneVoice({ samples: [sample], name: "My Voice" });
+
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toBe(
+      "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice"
+    );
+  });
+
   it("extracts voiceId from a nested data object", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

@@ -14,6 +14,7 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 
+const SMALLEST_DEFAULT_BASE_URL = "https://api.smallest.ai/waves/v1";
 const SMALLEST_CLONE_URL =
   "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice";
 
@@ -67,12 +68,14 @@ export class SmallestAISpeechProvider
 
   constructor(config: SmallestAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
-    this.baseURL = config.baseURL ?? "https://api.smallest.ai/waves/v1";
+    this.baseURL = config.baseURL ?? SMALLEST_DEFAULT_BASE_URL;
     // The clone endpoint lives on a different smallest.ai host by default; a custom
     // baseURL (proxy/self-host) must route clone traffic too, so derive it from baseURL.
-    this.cloneURL = config.baseURL
-      ? `${config.baseURL}/lightning-large/add_voice`
-      : SMALLEST_CLONE_URL;
+    // The default base resolves to the documented clone host, not a derived path.
+    this.cloneURL =
+      config.baseURL && config.baseURL !== SMALLEST_DEFAULT_BASE_URL
+        ? `${config.baseURL}/lightning-large/add_voice`
+        : SMALLEST_CLONE_URL;
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
