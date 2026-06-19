@@ -39,7 +39,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on ElevenLabs",
     async () => {
       const cloned = await cloneVoice({
-        model: createElevenLabs()("eleven_multilingual_v2"),
+        provider: createElevenLabs(),
         name: `sdk-e2e-${Date.now()}`,
         files: files(),
       });
@@ -52,7 +52,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Cartesia",
     async () => {
       const cloned = await cloneVoice({
-        model: createCartesia()("sonic-3.5"),
+        provider: createCartesia(),
         name: `sdk-e2e-${Date.now()}`,
         language: "en",
         files: files(),
@@ -66,7 +66,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Fish Audio",
     async () => {
       const cloned = await cloneVoice({
-        model: createFishAudio()("s2-pro"),
+        provider: createFishAudio(),
         name: `sdk-e2e-${Date.now()}`,
         files: files(),
       });
@@ -77,7 +77,7 @@ describe("voice cloning e2e", () => {
 
   it.skipIf(!process.env.XAI_API_KEY)("clones a voice on xAI", async () => {
     const cloned = await cloneVoice({
-      model: createXai()("grok-tts"),
+      provider: createXai(),
       name: `sdk-e2e-${Date.now()}`,
       language: "en",
       files: files(),
@@ -90,7 +90,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Inworld",
     async () => {
       const cloned = await cloneVoice({
-        model: createInworld()("inworld-tts-1.5-max"),
+        provider: createInworld(),
         name: `sdk-e2e-${Date.now()}`,
         language: "en",
         files: files(),
@@ -104,7 +104,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Mistral",
     async () => {
       const cloned = await cloneVoice({
-        model: createMistral()("voxtral-mini-tts-2603"),
+        provider: createMistral(),
         name: `sdk-e2e-${Date.now()}`,
         files: files(),
       });
@@ -117,7 +117,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on MiniMax",
     async () => {
       const cloned = await cloneVoice({
-        model: createMiniMax()("speech-2.8-hd"),
+        provider: createMiniMax(),
         name: `sdke2e${Date.now()}`,
         language: "en",
         files: files(),
@@ -131,7 +131,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Gradium",
     async () => {
       const cloned = await cloneVoice({
-        model: createGradium()("default"),
+        provider: createGradium(),
         name: `sdk-e2e-${Date.now()}`,
         language: "en",
         files: files(),
@@ -145,7 +145,7 @@ describe("voice cloning e2e", () => {
     "clones a voice on Smallest AI",
     async () => {
       const cloned = await cloneVoice({
-        model: createSmallestAI()("lightning_v3.1"),
+        provider: createSmallestAI(),
         name: `sdk-e2e-${Date.now()}`,
         language: "en",
         files: files(),

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import type { SpeechProviderFactory } from "../../clone-voice.js";
 import { cloneVoice } from "../../clone-voice.js";
 import { createCartesia } from "../../providers/cartesia/index.js";
 import { createElevenLabs } from "../../providers/elevenlabs/index.js";
@@ -11,7 +12,6 @@ import { createInworld } from "../../providers/inworld/index.js";
 import { createMiniMax } from "../../providers/minimax/index.js";
 import { createOpenAI } from "../../providers/openai/index.js";
 import { createSmallestAI } from "../../providers/smallest-ai/index.js";
-import type { ResolvedModel } from "../../speech-provider.js";
 import { generateSpeech } from "./_save-audio.js";
 
 const SAMPLE_TEXT =
@@ -37,24 +37,25 @@ beforeAll(async () => {
 }, 60_000);
 
 async function cloneGenerateSave(
-  provider: string,
-  model: ResolvedModel
+  label: string,
+  factory: SpeechProviderFactory,
+  modelId: string
 ): Promise<{ voiceId: string; bytes: number }> {
   const cloned = await cloneVoice({
-    model,
+    provider: factory,
     name: `sdk-e2e-${Date.now()}`,
     language: "en",
     files: { audio: sampleAudio.audio, mediaType: sampleAudio.mediaType },
   });
 
   const speech = await generateSpeech({
-    model,
+    model: factory(modelId),
     text: GENERATE_TEXT,
     voice: cloned.voiceId,
     output: { format: "mp3" },
   });
 
-  await writeFile(join(OUT_DIR, `${provider}.mp3`), speech.audio.uint8Array);
+  await writeFile(join(OUT_DIR, `${label}.mp3`), speech.audio.uint8Array);
   return { voiceId: cloned.voiceId, bytes: speech.audio.uint8Array.byteLength };
 }
 
@@ -62,7 +63,8 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.ELEVENLABS_API_KEY)("ElevenLabs", async () => {
     const r = await cloneGenerateSave(
       "elevenlabs",
-      createElevenLabs()("eleven_multilingual_v2")
+      createElevenLabs(),
+      "eleven_multilingual_v2"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
@@ -71,7 +73,8 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.CARTESIA_API_KEY)("Cartesia", async () => {
     const r = await cloneGenerateSave(
       "cartesia",
-      createCartesia()("sonic-3.5")
+      createCartesia(),
+      "sonic-3.5"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
@@ -80,7 +83,8 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.FISH_AUDIO_API_KEY)("Fish Audio", async () => {
     const r = await cloneGenerateSave(
       "fish-audio",
-      createFishAudio()("s2-pro")
+      createFishAudio(),
+      "s2-pro"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
@@ -89,7 +93,8 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.INWORLD_API_KEY)("Inworld", async () => {
     const r = await cloneGenerateSave(
       "inworld",
-      createInworld()("inworld-tts-1.5-max")
+      createInworld(),
+      "inworld-tts-1.5-max"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
@@ -98,14 +103,15 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.MINIMAX_API_KEY)("MiniMax", async () => {
     const r = await cloneGenerateSave(
       "minimax",
-      createMiniMax()("speech-2.8-hd")
+      createMiniMax(),
+      "speech-2.8-hd"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
   });
 
   it.skipIf(!process.env.GRADIUM_API_KEY)("Gradium", async () => {
-    const r = await cloneGenerateSave("gradium", createGradium()("default"));
+    const r = await cloneGenerateSave("gradium", createGradium(), "default");
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);
   });
@@ -113,7 +119,8 @@ describe("voice cloning -> generate -> save mp3", () => {
   it.skipIf(!process.env.SMALLEST_API_KEY)("Smallest AI", async () => {
     const r = await cloneGenerateSave(
       "smallest-ai",
-      createSmallestAI()("lightning_v3.1")
+      createSmallestAI(),
+      "lightning_v3.1"
     );
     expect(r.voiceId.length).toBeGreaterThan(0);
     expect(r.bytes).toBeGreaterThan(0);

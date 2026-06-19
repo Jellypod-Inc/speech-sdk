@@ -7,6 +7,7 @@ export type { CaptionFormat, CaptionsOptions } from "./captions.js";
 export type {
   ClonedVoice,
   CloneVoiceOptions,
+  SpeechProviderFactory,
   VoiceSample,
 } from "./clone-voice.js";
 export type {

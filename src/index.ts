@@ -4,6 +4,7 @@ export { timestampsToCaptions } from "./captions.js";
 export type {
   ClonedVoice,
   CloneVoiceOptions,
+  SpeechProviderFactory,
   VoiceSample,
 } from "./clone-voice.js";
 export { cloneVoice } from "./clone-voice.js";

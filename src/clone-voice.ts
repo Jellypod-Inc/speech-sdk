@@ -12,16 +12,22 @@ export type VoiceSample =
   | { audio: string | Uint8Array; mediaType?: string }
   | { url: string };
 
+/** A provider factory, e.g. the value returned by `createElevenLabs()`. */
+export type SpeechProviderFactory = (modelId?: string) => ResolvedModel;
+
 export interface CloneVoiceOptions {
   abortSignal?: AbortSignal;
-  apiKey?: string;
   files: VoiceSample | VoiceSample[];
   headers?: Record<string, string>;
   /** BCP-47. Defaults to "en" (with a warning) for providers that require it. */
   language?: string;
-  /** Factory-resolved model. A bare "provider/model" string throws in v1. */
-  model: ResolvedModel | string;
   name: string;
+  /**
+   * A provider factory, e.g. `createElevenLabs()`. Cloning is a provider-level
+   * operation — the returned voice id works across all of that provider's models,
+   * so no model id is needed here.
+   */
+  provider: SpeechProviderFactory;
   providerOptions?: Record<string, unknown>;
 }
 
@@ -35,15 +41,7 @@ export interface ClonedVoice {
 export async function cloneVoice(
   options: CloneVoiceOptions
 ): Promise<ClonedVoice> {
-  if (typeof options.model === "string") {
-    throw new VoiceCloningUnsupportedError(
-      options.model,
-      'voice cloning requires a provider factory (e.g. createElevenLabs()("model")). The "provider/model" gateway string path is not supported yet.'
-    );
-  }
-
-  const { provider } = options.model;
-  const { modelId } = options.model;
+  const { provider, modelId } = options.provider();
 
   if (!provider.cloneVoice) {
     throw new VoiceCloningUnsupportedError(provider.id);
