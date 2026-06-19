@@ -19,7 +19,7 @@ function mockCloneFetch(
 }
 
 describe("ElevenLabsSpeechProvider.cloneVoice", () => {
-  it("posts multipart to /voices/add with auth and name", async () => {
+  it("posts multipart to /v1/voices/add with auth and name", async () => {
     const mockFetch = mockCloneFetch();
     const provider = new ElevenLabsSpeechProvider({
       apiKey: "el-key-123",
@@ -34,7 +34,7 @@ describe("ElevenLabsSpeechProvider.cloneVoice", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe("https://api.elevenlabs.io/voices/add");
+    expect(url).toBe("https://api.elevenlabs.io/v1/voices/add");
     expect(init.method).toBe("POST");
     expect(init.headers["xi-api-key"]).toBe("el-key-123");
     expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);

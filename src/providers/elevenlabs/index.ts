@@ -595,7 +595,7 @@ export class ElevenLabsSpeechProvider
       appendSampleBlob(form, "files", sample, i);
     }
 
-    const response = await this.fetchFn(`${this.baseURL}/voices/add`, {
+    const response = await this.fetchFn(`${this.baseURL}/v1/voices/add`, {
       method: "POST",
       headers: {
         "xi-api-key": resolveApiKey(
