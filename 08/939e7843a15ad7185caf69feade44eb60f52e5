@@ -1,0 +1,26 @@
+src/__tests__/e2e/clone-voice.e2e.test.ts
+  s_b45bad0e3f1124::t_8730cc8e7524d5 1-114
+src/__tests__/elevenlabs-clone.test.ts
+  s_b45bad0e3f1124::t_91231738f080a8 37
+  s_b45bad0e3f1124::t_5c70bfaf348b0d 22
+src/__tests__/e2e/clone-voice-save.e2e.test.ts
+  s_b45bad0e3f1124::t_09b68937868424 1-79
+src/providers/elevenlabs/index.ts
+  s_b45bad0e3f1124::t_c8e43581eb3778 598
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "08939e7843a15ad7185caf69feade44eb60f52e5",
+  "prompts": {},
+  "sessions": {
+    "s_b45bad0e3f1124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f233220f-3573-4d12-a07f-477c0a8f8ba9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
