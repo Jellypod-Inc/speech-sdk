@@ -6,3 +6,7 @@ docs/
 .env
 .worktrees/
 e2e-output/
+
+# Markdown docs are not tracked (CHANGELOG is the one exception)
+*.md
+!CHANGELOG.md
