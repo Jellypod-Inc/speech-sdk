@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_b45bad0e3f1124::t_822de1f223a551 3-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "d0fa03cd67603b67a9ec3b3bbf9e0c2688e143ed",
+  "prompts": {},
+  "sessions": {
+    "s_b45bad0e3f1124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f233220f-3573-4d12-a07f-477c0a8f8ba9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
