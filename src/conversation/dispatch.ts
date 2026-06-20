@@ -199,6 +199,9 @@ function partitionTurnsByChars(args: {
   const { caps, turns, max } = args;
   const keyOf = newVoiceKeyer();
 
+  // Greedy, not optimal: a maximal front-packed split can strand a sub-minVoices block where a
+  // boundary-repositioning split would succeed. Returning undefined here just defers to the per-turn
+  // stitch path (correct audio, not native-parallel), so we accept the rare miss over a DP partition.
   const blocks: number[][] = [];
   let current: number[] = [];
   let currentChars = 0;
