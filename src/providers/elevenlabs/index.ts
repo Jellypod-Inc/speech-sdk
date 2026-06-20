@@ -15,6 +15,8 @@ import {
 import {
   type CloneVoiceProviderRequest,
   type CloneVoiceProviderResult,
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -168,28 +170,34 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
     id: "eleven_v3",
     releaseDate: "2025-06-08",
     languages: ELEVENLABS_V3_LANGUAGES,
-    features: ["streaming", "audio-tags", "timestamps", "voice-cloning"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "timestamps",
+      "voice-cloning",
+      "voice-design",
+    ],
     maxInputChars: 5000,
   },
   {
     id: "eleven_multilingual_v2",
     releaseDate: "2023-08-22",
     languages: ELEVENLABS_V2_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 10_000,
   },
   {
     id: "eleven_flash_v2_5",
     releaseDate: "2024-12-01",
     languages: ELEVENLABS_FLASH_V2_5_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 40_000,
   },
   {
     id: "eleven_flash_v2",
     releaseDate: "2024-12-01",
     languages: ["en"] as const,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 30_000,
   },
 ] as const;
@@ -619,6 +627,97 @@ export class ElevenLabsSpeechProvider
     }
 
     return { voiceId, providerMetadata: json };
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const headers = {
+      "Content-Type": "application/json",
+      "xi-api-key": resolveApiKey(
+        this.apiKey,
+        "ELEVENLABS_API_KEY",
+        "ElevenLabs"
+      ),
+      "X-User-Agent": SDK_USER_AGENT,
+      ...options.headers,
+    };
+
+    const designBody: Record<string, unknown> = {
+      ...options.providerOptions,
+      voice_description: options.description,
+    };
+    if (options.previewText != null) {
+      designBody.text = options.previewText;
+    } else if (
+      designBody.text == null &&
+      designBody.auto_generate_text == null
+    ) {
+      designBody.auto_generate_text = true;
+    }
+
+    const designResponse = await this.fetchFn(
+      `${this.baseURL}/v1/text-to-voice/design`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(designBody),
+        signal: options.abortSignal,
+      }
+    );
+    await handleErrorResponse(designResponse);
+
+    const designJson = (await designResponse.json()) as {
+      previews?: {
+        audio_base_64?: unknown;
+        generated_voice_id?: unknown;
+        media_type?: unknown;
+      }[];
+    };
+    const preview = designJson.previews?.[0];
+    if (!preview || typeof preview.generated_voice_id !== "string") {
+      throw new SpeechSDKError(
+        "elevenlabs: voice design response missing previews[].generated_voice_id"
+      );
+    }
+    const generatedVoiceId = preview.generated_voice_id;
+
+    const createResponse = await this.fetchFn(
+      `${this.baseURL}/v1/text-to-voice`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          voice_name: options.name,
+          voice_description: options.description,
+          generated_voice_id: generatedVoiceId,
+        }),
+        signal: options.abortSignal,
+      }
+    );
+    await handleErrorResponse(createResponse);
+
+    const createJson = (await createResponse.json()) as Record<string, unknown>;
+    const voiceId = createJson.voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        "elevenlabs: voice create response missing voice_id"
+      );
+    }
+
+    return {
+      voiceId,
+      ...(typeof preview.audio_base_64 === "string" && {
+        preview: {
+          audio: base64ToUint8Array(preview.audio_base_64),
+          mediaType:
+            typeof preview.media_type === "string"
+              ? preview.media_type
+              : "audio/mpeg",
+        },
+      }),
+      providerMetadata: createJson,
+    };
   }
 }
 

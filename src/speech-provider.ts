@@ -34,6 +34,7 @@ export const FEATURES = {
   STREAMING: "streaming",
   AUDIO_TAGS: "audio-tags",
   VOICE_CLONING: "voice-cloning",
+  VOICE_DESIGN: "voice-design",
   OPEN_SOURCE: "open-source",
   TIMESTAMPS: "timestamps",
 } as const;
@@ -64,6 +65,33 @@ export interface CloneVoiceProviderResult {
   warnings?: string[];
 }
 
+/** A short audio sample of a designed voice, returned alongside its id. */
+export interface VoiceDesignPreview {
+  audio: Uint8Array;
+  mediaType: string;
+}
+
+export interface DesignVoiceProviderRequest {
+  abortSignal?: AbortSignal;
+  /** Natural-language description of the voice to create. */
+  description: string;
+  headers?: Record<string, string>;
+  /** BCP-47. Used by providers that key voice design on language. */
+  language?: string;
+  /** Display name for the persisted voice. */
+  name: string;
+  /** Text spoken in the returned preview. Providers requiring it default it. */
+  previewText?: string;
+  providerOptions?: Record<string, unknown>;
+}
+
+export interface DesignVoiceProviderResult {
+  preview?: VoiceDesignPreview;
+  providerMetadata?: Record<string, unknown>;
+  voiceId: string;
+  warnings?: string[];
+}
+
 export function hasFeature(model: ModelInfo, id: string): boolean {
   return model.features.some((f) =>
     typeof f === "string" ? f === id : f.id === id
@@ -86,6 +114,17 @@ export interface SpeechProvider<
     options: CloneVoiceProviderRequest
   ): Promise<CloneVoiceProviderResult>;
   defaultModel: TModel;
+
+  /**
+   * Create a persisted voice from a natural-language description and return a
+   * reusable voice ID. Providers that can't design omit this; `designVoice()`
+   * throws `VoiceDesignUnsupportedError` for them. The SDK has already validated
+   * `name` and `description` before this runs. Providers absorb any multi-step
+   * (design → persist) flow internally so the caller always gets one reusable id.
+   */
+  designVoice?(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult>;
 
   dialogueCapabilities?(modelId: string):
     | {

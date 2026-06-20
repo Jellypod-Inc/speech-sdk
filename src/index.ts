@@ -14,12 +14,19 @@ export {
   MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
+export type {
+  DesignedVoice,
+  DesignVoiceOptions,
+  VoiceDesignPreview,
+} from "./design-voice.js";
+export { designVoice } from "./design-voice.js";
 export {
   ApiError,
   AudioOutputInputError,
   CloneSampleFetchError,
   GatewayInputError,
   InvalidCloneFieldError,
+  InvalidDesignFieldError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
@@ -30,6 +37,7 @@ export {
   TooManyCloneSamplesError,
   UnsupportedSampleRateError,
   VoiceCloningUnsupportedError,
+  VoiceDesignUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
 export { generateConversation } from "./generate-conversation.js";

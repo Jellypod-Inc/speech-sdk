@@ -198,6 +198,30 @@ export class InvalidCloneFieldError extends SpeechSDKError {
   }
 }
 
+export class VoiceDesignUnsupportedError extends SpeechSDKError {
+  readonly provider: string;
+
+  constructor(provider: string, reason?: string) {
+    super(
+      `Voice design is not supported by ${provider}${reason ? `: ${reason}` : "."}`
+    );
+    this.name = "VoiceDesignUnsupportedError";
+    this.provider = provider;
+  }
+}
+
+export class InvalidDesignFieldError extends SpeechSDKError {
+  readonly provider: string;
+  readonly field: string;
+
+  constructor(provider: string, field: string, rule: string) {
+    super(`${provider}: invalid ${field} — ${rule}`);
+    this.name = "InvalidDesignFieldError";
+    this.provider = provider;
+    this.field = field;
+  }
+}
+
 export class TimestampKeyMissingError extends SpeechSDKError {
   constructor(options: {
     ttsModel: string;

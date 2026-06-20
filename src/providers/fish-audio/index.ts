@@ -1,5 +1,6 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
+import { base64ToUint8Array } from "../../audio-utils.js";
 import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
@@ -10,6 +11,8 @@ import {
 import {
   type CloneVoiceProviderRequest,
   type CloneVoiceProviderResult,
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -36,7 +39,13 @@ export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
     id: "s2-pro",
     releaseDate: "2026-03-09",
     languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
-    features: ["streaming", "audio-tags", "open-source", "voice-cloning"],
+    features: [
+      "streaming",
+      "audio-tags",
+      "open-source",
+      "voice-cloning",
+      "voice-design",
+    ],
   },
 ] as const;
 
@@ -268,6 +277,65 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       throw new SpeechSDKError("fish-audio: clone response missing _id");
     }
     return { voiceId, providerMetadata: json };
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const designBody: Record<string, unknown> = {
+      ...options.providerOptions,
+      instruction: options.description,
+      n: 1,
+    };
+    if (options.previewText != null) {
+      designBody.reference_text = options.previewText;
+    }
+    if (options.language != null) {
+      designBody.language = options.language;
+    }
+
+    const response = await this.fetchFn(`${this.baseURL}/v1/voice-design`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "FISH_AUDIO_API_KEY", "Fish Audio")}`,
+        model: "voice-design-1",
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(designBody),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      candidates?: { audio_base64?: unknown }[];
+    };
+    const candidate = json.candidates?.[0];
+    if (typeof candidate?.audio_base64 !== "string") {
+      throw new SpeechSDKError(
+        "fish-audio: voice design response missing candidates[].audio_base64"
+      );
+    }
+
+    // Fish voice design is stateless — persist the candidate audio via the clone endpoint to get a reusable id.
+    const audio = base64ToUint8Array(candidate.audio_base64);
+    const cloned = await this.cloneVoice({
+      samples: [{ bytes: audio, mediaType: "audio/wav" }],
+      name: options.name,
+      abortSignal: options.abortSignal,
+      headers: options.headers,
+    });
+
+    return {
+      voiceId: cloned.voiceId,
+      preview: { audio, mediaType: "audio/wav" },
+      providerMetadata: {
+        design: json as Record<string, unknown>,
+        ...(cloned.providerMetadata && { model: cloned.providerMetadata }),
+      },
+    };
   }
 
   dialogueCapabilities(modelId: string) {
