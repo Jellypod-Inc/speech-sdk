@@ -593,14 +593,19 @@ async function runNativeSplit<V extends Voice>(args: {
       if (result.audio.length === 0) {
         throw new NoSpeechGeneratedError();
       }
+      // generateDialogue may return base64 (string) or raw bytes; normalize before decoding.
+      const blockAudio = new DefaultGeneratedAudioFile({
+        data: result.audio,
+        mediaType: stitchOpts.mediaType,
+      }).uint8Array;
       const segment = await decodeAudioToPcm16(
-        result.audio as Uint8Array,
+        blockAudio,
         stitchOpts.mediaType
       );
       const { timestamps, warnings } = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: result.timestamps,
-        audio: result.audio as Uint8Array,
+        audio: blockAudio,
         mediaType: stitchOpts.mediaType,
         ttsModel,
         resolved,
