@@ -180,6 +180,70 @@ describe("generateConversation", () => {
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
+  it("splits an over-limit native dialogue into parallel blocks and stitches one result", async () => {
+    const pcm = new Int16Array(2400);
+    pcm.fill(6000);
+    const bytes = new Uint8Array(pcm.buffer);
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: bytes,
+      mediaType: "audio/pcm;rate=24000",
+      providerMetadata: { requestId: "blk" },
+    });
+    const provider: SpeechProvider = {
+      id: "native-split",
+      defaultModel: "m",
+      models: [],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({
+        minVoices: 2,
+        maxVoices: 2,
+        maxTotalChars: 12,
+      }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    const result = await generateConversation({
+      model: { provider, modelId: "m" },
+      turns: [
+        { voice: "a", text: "Hi" },
+        { voice: "b", text: "Yo" },
+        { voice: "a", text: "Hello" },
+        { voice: "b", text: "World" },
+        { voice: "a", text: "Foo" },
+        { voice: "b", text: "Bar" },
+      ],
+      gapMs: 0,
+    });
+
+    // Two native-dialogue calls (one per block), each carrying its block's turns.
+    expect(generateDialogue).toHaveBeenCalledTimes(2);
+    const firstBlockTurns = generateDialogue.mock.calls[0][0].turns;
+    const secondBlockTurns = generateDialogue.mock.calls[1][0].turns;
+    expect(firstBlockTurns.map((t: { text: string }) => t.text)).toEqual([
+      "Hi",
+      "Yo",
+      "Hello",
+    ]);
+    expect(secondBlockTurns.map((t: { text: string }) => t.text)).toEqual([
+      "World",
+      "Foo",
+      "Bar",
+    ]);
+
+    // Decodable blocks stitch into a single WAV with no fallback warning.
+    expect(result.audio.mediaType).toBe("audio/wav");
+    const wav = result.audio.uint8Array;
+    const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
+    expect(view.getUint32(0)).toBe(0x52_49_46_46);
+    expect(result.metadata.inputChars).toBe(20);
+    // Native split has no per-turn boundaries.
+    expect(result.metadata.perTurn).toBeUndefined();
+  });
+
   it("routes to stitch path when dialogue unsupported", async () => {
     const provider = stitchProvider();
     const result = await generateConversation({

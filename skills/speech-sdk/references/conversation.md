@@ -75,6 +75,14 @@ Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podca
 - Normalization is always on and cannot be disabled.
 - A warning is surfaced when normalization can't be applied (e.g. the chosen provider/model can't expose decodable PCM/WAV) and the raw mix passes through.
 
+## Long Native Dialogue (Automatic Splitting)
+
+Native-dialogue providers cap how much text a single call can render (e.g. Gemini TTS shares a 32k-token window between input and generated audio). When a conversation exceeds the provider's per-call limit, `generateConversation` keeps the native multi-speaker rendering instead of failing: it partitions the turns into blocks at turn boundaries (each block under the limit and still satisfying the provider's unique-voice rule), renders each block as its own native-dialogue call **in parallel** (bounded by `maxConcurrency`), and RMS-normalizes + stitches the blocks into one file with `gapMs` between blocks.
+
+- This is transparent — same call, same result shape. `gapMs` (default 300) applies only at block seams, not between every turn.
+- If the conversation can't be split into voice-valid blocks (e.g. a single turn longer than the limit, or a long single-speaker run on a two-voice model), it falls back to the local-stitch path and surfaces a warning.
+- Gateway turns are unaffected — the gateway server owns its own chunking.
+
 ## Per-Turn Speed
 
 ```ts

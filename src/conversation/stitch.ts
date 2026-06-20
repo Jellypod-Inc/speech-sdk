@@ -11,7 +11,12 @@ import type { SpeechMetadata } from "../metadata.js";
 import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
-import { concatPcmToWav, dbfsToInt16Rms, normalizeRms } from "./pcm-concat.js";
+import {
+  concatPcmToWav,
+  dbfsToInt16Rms,
+  normalizeRms,
+  stitchTargetRate,
+} from "./pcm-concat.js";
 import { fillTurnTimestampsProportional } from "./proportional-fill.js";
 import type { ConversationTurn } from "./types.js";
 
@@ -54,19 +59,6 @@ interface StitchOutput {
   )[];
   readonly timestamps?: readonly ConversationWordTimestamp[];
   readonly warnings: readonly string[];
-}
-
-function stitchTargetRate(segments: readonly { sampleRate: number }[]): number {
-  const rate = segments.reduce(
-    (m, s) => (s.sampleRate > m ? s.sampleRate : m),
-    0
-  );
-  if (rate <= 0) {
-    throw new Error(
-      "runStitch: no decoded segments with a positive sample rate to stitch"
-    );
-  }
-  return rate;
 }
 
 const WHITESPACE_RE = /\s+/;
