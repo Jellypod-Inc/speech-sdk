@@ -457,8 +457,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       // Gemini multi-speaker TTS requires exactly 2 unique voices (API validator: "enabled_voices must equal 2").
       // maxTotalChars: Gemini TTS sessions share a 32k-token window between input text and generated audio tokens,
       // and audio dominates — so a conservative per-call text budget avoids server-side truncation on long dialogue.
-      // Conversations beyond this are split into parallel native-dialogue blocks and stitched.
-      return { minVoices: 2, maxVoices: 2, maxTotalChars: 5000 };
+      // Kept well under the window because generation latency climbs with output length; conversations beyond this
+      // are split into parallel native-dialogue blocks and stitched, which is faster than one long call.
+      return { minVoices: 2, maxVoices: 2, maxTotalChars: 2500 };
     }
     return;
   }
