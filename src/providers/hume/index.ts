@@ -327,7 +327,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
   dialogueCapabilities(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
       // Hume publishes no hard maximum; cap conservatively at SDK-wide unique-voice ceiling of 4.
-      return { minVoices: 1, maxVoices: 4 };
+      return { maxVoices: 4 };
     }
     return;
   }

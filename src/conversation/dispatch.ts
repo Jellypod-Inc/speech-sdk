@@ -102,8 +102,12 @@ export function chooseConversationPath(input: {
 interface DialogueCaps {
   maxTotalChars?: number;
   maxVoices: number;
-  minVoices: number;
 }
+
+// A native multi-speaker "dialogue" call needs at least two distinct voices. A single-voice
+// conversation is sequential single-speaker speech and is always routed to stitch, so providers
+// only declare how many distinct voices their native path supports (maxVoices), not a minimum.
+const NATIVE_DIALOGUE_MIN_VOICES = 2;
 
 function countUniqueVoices(turns: readonly ConversationTurn<Voice>[]): number {
   const keyOf = newVoiceKeyer();
@@ -141,18 +145,9 @@ function tryNativeDialoguePath(args: {
   if (turns.some((t) => t.providerOptions !== undefined)) {
     return { fallbackReason: "fallback-from-native" };
   }
-  // Single-speaker conversations are routed to stitch before reaching here. What remains
-  // is a multi-voice conversation: too many distinct voices throws (no native-equivalent
-  // rendering), too few for the provider's minimum falls back to per-turn stitch.
-  const voiceCountFallback = checkNativeVoiceCount({
-    provider,
-    modelId,
-    caps,
-    turns,
-  });
-  if (voiceCountFallback) {
-    return { fallbackReason: voiceCountFallback };
-  }
+  // Single-speaker conversations are routed to stitch before reaching here. What remains is
+  // a multi-voice conversation: too many distinct voices throws (no native-equivalent rendering).
+  assertNativeMaxVoices({ provider, modelId, caps, turns });
   const blocks = planNativeBlocks({
     provider,
     modelId,
@@ -171,37 +166,32 @@ function tryNativeDialoguePath(args: {
 }
 
 // Fewer unique voices than the provider's minimum has a sensible fallback — render each
-// turn via stitch — so return the fallback reason. More unique voices than the provider
-// supports has no native-equivalent rendering, so throw DialogueConstraintError.
-function checkNativeVoiceCount(args: {
+// Reached only for multi-voice conversations (single-voice is routed to stitch earlier).
+// More unique voices than the provider's native path supports has no native-equivalent
+// rendering, so throw DialogueConstraintError.
+function assertNativeMaxVoices(args: {
   provider: ResolvedModel["provider"];
   modelId: string;
   caps: DialogueCaps;
   turns: readonly ConversationTurn<Voice>[];
-}): StitchFallbackReason | undefined {
+}): void {
   const { provider, modelId, caps, turns } = args;
 
-  const keyOf = newVoiceKeyer();
-  const unique = new Set(turns.map((t) => keyOf(t.voice))).size;
-
-  if (unique > caps.maxVoices) {
-    const rule =
-      caps.minVoices === caps.maxVoices
-        ? `exactly ${caps.minVoices} unique voices`
-        : `between ${caps.minVoices} and ${caps.maxVoices} unique voices`;
-    throw new DialogueConstraintError({
-      provider: provider.id,
-      model: modelId,
-      rule,
-      observed: `${unique} unique voices`,
-    });
+  const unique = countUniqueVoices(turns);
+  if (unique <= caps.maxVoices) {
+    return;
   }
 
-  if (unique < caps.minVoices) {
-    return "fallback-from-native-voice-count";
-  }
-
-  return;
+  const rule =
+    caps.maxVoices === NATIVE_DIALOGUE_MIN_VOICES
+      ? `exactly ${caps.maxVoices} unique voices`
+      : `between ${NATIVE_DIALOGUE_MIN_VOICES} and ${caps.maxVoices} unique voices`;
+  throw new DialogueConstraintError({
+    provider: provider.id,
+    model: modelId,
+    rule,
+    observed: `${unique} unique voices`,
+  });
 }
 
 // "single" → fits in one native call; number[][] → split into parallel blocks;
@@ -240,7 +230,7 @@ function partitionTurnsByChars(args: {
   const { caps, turns, max } = args;
   const keyOf = newVoiceKeyer();
 
-  // Greedy, not optimal: a maximal front-packed split can strand a sub-minVoices block where a
+  // Greedy, not optimal: a maximal front-packed split can strand a single-voice block where a
   // boundary-repositioning split would succeed. Returning undefined here just defers to the per-turn
   // stitch path (correct audio, not native-parallel), so we accept the rare miss over a DP partition.
   const blocks: number[][] = [];
@@ -265,11 +255,12 @@ function partitionTurnsByChars(args: {
     blocks.push(current);
   }
 
-  // Every block must independently satisfy the provider's unique-voice rule (e.g. a long
-  // single-speaker run could fill a block on a min-2-voice model — that can't render natively).
+  // Every block must independently be a valid native-dialogue call: at least two distinct
+  // voices (a long single-speaker run could otherwise fill a block, which can't render
+  // natively) and no more than the provider's maximum.
   for (const block of blocks) {
     const unique = new Set(block.map((i) => keyOf(turns[i].voice))).size;
-    if (unique < caps.minVoices || unique > caps.maxVoices) {
+    if (unique < NATIVE_DIALOGUE_MIN_VOICES || unique > caps.maxVoices) {
       return;
     }
   }

@@ -272,7 +272,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "s2-pro") {
-      return { minVoices: 1, maxVoices: 4 };
+      return { maxVoices: 4 };
     }
     return;
   }

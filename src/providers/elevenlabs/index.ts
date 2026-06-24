@@ -508,7 +508,7 @@ export class ElevenLabsSpeechProvider
 
   dialogueCapabilities(modelId: string) {
     if (modelId === "eleven_v3") {
-      return { minVoices: 1, maxVoices: 10, maxTotalChars: 2000 };
+      return { maxVoices: 10, maxTotalChars: 2000 };
     }
     return;
   }

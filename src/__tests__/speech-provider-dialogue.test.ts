@@ -15,11 +15,10 @@ describe("SpeechProvider dialogue/stitch extensions", () => {
         audio: new Uint8Array([1, 2, 3]),
         mediaType: "audio/wav",
       }),
-      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      dialogueCapabilities: () => ({ maxVoices: 2 }),
     };
     expect(provider.generateDialogue).toBeDefined();
     expect(provider.dialogueCapabilities?.("m")).toEqual({
-      minVoices: 2,
       maxVoices: 2,
     });
   });

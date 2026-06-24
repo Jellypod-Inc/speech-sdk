@@ -89,7 +89,6 @@ export interface SpeechProvider<
 
   dialogueCapabilities?(modelId: string):
     | {
-        minVoices: number;
         maxVoices: number;
         maxTotalChars?: number;
       }

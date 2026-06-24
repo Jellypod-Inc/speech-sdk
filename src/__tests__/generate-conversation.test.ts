@@ -22,7 +22,7 @@ function nativeProvider(): SpeechProvider {
       audioDurationMs: 1000,
       providerMetadata: { requestId: "abc" },
     }),
-    dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    dialogueCapabilities: () => ({ maxVoices: 10 }),
   };
 }
 
@@ -66,7 +66,7 @@ function geminiLikeProvider(): SpeechProvider {
       audio: bytes,
       mediaType: "audio/pcm;rate=24000",
     }),
-    dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+    dialogueCapabilities: () => ({ maxVoices: 2 }),
     getStitchOptions: () => ({
       providerOptions: { audio_config: { sample_rate_hertz: 24_000 } },
       mediaType: "audio/pcm;rate=24000",
@@ -106,7 +106,7 @@ describe("generateConversation", () => {
         audio: bytes,
         mediaType: "audio/pcm;rate=24000",
       }),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000",
@@ -150,7 +150,7 @@ describe("generateConversation", () => {
         audio: bytes,
         mediaType: "audio/pcm;rate=24000",
       }),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000",
@@ -193,7 +193,7 @@ describe("generateConversation", () => {
         audio: bytes,
         mediaType: "audio/pcm;rate=24000",
       }),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000",
@@ -211,7 +211,7 @@ describe("generateConversation", () => {
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to per-turn stitch when all turns share one voice on a min-2-voice native provider", async () => {
+  it("falls back to per-turn stitch when all turns share one voice on a max-2-voice native provider", async () => {
     const provider = geminiLikeProvider();
     const result = await generateConversation({
       model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
@@ -229,7 +229,7 @@ describe("generateConversation", () => {
     ).toBe(true);
   });
 
-  it("still uses the native dialogue path for 2 distinct voices on a min-2-voice provider", async () => {
+  it("still uses the native dialogue path for 2 distinct voices on a max-2-voice provider", async () => {
     const provider = geminiLikeProvider();
     await generateConversation({
       model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
@@ -318,7 +318,6 @@ describe("generateConversation", () => {
       generate: vi.fn(),
       generateDialogue,
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 12,
       }),
@@ -443,7 +442,7 @@ describe("generateConversation", () => {
         mediaType: "audio/pcm;rate=24000",
       }),
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { response_format: "pcm" },
         mediaType: "audio/pcm;rate=24000",
@@ -645,7 +644,7 @@ describe("generateConversation", () => {
       models: [],
       generate: vi.fn(),
       generateDialogue: vi.fn().mockRejectedValue(error),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
     };
 
     await expect(

@@ -66,7 +66,7 @@ function mockNativeDialogueProvider(opts?: {
             : {}),
         })
       ),
-    dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    dialogueCapabilities: () => ({ maxVoices: 10 }),
   };
   if (withStitch) {
     provider.getStitchOptions = () => ({

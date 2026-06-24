@@ -24,7 +24,6 @@ describe("chooseConversationPath", () => {
       id: "elevenlabs",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 1,
         maxVoices: 10,
         maxTotalChars: 2000,
       }),
@@ -47,7 +46,7 @@ describe("chooseConversationPath", () => {
     const provider = mockProvider({
       id: "elevenlabs",
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { output_format: "pcm_24000" },
         mediaType: "audio/pcm;rate=24000",
@@ -75,7 +74,6 @@ describe("chooseConversationPath", () => {
       id: "google",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 5,
       }),
@@ -182,7 +180,7 @@ describe("chooseConversationPath", () => {
     const provider = mockProvider({
       id: "google",
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      dialogueCapabilities: () => ({ maxVoices: 2 }),
     });
     const resolved = [
       { provider, modelId: "gemini-3.1-flash-tts-preview" },
@@ -201,11 +199,11 @@ describe("chooseConversationPath", () => {
     ).toThrow(DialogueConstraintError);
   });
 
-  it("routes a single-voice conversation to stitch on a min-2-voice native provider", () => {
+  it("routes a single-voice conversation to stitch on a max-2-voice native provider", () => {
     const provider = mockProvider({
       id: "google",
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      dialogueCapabilities: () => ({ maxVoices: 2 }),
       getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
     });
     const resolved = [
@@ -230,7 +228,7 @@ describe("chooseConversationPath", () => {
     const provider = mockProvider({
       id: "elevenlabs",
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      dialogueCapabilities: () => ({ maxVoices: 10 }),
       getStitchOptions: () => ({
         providerOptions: { output_format: "pcm_24000" },
         mediaType: "audio/pcm;rate=24000",
@@ -259,7 +257,7 @@ describe("chooseConversationPath", () => {
     const provider = mockProvider({
       id: "google",
       generateDialogue: vi.fn(),
-      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      dialogueCapabilities: () => ({ maxVoices: 2 }),
       getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
     });
     const resolved = [
@@ -284,7 +282,6 @@ describe("chooseConversationPath", () => {
       id: "google",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 12,
       }),
@@ -322,7 +319,6 @@ describe("chooseConversationPath", () => {
       id: "google",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 5000,
       }),
@@ -350,7 +346,6 @@ describe("chooseConversationPath", () => {
       id: "google",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 5,
       }),
@@ -378,7 +373,6 @@ describe("chooseConversationPath", () => {
       id: "google",
       generateDialogue: vi.fn(),
       dialogueCapabilities: () => ({
-        minVoices: 2,
         maxVoices: 2,
         maxTotalChars: 8,
       }),
