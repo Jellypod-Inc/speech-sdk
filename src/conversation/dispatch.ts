@@ -15,7 +15,8 @@ import { newVoiceKeyer } from "./validate.js";
 
 export type StitchFallbackReason =
   | "fallback-from-native"
-  | "fallback-from-native-oversized";
+  | "fallback-from-native-oversized"
+  | "fallback-from-native-voice-count";
 
 export type ConversationPath =
   | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
@@ -61,12 +62,21 @@ export function chooseConversationPath(input: {
   let stitchFallbackReason: StitchFallbackReason | undefined;
 
   if (allSame && !forceStitch) {
-    const native = tryNativeDialoguePath({ first, turns, sampleRateHint });
-    if (native) {
-      if ("path" in native) {
-        return native.path;
+    if (countUniqueVoices(turns) <= 1) {
+      // A single-speaker conversation is just sequential single-speaker speech — always
+      // render each turn via generateSpeech + stitch, never a provider's native
+      // multi-speaker dialogue path (which may have no valid single-voice call to make).
+      if (modelSupportsNativeDialogue(first)) {
+        stitchFallbackReason = "fallback-from-native-voice-count";
       }
-      stitchFallbackReason = native.fallbackReason;
+    } else {
+      const native = tryNativeDialoguePath({ first, turns, sampleRateHint });
+      if (native) {
+        if ("path" in native) {
+          return native.path;
+        }
+        stitchFallbackReason = native.fallbackReason;
+      }
     }
   }
 
@@ -95,6 +105,18 @@ interface DialogueCaps {
   minVoices: number;
 }
 
+function countUniqueVoices(turns: readonly ConversationTurn<Voice>[]): number {
+  const keyOf = newVoiceKeyer();
+  return new Set(turns.map((t) => keyOf(t.voice))).size;
+}
+
+function modelSupportsNativeDialogue(resolved: ResolvedModel<Voice>): boolean {
+  const { provider, modelId } = resolved;
+  return Boolean(
+    provider.generateDialogue && provider.dialogueCapabilities?.(modelId)
+  );
+}
+
 // Native dialogue is a single API call that can't carry per-utterance config. Any per-turn
 // providerOptions force stitch — and stitch isn't bound by native voice-count / maxTotalChars
 // limits, so those checks are skipped on the fallback. Returns the chosen native path, the
@@ -119,8 +141,18 @@ function tryNativeDialoguePath(args: {
   if (turns.some((t) => t.providerOptions !== undefined)) {
     return { fallbackReason: "fallback-from-native" };
   }
-  // Voice-count is a hard semantic constraint — splitting can't satisfy it, so still throw.
-  assertNativeVoiceCount({ provider, modelId, caps, turns });
+  // Single-speaker conversations are routed to stitch before reaching here. What remains
+  // is a multi-voice conversation: too many distinct voices throws (no native-equivalent
+  // rendering), too few for the provider's minimum falls back to per-turn stitch.
+  const voiceCountFallback = checkNativeVoiceCount({
+    provider,
+    modelId,
+    caps,
+    turns,
+  });
+  if (voiceCountFallback) {
+    return { fallbackReason: voiceCountFallback };
+  }
   const blocks = planNativeBlocks({
     provider,
     modelId,
@@ -138,18 +170,21 @@ function tryNativeDialoguePath(args: {
   return { fallbackReason: "fallback-from-native-oversized" };
 }
 
-function assertNativeVoiceCount(args: {
+// Fewer unique voices than the provider's minimum has a sensible fallback — render each
+// turn via stitch — so return the fallback reason. More unique voices than the provider
+// supports has no native-equivalent rendering, so throw DialogueConstraintError.
+function checkNativeVoiceCount(args: {
   provider: ResolvedModel["provider"];
   modelId: string;
   caps: DialogueCaps;
   turns: readonly ConversationTurn<Voice>[];
-}): void {
+}): StitchFallbackReason | undefined {
   const { provider, modelId, caps, turns } = args;
 
   const keyOf = newVoiceKeyer();
   const unique = new Set(turns.map((t) => keyOf(t.voice))).size;
 
-  if (unique < caps.minVoices || unique > caps.maxVoices) {
+  if (unique > caps.maxVoices) {
     const rule =
       caps.minVoices === caps.maxVoices
         ? `exactly ${caps.minVoices} unique voices`
@@ -161,6 +196,12 @@ function assertNativeVoiceCount(args: {
       observed: `${unique} unique voices`,
     });
   }
+
+  if (unique < caps.minVoices) {
+    return "fallback-from-native-voice-count";
+  }
+
+  return;
 }
 
 // "single" → fits in one native call; number[][] → split into parallel blocks;

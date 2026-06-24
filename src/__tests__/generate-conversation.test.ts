@@ -6,6 +6,7 @@ import { createSpeechGateway } from "../providers/gateway/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 const NATIVE_FALLBACK_WARNING_RE = /native dialogue unavailable/;
+const SINGLE_SPEAKER_FALLBACK_RE = /single speaker/;
 const NATIVE_FALLBACK_CALL_COUNT_RE = /2 API calls instead of 1/;
 const STITCH_UNSUPPORTED_RE = /cannot be used in a stitched conversation/;
 
@@ -38,6 +39,36 @@ function stitchProvider(): SpeechProvider {
     }),
     getStitchOptions: () => ({
       providerOptions: { response_format: "pcm" },
+      mediaType: "audio/pcm;rate=24000",
+    }),
+  };
+}
+
+// Gemini-shaped: native multi-speaker dialogue requiring exactly 2 unique voices,
+// plus a decodable PCM stitch mode so the single-voice fallback can render per-turn.
+function geminiLikeProvider(): SpeechProvider {
+  const pcm = new Int16Array(2400);
+  pcm.fill(4000);
+  const bytes = new Uint8Array(pcm.buffer);
+  return {
+    id: "google",
+    defaultModel: "gemini-3.1-flash-tts-preview",
+    models: [],
+    generate: vi.fn().mockResolvedValue({
+      audio: bytes,
+      mediaType: "audio/pcm;rate=24000",
+      timestamps: [
+        { text: "word", start: 0, end: 0.05 },
+        { text: "two", start: 0.05, end: 0.1 },
+      ],
+    }),
+    generateDialogue: vi.fn().mockResolvedValue({
+      audio: bytes,
+      mediaType: "audio/pcm;rate=24000",
+    }),
+    dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+    getStitchOptions: () => ({
+      providerOptions: { audio_config: { sample_rate_hertz: 24_000 } },
       mediaType: "audio/pcm;rate=24000",
     }),
   };
@@ -178,6 +209,97 @@ describe("generateConversation", () => {
 
     expect(provider.generateDialogue).not.toHaveBeenCalled();
     expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to per-turn stitch when all turns share one voice on a min-2-voice native provider", async () => {
+    const provider = geminiLikeProvider();
+    const result = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns: [
+        { voice: "a", text: "Hi there." },
+        { voice: "a", text: "Hello again." },
+      ],
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(result.audio.mediaType).toBe("audio/wav");
+    expect(
+      result.warnings?.some((w) => SINGLE_SPEAKER_FALLBACK_RE.test(w))
+    ).toBe(true);
+  });
+
+  it("still uses the native dialogue path for 2 distinct voices on a min-2-voice provider", async () => {
+    const provider = geminiLikeProvider();
+    await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns: [
+        { voice: "a", text: "Hi there." },
+        { voice: "b", text: "Hello back." },
+      ],
+    });
+
+    expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
+
+  it("returns timestamps on the single-voice fallback path when requested", async () => {
+    const provider = geminiLikeProvider();
+    const result = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns: [
+        { voice: "a", text: "Hi there." },
+        { voice: "a", text: "Hello again." },
+      ],
+      timestamps: true,
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(result.timestamps).toBeDefined();
+    expect(result.timestamps?.length).toBeGreaterThan(0);
+    // Per-turn attribution is preserved across the stitched monologue.
+    expect(new Set(result.timestamps?.map((t) => t.turnIndex))).toEqual(
+      new Set([0, 1])
+    );
+  });
+
+  it("honors gapMs, speed, and output on the single-voice fallback path", async () => {
+    const provider = geminiLikeProvider();
+    const turns = [
+      { voice: "a", text: "Hi there." },
+      { voice: "a", text: "Hello again." },
+    ];
+
+    const noGap = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns,
+      gapMs: 0,
+    });
+    const withGap = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns,
+      gapMs: 1000,
+    });
+    expect(withGap.metadata.audioDurationMs ?? 0).toBeGreaterThan(
+      noGap.metadata.audioDurationMs ?? 0
+    );
+
+    const fast = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns,
+      gapMs: 0,
+      speed: 1.5,
+    });
+    expect(fast.metadata.audioDurationMs ?? 0).toBeLessThan(
+      noGap.metadata.audioDurationMs ?? 0
+    );
+
+    const pcm = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns,
+      output: { format: "pcm" },
+    });
+    expect(pcm.audio.mediaType.startsWith("audio/pcm")).toBe(true);
   });
 
   it("splits an over-limit native dialogue into parallel blocks and stitches one result", async () => {

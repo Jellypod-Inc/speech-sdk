@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.3
+
+- **Single-speaker conversations no longer attempt native multi-speaker dialogue.** When every turn of a `generateConversation` request resolves to the same voice, the conversation is just sequential single-speaker speech — the SDK now renders it per-turn via `generateSpeech` and stitches the turns into one clip (respecting `gapMs` / `volumeDbfs` / `speed` / `output`) instead of routing into a provider's native dialogue path. Previously, native-dialogue providers that require multiple distinct voices (e.g. Google's `gemini-3.1-flash-tts-preview`, which requires exactly 2) threw `DialogueConstraintError` for a single-voice conversation, surfacing as a gateway 500. The two-or-more distinct-voice case is unchanged and still uses the native path; a conversation with **more** unique voices than a provider supports still throws `DialogueConstraintError` (no silent wrong-path fallback). Timestamps are honored on both paths. The gateway path is unchanged — the gateway server owns its own routing.
+
 ## 0.18.2
 
 - **Lower Gemini's native dialogue per-call budget from `5000` to `2500` characters.** Gemini TTS generation latency climbs with output length, so the previous budget produced slow first-audio on long conversations. Halving `dialogueCapabilities().maxTotalChars` for Google's Gemini TTS models means longer conversations are partitioned into more, shorter native-dialogue blocks that render in parallel and stitch together — faster than fewer long calls, with the same native multi-speaker sound. No API change; the gateway path is unchanged.

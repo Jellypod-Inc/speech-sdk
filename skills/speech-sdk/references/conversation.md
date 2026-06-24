@@ -83,6 +83,10 @@ Native-dialogue providers cap how much text a single call can render (e.g. Gemin
 - If the conversation can't be split into voice-valid blocks (e.g. a single turn longer than the limit, or a long single-speaker run on a two-voice model), it falls back to the local-stitch path and surfaces a warning.
 - Gateway turns are unaffected — the gateway server owns its own chunking.
 
+## Single-Speaker Conversations
+
+When every turn resolves to the same voice, the conversation is just sequential single-speaker speech, so `generateConversation` renders it per turn via `generateSpeech` and stitches the turns into one clip (honoring `gapMs` / `volumeDbfs` / `speed` / `output`) — it never routes a single voice into a provider's native multi-speaker dialogue path. This matters for native-dialogue providers that require multiple distinct voices (e.g. Google's `gemini-3.1-flash-tts-preview` requires exactly 2): a single-voice conversation succeeds via stitch instead of throwing `DialogueConstraintError`. A warning notes the fallback. Two or more distinct voices use the native path as before; a conversation with **more** unique voices than the provider supports still throws `DialogueConstraintError`. Gateway turns are unaffected.
+
 ## Per-Turn Speed
 
 ```ts
@@ -122,7 +126,7 @@ From `@speech-sdk/core`:
 | Error                       | When                                                                                         |
 | --------------------------- | -------------------------------------------------------------------------------------------- |
 | `ConversationInputError`    | Invalid input (no turns, empty text, etc.)                                                   |
-| `DialogueConstraintError`   | Provider/model can't satisfy the requested turns (e.g. too many voices)                      |
+| `DialogueConstraintError`   | Provider/model can't satisfy the requested turns (more unique voices than it supports). A single-voice conversation does not throw — it renders via stitch. |
 | `MixedDispatchError`        | Conversation mixes gateway (`provider/model` string) turns with direct-factory turns         |
 | `StitchUnsupportedError`    | A provider/model can't expose decodable PCM/WAV, so turns can't be locally mixed             |
 | `NoSpeechGeneratedError`    | Final concatenated audio is empty                                                            |

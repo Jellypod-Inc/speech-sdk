@@ -201,6 +201,84 @@ describe("chooseConversationPath", () => {
     ).toThrow(DialogueConstraintError);
   });
 
+  it("routes a single-voice conversation to stitch on a min-2-voice native provider", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
+    });
+    const resolved = [
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+    ];
+    // Both turns resolve to one voice — a monologue with no valid native-dialogue call to make.
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "a", text: "Hello again." },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+    if (result.kind === "stitch") {
+      expect(result.reason).toBe("fallback-from-native-voice-count");
+    }
+  });
+
+  it("routes a single-voice conversation to stitch even on a native provider that allows one voice", () => {
+    const provider = mockProvider({
+      id: "elevenlabs",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+      getStitchOptions: () => ({
+        providerOptions: { output_format: "pcm_24000" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    });
+    const resolved = [
+      { provider, modelId: "eleven_v3" },
+      { provider, modelId: "eleven_v3" },
+    ];
+    // A single speaker is sequential speech — never the native multi-speaker path, even
+    // though this provider could carry one voice natively.
+    const result = chooseConversationPath({
+      resolvedPerTurn: resolved,
+      turns: [
+        { voice: "a", text: "Hi." },
+        { voice: "a", text: "Hello again." },
+      ],
+    });
+    expect(result.kind).toBe("stitch");
+    if (result.kind === "stitch") {
+      expect(result.reason).toBe("fallback-from-native-voice-count");
+    }
+  });
+
+  it("still throws DialogueConstraintError when MORE unique voices than the provider supports", () => {
+    const provider = mockProvider({
+      id: "google",
+      generateDialogue: vi.fn(),
+      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 2 }),
+      getStitchOptions: () => ({ providerOptions: {}, mediaType: "audio/wav" }),
+    });
+    const resolved = [
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      { provider, modelId: "gemini-3.1-flash-tts-preview" },
+    ];
+    expect(() =>
+      chooseConversationPath({
+        resolvedPerTurn: resolved,
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hey." },
+          { voice: "c", text: "Hello." },
+        ],
+      })
+    ).toThrow(DialogueConstraintError);
+  });
+
   it("splits an over-limit native dialogue into parallel voice-valid blocks", () => {
     const provider = mockProvider({
       id: "google",
