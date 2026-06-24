@@ -63,9 +63,7 @@ export function chooseConversationPath(input: {
 
   if (allSame && !forceStitch) {
     if (countUniqueVoices(turns) <= 1) {
-      // A single-speaker conversation is just sequential single-speaker speech — always
-      // render each turn via generateSpeech + stitch, never a provider's native
-      // multi-speaker dialogue path (which may have no valid single-voice call to make).
+      // A single speaker is just sequential speech — render per-turn via stitch, never native dialogue.
       if (modelSupportsNativeDialogue(first)) {
         stitchFallbackReason = "fallback-from-native-voice-count";
       }
@@ -104,9 +102,7 @@ interface DialogueCaps {
   maxVoices: number;
 }
 
-// A native multi-speaker "dialogue" call needs at least two distinct voices. A single-voice
-// conversation is sequential single-speaker speech and is always routed to stitch, so providers
-// only declare how many distinct voices their native path supports (maxVoices), not a minimum.
+// Native dialogue needs 2+ distinct voices; a single voice is always routed to stitch, so providers declare only maxVoices.
 const NATIVE_DIALOGUE_MIN_VOICES = 2;
 
 function countUniqueVoices(turns: readonly ConversationTurn<Voice>[]): number {
@@ -145,8 +141,7 @@ function tryNativeDialoguePath(args: {
   if (turns.some((t) => t.providerOptions !== undefined)) {
     return { fallbackReason: "fallback-from-native" };
   }
-  // Single-speaker conversations are routed to stitch before reaching here. What remains is
-  // a multi-voice conversation: too many distinct voices throws (no native-equivalent rendering).
+  // Single-speaker is routed to stitch earlier; a multi-voice conversation throws if it exceeds maxVoices.
   assertNativeMaxVoices({ provider, modelId, caps, turns });
   const blocks = planNativeBlocks({
     provider,
@@ -165,10 +160,7 @@ function tryNativeDialoguePath(args: {
   return { fallbackReason: "fallback-from-native-oversized" };
 }
 
-// Fewer unique voices than the provider's minimum has a sensible fallback — render each
-// Reached only for multi-voice conversations (single-voice is routed to stitch earlier).
-// More unique voices than the provider's native path supports has no native-equivalent
-// rendering, so throw DialogueConstraintError.
+// Reached only for multi-voice conversations; more voices than maxVoices throws DialogueConstraintError.
 function assertNativeMaxVoices(args: {
   provider: ResolvedModel["provider"];
   modelId: string;
@@ -255,9 +247,7 @@ function partitionTurnsByChars(args: {
     blocks.push(current);
   }
 
-  // Every block must independently be a valid native-dialogue call: at least two distinct
-  // voices (a long single-speaker run could otherwise fill a block, which can't render
-  // natively) and no more than the provider's maximum.
+  // Each block must be a valid native call: 2..maxVoices distinct voices (a single-voice block can't render natively).
   for (const block of blocks) {
     const unique = new Set(block.map((i) => keyOf(turns[i].voice))).size;
     if (unique < NATIVE_DIALOGUE_MIN_VOICES || unique > caps.maxVoices) {
