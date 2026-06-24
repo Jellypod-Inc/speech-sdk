@@ -72,7 +72,7 @@ function nativeTTS(options: {
             : {}),
         })
       ),
-    dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 10 }),
+    dialogueCapabilities: () => ({ maxVoices: 10 }),
   };
 }
 

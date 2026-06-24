@@ -159,7 +159,7 @@ describe("turnIndex on errors thrown from a specific turn", () => {
       generateDialogue: vi
         .fn()
         .mockRejectedValue(new ApiError("native blew up", { statusCode: 503 })),
-      dialogueCapabilities: () => ({ minVoices: 2, maxVoices: 4 }),
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
       getStitchOptions: () => ({
         providerOptions: { format: "pcm24k" },
         mediaType: "audio/pcm;rate=24000",

@@ -20,7 +20,7 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
       models: [{ id: "d1", features: [] }],
       generate: vi.fn(),
       generateDialogue,
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
     };
     const model = { provider, modelId: "d1" } as never;
 
@@ -63,7 +63,7 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
       models: [{ id: "d1", features: [] }],
       generate: vi.fn(),
       generateDialogue,
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
     };
     const model = { provider, modelId: "d1" } as never;
 
@@ -92,7 +92,7 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
       models: [{ id: "d1", features: [] }],
       generate: vi.fn(),
       generateDialogue,
-      dialogueCapabilities: () => ({ minVoices: 1, maxVoices: 4 }),
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
     };
     const model = { provider, modelId: "d1" } as never;
 

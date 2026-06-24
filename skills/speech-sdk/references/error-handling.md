@@ -24,7 +24,7 @@ import {
 | `TimestampKeyMissingError`                  | `timestamps: true` STT fallback triggered but no key configured                         |
 | `GatewayInputError`                         | Gateway request invariant violated (e.g. mixing shared + per-turn `model`)              |
 | `ConversationInputError`                    | Invalid `generateConversation` input                                                    |
-| `DialogueConstraintError`                   | Provider/model can't satisfy the requested turns (e.g. too many voices)                 |
+| `DialogueConstraintError`                   | Provider/model can't satisfy the requested turns (more unique voices than supported). A single-voice conversation does not throw — it renders via stitch. |
 | `MixedDispatchError`                        | Mixing gateway-string turns with direct-factory turns                                   |
 | `StitchUnsupportedError`                    | A stitch turn's provider/model can't expose decodable PCM/WAV                           |
 | `SpeechSDKError`                            | Base class for all SDK errors                                                           |
