@@ -156,8 +156,11 @@ export class SmallestAISpeechProvider
 
     await handleErrorResponse(response);
 
-    const json = (await response.json()) as { data?: { voiceId?: unknown } };
-    const voiceId = json.data?.voiceId;
+    const json = (await response.json()) as {
+      voiceId?: unknown;
+      data?: { voiceId?: unknown };
+    };
+    const voiceId = json.data?.voiceId ?? json.voiceId;
     if (typeof voiceId !== "string") {
       throw new SpeechSDKError("smallest-ai: clone response missing voiceId");
     }
