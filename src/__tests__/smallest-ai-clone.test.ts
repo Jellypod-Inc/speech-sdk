@@ -51,7 +51,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
       ok: true,
       status: 200,
       headers: new Headers(),
-      json: async () => ({ voiceId: "s1" }),
+      json: async () => ({ data: { voiceId: "s1" } }),
     });
 
     const provider = new SmallestAISpeechProvider({

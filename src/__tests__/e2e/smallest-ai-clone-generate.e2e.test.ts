@@ -1,3 +1,4 @@
+import pRetry from "p-retry";
 import { describe, expect, it } from "vitest";
 import { cloneVoice } from "../../clone-voice.js";
 import { createSmallestAI } from "../../providers/smallest-ai/index.js";
@@ -6,19 +7,6 @@ import { generateSpeech } from "./_save-audio.js";
 const SAMPLE_TEXT =
   "This is a reference recording used to create a cloned voice for the speech SDK " +
   "regression test. It is several seconds long so the model has enough audio to work with.";
-
-async function withRetry<T>(fn: () => Promise<T>, attempts = 5): Promise<T> {
-  let lastError: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-  }
-  throw lastError;
-}
 
 function isRiffWav(bytes: Uint8Array): boolean {
   return (
@@ -62,13 +50,15 @@ describe.skipIf(!process.env.SMALLEST_API_KEY)(
 
       // A freshly cloned voice can take a few seconds to propagate before
       // get_speech accepts it (transient "Invalid Voice ID"), so retry briefly.
-      const speech = await withRetry(() =>
-        generateSpeech({
-          model: smallest("lightning_v3.1"),
-          text: "Hello, this audio was generated using my freshly cloned voice.",
-          voice: cloned.voiceId,
-          output: { format: "wav" },
-        })
+      const speech = await pRetry(
+        () =>
+          generateSpeech({
+            model: smallest("lightning_v3.1"),
+            text: "Hello, this audio was generated using my freshly cloned voice.",
+            voice: cloned.voiceId,
+            output: { format: "wav" },
+          }),
+        { retries: 4, minTimeout: 1000, factor: 2 }
       );
       expect(speech.audio.mediaType).toContain("wav");
       expect(isRiffWav(speech.audio.uint8Array)).toBe(true);
