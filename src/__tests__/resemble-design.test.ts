@@ -102,6 +102,8 @@ describe("ResembleSpeechProvider.designVoice", () => {
     expect(mockFetch.mock.calls[1][0]).toBe(
       "https://app.resemble.ai/api/v2/voice-design/uuid-arr/2/create_rapid_voice"
     );
+    expect(mockFetch.mock.calls[2][0]).toBe("https://cdn.resemble/p.wav");
+    expect(result.preview?.audio).toEqual(PREVIEW_AUDIO);
     expect(result.voiceId).toBe("voice_arr");
   });
 
