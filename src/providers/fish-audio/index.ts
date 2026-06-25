@@ -1,7 +1,11 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
+import {
+  appendProviderOption,
+  appendSampleBlob,
+  sniffAudioMediaType,
+} from "../../clone-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -321,8 +325,9 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
     // Fish voice design is stateless — persist the candidate audio via the clone endpoint to get a reusable id.
     const audio = base64ToUint8Array(candidate.audio_base64);
+    const mediaType = sniffAudioMediaType(audio);
     const cloned = await this.cloneVoice({
-      samples: [{ bytes: audio, mediaType: "audio/wav" }],
+      samples: [{ bytes: audio, mediaType }],
       name: options.name,
       abortSignal: options.abortSignal,
       headers: options.headers,
@@ -330,7 +335,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       voiceId: cloned.voiceId,
-      preview: { audio, mediaType: "audio/wav" },
+      preview: { audio, mediaType },
       providerMetadata: {
         design: json as Record<string, unknown>,
         ...(cloned.providerMetadata && { model: cloned.providerMetadata }),

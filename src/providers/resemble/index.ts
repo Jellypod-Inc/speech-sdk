@@ -286,23 +286,29 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
     await handleErrorResponse(designResponse);
 
     const designJson = (await designResponse.json()) as {
-      samples?: { audio_url?: unknown; sample_index?: unknown }[];
-      voice_candidates?: {
-        samples?: { audio_url?: unknown; sample_index?: unknown }[];
-        voice_design_model_uuid?: unknown;
-      };
+      samples?: ResembleDesignSample[];
+      uuid?: unknown;
+      voice_candidates?: ResembleDesignCandidate | ResembleDesignCandidate[];
     };
-    const uuid = designJson.voice_candidates?.voice_design_model_uuid;
-    if (typeof uuid !== "string") {
+    // Resemble has shipped both shapes: an object candidate (`voice_design_model_uuid` + nested `samples`) and an array of candidates (`uuid` + `voice_sample_index` on each). Support both.
+    const candidates = designJson.voice_candidates;
+    const candidate = Array.isArray(candidates) ? candidates[0] : candidates;
+    const uuid =
+      asString(candidate?.voice_design_model_uuid) ??
+      asString(candidate?.uuid) ??
+      asString(designJson.uuid);
+    if (!uuid) {
       throw new SpeechSDKError(
-        "resemble: voice design response missing voice_candidates.voice_design_model_uuid"
+        "resemble: voice design response missing voice design model uuid"
       );
     }
-    const samples =
-      designJson.samples ?? designJson.voice_candidates?.samples ?? [];
-    const sample = samples[0];
+    const sample =
+      (Array.isArray(candidates)
+        ? candidate
+        : (candidate?.samples?.[0] ?? designJson.samples?.[0])) ?? {};
     const sampleIndex =
-      typeof sample?.sample_index === "number" ? sample.sample_index : 0;
+      asNumber(sample.sample_index) ?? asNumber(sample.voice_sample_index) ?? 0;
+    const audioUrl = asString(sample.audio_url);
 
     const createForm = new FormData();
     createForm.append("voice_name", options.name);
@@ -333,10 +339,9 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const preview =
-      typeof sample?.audio_url === "string"
-        ? await this.fetchPreview(sample.audio_url, options)
-        : undefined;
+    const preview = audioUrl
+      ? await this.fetchPreview(audioUrl, options)
+      : undefined;
 
     return {
       voiceId,
@@ -358,6 +363,26 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       mediaType: response.headers.get("content-type") ?? "audio/wav",
     };
   }
+}
+
+interface ResembleDesignSample {
+  audio_url?: unknown;
+  sample_index?: unknown;
+  voice_sample_index?: unknown;
+}
+
+interface ResembleDesignCandidate extends ResembleDesignSample {
+  samples?: ResembleDesignSample[];
+  uuid?: unknown;
+  voice_design_model_uuid?: unknown;
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
 }
 
 function resembleMediaType(outputFormat: unknown): string {

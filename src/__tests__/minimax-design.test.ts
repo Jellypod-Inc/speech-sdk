@@ -86,6 +86,25 @@ describe("MiniMaxSpeechProvider.designVoice", () => {
     expect(body.voice_id).toBeUndefined();
   });
 
+  it("omits preview (does not throw) when trial_audio is malformed", async () => {
+    const mockFetch = mockDesignFetch({
+      voice_id: "vd_ok",
+      trial_audio: "zznothex",
+    });
+    const provider = new MiniMaxSpeechProvider({
+      apiKey: "k",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.designVoice({
+      name: "x",
+      description: "calm voice",
+    });
+
+    expect(result.voiceId).toBe("vd_ok");
+    expect(result.preview).toBeUndefined();
+  });
+
   it("tags models with voice-design", () => {
     const provider = new MiniMaxSpeechProvider({ apiKey: "k" });
     for (const model of provider.models) {

@@ -53,6 +53,7 @@ describe("ElevenLabsSpeechProvider.designVoice", () => {
     const designBody = JSON.parse(designInit.body);
     expect(designBody.voice_description).toBe("a warm british narrator");
     expect(designBody.auto_generate_text).toBe(true);
+    expect(designBody.stream_previews).toBe(false);
 
     const [createUrl, createInit] = mockFetch.mock.calls[1];
     expect(createUrl).toBe("https://api.elevenlabs.io/v1/text-to-voice");

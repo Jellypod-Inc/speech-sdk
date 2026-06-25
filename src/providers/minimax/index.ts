@@ -397,15 +397,22 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
+    // The voice already exists once voice_id is returned — a malformed preview must not fail the call.
+    let preview: { audio: Uint8Array; mediaType: string } | undefined;
+    if (typeof json.trial_audio === "string" && json.trial_audio.length > 0) {
+      try {
+        preview = {
+          audio: hexToUint8Array(json.trial_audio),
+          mediaType: "audio/mpeg",
+        };
+      } catch {
+        preview = undefined;
+      }
+    }
+
     return {
       voiceId,
-      ...(typeof json.trial_audio === "string" &&
-        json.trial_audio.length > 0 && {
-          preview: {
-            audio: hexToUint8Array(json.trial_audio),
-            mediaType: "audio/mpeg",
-          },
-        }),
+      ...(preview && { preview }),
       providerMetadata: json as Record<string, unknown>,
     };
   }

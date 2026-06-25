@@ -646,6 +646,8 @@ export class ElevenLabsSpeechProvider
     const designBody: Record<string, unknown> = {
       ...options.providerOptions,
       voice_description: options.description,
+      // We read previews[0] inline, so never let stream mode drop the previews array.
+      stream_previews: false,
     };
     if (options.previewText != null) {
       designBody.text = options.previewText;

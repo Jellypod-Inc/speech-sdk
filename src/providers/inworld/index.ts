@@ -474,10 +474,11 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
           designPrompt: options.description,
           previewText: options.previewText ?? DEFAULT_PREVIEW_TEXT,
           voiceDesignConfig: {
-            numberOfSamples: 1,
             ...(typeof voiceDesignConfig === "object" && voiceDesignConfig
               ? voiceDesignConfig
               : {}),
+            // We publish a single previewVoice, so pin the count last — it must win over providerOptions.
+            numberOfSamples: 1,
           },
         }),
         signal: options.abortSignal,

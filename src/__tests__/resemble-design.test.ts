@@ -60,6 +60,51 @@ describe("ResembleSpeechProvider.designVoice", () => {
     expect(result.preview?.audio).toEqual(PREVIEW_AUDIO);
   });
 
+  it("supports the array candidate response shape (uuid / voice_sample_index)", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({
+          voice_candidates: [
+            {
+              uuid: "uuid-arr",
+              voice_sample_index: 2,
+              audio_url: "https://cdn.resemble/p.wav",
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({ voice_uuid: "voice_arr" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "audio/wav" }),
+        arrayBuffer: async () => PREVIEW_AUDIO.buffer,
+      });
+    const provider = new ResembleSpeechProvider({
+      apiKey: "k",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.designVoice({
+      name: "Guide",
+      description: "an upbeat australian guide",
+    });
+
+    expect(mockFetch.mock.calls[1][0]).toBe(
+      "https://app.resemble.ai/api/v2/voice-design/uuid-arr/2/create_rapid_voice"
+    );
+    expect(result.voiceId).toBe("voice_arr");
+  });
+
   it("tags the model with voice-design", () => {
     const provider = new ResembleSpeechProvider({ apiKey: "k" });
     for (const model of provider.models) {
