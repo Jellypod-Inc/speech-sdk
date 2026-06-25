@@ -14,9 +14,13 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 
-const SMALLEST_DEFAULT_BASE_URL = "https://api.smallest.ai/waves/v1";
-const SMALLEST_CLONE_URL =
-  "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice";
+const SMALLEST_DEFAULT_BASE_URL = "https://waves-api.smallest.ai/api/v1";
+// Both lightning_v3.1 and lightning_v3.1_pro are served by the lightning-v3.1
+// family route; the specific variant is selected by the `model` body field.
+const SMALLEST_TTS_MODEL_PATH = "lightning-v3.1";
+// Voice cloning moved off the retired per-model add_voice route to a single
+// model-agnostic endpoint (defaults to and recommends lightning-v3.1).
+const SMALLEST_CLONE_PATH = "voice-cloning";
 
 export interface SmallestAISpeechProviderConfig {
   apiKey?: string;
@@ -69,13 +73,9 @@ export class SmallestAISpeechProvider
   constructor(config: SmallestAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? SMALLEST_DEFAULT_BASE_URL;
-    // The clone endpoint lives on a different smallest.ai host by default; a custom
-    // baseURL (proxy/self-host) must route clone traffic too, so derive it from baseURL.
-    // The default base resolves to the documented clone host, not a derived path.
-    this.cloneURL =
-      config.baseURL && config.baseURL !== SMALLEST_DEFAULT_BASE_URL
-        ? `${config.baseURL}/lightning-large/add_voice`
-        : SMALLEST_CLONE_URL;
+    // Clone and TTS now share one host (waves-api.smallest.ai/api/v1), so a
+    // custom baseURL (proxy/self-host) routes both by deriving from it.
+    this.cloneURL = `${this.baseURL}/${SMALLEST_CLONE_PATH}`;
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -104,7 +104,7 @@ export class SmallestAISpeechProvider
       model: options.modelId,
     };
 
-    const url = `${this.baseURL}/tts`;
+    const url = `${this.baseURL}/${SMALLEST_TTS_MODEL_PATH}/get_speech`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -122,9 +122,9 @@ export class SmallestAISpeechProvider
     await handleErrorResponse(response);
 
     const arrayBuffer = await response.arrayBuffer();
-    const mediaType =
-      response.headers.get("content-type") ??
-      smallestAIMediaType(outputFormat, body.sample_rate);
+    // get_speech always returns `Content-Type: audio/wav` even for mp3/pcm, so
+    // derive the media type from the requested format instead of the header.
+    const mediaType = smallestAIMediaType(outputFormat, body.sample_rate);
 
     return {
       audio: new Uint8Array(arrayBuffer),
