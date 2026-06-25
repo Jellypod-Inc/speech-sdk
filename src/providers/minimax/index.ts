@@ -4,6 +4,7 @@ import {
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
 import { appendSampleBlob } from "../../clone-voice.js";
+import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import {
   ApiError,
   InvalidCloneFieldError,
@@ -17,6 +18,8 @@ import {
 import {
   type CloneVoiceProviderRequest,
   type CloneVoiceProviderResult,
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   type ModelInfo,
   type NormalizedSample,
   type ResolvedModel,
@@ -76,14 +79,14 @@ export const MINIMAX_MODELS: readonly ModelInfo[] = [
     id: "speech-2.8-hd",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: ["voice-cloning"],
+    features: ["voice-cloning", "voice-design"],
     maxInputChars: 3000,
   },
   {
     id: "speech-2.8-turbo",
     releaseDate: "2026-05-01",
     languages: MINIMAX_LANGUAGES,
-    features: ["voice-cloning"],
+    features: ["voice-cloning", "voice-design"],
     maxInputChars: 3000,
   },
 ] as const;
@@ -349,6 +352,67 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
 
     return {
       voiceId: options.name,
+      providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const body: Record<string, unknown> = {
+      ...options.providerOptions,
+      prompt: options.description,
+      preview_text: options.previewText ?? DEFAULT_PREVIEW_TEXT,
+    };
+    // voice_id is optional; honor it only when it fits MiniMax's id rules, else let the API mint one.
+    if (MINIMAX_VOICE_ID_RE.test(options.name)) {
+      body.voice_id = options.name;
+    }
+
+    const response = await this.fetchFn(this.endpointFor("voice_design"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resolveApiKey(this.apiKey, "MINIMAX_API_KEY", "MiniMax")}`,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify(body),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      voice_id?: unknown;
+      trial_audio?: unknown;
+      base_resp?: { status_code?: number; status_msg?: string };
+    };
+    assertMiniMaxOk(json.base_resp, "voice_design");
+
+    const voiceId = json.voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        "minimax: voice design response missing voice_id"
+      );
+    }
+
+    // The voice already exists once voice_id is returned — a malformed preview must not fail the call.
+    let preview: { audio: Uint8Array; mediaType: string } | undefined;
+    if (typeof json.trial_audio === "string" && json.trial_audio.length > 0) {
+      try {
+        preview = {
+          audio: hexToUint8Array(json.trial_audio),
+          mediaType: "audio/mpeg",
+        };
+      } catch {
+        preview = undefined;
+      }
+    }
+
+    return {
+      voiceId,
+      ...(preview && { preview }),
       providerMetadata: json as Record<string, unknown>,
     };
   }

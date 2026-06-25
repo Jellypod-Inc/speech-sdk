@@ -1,7 +1,9 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
+import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import {
   ApiError,
+  SpeechSDKError,
   StreamingNotSupportedError,
   UnsupportedSampleRateError,
 } from "../../errors.js";
@@ -11,6 +13,8 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import type {
+  DesignVoiceProviderRequest,
+  DesignVoiceProviderResult,
   ModelInfo,
   ResolvedModel,
   ResolvedOutputFormat,
@@ -142,6 +146,75 @@ export class FalSpeechProvider implements SpeechProvider<string, string> {
       "audio/wav";
 
     return { audio: new Uint8Array(arrayBuffer), mediaType };
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const response = await this.fetchFn(
+      `${this.baseURL}/fal-ai/minimax/voice-design`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Key ${resolveApiKey(this.apiKey, "FAL_API_KEY", "fal")}`,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify({
+          ...options.providerOptions,
+          prompt: options.description,
+          preview_text: options.previewText ?? DEFAULT_PREVIEW_TEXT,
+        }),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(response);
+
+    const json = (await response.json()) as {
+      audio?: { content_type?: unknown; url?: unknown };
+      custom_voice_id?: unknown;
+    };
+    const voiceId = json.custom_voice_id;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        "fal: voice design response missing custom_voice_id"
+      );
+    }
+
+    const preview =
+      typeof json.audio?.url === "string"
+        ? await this.fetchPreview(
+            json.audio.url,
+            json.audio.content_type,
+            options
+          )
+        : undefined;
+
+    return {
+      voiceId,
+      ...(preview && { preview }),
+      providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
+  private async fetchPreview(
+    url: string,
+    contentType: unknown,
+    options: { abortSignal?: AbortSignal }
+  ): Promise<{ audio: Uint8Array; mediaType: string } | undefined> {
+    const response = await this.fetchFn(url, { signal: options.abortSignal });
+    if (!response.ok) {
+      return;
+    }
+    return {
+      audio: new Uint8Array(await response.arrayBuffer()),
+      mediaType:
+        typeof contentType === "string"
+          ? contentType
+          : (response.headers.get("content-type") ?? "audio/mpeg"),
+    };
   }
 
   stream(options: { modelId: string }): Promise<never> {

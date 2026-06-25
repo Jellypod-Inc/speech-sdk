@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array, uint8ArrayToBase64 } from "../../audio-utils.js";
 import { defaultCloneLanguage } from "../../clone-voice.js";
+import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -11,6 +12,8 @@ import {
 import {
   type CloneVoiceProviderRequest,
   type CloneVoiceProviderResult,
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -118,14 +121,14 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     id: "inworld-tts-1.5-max",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
     releaseDate: "2025-08-15",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 2000,
   },
   {
@@ -137,7 +140,7 @@ export const INWORLD_MODELS: readonly ModelInfo[] = [
     id: "inworld-tts-2",
     releaseDate: "2026-05-05",
     languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning"],
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 2000,
   },
 ] as const;
@@ -425,6 +428,116 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       voiceId,
       ...(warnings.length > 0 && { warnings }),
       providerMetadata: json as Record<string, unknown>,
+    };
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const {
+      langCode: langCodeOverride,
+      voiceDesignConfig,
+      ...restOpts
+    } = options.providerOptions ?? {};
+    const warnings: string[] = [];
+
+    let langCode = langCodeOverride;
+    if (langCode === undefined) {
+      const language = defaultCloneLanguage(
+        "inworld",
+        options.language,
+        warnings
+      );
+      langCode = toInworldLangCode(language);
+      if (langCode === "AUTO") {
+        warnings.push(
+          `inworld has no locale for language '${language}'; using AUTO so the provider detects it — pass providerOptions.langCode to override.`
+        );
+      }
+    }
+
+    const authHeader = `Basic ${resolveApiKey(this.apiKey, "INWORLD_API_KEY", "Inworld")}`;
+
+    const designResponse = await this.fetchFn(
+      `${this.baseURL}/voices/v1/voices:design`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify({
+          ...restOpts,
+          langCode,
+          designPrompt: options.description,
+          previewText: options.previewText ?? DEFAULT_PREVIEW_TEXT,
+          voiceDesignConfig: {
+            ...(typeof voiceDesignConfig === "object" && voiceDesignConfig
+              ? voiceDesignConfig
+              : {}),
+            // We publish a single previewVoice, so pin the count last — it must win over providerOptions.
+            numberOfSamples: 1,
+          },
+        }),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(designResponse);
+
+    const designJson = (await designResponse.json()) as {
+      previewVoices?: { previewAudio?: unknown; voiceId?: unknown }[];
+    };
+    const previewVoice = designJson.previewVoices?.[0];
+    if (!previewVoice || typeof previewVoice.voiceId !== "string") {
+      throw new SpeechSDKError(
+        "inworld: voice design response missing previewVoices[].voiceId"
+      );
+    }
+    const previewVoiceId = previewVoice.voiceId;
+
+    const publishResponse = await this.fetchFn(
+      `${this.baseURL}/voices/v1/voices/${encodeURIComponent(previewVoiceId)}:publish`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify({ displayName: options.name }),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(publishResponse);
+
+    const publishJson = (await publishResponse.json()) as {
+      voice?: { voiceId?: unknown };
+      voiceId?: unknown;
+    };
+    const voiceId =
+      (typeof publishJson.voice?.voiceId === "string"
+        ? publishJson.voice.voiceId
+        : undefined) ??
+      (typeof publishJson.voiceId === "string"
+        ? publishJson.voiceId
+        : undefined) ??
+      previewVoiceId;
+
+    return {
+      voiceId,
+      ...(typeof previewVoice.previewAudio === "string" && {
+        preview: {
+          audio: base64ToUint8Array(previewVoice.previewAudio),
+          mediaType: "audio/mpeg",
+        },
+      }),
+      ...(warnings.length > 0 && { warnings }),
+      providerMetadata: publishJson as Record<string, unknown>,
     };
   }
 }

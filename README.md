@@ -32,6 +32,7 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 - **Word-level timestamps** — `timestamps: true` returns alignment, using the provider's native data or falling back to STT.
 - **Volume normalization** — RMS-level outputs to an absolute loudness target.
 - **Audio tags & voice cloning** — bracket cues like `[laugh]` and reference-audio cloning where supported.
+- **Voice design** — `designVoice()` creates a reusable voice from a text description across providers that support it.
 
 ## Install
 
@@ -335,6 +336,44 @@ await generateSpeech({
   voice: { url: 'https://example.com/reference.wav' },
 });
 ```
+
+## Voice design
+
+`designVoice()` creates a brand-new synthetic voice from a text description (no
+reference audio needed) and returns a reusable `voiceId` you can pass straight
+to `generateSpeech()`. Pass a provider factory — design is a provider-level
+operation, so no model id is required.
+
+```ts
+import { designVoice, generateSpeech } from '@speech-sdk/core';
+import { createElevenLabs } from '@speech-sdk/core/providers';
+
+const { voiceId, preview } = await designVoice({
+  provider: createElevenLabs(),
+  name: 'Narrator',
+  description: 'A deep, warm, middle-aged British narrator, calm and authoritative',
+  previewText: 'In the beginning, there was only silence.', // optional
+});
+
+await generateSpeech({
+  model: createElevenLabs()('eleven_v3'),
+  text: 'Now using my freshly designed voice.',
+  voice: voiceId,
+});
+```
+
+The SDK absorbs each provider's underlying flow (single-call, design→persist, or
+design→clone) so you always get one reusable `voiceId` back, plus an optional
+`preview` (`{ audio: Uint8Array, mediaType }`) of the designed voice.
+
+Supported providers: ElevenLabs, MiniMax, Fal, Hume, Inworld, Resemble, Fish
+Audio. Calling `designVoice()` with any other provider throws
+`VoiceDesignUnsupportedError`.
+
+> **Hume** references custom voices by name under the `CUSTOM_VOICE` namespace —
+> when generating with a Hume-designed voice, pass
+> `providerOptions: { voiceProvider: 'CUSTOM_VOICE' }` (the returned `warnings`
+> remind you of this).
 
 ## Custom configuration
 

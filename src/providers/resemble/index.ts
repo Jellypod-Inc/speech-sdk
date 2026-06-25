@@ -1,11 +1,14 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -25,6 +28,8 @@ const synthesizeResponseSchema = z.object({
 
 export interface ResembleSpeechProviderConfig {
   apiKey?: string;
+  /** Public REST API base, used for voice design. Defaults to https://app.resemble.ai/api/v2. */
+  appBaseURL?: string;
   baseURL?: string;
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
@@ -66,7 +71,7 @@ export const RESEMBLE_MODELS: readonly ModelInfo[] = [
       "tr",
       "zh",
     ],
-    features: ["streaming", "open-source", "timestamps"],
+    features: ["streaming", "open-source", "timestamps", "voice-design"],
   },
 ] as const;
 
@@ -78,11 +83,13 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
 
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
+  private readonly appBaseURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
 
   constructor(config: ResembleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://f.cluster.resemble.ai";
+    this.appBaseURL = config.appBaseURL ?? "https://app.resemble.ai/api/v2";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -252,6 +259,130 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
         return;
     }
   }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const authHeader = `Bearer ${resolveApiKey(this.apiKey, "RESEMBLE_API_KEY", "Resemble")}`;
+
+    const designResponse = await this.fetchFn(
+      `${this.appBaseURL}/voice-design`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify({
+          ...options.providerOptions,
+          user_prompt: options.description,
+        }),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(designResponse);
+
+    const designJson = (await designResponse.json()) as {
+      samples?: ResembleDesignSample[];
+      uuid?: unknown;
+      voice_candidates?: ResembleDesignCandidate | ResembleDesignCandidate[];
+    };
+    // Resemble has shipped both shapes: an object candidate (`voice_design_model_uuid` + nested `samples`) and an array of candidates (`uuid` + `voice_sample_index` on each). Support both.
+    const candidates = designJson.voice_candidates;
+    const candidate = Array.isArray(candidates) ? candidates[0] : candidates;
+    const uuid =
+      asString(candidate?.voice_design_model_uuid) ??
+      asString(candidate?.uuid) ??
+      asString(designJson.uuid);
+    if (!uuid) {
+      throw new SpeechSDKError(
+        "resemble: voice design response missing voice design model uuid"
+      );
+    }
+    const sample =
+      (Array.isArray(candidates)
+        ? candidate
+        : (candidate?.samples?.[0] ?? designJson.samples?.[0])) ?? {};
+    const sampleIndex =
+      asNumber(sample.sample_index) ?? asNumber(sample.voice_sample_index) ?? 0;
+    const audioUrl = asString(sample.audio_url);
+
+    const createForm = new FormData();
+    createForm.append("voice_name", options.name);
+
+    const createResponse = await this.fetchFn(
+      `${this.appBaseURL}/voice-design/${uuid}/${sampleIndex}/create_rapid_voice`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: createForm,
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(createResponse);
+
+    const createJson = (await createResponse.json()) as {
+      voice_uuid?: unknown;
+    };
+    const voiceId = createJson.voice_uuid;
+    if (typeof voiceId !== "string") {
+      throw new SpeechSDKError(
+        "resemble: create_rapid_voice response missing voice_uuid"
+      );
+    }
+
+    const preview = audioUrl
+      ? await this.fetchPreview(audioUrl, options)
+      : undefined;
+
+    return {
+      voiceId,
+      ...(preview && { preview }),
+      providerMetadata: createJson as Record<string, unknown>,
+    };
+  }
+
+  private async fetchPreview(
+    url: string,
+    options: { abortSignal?: AbortSignal }
+  ): Promise<{ audio: Uint8Array; mediaType: string } | undefined> {
+    const response = await this.fetchFn(url, { signal: options.abortSignal });
+    if (!response.ok) {
+      return;
+    }
+    return {
+      audio: new Uint8Array(await response.arrayBuffer()),
+      mediaType: response.headers.get("content-type") ?? "audio/wav",
+    };
+  }
+}
+
+interface ResembleDesignSample {
+  audio_url?: unknown;
+  sample_index?: unknown;
+  voice_sample_index?: unknown;
+}
+
+interface ResembleDesignCandidate extends ResembleDesignSample {
+  samples?: ResembleDesignSample[];
+  uuid?: unknown;
+  voice_design_model_uuid?: unknown;
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
 }
 
 function resembleMediaType(outputFormat: unknown): string {

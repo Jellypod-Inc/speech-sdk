@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
+import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -8,6 +9,8 @@ import {
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
 import {
+  type DesignVoiceProviderRequest,
+  type DesignVoiceProviderResult,
   type ModelInfo,
   type ResolvedModel,
   resolveSampleRate,
@@ -54,14 +57,14 @@ export const HUME_MODELS: readonly ModelInfo[] = [
       "ar",
       "ru",
     ] as const,
-    features: ["streaming", "timestamps"],
+    features: ["streaming", "timestamps", "voice-design"],
     maxInputChars: 5000,
   },
   {
     id: "octave-1",
     releaseDate: "2025-03-01",
     languages: ["en"] as const,
-    features: ["streaming"],
+    features: ["streaming", "voice-design"],
     maxInputChars: 5000,
   },
 ] as const;
@@ -106,15 +109,20 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
   }> {
+    // Designed/cloned voices live under the CUSTOM_VOICE namespace; let callers select it without dropping to raw providerOptions.utterances.
+    const { voiceProvider, ...restOptions } = options.providerOptions ?? {};
     const utterance: Record<string, unknown> = { text: options.text };
     if (options.voice) {
-      utterance.voice = { name: options.voice, provider: "HUME_AI" };
+      utterance.voice = {
+        name: options.voice,
+        provider: typeof voiceProvider === "string" ? voiceProvider : "HUME_AI",
+      };
     }
 
     const version = this.resolveVersion(options.modelId);
 
     const body: Record<string, unknown> = {
-      ...options.providerOptions,
+      ...restOptions,
       utterances: [utterance],
     };
 
@@ -226,15 +234,20 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    // Designed/cloned voices live under the CUSTOM_VOICE namespace; let callers select it without dropping to raw providerOptions.utterances.
+    const { voiceProvider, ...restOptions } = options.providerOptions ?? {};
     const utterance: Record<string, unknown> = { text: options.text };
     if (options.voice) {
-      utterance.voice = { name: options.voice, provider: "HUME_AI" };
+      utterance.voice = {
+        name: options.voice,
+        provider: typeof voiceProvider === "string" ? voiceProvider : "HUME_AI",
+      };
     }
 
     const version = this.resolveVersion(options.modelId);
 
     const body: Record<string, unknown> = {
-      ...options.providerOptions,
+      ...restOptions,
       utterances: [utterance],
     };
     if (version != null) {
@@ -322,6 +335,90 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       default:
         return;
     }
+  }
+
+  async designVoice(
+    options: DesignVoiceProviderRequest
+  ): Promise<DesignVoiceProviderResult> {
+    const apiKey = resolveApiKey(this.apiKey, "HUME_API_KEY", "Hume");
+
+    const designResponse = await this.fetchFn(`${this.baseURL}/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": apiKey,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify({
+        ...options.providerOptions,
+        utterances: [
+          {
+            text: options.previewText ?? DEFAULT_PREVIEW_TEXT,
+            description: options.description,
+          },
+        ],
+        num_generations: 1,
+      }),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(designResponse);
+
+    const designJson = (await designResponse.json()) as {
+      generations?: {
+        audio?: unknown;
+        encoding?: { format?: unknown };
+        generation_id?: unknown;
+      }[];
+    };
+    const generation = designJson.generations?.[0];
+    if (!generation || typeof generation.generation_id !== "string") {
+      throw new SpeechSDKError(
+        "hume: voice design response missing generations[].generation_id"
+      );
+    }
+    const generationId = generation.generation_id;
+
+    const saveResponse = await this.fetchFn(`${this.baseURL}/tts/voices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Hume-Api-Key": apiKey,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify({
+        generation_id: generationId,
+        name: options.name,
+      }),
+      signal: options.abortSignal,
+    });
+
+    await handleErrorResponse(saveResponse);
+
+    const saveJson = (await saveResponse.json()) as { name?: unknown };
+    // Hume references custom voices by name (+ provider CUSTOM_VOICE), not by the numeric id.
+    const voiceId =
+      typeof saveJson.name === "string" ? saveJson.name : options.name;
+
+    return {
+      voiceId,
+      ...(typeof generation.audio === "string" && {
+        preview: {
+          audio: base64ToUint8Array(generation.audio),
+          mediaType: humeFormatToMediaType(
+            typeof generation.encoding?.format === "string"
+              ? generation.encoding.format
+              : undefined
+          ),
+        },
+      }),
+      warnings: [
+        "hume custom voices are referenced by name under the CUSTOM_VOICE namespace — pass `providerOptions: { voiceProvider: 'CUSTOM_VOICE' }` to generateSpeech when using this voiceId.",
+      ],
+      providerMetadata: saveJson as Record<string, unknown>,
+    };
   }
 
   dialogueCapabilities(modelId: string) {

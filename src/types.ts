@@ -14,6 +14,11 @@ export type {
   ConversationTurn,
   GenerateConversationOptions,
 } from "./conversation/types.js";
+export type {
+  DesignedVoice,
+  DesignVoiceOptions,
+  VoiceDesignPreview,
+} from "./design-voice.js";
 export type { SpeechMetadata } from "./metadata.js";
 export type {
   Pronunciation,
