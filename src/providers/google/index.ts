@@ -55,6 +55,18 @@ const generateContentResponseSchema = z.object({
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
+// generateContent treats a bare turn as a chat prompt and tries to *answer* terse/conversational input,
+// which a TTS-only model rejects with HTTP 400 ("Model tried to generate text, but it should only be used
+// for TTS."). Framing the text as a read-aloud instruction makes Gemini voice it verbatim instead — the
+// same reason the multi-speaker path's speaker-labelled transcript is read rather than answered. Per the
+// Gemini TTS spec the directive before the colon is delivery guidance and is not spoken; only the content
+// after it is synthesized, so options.text reaches the audio unchanged.
+const READ_ALOUD_DIRECTIVE = "Read aloud: ";
+
+function frameSingleTurnPrompt(text: string): string {
+  return `${READ_ALOUD_DIRECTIVE}${text}`;
+}
+
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
@@ -264,7 +276,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       contents: [
         {
           role: "user",
-          parts: [{ text: options.text }],
+          parts: [{ text: frameSingleTurnPrompt(options.text) }],
         },
       ],
       generationConfig: {
