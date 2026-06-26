@@ -8,12 +8,14 @@ const sample = {
 };
 
 describe("SmallestAISpeechProvider.cloneVoice", () => {
-  it("posts multipart to the waves-api clone endpoint with auth and fields", async () => {
+  it("posts multipart to the voice-cloning endpoint with auth and fields", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: new Headers(),
-      json: async () => ({ voiceId: "s1", model: "lightning", status: "ok" }),
+      json: async () => ({
+        data: { voiceId: "s1", model: "lightning-v3.1", status: "completed" },
+      }),
     });
 
     const provider = new SmallestAISpeechProvider({
@@ -28,9 +30,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe(
-      "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice"
-    );
+    expect(url).toBe("https://waves-api.smallest.ai/api/v1/voice-cloning");
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer smallest-key");
     expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);
@@ -42,9 +42,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
 
     expect(result.voiceId).toBe("s1");
     expect(result.providerMetadata).toEqual({
-      voiceId: "s1",
-      model: "lightning",
-      status: "ok",
+      data: { voiceId: "s1", model: "lightning-v3.1", status: "completed" },
     });
   });
 
@@ -53,7 +51,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
       ok: true,
       status: 200,
       headers: new Headers(),
-      json: async () => ({ voiceId: "s1" }),
+      json: async () => ({ data: { voiceId: "s1" } }),
     });
 
     const provider = new SmallestAISpeechProvider({
@@ -65,17 +63,15 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     await provider.cloneVoice({ samples: [sample], name: "My Voice" });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(
-      "https://proxy.internal/smallest/lightning-large/add_voice"
-    );
+    expect(url).toBe("https://proxy.internal/smallest/voice-cloning");
   });
 
-  it("uses the documented clone host when baseURL equals the default", async () => {
+  it("derives the clone endpoint from a default-host baseURL", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: new Headers(),
-      json: async () => ({ voiceId: "s1" }),
+      json: async () => ({ data: { voiceId: "s1" } }),
     });
 
     const provider = new SmallestAISpeechProvider({
@@ -87,9 +83,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
     await provider.cloneVoice({ samples: [sample], name: "My Voice" });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(
-      "https://waves-api.smallest.ai/api/v1/lightning-large/add_voice"
-    );
+    expect(url).toBe("https://api.smallest.ai/waves/v1/voice-cloning");
   });
 
   it("extracts voiceId from a nested data object", async () => {
