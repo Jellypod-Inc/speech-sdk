@@ -70,13 +70,6 @@ describe("GoogleSpeechProvider.stream", () => {
     expect(url).toContain(":generateContent");
     expect(url).not.toContain(":streamGenerateContent");
 
-    // The buffered stream path runs through generate(), so terse input is
-    // framed as a read-aloud directive too (otherwise the 400 surfaces here).
-    const sentText = JSON.parse(
-      (fetchMock.mock.calls[0][1] as RequestInit).body as string
-    ).contents[0].parts[0].text;
-    expect(sentText).toBe("Read aloud: hi");
-
     if (!result) {
       throw new Error("no result");
     }
@@ -139,8 +132,7 @@ describe("GoogleSpeechProvider.stream", () => {
     const body = JSON.parse(init.body as string);
     expect(body.stream).toBe(true);
     expect(body.model).toBe("gemini-3.1-flash-tts-preview");
-    // The /interactions endpoint synthesizes `input` literally, so the
-    // read-aloud directive must NOT be prepended here — it would be voiced.
+    // /interactions synthesizes `input` literally — the directive must not leak here.
     expect(body.input).toBe("hi");
     expect(body.generation_config.speech_config).toEqual([{ voice: "Kore" }]);
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(

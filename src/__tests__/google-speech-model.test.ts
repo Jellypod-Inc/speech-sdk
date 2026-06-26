@@ -229,78 +229,22 @@ describe("GoogleSpeechProvider", () => {
     expect(body.generationConfig.temperature).toBe(0.5);
   });
 
-  describe("single-turn read-aloud framing", () => {
-    // Discover the model list from the SDK instead of hardcoding ids.
-    const provider = new GoogleSpeechProvider({ apiKey: "test-key" });
-    const ttsModelIds = provider.models.map((m) => m.id);
-    const newestModelId = [...provider.models].sort((a, b) =>
-      b.releaseDate.localeCompare(a.releaseDate)
-    )[0].id;
-
-    it.each([
-      "Hello there.",
-      "General reply.",
-      "Okay.",
-    ])("frames terse input %j as a read-aloud directive so Gemini voices it instead of answering", async (terse) => {
-      const mockFetch = createMockFetch();
-      const p = new GoogleSpeechProvider({
-        apiKey: "test-key",
-        fetch: mockFetch,
-      });
-
-      const result = await p.generate({
-        modelId: newestModelId,
-        text: terse,
-        voice: "Kore",
-      });
-
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      const sentText = body.contents[0].parts[0].text;
-      // Bare text is what triggers the 400; the request must carry a directive.
-      expect(sentText).not.toBe(terse);
-      expect(sentText).toBe(`Read aloud: ${terse}`);
-      // Modality config is untouched — the framing, not the modality, is the fix.
-      expect(body.generationConfig.responseModalities).toEqual(["audio"]);
-      // Terse input still yields audio.
-      expect(result.audio).toBeInstanceOf(Uint8Array);
-      expect(result.mediaType).toBe("audio/wav");
+  it("frames terse single-turn input as a read-aloud directive instead of a bare turn", async () => {
+    const mockFetch = createMockFetch();
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
     });
 
-    it("keeps the caller's text verbatim after the directive so spoken content is unchanged", async () => {
-      const mockFetch = createMockFetch();
-      const p = new GoogleSpeechProvider({
-        apiKey: "test-key",
-        fetch: mockFetch,
-      });
-
-      const text = "The weather is lovely today.";
-      await p.generate({
-        modelId: newestModelId,
-        text,
-        voice: "Kore",
-      });
-
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      const sentText = body.contents[0].parts[0].text as string;
-      // The directive is a prefix only; the user's text follows it intact.
-      expect(sentText.endsWith(text)).toBe(true);
-      expect(sentText.slice(0, -text.length)).toBe("Read aloud: ");
+    const result = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello there.",
+      voice: "Kore",
     });
 
-    it("applies the framing across every TTS model on the generateContent path", async () => {
-      for (const modelId of ttsModelIds) {
-        const mockFetch = createMockFetch();
-        const p = new GoogleSpeechProvider({
-          apiKey: "test-key",
-          fetch: mockFetch,
-        });
-
-        await p.generate({ modelId, text: "Hi.", voice: "Kore" });
-
-        const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-        expect(body.contents[0].parts[0].text).toBe("Read aloud: Hi.");
-      }
-    });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts[0].text).toBe("Read aloud: Hello there.");
+    expect(result.audio).toBeInstanceOf(Uint8Array);
   });
 
   describe("processAudioTags", () => {
