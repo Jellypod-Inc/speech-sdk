@@ -22,6 +22,10 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
+      # npm 11.6.x generates provenance certs missing SourceRepositoryRef,
+      # which the registry rejects with 422 (npm/cli#8699). Pin a known-good npm.
+      - run: npm install -g npm@11.5.1
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm test
