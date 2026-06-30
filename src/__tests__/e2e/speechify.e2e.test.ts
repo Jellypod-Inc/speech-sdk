@@ -37,10 +37,10 @@ describe.skipIf(!hasKey)("Speechify e2e", () => {
       model: createSpeechify()(),
       text: TEST_TEXT,
       voice,
-      output: { format: "pcm", sampleRate: 24_000 },
+      output: { format: "pcm", sampleRate: 48_000 },
     });
 
-    expect(result.audio.mediaType).toBe("audio/pcm;rate=24000");
+    expect(result.audio.mediaType).toBe("audio/pcm;rate=48000");
     expect(result.audio.uint8Array.length).toBeGreaterThan(1000);
   });
 });

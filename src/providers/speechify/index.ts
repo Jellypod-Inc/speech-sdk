@@ -15,8 +15,8 @@ import {
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 
 const SPEECHIFY_DEFAULT_BASE_URL = "https://api.speechify.ai/v1";
-// Speechify synthesizes at a fixed 24 kHz; the API exposes no rate selector.
-const SPEECHIFY_OUTPUT_SAMPLE_RATE = 24_000;
+// Speechify synthesizes at a fixed 48 kHz; the API exposes no rate selector.
+const SPEECHIFY_OUTPUT_SAMPLE_RATE = 48_000;
 
 export interface SpeechifySpeechProviderConfig {
   apiKey?: string;

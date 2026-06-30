@@ -6,8 +6,8 @@ const provider = new SpeechifySpeechProvider({ apiKey: "test" });
 const MODEL = provider.defaultModel;
 
 describe("Speechify sample rates", () => {
-  it("publishes a single fixed 24 kHz output rate", () => {
-    expect(provider.supportedSampleRates(MODEL)).toEqual([24_000]);
+  it("publishes a single fixed 48 kHz output rate", () => {
+    expect(provider.supportedSampleRates(MODEL)).toEqual([48_000]);
   });
 
   it("returns no rates for an unknown model", () => {
@@ -54,7 +54,7 @@ describe("Speechify sample rates", () => {
 
   it("throws on an unsupported sample rate", () => {
     expect(() =>
-      provider.resolveOutputFormat(MODEL, { format: "pcm", sampleRate: 48_000 })
+      provider.resolveOutputFormat(MODEL, { format: "pcm", sampleRate: 24_000 })
     ).toThrow(UnsupportedSampleRateError);
   });
 });
