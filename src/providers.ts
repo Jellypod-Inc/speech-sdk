@@ -31,5 +31,7 @@ export type { ResembleSpeechProviderConfig } from "./providers/resemble/index.js
 export { createResemble } from "./providers/resemble/index.js";
 export type { SmallestAISpeechProviderConfig } from "./providers/smallest-ai/index.js";
 export { createSmallestAI } from "./providers/smallest-ai/index.js";
+export type { SpeechifySpeechProviderConfig } from "./providers/speechify/index.js";
+export { createSpeechify } from "./providers/speechify/index.js";
 export type { XaiSpeechProviderConfig } from "./providers/xai/index.js";
 export { createXai } from "./providers/xai/index.js";
