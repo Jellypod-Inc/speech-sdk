@@ -14,6 +14,7 @@ import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
 import { SmallestAISpeechProvider } from "../providers/smallest-ai/index.js";
+import { SpeechifySpeechProvider } from "../providers/speechify/index.js";
 import { XaiSpeechProvider } from "../providers/xai/index.js";
 
 describe("getStitchOptions per provider", () => {
@@ -178,6 +179,16 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
+  it("Speechify returns wav for simba models", () => {
+    const p = new SpeechifySpeechProvider({});
+    for (const m of ["simba-english", "simba-multilingual"] as const) {
+      expect(p.getStitchOptions?.(m)).toEqual({
+        providerOptions: { audio_format: "wav" },
+        mediaType: "audio/wav",
+      });
+    }
+  });
+
   it("returns undefined for unknown models on every provider (except fal)", () => {
     // fal accepts arbitrary path-style model IDs (e.g. "kokoro/american-english")
     // and dispatches them to fal.run/fal-ai/<id>. Its getStitchOptions returns
@@ -198,6 +209,7 @@ describe("getStitchOptions per provider", () => {
       new MistralSpeechProvider({}),
       new MiniMaxSpeechProvider({}),
       new SmallestAISpeechProvider({}),
+      new SpeechifySpeechProvider({}),
     ];
     for (const p of providers) {
       expect(p.getStitchOptions?.("totally-fake-model-id")).toBeUndefined();

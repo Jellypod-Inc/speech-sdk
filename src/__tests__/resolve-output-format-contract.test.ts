@@ -15,6 +15,7 @@ import { MurfSpeechProvider } from "../providers/murf/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import { ResembleSpeechProvider } from "../providers/resemble/index.js";
 import { SmallestAISpeechProvider } from "../providers/smallest-ai/index.js";
+import { SpeechifySpeechProvider } from "../providers/speechify/index.js";
 import { XaiSpeechProvider } from "../providers/xai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
@@ -55,6 +56,10 @@ const providers: { name: string; provider: SpeechProvider }[] = [
   {
     name: "smallest-ai",
     provider: new SmallestAISpeechProvider({ apiKey: "test" }),
+  },
+  {
+    name: "speechify",
+    provider: new SpeechifySpeechProvider({ apiKey: "test" }),
   },
 ];
 

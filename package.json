@@ -49,6 +49,7 @@
     "openai",
     "elevenlabs",
     "inworld",
+    "speechify",
     "ai"
   ],
   "license": "Apache-2.0",
