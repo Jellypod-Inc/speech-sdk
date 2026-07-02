@@ -32,6 +32,17 @@ describe.skipIf(!hasKey)("Speechify e2e", () => {
     await collectStreamAndSave(result, "speechify-stream.mp3");
   });
 
+  it("streams audio from simba-3.0", async () => {
+    const result = await streamSpeech({
+      model: createSpeechify()("simba-3.0"),
+      text: TEST_TEXT,
+      voice,
+    });
+
+    expect(result.mediaType).toBe("audio/mpeg");
+    await collectStreamAndSave(result, "speechify-simba-3.0-stream.mp3");
+  });
+
   it("supports explicit PCM output", async () => {
     const result = await generateSpeech({
       model: createSpeechify()(),

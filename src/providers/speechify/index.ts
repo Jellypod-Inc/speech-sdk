@@ -35,6 +35,12 @@ export const SPEECHIFY_MODELS: readonly ModelInfo[] = [
     features: ["streaming"],
   },
   {
+    id: "simba-3.0",
+    releaseDate: "2026-01-01",
+    languages: ["en"],
+    features: ["streaming"],
+  },
+  {
     id: "simba-multilingual",
     releaseDate: "2025-03-01",
     languages: [
