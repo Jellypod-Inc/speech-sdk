@@ -7,6 +7,7 @@ import type { SpeechProvider } from "../speech-provider.js";
 
 const NATIVE_FALLBACK_WARNING_RE = /native dialogue unavailable/;
 const SINGLE_SPEAKER_FALLBACK_RE = /single speaker/;
+const TOO_MANY_VOICES_FALLBACK_RE = /more unique voices/;
 const NATIVE_FALLBACK_CALL_COUNT_RE = /2 API calls instead of 1/;
 const STITCH_UNSUPPORTED_RE = /cannot be used in a stitched conversation/;
 
@@ -241,6 +242,25 @@ describe("generateConversation", () => {
 
     expect(provider.generateDialogue).toHaveBeenCalledTimes(1);
     expect(provider.generate).not.toHaveBeenCalled();
+  });
+
+  it("renders 3 unique voices via per-turn stitch instead of throwing on a max-2-voice provider", async () => {
+    const provider = geminiLikeProvider();
+    const result = await generateConversation({
+      model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
+      turns: [
+        { voice: "a", text: "Hello there." },
+        { voice: "b", text: "General reply." },
+        { voice: "c", text: "Kenobi." },
+      ],
+    });
+
+    expect(provider.generateDialogue).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(3);
+    expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+    expect(
+      result.warnings?.some((w) => TOO_MANY_VOICES_FALLBACK_RE.test(w))
+    ).toBe(true);
   });
 
   it("returns timestamps on the single-voice fallback path when requested", async () => {

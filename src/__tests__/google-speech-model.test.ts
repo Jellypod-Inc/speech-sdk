@@ -68,7 +68,7 @@ describe("GoogleSpeechProvider", () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.contents).toEqual([
-      { role: "user", parts: [{ text: "Hello world" }] },
+      { role: "user", parts: [{ text: "Read aloud: Hello world" }] },
     ]);
     expect(body.generationConfig.responseModalities).toEqual(["audio"]);
     expect(body.generationConfig.speech_config).toEqual({
@@ -227,6 +227,24 @@ describe("GoogleSpeechProvider", () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.generationConfig.temperature).toBe(0.5);
+  });
+
+  it("frames terse single-turn input as a read-aloud directive instead of a bare turn", async () => {
+    const mockFetch = createMockFetch();
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello there.",
+      voice: "Kore",
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts[0].text).toBe("Read aloud: Hello there.");
+    expect(result.audio).toBeInstanceOf(Uint8Array);
   });
 
   describe("processAudioTags", () => {

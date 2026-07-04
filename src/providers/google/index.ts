@@ -55,6 +55,9 @@ const generateContentResponseSchema = z.object({
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
+// Without a directive, generateContent answers terse input as a chat prompt and a TTS-only model 400s; the text before the colon is delivery guidance Gemini reads from but doesn't voice.
+const READ_ALOUD_DIRECTIVE = "Read aloud: ";
+
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
@@ -264,7 +267,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       contents: [
         {
           role: "user",
-          parts: [{ text: options.text }],
+          parts: [{ text: `${READ_ALOUD_DIRECTIVE}${options.text}` }],
         },
       ],
       generationConfig: {
