@@ -5,18 +5,15 @@ import {
   type StitchTurnOptions,
   type Voice,
 } from "../speech-provider.js";
-import {
-  DialogueConstraintError,
-  MixedDispatchError,
-  StitchUnsupportedError,
-} from "./errors.js";
+import { MixedDispatchError, StitchUnsupportedError } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyer } from "./validate.js";
 
 export type StitchFallbackReason =
   | "fallback-from-native"
   | "fallback-from-native-oversized"
-  | "fallback-from-native-voice-count";
+  | "fallback-from-native-voice-count"
+  | "fallback-from-native-voice-count-exceeded";
 
 export type ConversationPath =
   | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
@@ -141,8 +138,11 @@ function tryNativeDialoguePath(args: {
   if (turns.some((t) => t.providerOptions !== undefined)) {
     return { fallbackReason: "fallback-from-native" };
   }
-  // Single-speaker is routed to stitch earlier; a multi-voice conversation throws if it exceeds maxVoices.
-  assertNativeMaxVoices({ provider, modelId, caps, turns });
+  // Single-speaker is routed to stitch earlier; more unique voices than the provider's native
+  // dialogue supports also has no valid native call, so render per-turn (stitch has no voice cap).
+  if (countUniqueVoices(turns) > caps.maxVoices) {
+    return { fallbackReason: "fallback-from-native-voice-count-exceeded" };
+  }
   const blocks = planNativeBlocks({
     provider,
     modelId,
@@ -158,32 +158,6 @@ function tryNativeDialoguePath(args: {
   }
   // Over the native limit but can't be split into decodable, voice-valid blocks — render per-turn.
   return { fallbackReason: "fallback-from-native-oversized" };
-}
-
-// Reached only for multi-voice conversations; more voices than maxVoices throws DialogueConstraintError.
-function assertNativeMaxVoices(args: {
-  provider: ResolvedModel["provider"];
-  modelId: string;
-  caps: DialogueCaps;
-  turns: readonly ConversationTurn<Voice>[];
-}): void {
-  const { provider, modelId, caps, turns } = args;
-
-  const unique = countUniqueVoices(turns);
-  if (unique <= caps.maxVoices) {
-    return;
-  }
-
-  const rule =
-    caps.maxVoices === NATIVE_DIALOGUE_MIN_VOICES
-      ? `exactly ${caps.maxVoices} unique voices`
-      : `between ${NATIVE_DIALOGUE_MIN_VOICES} and ${caps.maxVoices} unique voices`;
-  throw new DialogueConstraintError({
-    provider: provider.id,
-    model: modelId,
-    rule,
-    observed: `${unique} unique voices`,
-  });
 }
 
 // "single" → fits in one native call; number[][] → split into parallel blocks;

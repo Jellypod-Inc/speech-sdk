@@ -197,6 +197,8 @@ export async function generateConversation<
     fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
   } else if (path.reason === "fallback-from-native-voice-count") {
     fallbackWarning = `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
+  } else if (path.reason === "fallback-from-native-voice-count-exceeded") {
+    fallbackWarning = `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
   }
   const combinedWarnings = fallbackWarning
     ? [fallbackWarning, ...stitched.warnings]
