@@ -14,6 +14,20 @@ describe("Speechify sample rates", () => {
     expect(provider.supportedSampleRates("nope")).toEqual([]);
   });
 
+  it("recognizes simba-3.0 as a first-class model", () => {
+    expect(provider.supportedSampleRates("simba-3.0")).toEqual([48_000]);
+    expect(provider.getStitchOptions("simba-3.0")).toEqual({
+      providerOptions: { audio_format: "wav" },
+      mediaType: "audio/wav",
+    });
+    expect(
+      provider.resolveOutputFormat("simba-3.0", { format: "mp3" })
+    ).toEqual({
+      providerOptions: { audio_format: "mp3" },
+      expectedMediaType: "audio/mpeg",
+    });
+  });
+
   it("getStitchOptions returns decodable wav", () => {
     expect(provider.getStitchOptions(MODEL)).toEqual({
       providerOptions: { audio_format: "wav" },
