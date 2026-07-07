@@ -1,3 +1,4 @@
+import pRetry from "p-retry";
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { stripAudioTags } from "../../audio-tags.js";
@@ -6,12 +7,13 @@ import {
   parseMediaTypeParam,
   wrapPcm16Mono,
 } from "../../audio-utils.js";
-import { SpeechSDKError } from "../../errors.js";
+import { ApiError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
 } from "../../provider-utils.js";
+import { buildRetryOptions } from "../../retry-options.js";
 import {
   hasFeature,
   type ModelInfo,
@@ -35,6 +37,7 @@ const generateContentResponseSchema = z.object({
   candidates: z
     .array(
       z.object({
+        finishReason: z.string().optional(),
         content: z
           .object({
             parts: z
@@ -54,6 +57,17 @@ const generateContentResponseSchema = z.object({
 });
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
+const GEMINI_GENERATE_RETRIES = 2;
+const GEMINI_RETRY_MIN_TIMEOUT_MS = 100;
+const MIN_GEMINI_PCM_BYTES = 512;
+const NON_RETRYABLE_GEMINI_FINISH_REASONS = new Set([
+  "SAFETY",
+  "RECITATION",
+  "MAX_TOKENS",
+  "PROHIBITED_CONTENT",
+  "SPII",
+  "BLOCKLIST",
+]);
 
 // Without a directive, generateContent answers terse input as a chat prompt and a TTS-only model 400s; the text before the colon is delivery guidance Gemini reads from but doesn't voice.
 const READ_ALOUD_DIRECTIVE = "Read aloud: ";
@@ -61,6 +75,68 @@ const READ_ALOUD_DIRECTIVE = "Read aloud: ";
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
+
+type GenerateContentResponse = z.infer<typeof generateContentResponseSchema>;
+
+function geminiDegenerateAudioError(
+  modelId: string,
+  detail: string,
+  responseBody: GenerateContentResponse
+): ApiError {
+  return new ApiError(`google/${modelId}: ${detail}`, {
+    statusCode: 503,
+    responseBody,
+    code: "gemini_degenerate_audio",
+  });
+}
+
+function extractGeminiPcm(
+  modelId: string,
+  json: GenerateContentResponse
+): { pcm: Uint8Array; mimeType: string } {
+  const candidate = json.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  const part = candidate?.content?.parts?.find((p) => p.inlineData != null);
+
+  if (!part?.inlineData) {
+    if (finishReason && NON_RETRYABLE_GEMINI_FINISH_REASONS.has(finishReason)) {
+      throw new ApiError(
+        `google/${modelId}: Gemini TTS returned no usable audio because generation finished with ${finishReason}.`,
+        {
+          statusCode: 400,
+          responseBody: json,
+          code: "gemini_audio_blocked",
+        }
+      );
+    }
+    throw geminiDegenerateAudioError(
+      modelId,
+      "Gemini TTS returned no inline audio data.",
+      json
+    );
+  }
+
+  const pcm = base64ToUint8Array(part.inlineData.data);
+  if (pcm.byteLength < MIN_GEMINI_PCM_BYTES) {
+    if (finishReason && NON_RETRYABLE_GEMINI_FINISH_REASONS.has(finishReason)) {
+      throw new ApiError(
+        `google/${modelId}: Gemini TTS returned only ${pcm.byteLength} bytes of audio because generation finished with ${finishReason}.`,
+        {
+          statusCode: 400,
+          responseBody: json,
+          code: "gemini_audio_blocked",
+        }
+      );
+    }
+    throw geminiDegenerateAudioError(
+      modelId,
+      `Gemini TTS returned only ${pcm.byteLength} bytes of PCM audio.`,
+      json
+    );
+  }
+
+  return { pcm, mimeType: part.inlineData.mimeType };
+}
 
 // /interactions step.delta events carry base64 PCM in delta.data, tagged by delta.mime_type (e.g. "audio/l16"). Non-audio deltas are ignored.
 const interactionAudioDeltaSchema = z.object({
@@ -279,34 +355,36 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
 
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
+    const { pcm, mimeType } = await pRetry(
+      async () => {
+        const response = await this.fetchFn(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Agent": SDK_USER_AGENT,
+            ...options.headers,
+          },
+          body: JSON.stringify(body),
+          signal: options.abortSignal,
+        });
+
+        await handleErrorResponse(response);
+
+        const json = generateContentResponseSchema.parse(await response.json());
+        return extractGeminiPcm(options.modelId, json);
       },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    await handleErrorResponse(response);
-
-    const json = generateContentResponseSchema.parse(await response.json());
-
-    const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData != null
+      {
+        ...buildRetryOptions({
+          maxRetries: GEMINI_GENERATE_RETRIES,
+          abortSignal: options.abortSignal,
+        }),
+        minTimeout: GEMINI_RETRY_MIN_TIMEOUT_MS,
+      }
     );
-
-    if (!part?.inlineData) {
-      throw new Error("No audio data in Gemini TTS response");
-    }
 
     // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
     const sampleRate =
-      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
-      DEFAULT_GEMINI_SAMPLE_RATE;
-    const pcm = base64ToUint8Array(part.inlineData.data);
+      parseMediaTypeParam(mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
@@ -516,33 +594,35 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
 
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
+    const { pcm, mimeType } = await pRetry(
+      async () => {
+        const response = await this.fetchFn(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Agent": SDK_USER_AGENT,
+            ...options.headers,
+          },
+          body: JSON.stringify(body),
+          signal: options.abortSignal,
+        });
+
+        await handleErrorResponse(response);
+
+        const json = generateContentResponseSchema.parse(await response.json());
+        return extractGeminiPcm(options.modelId, json);
       },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    await handleErrorResponse(response);
-
-    const json = generateContentResponseSchema.parse(await response.json());
-    const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData?.data
+      {
+        ...buildRetryOptions({
+          maxRetries: GEMINI_GENERATE_RETRIES,
+          abortSignal: options.abortSignal,
+        }),
+        minTimeout: GEMINI_RETRY_MIN_TIMEOUT_MS,
+      }
     );
-    if (!part?.inlineData) {
-      throw new SpeechSDKError(
-        `google/${options.modelId}: no inline audio in response`
-      );
-    }
 
-    const pcm = base64ToUint8Array(part.inlineData.data);
     const sampleRate =
-      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
-      DEFAULT_GEMINI_SAMPLE_RATE;
+      parseMediaTypeParam(mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {

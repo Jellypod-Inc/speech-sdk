@@ -157,6 +157,10 @@ export async function generateConversation<
 
   // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
+  const stitchMaxConcurrency =
+    path.reason === "fallback-from-native-voice-count"
+      ? 1
+      : resolveMaxConcurrency(options.maxConcurrency);
   const stitched = await runStitch({
     resolvedPerTurn,
     turns: options.turns,
@@ -164,7 +168,7 @@ export async function generateConversation<
     topLevelProviderOptions: options.providerOptions,
     apiKey: options.apiKey,
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
-    maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
+    maxConcurrency: stitchMaxConcurrency,
     maxInputChars: options.maxInputChars,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     output: options.output,
@@ -196,7 +200,7 @@ export async function generateConversation<
   } else if (path.reason === "fallback-from-native-oversized") {
     fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
   } else if (path.reason === "fallback-from-native-voice-count") {
-    fallbackWarning = `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
+    fallbackWarning = `conversation resolves to a single speaker; rendered serially as single-speaker speech (${options.turns.length} generateSpeech calls, maxConcurrency forced to 1) instead of native multi-speaker dialogue`;
   } else if (path.reason === "fallback-from-native-voice-count-exceeded") {
     fallbackWarning = `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
   }

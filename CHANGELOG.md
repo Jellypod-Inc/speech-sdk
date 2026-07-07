@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.21.2
+
+- **Fix: single-speaker native-dialogue fallback is now serialized.** Conversations that resolve to one voice on a native multi-speaker provider still render through per-turn stitch, but the SDK now forces `maxConcurrency` to `1` for that fallback even if callers request higher concurrency. This avoids fanning a monologue into simultaneous provider calls, reducing bursty Gemini upstream failures and long-tail partial conversation failures. Multi-voice stitch, gateway routing, and native dialogue block splitting keep their existing concurrency behavior.
+
+## 0.21.1
+
+- **Fix: Gemini TTS no longer returns empty or degenerate audio as success.** Google `generateContent` responses with missing inline audio or near-empty PCM are now retried with bounded exponential backoff on both single-turn and native-dialogue paths, while terminal Gemini finish reasons such as `SAFETY`, `RECITATION`, and `MAX_TOKENS` fail immediately with typed `ApiError`s. After retries are exhausted, callers receive a typed provider error instead of a 0-duration WAV.
+
 ## 0.21.0
 
 - Add the **Speechify** TTS provider (`speechify` prefix, `createSpeechify()` factory, `SPEECHIFY_API_KEY`). Ships three streaming models — `simba-english` (default, English), `simba-multilingual` (25 languages), and `simba-3.0` (English) — synthesizing at a fixed 48 kHz. `voice` is required and must be a Speechify `voice_id`. `generateSpeech` uses the `/audio/speech` JSON envelope (base64) and `streamSpeech` uses the raw-bytes `/audio/stream` route; `wav` and `mp3` are produced natively (`wav` is unavailable on the stream route, which defaults to `mp3`), and `pcm` is produced by decoding wav locally. Exposed via the `@speech-sdk/core/providers` subpath (`createSpeechify`).

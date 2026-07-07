@@ -3,8 +3,9 @@ import { SDK_USER_AGENT } from "../provider-utils.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
 describe("GoogleSpeechProvider", () => {
-  // base64 of 4 bytes of 16-bit PCM (2 samples of silence)
-  const pcmBase64 = "AAAAAA==";
+  // base64 of 1024 bytes of 16-bit PCM silence.
+  const pcmBase64 = Buffer.alloc(1024).toString("base64");
+  const truncatedPcmBase64 = Buffer.alloc(4).toString("base64");
   const geminiResponse = {
     candidates: [
       {
@@ -96,8 +97,8 @@ describe("GoogleSpeechProvider", () => {
     expect(result.mediaType).toBe("audio/wav");
 
     const wav = result.audio as Uint8Array;
-    // 44-byte header + 4 bytes of PCM
-    expect(wav.length).toBe(48);
+    // 44-byte header + 1024 bytes of PCM
+    expect(wav.length).toBe(1068);
     const riff = new TextDecoder().decode(wav.slice(0, 4));
     expect(riff).toBe("RIFF");
     const wave = new TextDecoder().decode(wav.slice(8, 12));
@@ -172,7 +173,86 @@ describe("GoogleSpeechProvider", () => {
     ).rejects.toThrow();
   });
 
-  it("throws when no audio data in response", async () => {
+  it("retries an empty Gemini response before returning audio", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: "no audio" }] } }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => geminiResponse,
+      });
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello",
+      voice: "Kore",
+    });
+
+    expect(result.mediaType).toBe("audio/wav");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a truncated Gemini PCM response before returning audio", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "audio/L16;codec=pcm;rate=24000",
+                      data: truncatedPcmBase64,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => geminiResponse,
+      });
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello",
+      voice: "Kore",
+    });
+
+    expect(result.mediaType).toBe("audio/wav");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws a typed error after exhausting degenerate Gemini retries", async () => {
     const mockFetch = createMockFetch({
       candidates: [{ content: { parts: [{ text: "no audio" }] } }],
     });
@@ -188,7 +268,94 @@ describe("GoogleSpeechProvider", () => {
         text: "Hello",
         voice: "Kore",
       })
-    ).rejects.toThrow("No audio data");
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      statusCode: 503,
+      code: "gemini_degenerate_audio",
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry safety-blocked Gemini responses", async () => {
+    const mockFetch = createMockFetch({
+      candidates: [{ finishReason: "SAFETY", content: { parts: [] } }],
+    });
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    await expect(
+      provider.generate({
+        modelId: "gemini-2.5-flash-preview-tts",
+        text: "Hello",
+        voice: "Kore",
+      })
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      statusCode: 400,
+      code: "gemini_audio_blocked",
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("honors abortSignal while waiting to retry Gemini audio extraction", async () => {
+    const mockFetch = createMockFetch({
+      candidates: [{ content: { parts: [{ text: "no audio" }] } }],
+    });
+    const controller = new AbortController();
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const promise = provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello",
+      voice: "Kore",
+      abortSignal: controller.signal,
+    });
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    controller.abort(new Error("stop retrying"));
+
+    await expect(promise).rejects.toThrow("stop retrying");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries an empty Gemini dialogue response before returning audio", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          candidates: [{ content: { parts: [{ text: "no audio" }] } }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => geminiResponse,
+      });
+
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const result = await provider.generateDialogue({
+      modelId: "gemini-2.5-flash-preview-tts",
+      turns: [
+        { voice: "Kore", text: "Hello" },
+        { voice: "Puck", text: "Hi" },
+      ],
+    });
+
+    expect(result.mediaType).toBe("audio/wav");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it("uses custom baseURL", async () => {

@@ -29,8 +29,8 @@ describe("GoogleSpeechProvider.stream", () => {
   // 3.1+ streams for real via /interactions (covered separately below).
 
   it("delegates to generateContent and returns a single-chunk WAV stream", async () => {
-    // 4 bytes of 16-bit PCM (2 samples of silence)
-    const pcmBase64 = "AAAAAA==";
+    // 1024 bytes of 16-bit PCM silence.
+    const pcmBase64 = Buffer.alloc(1024).toString("base64");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -76,8 +76,8 @@ describe("GoogleSpeechProvider.stream", () => {
     expect(result.mediaType).toBe("audio/wav");
 
     const decoded = await collect(result.stream);
-    // 44-byte WAV header + 4 bytes of PCM
-    expect(decoded.length).toBe(48);
+    // 44-byte WAV header + 1024 bytes of PCM
+    expect(decoded.length).toBe(1068);
 
     const riff = new TextDecoder().decode(decoded.slice(0, 4));
     expect(riff).toBe("RIFF");
@@ -152,7 +152,7 @@ describe("GoogleSpeechProvider.stream", () => {
   it("honors non-default sample rate from the response mimeType", async () => {
     // generate() parses the rate= parameter from inlineData.mimeType.
     // Since stream() delegates to generate(), it inherits this behavior.
-    const pcmBase64 = "AAAAAA==";
+    const pcmBase64 = Buffer.alloc(1024).toString("base64");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,

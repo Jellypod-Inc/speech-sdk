@@ -212,18 +212,36 @@ describe("generateConversation", () => {
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to per-turn stitch when all turns share one voice on a max-2-voice native provider", async () => {
+  it("falls back to serial per-turn stitch when all turns share one voice on a max-2-voice native provider", async () => {
     const provider = geminiLikeProvider();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.mocked(provider.generate).mockImplementation(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      inFlight -= 1;
+      const pcm = new Int16Array(2400);
+      pcm.fill(4000);
+      return {
+        audio: new Uint8Array(pcm.buffer),
+        mediaType: "audio/pcm;rate=24000",
+      };
+    });
+
     const result = await generateConversation({
       model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
       turns: [
         { voice: "a", text: "Hi there." },
         { voice: "a", text: "Hello again." },
+        { voice: "a", text: "One more turn." },
       ],
+      maxConcurrency: 3,
     });
 
     expect(provider.generateDialogue).not.toHaveBeenCalled();
-    expect(provider.generate).toHaveBeenCalledTimes(2);
+    expect(provider.generate).toHaveBeenCalledTimes(3);
+    expect(maxInFlight).toBe(1);
     expect(result.audio.mediaType).toBe("audio/wav");
     expect(
       result.warnings?.some((w) => SINGLE_SPEAKER_FALLBACK_RE.test(w))
