@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.0
+
+- Add the exported, serializable `SpeechSdkProviderError` for provider non-2xx responses. It exposes `status`, `provider`, `model`, canonical `code`, the complete parsed provider body in `details`, unmodified response text in `rawResponse`, `requestId`, `retryable`, and optional `stage` (`synthesis` or `alignment`). `toJSON()` retains these fields for structured/serverless logging. The error extends `ApiError`, preserving `instanceof ApiError`, `statusCode`, `responseBody`, current summarized messages, retry timing, and turn attribution.
+- **Google Gemini TTS `INVALID_ARGUMENT` responses now retain their complete `google.rpc.Status`.** Callers can inspect `BadRequest.fieldViolations`, `ErrorInfo.reason`, and metadata instead of receiving only `API error 400: Request contains an invalid argument.` The same structured error representation applies across direct providers and Speech Gateway responses; raw bodies are never truncated.
+
 ## 0.21.0
 
 - Add the **Speechify** TTS provider (`speechify` prefix, `createSpeechify()` factory, `SPEECHIFY_API_KEY`). Ships three streaming models — `simba-english` (default, English), `simba-multilingual` (25 languages), and `simba-3.0` (English) — synthesizing at a fixed 48 kHz. `voice` is required and must be a Speechify `voice_id`. `generateSpeech` uses the `/audio/speech` JSON envelope (base64) and `streamSpeech` uses the raw-bytes `/audio/stream` route; `wav` and `mp3` are produced natively (`wav` is unavailable on the stream route, which defaults to `mp3`), and `pcm` is produced by decoding wav locally. Exposed via the `@speech-sdk/core/providers` subpath (`createSpeechify`).
