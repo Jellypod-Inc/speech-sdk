@@ -52,6 +52,42 @@ export interface SpeechSdkProviderErrorOptions {
   readonly turnIndex?: number;
 }
 
+function jsonSafeDetails(value: unknown): unknown {
+  const ancestors: object[] = [];
+
+  try {
+    const serialized = JSON.stringify(
+      value,
+      function replaceNonJsonValues(
+        this: unknown,
+        _key: string,
+        nestedValue: unknown
+      ): unknown {
+        if (typeof nestedValue === "bigint") {
+          return `${nestedValue}n`;
+        }
+        if (typeof nestedValue !== "object" || nestedValue === null) {
+          return nestedValue;
+        }
+
+        while (ancestors.length > 0 && ancestors.at(-1) !== this) {
+          ancestors.pop();
+        }
+        if (ancestors.includes(nestedValue)) {
+          return "[Circular]";
+        }
+        ancestors.push(nestedValue);
+        return nestedValue;
+      }
+    );
+    return serialized === undefined
+      ? `[Unserializable ${typeof value}]`
+      : JSON.parse(serialized);
+  } catch {
+    return "[Unserializable details]";
+  }
+}
+
 export class SpeechSdkProviderError extends ApiError {
   readonly status: number;
   readonly provider: string;
@@ -91,7 +127,9 @@ export class SpeechSdkProviderError extends ApiError {
       provider: this.provider,
       ...(this.model !== undefined && { model: this.model }),
       ...(this.code !== undefined && { code: this.code }),
-      ...(this.details !== undefined && { details: this.details }),
+      ...(this.details !== undefined && {
+        details: jsonSafeDetails(this.details),
+      }),
       ...(this.rawResponse !== undefined && {
         rawResponse: this.rawResponse,
         responseBody: this.responseBody,

@@ -62,4 +62,42 @@ describe("SpeechSdkProviderError", () => {
       ])
     );
   });
+
+  it("serializes non-JSON details without changing the original value", () => {
+    const details: Record<string, unknown> = { requestNumber: 12n };
+    details.self = details;
+    const error = new SpeechSdkProviderError("API error 400: invalid", {
+      status: 400,
+      provider: "example",
+      details,
+      retryable: false,
+    });
+
+    const logged = JSON.parse(JSON.stringify(error));
+
+    expect(logged.details).toEqual({
+      requestNumber: "12n",
+      self: "[Circular]",
+    });
+    expect(error.details).toBe(details);
+    expect(details.requestNumber).toBe(12n);
+    expect(details.self).toBe(details);
+  });
+
+  it("falls back safely when details serialization throws", () => {
+    const error = new SpeechSdkProviderError("API error 400: invalid", {
+      status: 400,
+      provider: "example",
+      details: {
+        toJSON: () => {
+          throw new Error("cannot serialize");
+        },
+      },
+      retryable: false,
+    });
+
+    expect(JSON.parse(JSON.stringify(error)).details).toBe(
+      "[Unserializable details]"
+    );
+  });
 });
