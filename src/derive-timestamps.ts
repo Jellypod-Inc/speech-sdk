@@ -1,4 +1,8 @@
-import { MissingApiKeyError, TimestampKeyMissingError } from "./errors.js";
+import {
+  MissingApiKeyError,
+  TimestampKeyMissingError,
+  withProviderErrorStage,
+} from "./errors.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
@@ -29,6 +33,6 @@ export async function deriveTimestampsViaSTT(args: {
         envVar: err.envVar,
       });
     }
-    throw err;
+    throw withProviderErrorStage(err, "alignment");
   }
 }

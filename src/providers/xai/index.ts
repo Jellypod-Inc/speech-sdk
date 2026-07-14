@@ -147,7 +147,11 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     // xAI returns bare "audio/pcm" without rate for pcm codec; derive from the requested body so the rate is always present.
@@ -183,7 +187,11 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`xai/${options.modelId}: response has no body`);
@@ -244,7 +252,7 @@ export class XaiSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.voice_id;

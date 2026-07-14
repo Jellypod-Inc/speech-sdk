@@ -8,7 +8,7 @@ export class SpeechSDKError extends Error {
 export class ApiError extends SpeechSDKError {
   readonly statusCode: number;
   readonly responseBody?: unknown;
-  // RFC 7807 `code` extension; only Speech Gateway populates it today.
+  // Provider canonical code or RFC 7807 `code` extension.
   readonly code?: string;
   // Set by generateConversation's stitch path; undefined for single-turn calls and single-API-call paths (gateway, native dialogue).
   readonly turnIndex?: number;
@@ -35,6 +35,117 @@ export class ApiError extends SpeechSDKError {
   }
 }
 
+export type ProviderErrorStage = "alignment" | "synthesis";
+
+export interface SpeechSdkProviderErrorOptions {
+  readonly cause?: unknown;
+  readonly code?: string;
+  readonly details?: unknown;
+  readonly model?: string;
+  readonly provider: string;
+  readonly rawResponse?: string;
+  readonly requestId?: string;
+  readonly retryAfterMs?: number;
+  readonly retryable: boolean;
+  readonly stage?: ProviderErrorStage;
+  readonly status: number;
+  readonly turnIndex?: number;
+}
+
+function jsonSafeDetails(value: unknown): unknown {
+  const ancestors: object[] = [];
+
+  try {
+    const serialized = JSON.stringify(
+      value,
+      function replaceNonJsonValues(
+        this: unknown,
+        _key: string,
+        nestedValue: unknown
+      ): unknown {
+        if (typeof nestedValue === "bigint") {
+          return `${nestedValue}n`;
+        }
+        if (typeof nestedValue !== "object" || nestedValue === null) {
+          return nestedValue;
+        }
+
+        while (ancestors.length > 0 && ancestors.at(-1) !== this) {
+          ancestors.pop();
+        }
+        if (ancestors.includes(nestedValue)) {
+          return "[Circular]";
+        }
+        ancestors.push(nestedValue);
+        return nestedValue;
+      }
+    );
+    return serialized === undefined
+      ? `[Unserializable ${typeof value}]`
+      : JSON.parse(serialized);
+  } catch {
+    return "[Unserializable details]";
+  }
+}
+
+export class SpeechSdkProviderError extends ApiError {
+  readonly status: number;
+  readonly provider: string;
+  readonly model?: string;
+  readonly details?: unknown;
+  readonly rawResponse?: string;
+  readonly requestId?: string;
+  readonly retryable: boolean;
+  readonly stage?: ProviderErrorStage;
+
+  constructor(message: string, options: SpeechSdkProviderErrorOptions) {
+    super(message, {
+      statusCode: options.status,
+      responseBody: options.rawResponse,
+      cause: options.cause,
+      code: options.code,
+      turnIndex: options.turnIndex,
+      retryAfterMs: options.retryAfterMs,
+    });
+    this.name = "SpeechSdkProviderError";
+    this.status = options.status;
+    this.provider = options.provider;
+    this.model = options.model;
+    this.details = options.details;
+    this.rawResponse = options.rawResponse;
+    this.requestId = options.requestId;
+    this.retryable = options.retryable;
+    this.stage = options.stage;
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      message: this.message,
+      status: this.status,
+      statusCode: this.statusCode,
+      provider: this.provider,
+      ...(this.model !== undefined && { model: this.model }),
+      ...(this.code !== undefined && { code: this.code }),
+      ...(this.details !== undefined && {
+        details: jsonSafeDetails(this.details),
+      }),
+      ...(this.rawResponse !== undefined && {
+        rawResponse: this.rawResponse,
+        responseBody: this.responseBody,
+      }),
+      ...(this.requestId !== undefined && { requestId: this.requestId }),
+      retryable: this.retryable,
+      ...(this.stage !== undefined && { stage: this.stage }),
+      ...(this.turnIndex !== undefined && { turnIndex: this.turnIndex }),
+      ...(this.retryAfterMs !== undefined && {
+        retryAfterMs: this.retryAfterMs,
+      }),
+      ...(this.stack !== undefined && { stack: this.stack }),
+    };
+  }
+}
+
 export class NoSpeechGeneratedError extends SpeechSDKError {
   // Set by generateConversation's stitch path; undefined for single-turn calls.
   readonly turnIndex?: number;
@@ -47,6 +158,9 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
 }
 
 export function withTurnIndex(err: unknown, turnIndex: number): unknown {
+  if (err instanceof SpeechSdkProviderError) {
+    return copyProviderError(err, { turnIndex });
+  }
   if (err instanceof ApiError) {
     return new ApiError(err.message, {
       statusCode: err.statusCode,
@@ -61,6 +175,38 @@ export function withTurnIndex(err: unknown, turnIndex: number): unknown {
     return new NoSpeechGeneratedError(err.message, { turnIndex });
   }
   return err;
+}
+
+export function withProviderErrorStage(
+  err: unknown,
+  stage: ProviderErrorStage
+): unknown {
+  return err instanceof SpeechSdkProviderError
+    ? copyProviderError(err, { stage })
+    : err;
+}
+
+function copyProviderError(
+  error: SpeechSdkProviderError,
+  overrides: {
+    stage?: ProviderErrorStage;
+    turnIndex?: number;
+  }
+): SpeechSdkProviderError {
+  return new SpeechSdkProviderError(error.message, {
+    status: error.status,
+    provider: error.provider,
+    model: error.model,
+    code: error.code,
+    details: error.details,
+    rawResponse: error.rawResponse,
+    requestId: error.requestId,
+    retryable: error.retryable,
+    stage: overrides.stage ?? error.stage,
+    turnIndex: overrides.turnIndex ?? error.turnIndex,
+    retryAfterMs: error.retryAfterMs,
+    cause: error,
+  });
 }
 
 export class StreamingNotSupportedError extends SpeechSDKError {

@@ -385,7 +385,10 @@ describe("SpeechGatewayProvider", () => {
         text: "Hello",
         voice: "alloy",
       })
-    ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
+    ).rejects.toMatchObject({
+      name: "SpeechSdkProviderError",
+      statusCode: 401,
+    });
   });
 
   it("extracts RFC 7807 problem+json code into ApiError.code on 501", async () => {
@@ -414,10 +417,63 @@ describe("SpeechGatewayProvider", () => {
         voice: "alloy",
       })
     ).rejects.toMatchObject({
-      name: "ApiError",
+      name: "SpeechSdkProviderError",
       statusCode: 501,
       code: "timestamps_unsupported",
     });
+  });
+
+  it("preserves nested Google status details on the string model path", async () => {
+    const providerBody = {
+      error: {
+        code: 400,
+        message: "Request contains an invalid argument.",
+        status: "INVALID_ARGUMENT",
+        details: [
+          {
+            "@type": "type.googleapis.com/google.rpc.BadRequest",
+            fieldViolations: [
+              {
+                field: "generation_config.speech_config",
+                description: "Invalid speech configuration.",
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const rawResponse = JSON.stringify(providerBody);
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "x-request-id": "gateway-request-123" }),
+      text: async () => rawResponse,
+    });
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    const thrown = await provider
+      .generate({
+        modelId: "google/gemini-3.1-flash-tts-preview",
+        text: "[chuckles] See you next time.",
+        voice: "Kore",
+      })
+      .catch((error: unknown) => error);
+
+    expect(thrown).toMatchObject({
+      name: "SpeechSdkProviderError",
+      status: 400,
+      provider: "google",
+      model: "gemini-3.1-flash-tts-preview",
+      code: "INVALID_ARGUMENT",
+      details: providerBody,
+      rawResponse,
+      requestId: "gateway-request-123",
+      retryable: false,
+    });
+    expect((thrown as { stage?: unknown }).stage).toBeUndefined();
   });
 
   it("leaves ApiError.code undefined when error body has no code field", async () => {
@@ -696,7 +752,7 @@ describe("SpeechGatewayProvider.generateConversation", () => {
         ],
       })
     ).rejects.toMatchObject({
-      name: "ApiError",
+      name: "SpeechSdkProviderError",
       statusCode: 400,
       code: "conversation_input_invalid",
     });
@@ -720,7 +776,10 @@ describe("SpeechGatewayProvider.generateConversation", () => {
           { model: "openai/gpt-4o-mini-tts", voice: "alloy", text: "Hi." },
         ],
       })
-    ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
+    ).rejects.toMatchObject({
+      name: "SpeechSdkProviderError",
+      statusCode: 401,
+    });
   });
 
   it("rejects empty turns array client-side", async () => {

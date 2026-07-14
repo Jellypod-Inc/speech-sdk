@@ -243,7 +243,11 @@ export class SpeechifySpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
     return response;
   }
 }

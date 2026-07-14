@@ -232,7 +232,11 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = openAIMediaTypeFromBody(
@@ -288,7 +292,11 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`openai/${options.modelId}: response has no body`);
@@ -487,7 +495,11 @@ export class OpenAISpeechToTextProvider implements SpeechToTextProvider {
       }
     );
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "alignment",
+    });
 
     const data = transcriptionResponseSchema.parse(await response.json());
 

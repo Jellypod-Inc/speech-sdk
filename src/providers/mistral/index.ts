@@ -112,7 +112,11 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const json = speechResponseSchema.parse(await response.json());
 
@@ -167,7 +171,11 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`mistral/${options.modelId}: response has no body`);
@@ -267,7 +275,7 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as { id?: unknown };
     const voiceId = json.id;

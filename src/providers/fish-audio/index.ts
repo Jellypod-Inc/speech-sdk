@@ -117,7 +117,11 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = response.headers.get("content-type") ?? "audio/mpeg";
@@ -163,7 +167,11 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`fish-audio/${options.modelId}: response has no body`);
@@ -273,7 +281,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json._id;
@@ -311,7 +319,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       candidates?: { audio_base64?: unknown }[];
@@ -399,7 +407,11 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     return {
       audio: new Uint8Array(await response.arrayBuffer()),

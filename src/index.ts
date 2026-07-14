@@ -20,6 +20,10 @@ export type {
   VoiceDesignPreview,
 } from "./design-voice.js";
 export { designVoice } from "./design-voice.js";
+export type {
+  ProviderErrorStage,
+  SpeechSdkProviderErrorOptions,
+} from "./errors.js";
 export {
   ApiError,
   AudioOutputInputError,
@@ -31,6 +35,7 @@ export {
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   SpeechSDKError,
+  SpeechSdkProviderError,
   StreamingNotSupportedError,
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,

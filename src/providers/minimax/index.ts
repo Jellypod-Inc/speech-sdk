@@ -191,7 +191,11 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const payload = minimaxResponseSchema.parse(await response.json());
 
@@ -343,7 +347,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       base_resp?: { status_code?: number; status_msg?: string };
@@ -381,7 +385,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       voice_id?: unknown;
@@ -440,7 +444,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       file?: { file_id?: unknown };

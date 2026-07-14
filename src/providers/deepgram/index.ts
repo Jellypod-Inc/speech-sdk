@@ -97,7 +97,11 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     const mediaType = deepgramMediaTypeFromProviderOptions(
@@ -137,7 +141,11 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`deepgram/${options.modelId}: response has no body`);

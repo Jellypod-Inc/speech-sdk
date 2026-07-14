@@ -922,7 +922,10 @@ describe("generateSpeech", () => {
           apiKey: "bad-gw-key",
           maxRetries: 2,
         })
-      ).rejects.toMatchObject({ name: "ApiError", statusCode: 401 });
+      ).rejects.toMatchObject({
+        name: "SpeechSdkProviderError",
+        statusCode: 401,
+      });
       expect(mockFetch).toHaveBeenCalledTimes(1);
     } finally {
       globalThis.fetch = savedFetch;
@@ -1068,7 +1071,7 @@ describe("generateSpeech", () => {
             maxRetries: 0,
           })
         ).rejects.toMatchObject({
-          name: "ApiError",
+          name: "SpeechSdkProviderError",
           statusCode: 429,
           retryAfterMs: 3000,
         });

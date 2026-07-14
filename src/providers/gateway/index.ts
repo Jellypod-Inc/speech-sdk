@@ -1,10 +1,6 @@
 import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
-import {
-  ApiError,
-  GatewayInputError,
-  MissingApiKeyError,
-} from "../../errors.js";
+import { GatewayInputError, MissingApiKeyError } from "../../errors.js";
 import type { PronunciationsInput } from "../../pronunciations/types.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "../../provider-utils.js";
 import type {
@@ -53,6 +49,20 @@ const gatewayConversationJsonResponseSchema = z.object({
 
 const GATEWAY_401_MESSAGE =
   "Speech Gateway rejected your API key (401). Get a key at https://speechbase.ai/ or verify your SPEECHBASE_API_KEY environment variable.";
+
+function gatewayErrorTarget(modelId: string): {
+  model: string;
+  provider: string;
+} {
+  const separator = modelId.indexOf("/");
+  if (separator <= 0 || separator === modelId.length - 1) {
+    return { provider: SPEECH_GATEWAY_PROVIDER_ID, model: modelId };
+  }
+  return {
+    provider: modelId.slice(0, separator),
+    model: modelId.slice(separator + 1),
+  };
+}
 
 export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   readonly id = SPEECH_GATEWAY_PROVIDER_ID;
@@ -153,10 +163,15 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      ...(response.status === 401
+        ? {
+            provider: SPEECH_GATEWAY_PROVIDER_ID,
+            model: options.modelId,
+            message: GATEWAY_401_MESSAGE,
+          }
+        : gatewayErrorTarget(options.modelId)),
+    });
 
     if (options.includeTimestamps) {
       const payload = gatewayJsonResponseSchema.parse(await response.json());
@@ -223,10 +238,15 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      ...(response.status === 401
+        ? {
+            provider: SPEECH_GATEWAY_PROVIDER_ID,
+            model: options.modelId,
+            message: GATEWAY_401_MESSAGE,
+          }
+        : gatewayErrorTarget(options.modelId)),
+    });
 
     if (!response.body) {
       throw new Error(
@@ -335,10 +355,21 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    if (response.status === 401) {
-      throw new ApiError(GATEWAY_401_MESSAGE, { statusCode: 401 });
-    }
-    await handleErrorResponse(response);
+    const conversationErrorTarget = sharedModel
+      ? gatewayErrorTarget(sharedModel)
+      : {
+          provider: SPEECH_GATEWAY_PROVIDER_ID,
+          model: "conversation",
+        };
+    const conversationErrorContext =
+      response.status === 401
+        ? {
+            provider: SPEECH_GATEWAY_PROVIDER_ID,
+            model: sharedModel ?? "conversation",
+            message: GATEWAY_401_MESSAGE,
+          }
+        : conversationErrorTarget;
+    await handleErrorResponse(response, conversationErrorContext);
 
     if (options.includeTimestamps) {
       const payload = gatewayConversationJsonResponseSchema.parse(
