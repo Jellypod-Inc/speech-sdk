@@ -1,0 +1,22 @@
+src/__tests__/provider-errors.test.ts
+  s_ec838863cefe27::t_587d9acf661234 65-102
+src/errors.ts
+  s_ec838863cefe27::t_079a35f157ad71 73
+  s_ec838863cefe27::t_587d9acf661234 55-72,74-90,130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "8855e0bc0ff9d89aacfbca4a80dff05b91e4bd90",
+  "prompts": {},
+  "sessions": {
+    "s_ec838863cefe27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6140-8d9e-7500-9ab5-02a5fb060645",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
