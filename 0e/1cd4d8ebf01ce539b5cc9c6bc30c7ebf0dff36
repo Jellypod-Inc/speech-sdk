@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_ec838863cefe27::t_7c53647c137192 3-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "0e1cd4d8ebf01ce539b5cc9c6bc30c7ebf0dff36",
+  "prompts": {},
+  "sessions": {
+    "s_ec838863cefe27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6140-8d9e-7500-9ab5-02a5fb060645",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
