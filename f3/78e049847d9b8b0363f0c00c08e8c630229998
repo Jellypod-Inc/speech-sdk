@@ -1,0 +1,95 @@
+src/__tests__/gateway.test.ts
+  s_ec838863cefe27::t_e1da9e9a77a43f 476
+  s_ec838863cefe27::t_5b1eedca574ec7 426-475,477-478
+  s_ec838863cefe27::t_e4bbd407ec4392 388-391,420,755,779-782
+src/providers/openai/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 235-239,295-299,498-502
+src/providers/mistral/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 115-119,174-178,278
+src/providers/inworld/index.ts
+  s_ec838863cefe27::t_57be8bff48ab6f 496,524
+  s_ec838863cefe27::t_5d56b4dc82fcc8 231-235,290-294,425
+src/providers/smallest-ai/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 122-126,161
+src/providers/xai/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 150-154,190-194,255
+package.json
+  s_ec838863cefe27::t_78006dce455229 3
+src/providers/fish-audio/index.ts
+  s_ec838863cefe27::t_57be8bff48ab6f 322
+  s_ec838863cefe27::t_b5e82b90e276e5 120-124,170-174,284,410-414
+src/providers/cartesia/index.ts
+  s_ec838863cefe27::t_b5e82b90e276e5 284-288,341-345,405-409,546
+src/providers/deepgram/index.ts
+  s_ec838863cefe27::t_b5e82b90e276e5 100-104,144-148
+src/__tests__/provider-errors.test.ts
+  s_ec838863cefe27::t_2da2c21213c8b3 1-65
+src/providers/fal/index.ts
+  s_ec838863cefe27::t_c06bd8b336999a 131,137-141
+  s_ec838863cefe27::t_b5e82b90e276e5 119-123
+  s_ec838863cefe27::t_cb1a8f565c8dde 175
+README.md
+  s_ec838863cefe27::t_46f811a443bcc6 410,473,478-488,493,497-498,507
+src/providers/elevenlabs/index.ts
+  s_ec838863cefe27::t_b5e82b90e276e5 329-333,433-437,581-585,633
+  s_ec838863cefe27::t_57be8bff48ab6f 682,712
+src/__tests__/generate-speech.test.ts
+  s_ec838863cefe27::t_e4bbd407ec4392 925-928,1074
+src/provider-utils.ts
+  s_ec838863cefe27::t_027a60510fefd0 1,3-6,29-32,34-40,46,49-50,57-58,60-63,68-77,81,88-90,121-142,145-148,152-153,160-162,164-172
+  s_ec838863cefe27::t_9124785c37e550 2,33
+  s_ec838863cefe27::t_a7601e6332daf4 143-144
+  s_ec838863cefe27::t_a23990385a3743 41-45,51,78-79,173
+  s_ec838863cefe27::t_66eebbe6353cc5 154-158
+src/errors.ts
+  s_ec838863cefe27::t_9124785c37e550 41
+  s_ec838863cefe27::t_66eebbe6353cc5 11
+  s_ec838863cefe27::t_027a60510fefd0 38-40,42-110,123-125,142-172
+  s_ec838863cefe27::t_39020f62970de1 173
+src/providers/gateway/index.ts
+  s_ec838863cefe27::t_bd10478bf7ad03 358-365,371
+  s_ec838863cefe27::t_66eebbe6353cc5 53-66,166-174,241-249,366-370
+  s_ec838863cefe27::t_e1da9e9a77a43f 372
+  s_ec838863cefe27::t_9124785c37e550 3
+src/providers/speechify/index.ts
+  s_ec838863cefe27::t_57be8bff48ab6f 246-250
+src/providers/resemble/index.ts
+  s_ec838863cefe27::t_57be8bff48ab6f 294,338
+  s_ec838863cefe27::t_5d56b4dc82fcc8 134-138,191-195
+src/derive-timestamps.ts
+  s_ec838863cefe27::t_027a60510fefd0 1-5,36
+src/providers/minimax/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 194-198,350,447
+  s_ec838863cefe27::t_57be8bff48ab6f 388
+src/providers/google/index.ts
+  s_ec838863cefe27::t_66eebbe6353cc5 293-297,389-393,538-542
+src/providers/murf/index.ts
+  s_ec838863cefe27::t_5d56b4dc82fcc8 152-156,218-222
+src/__tests__/google-speech-model.test.ts
+  s_ec838863cefe27::t_2da2c21213c8b3 2-3
+  s_ec838863cefe27::t_c06bd8b336999a 155-180,183-214,216-218,220-247,249,259-263
+src/providers/hume/index.ts
+  s_ec838863cefe27::t_57be8bff48ab6f 378,410
+  s_ec838863cefe27::t_b5e82b90e276e5 152-156,205-209,279-283,482-486
+src/providers/gradium/index.ts
+  s_ec838863cefe27::t_b5e82b90e276e5 105,260-264
+src/index.ts
+  s_ec838863cefe27::t_cb1a8f565c8dde 23
+  s_ec838863cefe27::t_9124785c37e550 24-26,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f378e049847d9b8b0363f0c00c08e8c630229998",
+  "prompts": {},
+  "sessions": {
+    "s_ec838863cefe27": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6140-8d9e-7500-9ab5-02a5fb060645",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
