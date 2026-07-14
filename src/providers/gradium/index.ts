@@ -102,7 +102,7 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.uid;
@@ -257,7 +257,11 @@ export class GradiumSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
     return response;
   }
 }

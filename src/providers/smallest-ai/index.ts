@@ -119,7 +119,11 @@ export class SmallestAISpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     // get_speech always returns `Content-Type: audio/wav` even for mp3/pcm, so
@@ -154,7 +158,7 @@ export class SmallestAISpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       voiceId?: unknown;

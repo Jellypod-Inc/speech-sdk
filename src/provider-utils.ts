@@ -1,4 +1,9 @@
-import { ApiError, MissingApiKeyError } from "./errors.js";
+import {
+  type ApiError,
+  MissingApiKeyError,
+  type ProviderErrorStage,
+  SpeechSdkProviderError,
+} from "./errors.js";
 
 // Sent as X-User-Agent — User-Agent is a forbidden header name in browser fetch.
 export const SDK_USER_AGENT = "jellypod-speech-sdk";
@@ -21,34 +26,68 @@ function truncate(body: string): string {
   return body.length > 200 ? `${body.slice(0, 200)}…` : body;
 }
 
-function parseErrorJson(body: string | undefined): {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function stringProperty(value: unknown, property: string): string | undefined {
+  if (!isRecord(value)) {
+    return;
+  }
+  const candidate = value[property];
+  return typeof candidate === "string" ? candidate : undefined;
+}
+
+function providerErrorStage(value: unknown): ProviderErrorStage | undefined {
+  const stage = stringProperty(value, "stage");
+  return stage === "alignment" || stage === "synthesis" ? stage : undefined;
+}
+
+function parseErrorBody(body: string | undefined): {
   message?: string;
   code?: string;
+  details?: unknown;
+  requestId?: string;
+  stage?: ProviderErrorStage;
 } {
   if (!body) {
     return {};
   }
   try {
-    const json = JSON.parse(body);
+    const json: unknown = JSON.parse(body);
+    const error = isRecord(json) ? json.error : undefined;
     const candidates = [
-      json.error,
-      json.error?.message,
-      json.message,
-      json.detail,
+      typeof error === "string" ? error : undefined,
+      stringProperty(error, "message"),
+      stringProperty(json, "message"),
+      stringProperty(json, "detail"),
     ];
     const message =
       candidates.find((c: unknown): c is string => typeof c === "string") ??
       truncate(body);
-    const code = typeof json.code === "string" ? json.code : undefined;
-    return { message, code };
+    const code =
+      stringProperty(json, "code") ??
+      stringProperty(error, "code") ??
+      stringProperty(error, "status") ??
+      stringProperty(json, "status");
+    const requestId =
+      stringProperty(json, "requestId") ??
+      stringProperty(json, "request_id") ??
+      stringProperty(error, "requestId") ??
+      stringProperty(error, "request_id");
+    const stage = providerErrorStage(json) ?? providerErrorStage(error);
+    return { message, code, details: json, requestId, stage };
   } catch {
-    return { message: truncate(body) };
+    return { message: truncate(body), details: body };
   }
 }
 
 // 501 is terminal — gateway uses it for "capability will never work" (e.g. timestamps_unsupported).
 // 429 retry honors Retry-After in retry-options.ts (RFC 7231 §7.1.3).
 export function isRetriableApiError(error: ApiError): boolean {
+  if (error instanceof SpeechSdkProviderError) {
+    return error.retryable;
+  }
   if (error.statusCode === 429) {
     return true;
   }
@@ -79,21 +118,59 @@ export function parseRetryAfter(
   return Math.max(0, dateMs - Date.now());
 }
 
-export async function handleErrorResponse(response: Response): Promise<void> {
+export interface ProviderErrorContext {
+  readonly message?: string;
+  readonly model?: string;
+  readonly provider: string;
+  readonly stage?: ProviderErrorStage;
+}
+
+const REQUEST_ID_HEADERS = [
+  "request-id",
+  "x-request-id",
+  "x-goog-request-id",
+  "x-amzn-requestid",
+] as const;
+
+function responseRequestId(response: Response): string | undefined {
+  for (const header of REQUEST_ID_HEADERS) {
+    const value = response.headers.get(header);
+    if (value) {
+      return value;
+    }
+  }
+  return;
+}
+
+export async function handleErrorResponse(
+  response: Response,
+  context: ProviderErrorContext
+): Promise<void> {
   if (response.ok) {
     return;
   }
-  const responseBody = await response.text().catch(() => undefined);
-  const { message: detail, code } = parseErrorJson(responseBody);
-  const message = detail
-    ? `API error ${response.status}: ${detail}`
-    : `API error ${response.status}`;
+  const rawResponse = await response.text().catch(() => undefined);
+  const parsed = parseErrorBody(rawResponse);
+  const message =
+    context.message ??
+    (parsed.message
+      ? `API error ${response.status}: ${parsed.message}`
+      : `API error ${response.status}`);
   const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+  const retryable =
+    response.status === 429 ||
+    (response.status >= 500 && response.status !== 501);
 
-  throw new ApiError(message, {
-    statusCode: response.status,
-    responseBody,
-    code,
+  throw new SpeechSdkProviderError(message, {
+    status: response.status,
+    provider: context.provider,
+    model: context.model,
+    code: parsed.code,
+    details: parsed.details,
+    rawResponse,
+    requestId: responseRequestId(response) ?? parsed.requestId,
+    retryable,
+    stage: context.stage ?? parsed.stage,
     ...(retryAfterMs != null && { retryAfterMs }),
   });
 }

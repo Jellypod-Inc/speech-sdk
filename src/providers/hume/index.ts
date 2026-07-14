@@ -149,7 +149,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     const format = (body.format ?? {}) as { type?: string };
@@ -198,7 +202,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const payload = ttsResponseSchema.parse(await response.json());
     const gen = payload.generations?.[0];
@@ -268,7 +276,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`hume/${options.modelId}: response has no body`);
@@ -363,7 +375,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(designResponse);
+    await handleErrorResponse(designResponse, { provider: this.id });
 
     const designJson = (await designResponse.json()) as {
       generations?: {
@@ -395,7 +407,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(saveResponse);
+    await handleErrorResponse(saveResponse, { provider: this.id });
 
     const saveJson = (await saveResponse.json()) as { name?: unknown };
     // Hume references custom voices by name (+ provider CUSTOM_VOICE), not by the numeric id.
@@ -467,7 +479,11 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     const format = (body.format ?? {}) as { type?: string };

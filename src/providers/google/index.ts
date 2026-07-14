@@ -290,7 +290,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const json = generateContentResponseSchema.parse(await response.json());
 
@@ -382,7 +386,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`google/${options.modelId}: response has no body`);
@@ -527,7 +535,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const json = generateContentResponseSchema.parse(await response.json());
     const part = json.candidates?.[0]?.content?.parts?.find(

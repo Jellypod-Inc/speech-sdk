@@ -407,6 +407,7 @@ import {
   generateConversation,
   timestampsToCaptions,
   ApiError,
+  SpeechSdkProviderError,
 } from '@speech-sdk/core';
 ```
 
@@ -469,25 +470,32 @@ interface ConversationWordTimestamp extends WordTimestamp {
 ## Error handling
 
 ```ts
-import { generateSpeech, ApiError } from '@speech-sdk/core';
+import { generateSpeech, SpeechSdkProviderError } from '@speech-sdk/core';
 
 try {
   await generateSpeech({ /* ... */ });
 } catch (error) {
-  if (error instanceof ApiError) {
-    error.statusCode;    // 401, 429, 500, ...
-    error.responseBody;
-    error.code;          // stable machine-readable code (optional)
-    error.retryAfterMs;  // parsed Retry-After header in ms (optional)
+  if (error instanceof SpeechSdkProviderError) {
+    error.status;        // 401, 429, 500, ...
+    error.provider;      // google
+    error.model;         // gemini-3.1-flash-tts-preview
+    error.code;          // INVALID_ARGUMENT (optional)
+    error.details;       // complete parsed provider response body
+    error.rawResponse;   // complete response text
+    error.requestId;     // provider request ID (optional)
+    error.retryable;
+    error.stage;         // synthesis | alignment (optional)
+    JSON.stringify(error);
   }
 }
 ```
 
-`ApiError.code` is populated from the RFC 7807 `application/problem+json` `code` extension when the upstream provides one (currently only the Speech Gateway). Match on `err.code` over `err.message` text — codes are a stable contract, messages aren't.
+`SpeechSdkProviderError` extends `ApiError`, so existing `instanceof ApiError`, `statusCode`, and `responseBody` handling remains compatible. `code` is populated from provider error codes (including Google `error.status`) or the RFC 7807 `code` extension. Match on `code` over `message` text — codes are a stable contract, messages aren't.
 
 | Error | When |
 |---|---|
-| `ApiError` | Provider returned non-2xx |
+| `SpeechSdkProviderError` | Provider returned non-2xx; includes the parsed and raw provider response |
+| `ApiError` | Backward-compatible base class for API failures |
 | `MissingApiKeyError` | No `apiKey` passed and the provider's env var is unset |
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
@@ -496,7 +504,7 @@ try {
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
 
-Retries 5xx (except 501), 429, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); other 4xx and 501 are terminal. When a retriable error carries a `Retry-After` header, the SDK sleeps that long before the next attempt — capped at 60s to avoid pathological waits. The parsed value is surfaced as `ApiError.retryAfterMs` whenever the header is present, even on terminal errors that aren't retried. Default 2 retries; override via `maxRetries`.
+Retries 5xx (except 501), 429, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); other 4xx and 501 are terminal. `SpeechSdkProviderError.retryable` exposes that HTTP classification. When a retriable error carries a `Retry-After` header, the SDK sleeps that long before the next attempt — capped at 60s to avoid pathological waits. The parsed value is surfaced as `retryAfterMs` whenever the header is present, even on terminal errors that aren't retried. Default 2 retries; override via `maxRetries`.
 
 ## Development
 

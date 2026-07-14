@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import {
-  ApiError,
   SpeechSDKError,
   StreamingNotSupportedError,
   UnsupportedSampleRateError,
@@ -117,7 +116,11 @@ export class FalSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const json = falJobResponseSchema.parse(await response.json());
     return await this.fetchAudio(json, options);
@@ -125,18 +128,17 @@ export class FalSpeechProvider implements SpeechProvider<string, string> {
 
   private async fetchAudio(
     json: z.infer<typeof falJobResponseSchema>,
-    options: { abortSignal?: AbortSignal }
+    options: { abortSignal?: AbortSignal; modelId: string }
   ): Promise<{ audio: Uint8Array; mediaType: string }> {
     const audioResponse = await this.fetchFn(json.audio.url, {
       signal: options.abortSignal,
     });
 
-    if (!audioResponse.ok) {
-      throw new ApiError(`API error: ${audioResponse.status}`, {
-        statusCode: audioResponse.status,
-        responseBody: await audioResponse.text().catch(() => undefined),
-      });
-    }
+    await handleErrorResponse(audioResponse, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     // Authoritative content_type lives in fal's JSON; CDN header and audio/wav are fallbacks.
@@ -170,7 +172,7 @@ export class FalSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       audio?: { content_type?: unknown; url?: unknown };

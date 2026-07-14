@@ -228,7 +228,11 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const json = ttsResponseSchema.parse(await response.json());
     if (!json.audioContent) {
@@ -283,7 +287,11 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`inworld/${options.modelId}: response has no body`);
@@ -414,7 +422,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as {
       voice?: { voiceId?: unknown };
@@ -485,7 +493,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(designResponse);
+    await handleErrorResponse(designResponse, { provider: this.id });
 
     const designJson = (await designResponse.json()) as {
       previewVoices?: { previewAudio?: unknown; voiceId?: unknown }[];
@@ -513,7 +521,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(publishResponse);
+    await handleErrorResponse(publishResponse, { provider: this.id });
 
     const publishJson = (await publishResponse.json()) as {
       voice?: { voiceId?: unknown };

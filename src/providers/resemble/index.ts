@@ -131,7 +131,11 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     // Gate timestamp projection on caller opt-in, not the always-present audio_timestamps field.
     const json = synthesizeResponseSchema.parse(await response.json());
@@ -184,7 +188,11 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`resemble/${options.modelId}: response has no body`);
@@ -283,7 +291,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(designResponse);
+    await handleErrorResponse(designResponse, { provider: this.id });
 
     const designJson = (await designResponse.json()) as {
       samples?: ResembleDesignSample[];
@@ -327,7 +335,7 @@ export class ResembleSpeechProvider implements SpeechProvider<string, string> {
       }
     );
 
-    await handleErrorResponse(createResponse);
+    await handleErrorResponse(createResponse, { provider: this.id });
 
     const createJson = (await createResponse.json()) as {
       voice_uuid?: unknown;

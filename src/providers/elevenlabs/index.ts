@@ -326,7 +326,11 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const requestId = response.headers.get("request-id");
     const durationHeader = response.headers.get("audio-duration-seconds");
@@ -426,7 +430,11 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     if (!response.body) {
       throw new Error(`elevenlabs/${options.modelId}: response has no body`);
@@ -570,7 +578,11 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
 
     const arrayBuffer = await response.arrayBuffer();
     // ElevenLabs returns bare "audio/pcm" for pcm_<rate> requests; derive from requested output_format.
@@ -618,7 +630,7 @@ export class ElevenLabsSpeechProvider
       signal: options.abortSignal,
     });
 
-    await handleErrorResponse(response);
+    await handleErrorResponse(response, { provider: this.id });
 
     const json = (await response.json()) as Record<string, unknown>;
     const voiceId = json.voice_id;
@@ -667,7 +679,7 @@ export class ElevenLabsSpeechProvider
         signal: options.abortSignal,
       }
     );
-    await handleErrorResponse(designResponse);
+    await handleErrorResponse(designResponse, { provider: this.id });
 
     const designJson = (await designResponse.json()) as {
       previews?: {
@@ -697,7 +709,7 @@ export class ElevenLabsSpeechProvider
         signal: options.abortSignal,
       }
     );
-    await handleErrorResponse(createResponse);
+    await handleErrorResponse(createResponse, { provider: this.id });
 
     const createJson = (await createResponse.json()) as Record<string, unknown>;
     const voiceId = createJson.voice_id;

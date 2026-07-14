@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../errors.js";
+import { SpeechSdkProviderError } from "../index.js";
 import { SDK_USER_AGENT } from "../provider-utils.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
@@ -150,16 +152,101 @@ describe("GoogleSpeechProvider", () => {
     expect(view.getUint32(24, true)).toBe(24_000);
   });
 
-  it("throws on error response", async () => {
+  it("preserves and serializes the complete Google INVALID_ARGUMENT status", async () => {
+    const providerBody = {
+      error: {
+        code: 400,
+        message: "Request contains an invalid argument.",
+        status: "INVALID_ARGUMENT",
+        details: [
+          {
+            "@type": "type.googleapis.com/google.rpc.BadRequest",
+            fieldViolations: [
+              {
+                field: "generation_config.speech_config",
+                description: "The speech configuration is invalid.",
+              },
+            ],
+          },
+          {
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            reason: "INVALID_SPEECH_CONFIG",
+            domain: "generativelanguage.googleapis.com",
+            metadata: { rejectedField: "speech_config" },
+          },
+        ],
+      },
+    };
+    const rawResponse = JSON.stringify(providerBody);
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
-      status: 403,
-      headers: new Headers(),
-      text: async () => '{"error": "forbidden"}',
+      status: 400,
+      headers: new Headers({ "x-goog-request-id": "google-request-123" }),
+      text: async () => rawResponse,
     });
 
     const provider = new GoogleSpeechProvider({
-      apiKey: "bad-key",
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const thrown = await provider
+      .generate({
+        modelId: "gemini-3.1-flash-tts-preview",
+        text: "Yeah, really good, Alex. See you next time.",
+        voice: "Kore",
+      })
+      .catch((error: unknown) => error);
+
+    expect(thrown).toBeInstanceOf(SpeechSdkProviderError);
+    expect(thrown).toBeInstanceOf(ApiError);
+    const error = thrown as SpeechSdkProviderError;
+    expect(error).toMatchObject({
+      name: "SpeechSdkProviderError",
+      status: 400,
+      statusCode: 400,
+      provider: "google",
+      model: "gemini-3.1-flash-tts-preview",
+      code: "INVALID_ARGUMENT",
+      message: "API error 400: Request contains an invalid argument.",
+      requestId: "google-request-123",
+      retryable: false,
+      stage: "synthesis",
+    });
+    expect(error.details).toEqual(providerBody);
+    expect(error.rawResponse).toBe(rawResponse);
+    expect(error.responseBody).toBe(rawResponse);
+
+    const logged = JSON.parse(JSON.stringify(error));
+    expect(logged).toMatchObject({
+      name: "SpeechSdkProviderError",
+      status: 400,
+      provider: "google",
+      model: "gemini-3.1-flash-tts-preview",
+      code: "INVALID_ARGUMENT",
+      retryable: false,
+      rawResponse,
+    });
+    expect(logged.details.error.details[0].fieldViolations).toEqual([
+      {
+        field: "generation_config.speech_config",
+        description: "The speech configuration is invalid.",
+      },
+    ]);
+    expect(logged.details.error.details[1].metadata).toEqual({
+      rejectedField: "speech_config",
+    });
+  });
+
+  it("classifies provider 5xx responses as retryable", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      headers: new Headers(),
+      text: async () => '{"error":{"message":"Unavailable"}}',
+    });
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
       fetch: mockFetch,
     });
 
@@ -169,7 +256,11 @@ describe("GoogleSpeechProvider", () => {
         text: "Hello",
         voice: "Kore",
       })
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: "SpeechSdkProviderError",
+      status: 503,
+      retryable: true,
+    });
   });
 
   it("throws when no audio data in response", async () => {
