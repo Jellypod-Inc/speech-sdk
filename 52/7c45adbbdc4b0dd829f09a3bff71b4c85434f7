@@ -1,0 +1,39 @@
+src/__tests__/timestamp-finalization.test.ts
+  s_084bf635e472f0::t_b4a25e078a062b 87-97
+  s_084bf635e472f0::t_f4e96c4b8121cb 86
+src/generate-speech.ts
+  s_084bf635e472f0::t_8099d4c533bc9f 114-119
+  s_084bf635e472f0::t_40009f8e5aa054 120
+src/timestamp-finalization.ts
+  s_084bf635e472f0::t_379d19e6d6a655 30
+src/pronunciations/inverse-align.ts
+  s_084bf635e472f0::t_379d19e6d6a655 4-5,23-27,64
+src/generate-conversation.ts
+  s_084bf635e472f0::t_35eb7835660d13 547,710,832,881
+src/__tests__/generate-speech.test.ts
+  s_084bf635e472f0::t_e43e3efeea4457 2-6,689-702,733-746
+src/__tests__/conversation-timestamps.test.ts
+  s_084bf635e472f0::t_f34336270f3736 52,74,523-546
+  s_084bf635e472f0::t_5f2a3bc720b717 547
+src/__tests__/alignment-quality.test.ts
+  s_084bf635e472f0::t_b4a25e078a062b 166-190
+src/__tests__/generate-conversation.test.ts
+  s_084bf635e472f0::t_304b64c5935965 401-415,429-455
+  s_084bf635e472f0::t_894ed35c4c244d 416-428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "527c45adbbdc4b0dd829f09a3bff71b4c85434f7",
+  "prompts": {},
+  "sessions": {
+    "s_084bf635e472f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6bf7-9dba-71a3-be90-77291ec42b9a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
