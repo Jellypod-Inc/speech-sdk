@@ -1,0 +1,32 @@
+src/__tests__/timestamps.test.ts
+  s_084bf635e472f0::t_ae51715686f31e 391
+  s_084bf635e472f0::t_1318fb83514eda 9-11,376,389
+  s_084bf635e472f0::t_d304f77afa2a0d 314,369-374,378-387,390,392,396
+  s_084bf635e472f0::t_efd423f2967a79 304-309,311-313,388,397-478,480-492
+  s_084bf635e472f0::t_8ac11653d70f24 310,375,377,393-395,479
+CHANGELOG.md
+  s_084bf635e472f0::t_efd423f2967a79 5
+src/providers/elevenlabs/alignment.ts
+  s_084bf635e472f0::t_efd423f2967a79 12,34-38,52,55,58,60-61,69-75,81,95
+  s_084bf635e472f0::t_1318fb83514eda 29,39-51,53-54,56-57,59,62-68
+src/__tests__/elevenlabs-timestamps.test.ts
+  s_084bf635e472f0::t_efd423f2967a79 29-41,44-45,48-71
+  s_084bf635e472f0::t_8ac11653d70f24 42-43,46-47
+  s_084bf635e472f0::t_ae51715686f31e 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1d067eb55bdc0d5c471d20da11e7247ab6f1bc0e",
+  "prompts": {},
+  "sessions": {
+    "s_084bf635e472f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6bf7-9dba-71a3-be90-77291ec42b9a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
