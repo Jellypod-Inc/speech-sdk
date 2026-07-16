@@ -19,11 +19,12 @@ import type {
   GenerateConversationOptions,
 } from "./conversation/types.js";
 import { validateConversationInput } from "./conversation/validate.js";
-import { getDefaultSTTFallback } from "./default-stt-fallback.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
+  TimestampProviderRequiredError,
+  TimestampValidationError,
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
@@ -46,9 +47,13 @@ import {
 import type {
   ConversationMetadata,
   ConversationResult,
+  ConversationResultWithTimestamps,
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars } from "./text-chunker.js";
+import { deriveTimestampsViaProvider } from "./timestamp-alignment.js";
+import { finalizeTimestamps } from "./timestamp-finalization.js";
+import type { TimestampProvider } from "./timestamp-provider.js";
 import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 
 // biome-ignore lint/performance/noBarrelFile: public entry point — re-export error classes so callers get fn + types + errors from one import
@@ -65,11 +70,48 @@ export type {
 export type {
   ConversationMetadata,
   ConversationResult,
+  ConversationResultWithTimestamps,
 } from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
 const DEFAULT_MAX_RETRIES = 2;
 
+function requireValidTimestamps(args: {
+  readonly audioDurationMs?: number;
+  readonly source: string;
+  readonly text: string;
+  readonly timestamps: readonly WordTimestamp[];
+}): readonly WordTimestamp[] {
+  const finalized = finalizeTimestamps({
+    audioDurationMs: args.audioDurationMs,
+    text: args.text,
+    timestamps: args.timestamps,
+  });
+  if (!finalized.ok) {
+    throw new TimestampValidationError({
+      reason: finalized.reason,
+      source: args.source,
+    });
+  }
+  return finalized.timestamps;
+}
+
+export function generateConversation<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> | undefined =
+    | string
+    | ResolvedModel<V>
+    | undefined,
+>(
+  options: GenerateConversationOptions<V, M> & { timestamps: true }
+): Promise<ConversationResultWithTimestamps>;
+export function generateConversation<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> | undefined =
+    | string
+    | ResolvedModel<V>
+    | undefined,
+>(options: GenerateConversationOptions<V, M>): Promise<ConversationResult>;
 export async function generateConversation<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> | undefined =
@@ -172,6 +214,7 @@ export async function generateConversation<
     abortSignal: options.abortSignal,
     headers: options.headers,
     timestamps: options.timestamps ?? false,
+    timestampProvider: options.timestampProvider,
     pronunciations: options.pronunciations,
     // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
     deferOutputConversion: isSpeedActive(options.speed),
@@ -338,8 +381,14 @@ async function runGateway<V extends Voice>(args: {
     result.mediaType
   );
 
-  const timestamps: readonly ConversationWordTimestamp[] | undefined =
-    includeTimestamps ? (result.timestamps ?? []) : undefined;
+  const timestamps = includeTimestamps
+    ? finalizeGatewayConversationTimestamps({
+        audioDurationMs,
+        source: "speech-gateway/conversation",
+        timestamps: result.timestamps ?? [],
+        turnTexts: options.turns.map((turn) => turn.text),
+      })
+    : undefined;
   const warnings = result.warnings;
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
@@ -359,6 +408,36 @@ async function runGateway<V extends Voice>(args: {
     timestamps,
     warnings: warnings && warnings.length > 0 ? warnings : undefined,
   };
+}
+
+function finalizeGatewayConversationTimestamps(args: {
+  readonly audioDurationMs?: number;
+  readonly source: string;
+  readonly timestamps: readonly ConversationWordTimestamp[];
+  readonly turnTexts: readonly string[];
+}): readonly ConversationWordTimestamp[] {
+  const projected: ConversationWordTimestamp[] = [];
+  for (const [turnIndex, text] of args.turnTexts.entries()) {
+    const turnTimestamps = args.timestamps.filter(
+      (timestamp) => timestamp.turnIndex === turnIndex
+    );
+    const finalized = requireValidTimestamps({
+      audioDurationMs: args.audioDurationMs,
+      source: args.source,
+      text,
+      timestamps: turnTimestamps,
+    });
+    projected.push(
+      ...finalized.map((timestamp) => ({ ...timestamp, turnIndex }))
+    );
+  }
+  requireValidTimestamps({
+    audioDurationMs: args.audioDurationMs,
+    source: args.source,
+    text: args.turnTexts.join(" "),
+    timestamps: projected,
+  });
+  return projected;
 }
 
 async function runNative<V extends Voice>(args: {
@@ -414,7 +493,7 @@ async function runNative<V extends Voice>(args: {
     );
   } else {
     debug(
-      `${dialogueId} (dialogue): timestamps: true but no native dialogue alignment — will transcribe mixed audio via STT after rendering (adds a round-trip).`
+      `${dialogueId} (dialogue): timestamps: true but no native dialogue alignment — using the configured timestamp provider after rendering.`
     );
   }
 
@@ -459,12 +538,14 @@ async function runNative<V extends Voice>(args: {
     await resolveNativeDialogueTimestamps({
       requestTimestamps,
       nativeTimestamps: result.timestamps,
+      hasNativeTimestamps: hasNativeDialogueTimestamps,
       audio: audio.uint8Array,
       mediaType: outputMediaType,
       ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
       resolved,
       abortSignal: options.abortSignal,
       substitutedTurnTexts: substitutedTurns.map((t) => t.text),
+      timestampProvider: options.timestampProvider,
     });
 
   const timestamps = ruleMap
@@ -515,6 +596,16 @@ async function runNativeDispatch<V extends Voice>(args: {
   blocks: readonly (readonly number[])[] | undefined;
 }): Promise<ConversationResult> {
   const { options, resolved, blocks } = args;
+  if (
+    options.timestamps &&
+    !modelDeclaresNativeTimestamps(resolved) &&
+    !options.timestampProvider &&
+    !resolved.fallbackSTT
+  ) {
+    throw new TimestampProviderRequiredError(
+      `${resolved.provider.id}/${resolved.modelId}`
+    );
+  }
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   if (blocks && blocks.length > 1) {
     return await runNativeSplit({
@@ -566,8 +657,8 @@ async function runNativeSplit<V extends Voice>(args: {
   };
 
   const requestTimestamps = options.timestamps ?? false;
-  const shouldRequestNative =
-    requestTimestamps && modelDeclaresNativeTimestamps(resolved);
+  const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
+  const shouldRequestNative = requestTimestamps && hasNativeTimestamps;
 
   const ruleMap = options.pronunciations?.rules?.length
     ? mergeRules(options.pronunciations.rules)
@@ -609,12 +700,14 @@ async function runNativeSplit<V extends Voice>(args: {
       const { timestamps, warnings } = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: result.timestamps,
+        hasNativeTimestamps,
         audio: blockAudio,
         mediaType: stitchOpts.mediaType,
         ttsModel,
         resolved,
         abortSignal: signal,
         substitutedTurnTexts: blockTurns.map((t) => t.text),
+        timestampProvider: options.timestampProvider,
         pcmSegment: segment,
       });
       return {
@@ -728,12 +821,14 @@ function composeBlockTimestamps(args: {
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   requestTimestamps: boolean;
   nativeTimestamps: readonly WordTimestamp[] | undefined;
+  hasNativeTimestamps: boolean;
   audio: Uint8Array;
   mediaType: string;
   ttsModel: string;
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   substitutedTurnTexts: readonly string[];
+  timestampProvider?: TimestampProvider;
   // Already-decoded PCM for the same audio, when the caller has it, to skip a redundant decode.
   pcmSegment?: Pcm16Segment;
 }): Promise<{
@@ -746,11 +841,27 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
 
   // Either use native flat timestamps, or derive via STT fallback.
   let flatTimestamps: readonly WordTimestamp[];
-  if (args.nativeTimestamps && args.nativeTimestamps.length > 0) {
+  if (args.hasNativeTimestamps) {
+    if (!args.nativeTimestamps || args.nativeTimestamps.length === 0) {
+      throw new TimestampValidationError({
+        reason: "empty",
+        source: args.ttsModel,
+      });
+    }
     flatTimestamps = args.nativeTimestamps;
+  } else if (args.timestampProvider) {
+    flatTimestamps = await deriveTimestampsViaProvider({
+      audio: args.audio,
+      mediaType: args.mediaType,
+      text: args.substitutedTurnTexts.join(" "),
+      provider: args.timestampProvider,
+      abortSignal: args.abortSignal,
+    });
   } else {
-    const fallback =
-      args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
+    const fallback = args.resolved.fallbackSTT;
+    if (!fallback) {
+      throw new TimestampProviderRequiredError(args.ttsModel);
+    }
     flatTimestamps = await deriveTimestampsViaSTT({
       ttsModel: args.ttsModel,
       audio: args.audio,
@@ -762,6 +873,12 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       abortSignal: args.abortSignal,
     });
   }
+
+  flatTimestamps = requireValidTimestamps({
+    source: args.ttsModel,
+    text: args.substitutedTurnTexts.join(" "),
+    timestamps: flatTimestamps,
+  });
 
   const { detectSilenceGaps } = await import(
     "./conversation/silence-detection.js"

@@ -39,6 +39,8 @@ export {
   StreamingNotSupportedError,
   TextChunkingUnsupportedError,
   TimestampKeyMissingError,
+  TimestampProviderRequiredError,
+  TimestampValidationError,
   TooManyCloneSamplesError,
   UnsupportedSampleRateError,
   VoiceCloningUnsupportedError,

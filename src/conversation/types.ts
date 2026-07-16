@@ -1,6 +1,7 @@
 import type { AudioOutput } from "../audio-output.js";
 import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
+import type { TimestampProvider } from "../timestamp-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
   readonly model?: string | ResolvedModel<V>;
@@ -31,6 +32,7 @@ export interface GenerateConversationOptions<
   readonly providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   readonly speed?: number;
+  readonly timestampProvider?: TimestampProvider;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];
   // dBFS, must be ≤ 0. Default -20 (broadcast/podcast standard).

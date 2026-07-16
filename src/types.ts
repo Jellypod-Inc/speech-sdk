@@ -1,6 +1,7 @@
 import type { AudioOutput } from "./audio-output.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
+import type { TimestampProvider } from "./timestamp-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
@@ -48,8 +49,10 @@ export type {
 } from "./speech-provider.js";
 export type {
   ConversationResult,
+  ConversationResultWithTimestamps,
   GeneratedAudioFile,
   SpeechResult,
+  SpeechResultWithTimestamps,
 } from "./speech-result.js";
 export type {
   ResolvedSTTModel,
@@ -57,6 +60,7 @@ export type {
   STTModelInfo,
 } from "./speech-to-text-provider.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
+export type { TimestampProvider } from "./timestamp-provider.js";
 export type {
   ConversationWordTimestamp,
   WordTimestamp,
@@ -81,6 +85,7 @@ export interface GenerateSpeechOptions<
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;
   text: string;
+  timestampProvider?: TimestampProvider;
   timestamps?: boolean;
   voice: V;
   volumeDbfs?: number;

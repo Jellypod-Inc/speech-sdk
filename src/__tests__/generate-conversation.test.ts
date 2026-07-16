@@ -10,6 +10,7 @@ const SINGLE_SPEAKER_FALLBACK_RE = /single speaker/;
 const TOO_MANY_VOICES_FALLBACK_RE = /more unique voices/;
 const NATIVE_FALLBACK_CALL_COUNT_RE = /2 API calls instead of 1/;
 const STITCH_UNSUPPORTED_RE = /cannot be used in a stitched conversation/;
+const WHITESPACE_RE = /\s+/;
 
 function nativeProvider(): SpeechProvider {
   return {
@@ -265,6 +266,17 @@ describe("generateConversation", () => {
 
   it("returns timestamps on the single-voice fallback path when requested", async () => {
     const provider = geminiLikeProvider();
+    const timestampProvider = {
+      align: vi.fn().mockImplementation(({ text }: { text: string }) =>
+        Promise.resolve(
+          text.split(WHITESPACE_RE).map((word, index) => ({
+            text: word,
+            start: index * 0.02,
+            end: (index + 1) * 0.02,
+          }))
+        )
+      ),
+    };
     const result = await generateConversation({
       model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
       turns: [
@@ -272,6 +284,7 @@ describe("generateConversation", () => {
         { voice: "a", text: "Hello again." },
       ],
       timestamps: true,
+      timestampProvider,
     });
 
     expect(provider.generateDialogue).not.toHaveBeenCalled();

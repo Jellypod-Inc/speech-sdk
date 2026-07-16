@@ -383,3 +383,32 @@ export class TimestampKeyMissingError extends SpeechSDKError {
     this.name = "TimestampKeyMissingError";
   }
 }
+
+export class TimestampProviderRequiredError extends SpeechSDKError {
+  readonly model: string;
+
+  constructor(model: string) {
+    super(
+      `${model} does not return word timestamps natively. Pass timestampProvider when timestamps is true.`
+    );
+    this.name = "TimestampProviderRequiredError";
+    this.model = model;
+  }
+}
+
+export class TimestampValidationError extends SpeechSDKError {
+  readonly reason: "empty" | "invalid_timing" | "transcript_mismatch";
+  readonly source: string;
+
+  constructor(options: {
+    reason: "empty" | "invalid_timing" | "transcript_mismatch";
+    source: string;
+  }) {
+    super(
+      `Timestamp alignment from ${options.source} is invalid: ${options.reason}.`
+    );
+    this.name = "TimestampValidationError";
+    this.reason = options.reason;
+    this.source = options.source;
+  }
+}

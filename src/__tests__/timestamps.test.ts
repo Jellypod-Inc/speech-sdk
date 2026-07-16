@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { TimestampKeyMissingError } from "../errors.js";
+import {
+  TimestampProviderRequiredError,
+  TimestampValidationError,
+} from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
 import type { WordTimestamp } from "../timestamps.js";
+
+const NON_LEXICAL_CHARACTERS = /[^\p{L}\p{N}]+/gu;
+const PUNCTUATION_ONLY = /^[^\p{L}\p{N}]+$/u;
 
 function createTTSProvider(
   overrides: Partial<{
@@ -173,7 +179,10 @@ describe("generateSpeech timestamps option", () => {
   });
 
   it("on mode: never runs client-side STT fallback for gateway requests", async () => {
-    const provider = createTTSProvider({ id: "speech-gateway" });
+    const provider = createTTSProvider({
+      id: "speech-gateway",
+      timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+    });
     const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
 
     const result = await generateSpeech({
@@ -188,45 +197,37 @@ describe("generateSpeech timestamps option", () => {
     });
 
     expect(result.audio).toBeDefined();
-    expect(result.timestamps).toBeUndefined();
+    expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
     expect(stt.transcribe).not.toHaveBeenCalled();
   });
 
-  it("throws TimestampKeyMissingError when timestamps:true, no fallback, and OPENAI_API_KEY missing", async () => {
-    const previousKey = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    try {
-      const fakeBytes = new Uint8Array([65]);
-      const provider: SpeechProvider = {
-        id: "stub",
-        defaultModel: "m",
-        models: [
-          {
-            id: "m",
-            releaseDate: "2025-01-01",
-            languages: ["en"],
-            features: [],
-          },
-        ],
-        generate: vi.fn().mockResolvedValue({
-          audio: fakeBytes,
-          mediaType: "audio/wav",
-        }),
-      };
+  it("requires a timestamp provider before synthesis when native timestamps are unavailable", async () => {
+    const provider: SpeechProvider = {
+      id: "stub",
+      defaultModel: "m",
+      models: [
+        {
+          id: "m",
+          releaseDate: "2025-01-01",
+          languages: ["en"],
+          features: [],
+        },
+      ],
+      generate: vi.fn().mockResolvedValue({
+        audio: new Uint8Array([65]),
+        mediaType: "audio/wav",
+      }),
+    };
 
-      await expect(
-        generateSpeech({
-          model: { provider, modelId: "m" },
-          voice: "v",
-          text: "hi",
-          timestamps: true,
-        })
-      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
-    } finally {
-      if (previousKey !== undefined) {
-        process.env.OPENAI_API_KEY = previousKey;
-      }
-    }
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "m" },
+        voice: "v",
+        text: "hi",
+        timestamps: true,
+      })
+    ).rejects.toBeInstanceOf(TimestampProviderRequiredError);
+    expect(provider.generate).not.toHaveBeenCalled();
   });
 
   it("forwards the synthesized source text to the STT fallback for forced alignment", async () => {
@@ -239,7 +240,10 @@ describe("generateSpeech timestamps option", () => {
       transcribe: vi.fn().mockImplementation((opts: { text?: string }) => {
         receivedText = opts.text;
         return Promise.resolve({
-          timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
+          timestamps: [
+            { text: "Hello", start: 0, end: 0.4 },
+            { text: "world", start: 0.45, end: 0.9 },
+          ],
         });
       }),
     };
@@ -256,6 +260,22 @@ describe("generateSpeech timestamps option", () => {
     });
 
     expect(receivedText).toBe("Hello world");
+  });
+
+  it("rejects a gateway response that omits requested timestamps", async () => {
+    const provider = createTTSProvider({ id: "speech-gateway" });
+
+    await expect(
+      generateSpeech({
+        model: { provider, modelId: "openai/tts-1" },
+        text: "Hello",
+        voice: "v",
+        timestamps: true,
+      })
+    ).rejects.toMatchObject({
+      name: TimestampValidationError.name,
+      reason: "empty",
+    });
   });
 
   it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {
@@ -298,6 +318,17 @@ describe("generateSpeech timestamps option", () => {
 });
 
 describe("alignmentToWordTimestamps (ElevenLabs char → word)", () => {
+  const alignText = (text: string) => {
+    const characters = [...text];
+    return {
+      characters,
+      character_start_times_seconds: characters.map((_, index) => index / 100),
+      character_end_times_seconds: characters.map(
+        (_, index) => (index + 1) / 100
+      ),
+    };
+  };
+
   it("returns [] for empty alignment", () => {
     expect(
       alignmentToWordTimestamps({
@@ -351,5 +382,129 @@ describe("alignmentToWordTimestamps (ElevenLabs char → word)", () => {
       { text: "Hi!", start: 0, end: 0.15 },
       { text: "ok.", start: 0.2, end: 0.35 },
     ]);
+  });
+
+  it("does not emit standalone punctuation as a word", () => {
+    const words = alignmentToWordTimestamps(
+      alignText("And it doesn't stop at email. Smishing -- phishing via SMS")
+    );
+
+    expect(
+      words.map(({ text }) => text.replace(NON_LEXICAL_CHARACTERS, ""))
+    ).toEqual([
+      "And",
+      "it",
+      "doesnt",
+      "stop",
+      "at",
+      "email",
+      "Smishing",
+      "phishing",
+      "via",
+      "SMS",
+    ]);
+    expect(words.some(({ text }) => PUNCTUATION_ONLY.test(text))).toBe(false);
+    expect(words.some(({ text }) => text.includes("--"))).toBe(true);
+    expect(words[6]).toEqual({ text: "Smishing --", start: 0.3, end: 0.41 });
+    for (let index = 1; index < words.length; index++) {
+      expect(words[index]?.start).toBeGreaterThanOrEqual(
+        words[index - 1]?.end ?? 0
+      );
+    }
+  });
+
+  it("attaches standalone em dashes, en dashes, and ellipses to preceding words", () => {
+    const words = alignmentToWordTimestamps(
+      alignText("alpha — beta – gamma … delta ... epsilon")
+    );
+
+    expect(words.map(({ text }) => text)).toEqual([
+      "alpha —",
+      "beta –",
+      "gamma …",
+      "delta ...",
+      "epsilon",
+    ]);
+  });
+
+  it("attaches standalone commas, periods, and question marks to preceding words", () => {
+    const words = alignmentToWordTimestamps(
+      alignText("alpha , beta . gamma ? delta")
+    );
+
+    expect(words.map(({ text }) => text)).toEqual([
+      "alpha ,",
+      "beta .",
+      "gamma ?",
+      "delta",
+    ]);
+  });
+
+  it("attaches standalone straight and smart quotation marks and apostrophes", () => {
+    const words = alignmentToWordTimestamps(
+      alignText('" alpha " beta “ gamma ” delta \' epsilon ’ zeta')
+    );
+
+    expect(words.map(({ text }) => text)).toEqual([
+      '" alpha "',
+      "beta “",
+      "gamma ”",
+      "delta '",
+      "epsilon ’",
+      "zeta",
+    ]);
+  });
+
+  it("preserves contractions and hyphenated words", () => {
+    const words = alignmentToWordTimestamps(
+      alignText("don't can’t mother-in-law co-operate")
+    );
+
+    expect(words.map(({ text }) => text)).toEqual([
+      "don't",
+      "can’t",
+      "mother-in-law",
+      "co-operate",
+    ]);
+  });
+
+  it("handles repeated whitespace and newlines", () => {
+    const words = alignmentToWordTimestamps(
+      alignText("alpha   \n\n\tbeta \r\n gamma")
+    );
+
+    expect(words.map(({ text }) => text)).toEqual(["alpha", "beta", "gamma"]);
+  });
+
+  it("preserves precomposed and decomposed Unicode words", () => {
+    const decomposedCafe = "cafe\u0301";
+    const words = alignmentToWordTimestamps(
+      alignText(`café ${decomposedCafe} Ångström`)
+    );
+
+    expect(words.map(({ text }) => text)).toEqual([
+      "café",
+      decomposedCafe,
+      "Ångström",
+    ]);
+    expect(words[0]?.text.normalize("NFC")).toBe(
+      words[1]?.text.normalize("NFC")
+    );
+  });
+
+  it("attaches leading and trailing punctuation and omits punctuation-only input", () => {
+    const words = alignmentToWordTimestamps(alignText("--- hello world !!!"));
+
+    expect(words).toEqual([
+      { text: "--- hello", start: 0, end: 0.09 },
+      { text: "world !!!", start: 0.1, end: 0.19 },
+    ]);
+    expect(alignmentToWordTimestamps(alignText("?! — ..."))).toEqual([]);
+  });
+
+  it("preserves text without whitespace word boundaries", () => {
+    const words = alignmentToWordTimestamps(alignText("你好世界。"));
+
+    expect(words).toEqual([{ text: "你好世界。", start: 0, end: 0.05 }]);
   });
 });

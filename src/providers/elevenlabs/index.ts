@@ -24,11 +24,13 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
   alignmentToWordTimestamps,
   elevenLabsAlignmentSchema,
 } from "./alignment.js";
+import { ElevenLabsForcedAlignmentProvider } from "./forced-alignment.js";
 
 const withTimestampsResponseSchema = z.object({
   audio_base64: z.string().optional(),
@@ -737,15 +739,18 @@ export class ElevenLabsSpeechProvider
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
+  const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(config);
   const fallbackSTT = config.fallbackSTT;
 
-  return function elevenlabs(modelId?: string): ResolvedModel<string> {
-    return {
-      provider,
-      modelId: modelId ?? provider.defaultModel,
-      ...(fallbackSTT && { fallbackSTT }),
-    };
-  };
+  const factory = (modelId?: string): ResolvedModel<string> => ({
+    provider,
+    modelId: modelId ?? provider.defaultModel,
+    ...(fallbackSTT && { fallbackSTT }),
+  });
+
+  return Object.assign(factory, {
+    forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
+  });
 }
 
 // Unknown formats fall back to mp3 (the endpoint's default).

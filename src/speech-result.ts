@@ -15,6 +15,10 @@ export interface SpeechResult {
   readonly warnings?: string[];
 }
 
+export interface SpeechResultWithTimestamps extends SpeechResult {
+  readonly timestamps: readonly WordTimestamp[];
+}
+
 export interface ConversationMetadata extends SpeechMetadata {
   // Populated on the stitch path (one generateSpeech call per turn). Undefined on the native dialogue
   // path, where per-turn boundaries don't exist as separate provider calls.
@@ -25,6 +29,10 @@ export interface ConversationResult
   extends Omit<SpeechResult, "metadata" | "timestamps"> {
   readonly metadata: ConversationMetadata;
   readonly timestamps?: readonly ConversationWordTimestamp[];
+}
+
+export interface ConversationResultWithTimestamps extends ConversationResult {
+  readonly timestamps: readonly ConversationWordTimestamp[];
 }
 
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {

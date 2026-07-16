@@ -17,7 +17,7 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
     const provider = {
       id: "fake",
       defaultModel: "d1",
-      models: [{ id: "d1", features: [] }],
+      models: [{ id: "d1", features: ["timestamps"] }],
       generate: vi.fn(),
       generateDialogue,
       dialogueCapabilities: () => ({ maxVoices: 4 }),
@@ -60,7 +60,7 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
     const provider = {
       id: "fake",
       defaultModel: "d1",
-      models: [{ id: "d1", features: [] }],
+      models: [{ id: "d1", features: ["timestamps"] }],
       generate: vi.fn(),
       generateDialogue,
       dialogueCapabilities: () => ({ maxVoices: 4 }),

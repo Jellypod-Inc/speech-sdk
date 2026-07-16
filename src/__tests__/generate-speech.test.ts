@@ -126,7 +126,11 @@ describe("generateSpeech", () => {
           audio: pcm,
           mediaType: "audio/pcm;rate=24000",
           timestamps: includeTimestamps
-            ? [{ text: text.split(" ")[0], start: 0, end: 0.25 }]
+            ? text.split(" ").map((word, index) => ({
+                text: word,
+                start: index * 0.25,
+                end: (index + 1) * 0.25,
+              }))
             : undefined,
         })),
       getStitchOptions: () => ({
@@ -144,7 +148,9 @@ describe("generateSpeech", () => {
 
     expect(result.timestamps).toEqual([
       { text: "First", start: 0, end: 0.25 },
+      { text: "sentence.", start: 0.25, end: 0.5 },
       { text: "Second", start: 1, end: 1.25 },
+      { text: "sentence.", start: 1.25, end: 1.5 },
     ]);
     expect(provider.generate).toHaveBeenCalledTimes(2);
     expect(provider.generate).toHaveBeenNthCalledWith(

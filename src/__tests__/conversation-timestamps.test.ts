@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { TimestampKeyMissingError } from "../errors.js";
+import {
+  TimestampProviderRequiredError,
+  TimestampValidationError,
+} from "../errors.js";
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
@@ -163,7 +166,12 @@ describe("generateConversation timestamps — stitch path", () => {
   });
 
   it("on mode: derives timestamps via factory-configured STT for providers without native support", async () => {
-    const stt = mockSTT([{ text: "hello", start: 0, end: 0.05 }]);
+    const stt = mockSTT([]);
+    stt.transcribe.mockImplementation((options: { text?: string }) =>
+      Promise.resolve({
+        timestamps: [{ text: options.text ?? "", start: 0, end: 0.05 }],
+      })
+    );
     const providerDerived = stitchTTS({ id: "d" });
 
     const result = await generateConversation({
@@ -194,7 +202,7 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(stt.transcribe).toHaveBeenCalledTimes(2);
     expect(result.timestamps).toHaveLength(2);
     expect(result.timestamps?.[0]).toEqual({
-      text: "hello",
+      text: "hi",
       start: 0,
       end: 0.05,
       turnIndex: 0,
@@ -261,7 +269,7 @@ describe("generateConversation timestamps — stitch path", () => {
     expect(result.timestamps?.[5]?.turnIndex).toBe(2);
   });
 
-  it("fills missing-turn timestamps proportionally with a warning", async () => {
+  it("rejects missing turn timestamps instead of fabricating proportional timings", async () => {
     const providerWithTimestamps = stitchTTS({
       id: "with-ts",
       feature: "timestamps",
@@ -270,62 +278,43 @@ describe("generateConversation timestamps — stitch path", () => {
     const providerWithoutTimestamps = stitchTTS({ id: "no-ts" });
     const emptySTT = mockSTT([]);
 
-    const result = await generateConversation({
-      turns: [
-        {
-          model: { provider: providerWithTimestamps, modelId: "m" },
-          voice: "v1",
-          text: "hello",
-        },
-        {
-          model: {
-            provider: providerWithoutTimestamps,
-            modelId: "m",
-            fallbackSTT: { provider: emptySTT, modelId: "m" },
+    await expect(
+      generateConversation({
+        turns: [
+          {
+            model: { provider: providerWithTimestamps, modelId: "m" },
+            voice: "v1",
+            text: "hello",
           },
-          voice: "v2",
-          text: "world friend",
-        },
-      ],
-      gapMs: 100,
-      timestamps: true,
-    });
-
-    expect(result.timestamps).toBeDefined();
-    expect(result.timestamps?.length).toBeGreaterThan(0);
-    expect(
-      result.timestamps?.every((w) => typeof w.turnIndex === "number")
-    ).toBe(true);
-    expect(result.warnings?.some((w) => w.includes("proportionally"))).toBe(
-      true
-    );
-    const filledTurnWords = result.timestamps?.filter((w) => w.turnIndex === 1);
-    expect(filledTurnWords).toHaveLength(2);
-    expect(filledTurnWords?.[0]?.text).toBe("world");
-    expect(filledTurnWords?.[1]?.text).toBe("friend");
+          {
+            model: {
+              provider: providerWithoutTimestamps,
+              modelId: "m",
+              fallbackSTT: { provider: emptySTT, modelId: "m" },
+            },
+            voice: "v2",
+            text: "world friend",
+          },
+        ],
+        gapMs: 100,
+        timestamps: true,
+      })
+    ).rejects.toBeInstanceOf(TimestampValidationError);
   });
 
-  it("throws TimestampKeyMissingError when timestamps:true, no fallback, OPENAI_API_KEY missing (stitch path)", async () => {
-    const previousKey = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    try {
-      const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
+  it("requires a timestamp provider before stitch synthesis", async () => {
+    const ttsProvider = stitchTTS({ id: "stub-no-fallback" });
 
-      await expect(
-        generateConversation({
-          model: { provider: ttsProvider, modelId: "m" },
-          turns: [
-            { voice: "a", text: "Hi." },
-            { voice: "b", text: "Hello." },
-          ],
-          timestamps: true,
-        })
-      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
-    } finally {
-      if (previousKey !== undefined) {
-        process.env.OPENAI_API_KEY = previousKey;
-      }
-    }
+    await expect(
+      generateConversation({
+        model: { provider: ttsProvider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        timestamps: true,
+      })
+    ).rejects.toBeInstanceOf(TimestampProviderRequiredError);
   });
 });
 
@@ -488,30 +477,22 @@ describe("generateConversation timestamps — native path", () => {
     expect(result.timestamps?.[1]?.turnIndex).toBe(1);
   });
 
-  it("throws TimestampKeyMissingError when timestamps:true, no fallback, OPENAI_API_KEY missing (native path)", async () => {
-    const previousKey = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    try {
-      const provider = nativeTTS({});
+  it("requires a timestamp provider before native dialogue synthesis", async () => {
+    const provider = nativeTTS({});
 
-      await expect(
-        generateConversation({
-          model: { provider, modelId: "m" },
-          turns: [
-            { voice: "a", text: "Hi." },
-            { voice: "b", text: "Hello." },
-          ],
-          timestamps: true,
-        })
-      ).rejects.toBeInstanceOf(TimestampKeyMissingError);
-    } finally {
-      if (previousKey !== undefined) {
-        process.env.OPENAI_API_KEY = previousKey;
-      }
-    }
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hello." },
+        ],
+        timestamps: true,
+      })
+    ).rejects.toBeInstanceOf(TimestampProviderRequiredError);
   });
 
-  it("attribution: emits timestamps via Tier 3 when provider words don't match input transcript", async () => {
+  it("rejects native dialogue timestamps that do not match the input transcript", async () => {
     const provider = nativeTTS({
       feature: "timestamps",
       timestamps: [
@@ -523,22 +504,18 @@ describe("generateConversation timestamps — native path", () => {
       ],
     });
 
-    const result = await generateConversation({
-      model: { provider, modelId: "m" },
-      turns: [
-        { voice: "a", text: "Hello there." },
-        { voice: "b", text: "How are you?" },
-      ],
-      timestamps: true,
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hello there." },
+          { voice: "b", text: "How are you?" },
+        ],
+        timestamps: true,
+      })
+    ).rejects.toMatchObject({
+      name: TimestampValidationError.name,
+      reason: "transcript_mismatch",
     });
-
-    expect(result.timestamps).toBeDefined();
-    expect(result.timestamps?.length).toBe(5);
-    expect(
-      result.timestamps?.every((t) => typeof t.turnIndex === "number")
-    ).toBe(true);
-    expect(
-      result.warnings?.some((w) => w.includes("proportional distribution"))
-    ).toBe(true);
   });
 });

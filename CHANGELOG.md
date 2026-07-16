@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0
+
+- **Word timestamps now project exactly onto the text synthesized by the SDK.** Native, gateway, and explicitly derived candidates are accepted only when they completely cover the processed input's Unicode lexical content in order, contain no extra lexical content or punctuation-only entries, and have finite, nonnegative, monotonic timings within the generated audio. Public `WordTimestamp.text` values come from caller input after unsupported audio-tag removal; pronunciation substitutions are aligned against synthesized text and mapped back before return. Invalid requested timestamps throw `TimestampValidationError` instead of returning incorrect or fabricated alignment.
+- Add the `TimestampProvider` interface and `timestampProvider` option for direct models without native timestamps. `timestamps: true` remains the single switch for requesting timestamps; the provider is ignored for native and gateway models. `createElevenLabs().forcedAlignment()` supplies a provider that posts generated audio and exact synthesized text to `/v1/forced-alignment`. There is no implicit OpenAI fallback; legacy explicit `fallbackSTT` configuration remains supported.
+- **Fix: ElevenLabs character alignment no longer emits punctuation-only word timestamps.** Standalone punctuation (including dashes, ellipses, quotes, commas, periods, and apostrophes) attaches deterministically to an adjacent lexical word while preserving caller spacing and the combined timing span; punctuation-only input yields no word timestamps.
+
 ## 0.22.0
 
 - Add the exported, serializable `SpeechSdkProviderError` for provider non-2xx responses. It exposes `status`, `provider`, `model`, canonical `code`, the complete parsed provider body in `details`, unmodified response text in `rawResponse`, `requestId`, `retryable`, and optional `stage` (`synthesis` or `alignment`). `toJSON()` retains these fields for structured/serverless logging. The error extends `ApiError`, preserving `instanceof ApiError`, `statusCode`, `responseBody`, current summarized messages, retry timing, and turn attribution.

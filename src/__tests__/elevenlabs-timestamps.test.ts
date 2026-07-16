@@ -25,7 +25,50 @@ function mockFetchReturningTimestampedJson(): ReturnType<typeof vi.fn> {
   );
 }
 
-describe("ElevenLabs /with-timestamps mediaType derivation", () => {
+describe("ElevenLabs /with-timestamps", () => {
+  it("uses expanded numbers and abbreviations from normalized_alignment", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          audio_base64: FOUR_BYTES_B64,
+          alignment: {
+            characters: [..."Dr. 12"],
+            character_start_times_seconds: [0, 0.05, 0.1, 0.15, 0.2, 0.25],
+            character_end_times_seconds: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3],
+          },
+          normalized_alignment: {
+            characters: [..."Doctor twelve"],
+            character_start_times_seconds: [
+              0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55,
+              0.6,
+            ],
+            character_end_times_seconds: [
+              0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6,
+              0.65,
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "k",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_multilingual_v2",
+      text: "Dr. 12",
+      voice: "v",
+      includeTimestamps: true,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "Doctor", start: 0, end: 0.3 },
+      { text: "twelve", start: 0.35, end: 0.65 },
+    ]);
+  });
+
   it("returns audio/mpeg when no output_format is set (endpoint default)", async () => {
     const fetchFn = mockFetchReturningTimestampedJson();
     const provider = new ElevenLabsSpeechProvider({
