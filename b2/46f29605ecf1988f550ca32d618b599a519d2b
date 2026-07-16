@@ -1,0 +1,90 @@
+src/__tests__/generate-speech.test.ts
+  s_084bf635e472f0::t_fa63aa9dfb5b38 129-133,151,153
+CHANGELOG.md
+  s_084bf635e472f0::t_f4886c4150a904 3-4,9
+  s_084bf635e472f0::t_b68db39066268c 5-8
+src/types.ts
+  s_084bf635e472f0::t_72a175c634d81b 4,62-64,66-67,90
+src/timestamps.ts
+  s_084bf635e472f0::t_72a175c634d81b 7-36
+src/errors.ts
+  s_084bf635e472f0::t_72a175c634d81b 1-2,10-27
+  s_084bf635e472f0::t_664ebaa0b7704b 28-30
+src/providers/elevenlabs/alignment.ts
+  s_084bf635e472f0::t_a691c61cde143a 24,27-29,31-34,37-39,46,53-54,57,59-60,63
+  s_084bf635e472f0::t_151d99dd9ced2c 15-19,23,25-26,36,47,55-56,68,70,73,81-82,103
+  s_084bf635e472f0::t_064e78ededceae 12
+  s_084bf635e472f0::t_020b55d79e75b1 64-67,69,71-72,74-80,83-100
+src/__tests__/alignment-quality.test.ts
+  s_084bf635e472f0::t_d5c515b62df61a 285-297,299-301
+  s_084bf635e472f0::t_830a1dd589aa9a 298
+  s_084bf635e472f0::t_62a18f842817a7 1-217,266-284,302-313
+  s_084bf635e472f0::t_b02cc7eca24a18 218-265
+src/timestamp-finalization.ts
+  s_084bf635e472f0::t_a024f98c6dfc06 1-69,73-76,78-80,82-117,121-158
+  s_084bf635e472f0::t_8797074360aa7c 70-72,77,81,118-120
+src/index.ts
+  s_084bf635e472f0::t_72a175c634d81b 28
+src/generate-speech.ts
+  s_084bf635e472f0::t_239cd62ed9d322 42
+  s_084bf635e472f0::t_e5a35ac8fb7725 84-88,137,204,210-213
+  s_084bf635e472f0::t_fba6757aec47e5 196-199,205-209,214,223,227-228,234-235,237-241
+src/providers/elevenlabs/forced-alignment.ts
+  s_084bf635e472f0::t_8797074360aa7c 76,124-137
+  s_084bf635e472f0::t_7e998b846f6a2c 1-75,77-123,138-161
+src/providers/elevenlabs/index.ts
+  s_084bf635e472f0::t_7e998b846f6a2c 32,741,744-755
+src/speech-to-text-provider.ts
+  s_084bf635e472f0::t_72a175c634d81b 27
+  s_084bf635e472f0::t_7e998b846f6a2c 10
+src/__tests__/conversation-timestamps.test.ts
+  s_084bf635e472f0::t_95738bbb22ef16 169
+  s_084bf635e472f0::t_fa63aa9dfb5b38 166-168,170-171,202
+src/__tests__/pronunciations-generate-speech.test.ts
+  s_084bf635e472f0::t_509d320d21960e 58
+src/speech-result.ts
+  s_084bf635e472f0::t_72a175c634d81b 2-6,15
+README.md
+  s_084bf635e472f0::t_b68db39066268c 177-178,181-184,186,188,211-212,214-242,485,492,552
+  s_084bf635e472f0::t_b02cc7eca24a18 244
+  s_084bf635e472f0::t_cac2cb9ba89903 213
+  s_084bf635e472f0::t_d5c515b62df61a 500-509
+  s_084bf635e472f0::t_8749d30e749954 243
+src/derive-timestamps.ts
+  s_084bf635e472f0::t_19e2054c48f21a 9-10,12-15,23,27,34,36-43
+  s_084bf635e472f0::t_bf771e87fc07dc 11,35
+src/timestamp-alignment.ts
+  s_084bf635e472f0::t_bf771e87fc07dc 169
+  s_084bf635e472f0::t_46a12e99af9f32 1-168,170-364
+src/__tests__/elevenlabs-forced-alignment.test.ts
+  s_084bf635e472f0::t_8797074360aa7c 32-35,59-62,134-137
+  s_084bf635e472f0::t_25428bba7cd06d 1-31,36-58,63-133,138-156
+src/__tests__/elevenlabs-timestamps.test.ts
+  s_084bf635e472f0::t_6528eeba3d090a 28-71
+package.json
+  s_084bf635e472f0::t_f4886c4150a904 3
+src/generate-conversation.ts
+  s_084bf635e472f0::t_6289d560662290 754,764
+src/__tests__/timestamps.test.ts
+  s_084bf635e472f0::t_509d320d21960e 391,405-408,419-421,432-436,482-483
+  s_084bf635e472f0::t_f08a9d4959e075 9-11,304-314,369-390,392-404,409-418,422-431,437-481,484-492
+src/__tests__/timestamp-finalization.test.ts
+  s_084bf635e472f0::t_8797074360aa7c 87-96,98-102
+  s_084bf635e472f0::t_509d320d21960e 1-86,97,103-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b246f29605ecf1988f550ca32d618b599a519d2b",
+  "prompts": {},
+  "sessions": {
+    "s_084bf635e472f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6bf7-9dba-71a3-be90-77291ec42b9a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
