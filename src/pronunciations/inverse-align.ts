@@ -1,6 +1,8 @@
 import type { WordTimestamp } from "../timestamps.js";
 import type { Edit } from "./types.js";
 
+const LEXICAL_CHARACTER = /[\p{L}\p{N}]/u;
+
 function findEditAt(
   position: number,
   edits: readonly Edit[]
@@ -16,6 +18,11 @@ function findTokenStart(
   token: string
 ): number {
   return haystack.indexOf(token.toLowerCase(), searchFrom);
+}
+
+function findTokenLexicalStart(position: number, token: string): number {
+  const offset = token.search(LEXICAL_CHARACTER);
+  return offset === -1 ? position : position + offset;
 }
 
 export function inverseAlign<T extends WordTimestamp>(
@@ -54,7 +61,7 @@ export function inverseAlign<T extends WordTimestamp>(
       continue;
     }
     cursor = pos + ts.text.length;
-    const edit = findEditAt(pos, edits);
+    const edit = findEditAt(findTokenLexicalStart(pos, ts.text), edits);
 
     if (edit) {
       if (pendingGroup && pendingGroup.edit === edit) {

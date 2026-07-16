@@ -4,12 +4,13 @@ import {
   applyOptionalOutputConversion,
 } from "../audio-output.js";
 import { mapWithConcurrency } from "../concurrency.js";
-import { withTurnIndex } from "../errors.js";
+import { TimestampValidationError, withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { debug } from "../logger.js";
 import type { SpeechMetadata } from "../metadata.js";
 import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
+import type { TimestampProvider } from "../timestamp-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
   concatPcmToWav,
@@ -17,7 +18,6 @@ import {
   normalizeRms,
   stitchTargetRate,
 } from "./pcm-concat.js";
-import { fillTurnTimestampsProportional } from "./proportional-fill.js";
 import type { ConversationTurn } from "./types.js";
 
 interface StitchInput<V extends Voice = Voice> {
@@ -38,6 +38,7 @@ interface StitchInput<V extends Voice = Voice> {
     providerOptions: Record<string, unknown>;
     mediaType: string;
   }[];
+  readonly timestampProvider?: TimestampProvider;
   readonly timestamps: boolean;
   readonly topLevelProviderOptions?: Record<string, unknown>;
   readonly turns: readonly ConversationTurn<V>[];
@@ -60,8 +61,6 @@ interface StitchOutput {
   readonly timestamps?: readonly ConversationWordTimestamp[];
   readonly warnings: readonly string[];
 }
-
-const WHITESPACE_RE = /\s+/;
 
 export async function runStitch<V extends Voice>(
   input: StitchInput<V>
@@ -91,6 +90,7 @@ export async function runStitch<V extends Voice>(
           abortSignal: signal,
           headers: input.headers,
           timestamps: input.timestamps,
+          timestampProvider: input.timestampProvider,
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
           maxConcurrency: input.maxConcurrency,
@@ -154,48 +154,30 @@ export async function runStitch<V extends Voice>(
   const turnDurations = perTurn.map(
     (p) => p.segment.pcm.length / p.segment.sampleRate
   );
-  const fillWarnings: string[] = [];
   let timestamps: ConversationWordTimestamp[] | undefined;
   if (input.timestamps) {
     timestamps = [];
     let offsetSec = 0;
-    const filledTurns: number[] = [];
     for (let i = 0; i < perTurn.length; i++) {
       const turnTimestamps = perTurn[i]?.result.timestamps;
-      if (turnTimestamps && turnTimestamps.length > 0) {
-        for (const w of turnTimestamps) {
-          timestamps.push({
-            text: w.text,
-            start: w.start + offsetSec,
-            end: w.end + offsetSec,
-            turnIndex: i,
-          });
-        }
-      } else {
-        const turnText = input.turns[i]?.text ?? "";
-        const tokens = turnText
-          .split(WHITESPACE_RE)
-          .filter((t) => t.length > 0);
-        const turnSec = turnDurations[i] ?? 0;
-        const filled = fillTurnTimestampsProportional({
-          turnIndex: i,
-          tokenCount: tokens.length,
-          startSec: offsetSec,
-          endSec: offsetSec + turnSec,
-          texts: tokens,
+      if (!turnTimestamps) {
+        throw new TimestampValidationError({
+          reason: "empty",
+          source: `conversation turn ${i}`,
         });
-        timestamps.push(...filled);
-        filledTurns.push(i);
+      }
+      for (const w of turnTimestamps) {
+        timestamps.push({
+          text: w.text,
+          start: w.start + offsetSec,
+          end: w.end + offsetSec,
+          turnIndex: i,
+        });
       }
       offsetSec += (turnDurations[i] ?? 0) + gapSeconds;
     }
-    if (filledTurns.length > 0) {
-      fillWarnings.push(
-        `speech-sdk: stitch path filled timestamps for turn(s) [${filledTurns.join(",")}] proportionally — provider returned no per-word alignment for those turns.`
-      );
-    }
     debug(
-      `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s); ${filledTurns.length} turn(s) filled proportionally.`
+      `stitch: composed ${timestamps.length} word timestamps across ${perTurn.length} turn(s).`
     );
   }
 
@@ -210,9 +192,6 @@ export async function runStitch<V extends Voice>(
     metadataPerTurn,
     providerMetadataPerTurn,
     timestamps,
-    warnings:
-      warnings.length > 0 || fillWarnings.length > 0
-        ? [...warnings, ...fillWarnings]
-        : warnings,
+    warnings,
   };
 }

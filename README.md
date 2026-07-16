@@ -152,7 +152,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
 ## Timestamps
 
@@ -174,14 +174,16 @@ result.timestamps;
 // ]
 ```
 
+Returned timestamps are projected onto the exact text synthesized by the SDK: caller input after unsupported audio tags are removed and pronunciation substitutions are applied. Provider text is used only to prove complete lexical coverage and provide timing boundaries. Before timestamps are accepted, the SDK verifies Unicode-aware transcript coverage, rejects missing or extra lexical content and punctuation-only entries, and validates finite, nonnegative, monotonic timings against the generated audio. Pronunciation substitutions are mapped back to caller text before timestamps are returned.
+
 | Value | Behavior |
 |---|---|
-| `true` | Always return timestamps. Uses native alignment when available; otherwise transcribes the audio via STT (extra cost + latency). |
-| `false` *(default)* | Never return timestamps. |
+| `true` | Returns validated word timestamps. Native models use their own timestamps. Direct models without native timestamps require `timestampProvider` (or a legacy factory-level `fallbackSTT`). |
+| `false` *(default)* | Never requests, derives, or returns timestamps. |
 
-With `timestamps: true`, models without native alignment require an STT fallback. The SDK automatically uses OpenAI Whisper when `OPENAI_API_KEY` is set in the environment — no extra configuration needed. Gateway-routed models (string model IDs like `"openai/tts-1"`) do not need a fallback — the gateway server provides it.
+`timestampProvider` is only used for direct models that do not support native timestamps. It is intentionally a no-op for native models and gateway-routed string models, where the provider or gateway owns timestamp generation. Invalid, empty, or mismatched requested timestamps throw `TimestampValidationError`; the SDK never returns fabricated or partially matched timings.
 
-**Resolution order:** factory `fallbackSTT` → `OPENAI_API_KEY` env var (automatic Whisper fallback) → throws `TimestampKeyMissingError`.
+There is no implicit OpenAI fallback. Existing factory-level `fallbackSTT` configuration remains supported for compatibility, but new integrations should use the narrower `timestampProvider` interface.
 
 Configure `fallbackSTT` on the factory to use a different key or STT model (set it once, applies to all calls):
 
@@ -204,7 +206,34 @@ const result = await generateSpeech({
 
 Whether a given model returns native alignment or transcribes via the STT fallback is a provider detail — both paths produce the same `WordTimestamp[]` shape.
 
-`generateConversation` accepts the same options and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`. This is what lets you build chat-bubble UIs, speaker-attributed transcripts, and "who's speaking now?" lookups during playback without re-deriving turn boundaries.
+### ElevenLabs Forced Alignment
+
+[ElevenLabs Forced Alignment](https://elevenlabs.io/docs/api-reference/forced-alignment/create/) is available as a timestamp provider. It sends the generated audio and exact synthesized text to ElevenLabs; it is never selected as a default.
+
+```ts
+import { generateSpeech } from '@speech-sdk/core';
+import { createElevenLabs } from '@speech-sdk/core/providers';
+
+const elevenlabs = createElevenLabs({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+});
+
+const result = await generateSpeech({
+  model: elevenlabs('eleven_multilingual_v2'),
+  voice: 'JBFqnCBsd6RMkjVDRZzb',
+  text: 'Dr. Smith paid 12 dollars',
+  timestamps: true,
+  timestampProvider: elevenlabs.forcedAlignment(),
+});
+
+result.timestamps;
+// [{ text: 'Dr.', ... }, { text: 'Smith', ... }, { text: 'paid', ... }, { text: '12', ... }, { text: 'dollars', ... }]
+
+```
+
+Any object implementing the exported `TimestampProvider` interface can be passed the same way. It receives generated audio, its media type, the exact synthesized text, and the request's abort signal. Provider, network, and timestamp validation errors throw normally.
+
+`generateConversation` retains its boolean `timestamps` option and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`.
 
 ```ts
 import { generateConversation, timestampsToTurns } from '@speech-sdk/core';
@@ -430,7 +459,10 @@ Public types live under `@speech-sdk/core/types`:
 import type {
   GenerateSpeechOptions,
   SpeechResult,
+  SpeechResultWithTimestamps,
   ConversationResult,
+  ConversationResultWithTimestamps,
+  TimestampProvider,
   Voice,
   WordTimestamp,
 } from '@speech-sdk/core/types';
@@ -445,7 +477,8 @@ generateSpeech({
   voice: Voice,                           // required — string | { url } | { audio }
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
-  timestamps?: boolean,                   // default false
+  timestamps?: boolean,
+  timestampProvider?: TimestampProvider, // used only when the direct model lacks native timestamps
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,
@@ -457,6 +490,15 @@ interface SpeechResult {
   timestamps?: WordTimestamp[];
   providerMetadata?: Record<string, unknown>;
   warnings?: string[];
+}
+
+interface TimestampProvider {
+  align(input: {
+    abortSignal?: AbortSignal;
+    audio: Uint8Array;
+    mediaType: string;
+    text: string;
+  }): Promise<readonly WordTimestamp[]>;
 }
 
 interface WordTimestamp { text: string; start: number; end: number }  // seconds
@@ -500,7 +542,9 @@ try {
 | `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |
-| `TimestampKeyMissingError` | `timestamps: true` with no native support, no `fallbackSTT` configured, and `OPENAI_API_KEY` not set |
+| `TimestampProviderRequiredError` | `timestamps: true` on a direct model without native timestamps or an explicit timestamp provider |
+| `TimestampValidationError` | Requested timestamps are empty, structurally invalid, or do not exactly cover the synthesized text |
+| `TimestampKeyMissingError` | A legacy configured `fallbackSTT` is missing its API key |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
 | `SpeechSDKError` | Base class |
 

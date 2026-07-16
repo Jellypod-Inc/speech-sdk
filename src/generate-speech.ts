@@ -13,8 +13,6 @@ import {
 } from "./audio-output.js";
 import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
-import { getDefaultSTTFallback } from "./default-stt-fallback.js";
-import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
@@ -23,7 +21,6 @@ import {
 } from "./errors.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
@@ -33,17 +30,19 @@ import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
   isSpeechGatewayModel,
-  modelDeclaresNativeTimestamps,
   modelMaxInputChars,
   type ResolvedModel,
   type SpeechProvider,
   type StitchTurnOptions,
   type Voice,
 } from "./speech-provider.js";
-import type { SpeechResult } from "./speech-result.js";
+import type {
+  SpeechResult,
+  SpeechResultWithTimestamps,
+} from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
-import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
+import { prepareTimestampAlignment } from "./timestamp-alignment.js";
 import type { WordTimestamp } from "./timestamps.js";
 import type { GenerateSpeechOptions } from "./types.js";
 
@@ -64,6 +63,16 @@ function chunkStitchTargetRate(
   return rate;
 }
 
+export function generateSpeech<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+>(
+  options: GenerateSpeechOptions<V, M> & { timestamps: true }
+): Promise<SpeechResultWithTimestamps>;
+export function generateSpeech<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
+>(options: GenerateSpeechOptions<V, M>): Promise<SpeechResult>;
 export async function generateSpeech<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
@@ -102,6 +111,13 @@ export async function generateSpeech<
     );
   }
 
+  const timestampAlignment = prepareTimestampAlignment({
+    modelIdentifier,
+    request: timestamps,
+    resolved,
+    timestampProvider: options.timestampProvider,
+  });
+
   let textToSend = strippedText;
   let pronunciationEdits: readonly Edit[] = [];
   if (!isGateway && options.pronunciations?.rules?.length) {
@@ -133,20 +149,7 @@ export async function generateSpeech<
       needsDecodableInput: !isGateway && isSpeedActive(speed),
     });
 
-  const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
-  const shouldRequestNative = timestamps && (hasNativeTimestamps || isGateway);
-
-  const effectiveFallback =
-    !timestamps || shouldRequestNative
-      ? undefined
-      : (resolved.fallbackSTT ?? (await getDefaultSTTFallback()));
-  logTimestampDecision({
-    modelIdentifier,
-    enabled: timestamps,
-    hasNative: hasNativeTimestamps,
-    willRequestNative: shouldRequestNative,
-    effectiveFallback,
-  });
+  const shouldRequestNative = timestampAlignment.includeNative;
 
   const startTime = performance.now();
 
@@ -205,28 +208,25 @@ export async function generateSpeech<
     mediaType: stretched.mediaType,
   });
 
-  const [computedDuration, resolvedTimestamps] = await Promise.all([
-    computeAudioDuration(audio.uint8Array, stretched.mediaType),
-    resolveTimestamps({
-      timestamps,
-      modelIdentifier,
-      resolved,
-      // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
-      resultTimestamps: maybeScale(result.timestamps, localSpeed),
-      audio: audio.uint8Array,
-      mediaType: stretched.mediaType,
-      text: textToSend,
-      abortSignal,
-    }),
-  ]);
+  const computedDuration = await computeAudioDuration(
+    audio.uint8Array,
+    stretched.mediaType
+  );
   const audioDurationMs =
     computedDuration ??
     maybeScaleDurationMs(result.audioDurationMs, localSpeed);
 
-  const finalTimestamps =
-    resolvedTimestamps && pronunciationEdits.length > 0
-      ? inverseAlign(resolvedTimestamps, textToSend, pronunciationEdits)
-      : resolvedTimestamps;
+  const publicAlignment = await timestampAlignment.resolve({
+    audio: audio.uint8Array,
+    audioDurationMs,
+    mediaType: stretched.mediaType,
+    originalText: strippedText,
+    pronunciationEdits,
+    // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
+    providerTimestamps: maybeScale(result.timestamps, localSpeed),
+    synthesizedText: textToSend,
+    abortSignal,
+  });
 
   const metadata: SpeechMetadata = {
     latencyMs,
@@ -239,7 +239,7 @@ export async function generateSpeech<
     metadata,
     providerMetadata: result.providerMetadata,
     warnings: mergeWarnings(warnings, result.warnings),
-    timestamps: finalTimestamps,
+    timestamps: publicAlignment.timestamps,
   };
 }
 
@@ -459,43 +459,6 @@ function mergeChunkTimestamps(
   return timestamps;
 }
 
-async function resolveTimestamps(args: {
-  timestamps: boolean;
-  modelIdentifier: string;
-  resolved: ResolvedModel;
-  resultTimestamps: readonly WordTimestamp[] | undefined;
-  audio: Uint8Array;
-  mediaType: string;
-  text: string;
-  abortSignal: AbortSignal | undefined;
-}): Promise<readonly WordTimestamp[] | undefined> {
-  if (!args.timestamps) {
-    return;
-  }
-  if (args.resultTimestamps?.length) {
-    debug(
-      `${args.modelIdentifier}: returned ${args.resultTimestamps.length} native word timestamps.`
-    );
-    return args.resultTimestamps;
-  }
-  if (isSpeechGatewayModel(args.resolved)) {
-    return;
-  }
-  const fallback = args.resolved.fallbackSTT ?? (await getDefaultSTTFallback());
-  const timestamps = await deriveTimestampsViaSTT({
-    ttsModel: args.modelIdentifier,
-    audio: args.audio,
-    mediaType: args.mediaType,
-    text: args.text,
-    timestampFallback: fallback,
-    abortSignal: args.abortSignal,
-  });
-  debug(
-    `${args.modelIdentifier}: derived ${timestamps.length} word timestamps via STT fallback.`
-  );
-  return timestamps;
-}
-
 function resolveProviderOptionsForLocalDecoding(args: {
   resolved: ResolvedModel;
   isGateway: boolean;
@@ -687,30 +650,4 @@ async function finalizeSpeechAudio(args: {
     speed: args.speed,
     output: args.output,
   });
-}
-
-function logTimestampDecision(args: {
-  modelIdentifier: string;
-  enabled: boolean;
-  hasNative: boolean;
-  willRequestNative: boolean;
-  effectiveFallback: ResolvedSTTModel | undefined;
-}): void {
-  const { modelIdentifier, enabled, willRequestNative } = args;
-  if (!enabled) {
-    debug(`${modelIdentifier}: timestamps: false — skipping alignment.`);
-    return;
-  }
-  if (willRequestNative) {
-    debug(
-      `${modelIdentifier}: timestamps: true — requesting native alignment from the provider.`
-    );
-    return;
-  }
-  const target = args.effectiveFallback
-    ? `${args.effectiveFallback.provider.id}/${args.effectiveFallback.modelId}`
-    : "unconfigured STT fallback";
-  debug(
-    `${modelIdentifier}: timestamps: true but no native alignment available — will pipe synthesized audio through ${target} for word timestamps (adds a round-trip).`
-  );
 }

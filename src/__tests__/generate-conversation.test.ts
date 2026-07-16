@@ -10,6 +10,7 @@ const SINGLE_SPEAKER_FALLBACK_RE = /single speaker/;
 const TOO_MANY_VOICES_FALLBACK_RE = /more unique voices/;
 const NATIVE_FALLBACK_CALL_COUNT_RE = /2 API calls instead of 1/;
 const STITCH_UNSUPPORTED_RE = /cannot be used in a stitched conversation/;
+const WHITESPACE_RE = /\s+/;
 
 function nativeProvider(): SpeechProvider {
   return {
@@ -265,6 +266,17 @@ describe("generateConversation", () => {
 
   it("returns timestamps on the single-voice fallback path when requested", async () => {
     const provider = geminiLikeProvider();
+    const timestampProvider = {
+      align: vi.fn().mockImplementation(({ text }: { text: string }) =>
+        Promise.resolve(
+          text.split(WHITESPACE_RE).map((word, index) => ({
+            text: word,
+            start: index * 0.02,
+            end: (index + 1) * 0.02,
+          }))
+        )
+      ),
+    };
     const result = await generateConversation({
       model: { provider, modelId: "gemini-3.1-flash-tts-preview" },
       turns: [
@@ -272,6 +284,7 @@ describe("generateConversation", () => {
         { voice: "a", text: "Hello again." },
       ],
       timestamps: true,
+      timestampProvider,
     });
 
     expect(provider.generateDialogue).not.toHaveBeenCalled();
@@ -383,6 +396,61 @@ describe("generateConversation", () => {
     expect(result.metadata.inputChars).toBe(20);
     // Native split has no per-turn boundaries.
     expect(result.metadata.perTurn).toBeUndefined();
+  });
+
+  it("rejects native-split timestamps beyond each block's audio duration", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "native-split-timestamps",
+      defaultModel: "m",
+      models: [
+        {
+          id: "m",
+          features: ["timestamps"],
+          languages: ["en"],
+          releaseDate: "2025-01-01",
+        },
+      ],
+      generate: vi.fn(),
+      generateDialogue: vi
+        .fn()
+        .mockImplementation(
+          ({ turns }: { turns: readonly { text: string }[] }) => ({
+            audio: bytes,
+            mediaType: "audio/pcm;rate=24000",
+            timestamps: turns.map((turn, index) => ({
+              text: turn.text,
+              start: index * 0.05,
+              end: index === turns.length - 1 ? 0.5 : (index + 1) * 0.05,
+            })),
+          })
+        ),
+      dialogueCapabilities: () => ({ maxVoices: 2, maxTotalChars: 12 }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi" },
+          { voice: "b", text: "Yo" },
+          { voice: "a", text: "Hello" },
+          { voice: "b", text: "World" },
+          { voice: "a", text: "Foo" },
+          { voice: "b", text: "Bar" },
+        ],
+        gapMs: 0,
+        timestamps: true,
+      })
+    ).rejects.toMatchObject({
+      name: "TimestampValidationError",
+      reason: "invalid_timing",
+    });
   });
 
   it("routes to stitch path when dialogue unsupported", async () => {

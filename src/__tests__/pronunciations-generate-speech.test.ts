@@ -10,7 +10,12 @@ function fakeModel(spy: ReturnType<typeof vi.fn>): ResolvedModel<string> {
     id: "fake",
     defaultModel: "f1",
     models: [
-      { id: "f1", features: [], languages: [], releaseDate: "2024-01-01" },
+      {
+        id: "f1",
+        features: ["timestamps"],
+        languages: [],
+        releaseDate: "2024-01-01",
+      },
     ],
     generate: spy,
   };
@@ -55,7 +60,7 @@ describe("generateSpeech with pronunciations", () => {
     expect(result.timestamps?.map((t) => t.text)).toEqual([
       "What",
       "is",
-      "LLM",
+      "LLM?",
     ]);
   });
 });
