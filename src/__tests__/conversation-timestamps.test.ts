@@ -49,6 +49,7 @@ function stitchTTS(options: {
 }
 
 function nativeTTS(options: {
+  audioDurationMs?: number;
   timestamps?: WordTimestamp[];
   feature?: "timestamps";
 }): SpeechProvider {
@@ -70,6 +71,7 @@ function nativeTTS(options: {
         Promise.resolve({
           audio: new Uint8Array([1, 2, 3, 4]),
           mediaType: "audio/mpeg",
+          audioDurationMs: options.audioDurationMs,
           ...(opts.includeTimestamps && options.timestamps
             ? { timestamps: options.timestamps }
             : {}),
@@ -516,6 +518,31 @@ describe("generateConversation timestamps — native path", () => {
     ).rejects.toMatchObject({
       name: TimestampValidationError.name,
       reason: "transcript_mismatch",
+    });
+  });
+
+  it("rejects native dialogue timestamps beyond the returned audio duration", async () => {
+    const provider = nativeTTS({
+      audioDurationMs: 100,
+      feature: "timestamps",
+      timestamps: [
+        { text: "Hello", start: 0, end: 0.1 },
+        { text: "there", start: 0.11, end: 0.5 },
+      ],
+    });
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hello" },
+          { voice: "b", text: "there" },
+        ],
+        timestamps: true,
+      })
+    ).rejects.toMatchObject({
+      name: TimestampValidationError.name,
+      reason: "invalid_timing",
     });
   });
 });

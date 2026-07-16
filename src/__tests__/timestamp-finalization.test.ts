@@ -84,6 +84,18 @@ describe("finalizeTimestamps", () => {
   });
 
   it.each([
+    ["circled digit source", "①", "1"],
+    ["circled digit provider timestamp", "1", "①"],
+  ])("rejects compatibility-equivalent text from a %s", (_name, text, output) => {
+    expect(
+      finalizeTimestamps({ text, timestamps: [word(output, 0, 0.2)] })
+    ).toEqual({
+      ok: false,
+      reason: "transcript_mismatch",
+    });
+  });
+
+  it.each([
     [
       "normalized abbreviation",
       "Dr. Smith",

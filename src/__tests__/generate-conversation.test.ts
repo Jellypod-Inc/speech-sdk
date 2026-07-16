@@ -398,6 +398,61 @@ describe("generateConversation", () => {
     expect(result.metadata.perTurn).toBeUndefined();
   });
 
+  it("rejects native-split timestamps beyond each block's audio duration", async () => {
+    const pcm = new Int16Array(2400);
+    const bytes = new Uint8Array(pcm.buffer);
+    const provider: SpeechProvider = {
+      id: "native-split-timestamps",
+      defaultModel: "m",
+      models: [
+        {
+          id: "m",
+          features: ["timestamps"],
+          languages: ["en"],
+          releaseDate: "2025-01-01",
+        },
+      ],
+      generate: vi.fn(),
+      generateDialogue: vi
+        .fn()
+        .mockImplementation(
+          ({ turns }: { turns: readonly { text: string }[] }) => ({
+            audio: bytes,
+            mediaType: "audio/pcm;rate=24000",
+            timestamps: turns.map((turn, index) => ({
+              text: turn.text,
+              start: index * 0.05,
+              end: index === turns.length - 1 ? 0.5 : (index + 1) * 0.05,
+            })),
+          })
+        ),
+      dialogueCapabilities: () => ({ maxVoices: 2, maxTotalChars: 12 }),
+      getStitchOptions: () => ({
+        providerOptions: { response_format: "pcm" },
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: [
+          { voice: "a", text: "Hi" },
+          { voice: "b", text: "Yo" },
+          { voice: "a", text: "Hello" },
+          { voice: "b", text: "World" },
+          { voice: "a", text: "Foo" },
+          { voice: "b", text: "Bar" },
+        ],
+        gapMs: 0,
+        timestamps: true,
+      })
+    ).rejects.toMatchObject({
+      name: "TimestampValidationError",
+      reason: "invalid_timing",
+    });
+  });
+
   it("routes to stitch path when dialogue unsupported", async () => {
     const provider = stitchProvider();
     const result = await generateConversation({

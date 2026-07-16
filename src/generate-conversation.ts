@@ -544,6 +544,7 @@ async function runNative<V extends Voice>(args: {
       ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
       resolved,
       abortSignal: options.abortSignal,
+      audioDurationMs,
       substitutedTurnTexts: substitutedTurns.map((t) => t.text),
       timestampProvider: options.timestampProvider,
     });
@@ -706,6 +707,7 @@ async function runNativeSplit<V extends Voice>(args: {
         ttsModel,
         resolved,
         abortSignal: signal,
+        audioDurationMs: (segment.pcm.length / segment.sampleRate) * 1000,
         substitutedTurnTexts: blockTurns.map((t) => t.text),
         timestampProvider: options.timestampProvider,
         pcmSegment: segment,
@@ -827,6 +829,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   ttsModel: string;
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
+  audioDurationMs: number | undefined;
   substitutedTurnTexts: readonly string[];
   timestampProvider?: TimestampProvider;
   // Already-decoded PCM for the same audio, when the caller has it, to skip a redundant decode.
@@ -875,6 +878,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   }
 
   flatTimestamps = requireValidTimestamps({
+    audioDurationMs: args.audioDurationMs,
     source: args.ttsModel,
     text: args.substitutedTurnTexts.join(" "),
     timestamps: flatTimestamps,

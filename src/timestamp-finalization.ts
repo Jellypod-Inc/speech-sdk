@@ -27,7 +27,7 @@ export type TimestampRejectionReason =
 
 function canonicalize(text: string): string {
   return (
-    text.normalize("NFKC").toLowerCase().match(CANONICAL_CHARACTERS) ?? []
+    text.normalize("NFC").toLowerCase().match(CANONICAL_CHARACTERS) ?? []
   ).join("");
 }
 

@@ -94,12 +94,6 @@ export async function generateSpeech<
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
-  const timestampAlignment = prepareTimestampAlignment({
-    modelIdentifier,
-    request: timestamps,
-    resolved,
-    timestampProvider: options.timestampProvider,
-  });
 
   validatePronunciationsInput(options.pronunciations);
 
@@ -116,6 +110,13 @@ export async function generateSpeech<
         : "Text must not be empty."
     );
   }
+
+  const timestampAlignment = prepareTimestampAlignment({
+    modelIdentifier,
+    request: timestamps,
+    resolved,
+    timestampProvider: options.timestampProvider,
+  });
 
   let textToSend = strippedText;
   let pronunciationEdits: readonly Edit[] = [];

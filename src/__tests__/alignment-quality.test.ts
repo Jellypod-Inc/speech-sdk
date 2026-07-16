@@ -163,6 +163,31 @@ describe("exact timestamp alignment", () => {
     expect(result.timestamps.map(({ text }) => text)).toEqual(["Say", "LLM"]);
   });
 
+  it("projects a pronunciation substitution preceded by punctuation", async () => {
+    const provider = timestampProvider([
+      { text: "Say", start: 0, end: 0.2 },
+      { text: "el", start: 0.3, end: 0.4 },
+      { text: "el", start: 0.4, end: 0.5 },
+      { text: "em", start: 0.5, end: 0.6 },
+    ]);
+
+    const result = await generateSpeech({
+      model: ttsModel({}),
+      voice: "v",
+      text: "Say “LLM”.",
+      pronunciations: {
+        rules: [{ word: "LLM", replacement: "el el em" }],
+      },
+      timestamps: true,
+      timestampProvider: provider,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "Say", start: 0, end: 0.2 },
+      { text: "“LLM”.", start: 0.3, end: 0.6 },
+    ]);
+  });
+
   it("requires timestampProvider before synthesizing a non-native model", async () => {
     const model = ttsModel({});
     await expect(

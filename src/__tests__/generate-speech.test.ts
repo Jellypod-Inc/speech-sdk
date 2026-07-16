@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, TextChunkingUnsupportedError } from "../errors.js";
+import {
+  ApiError,
+  NoSpeechGeneratedError,
+  TextChunkingUnsupportedError,
+} from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { createSpeechGateway } from "../providers/gateway/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
@@ -682,6 +686,20 @@ describe("generateSpeech", () => {
       expect(provider.generate).not.toHaveBeenCalled();
     });
 
+    it("validates tag-stripped text before requiring a timestamp provider", async () => {
+      const provider = createMockProvider();
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "mock-model" },
+          text: "[laugh] [sigh]",
+          voice: "test-voice",
+          timestamps: true,
+        })
+      ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
+      expect(provider.generate).not.toHaveBeenCalled();
+    });
+
     it("throws when text is empty after provider processAudioTags", async () => {
       const processAudioTags = vi.fn().mockReturnValue({
         text: "  ",
@@ -711,6 +729,20 @@ describe("generateSpeech", () => {
           voice: "test-voice",
         })
       ).rejects.toThrow("Text must not be empty.");
+      expect(provider.generate).not.toHaveBeenCalled();
+    });
+
+    it("validates empty text before requiring a timestamp provider", async () => {
+      const provider = createMockProvider();
+
+      await expect(
+        generateSpeech({
+          model: { provider, modelId: "mock-model" },
+          text: "   ",
+          voice: "test-voice",
+          timestamps: true,
+        })
+      ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
       expect(provider.generate).not.toHaveBeenCalled();
     });
 
