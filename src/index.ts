@@ -29,6 +29,7 @@ export {
   AudioOutputInputError,
   CloneSampleFetchError,
   GatewayInputError,
+  InstructionsUnsupportedError,
   InvalidCloneFieldError,
   InvalidDesignFieldError,
   MissingApiKeyError,

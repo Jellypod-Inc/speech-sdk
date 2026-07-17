@@ -26,6 +26,11 @@ import {
   TimestampProviderRequiredError,
   TimestampValidationError,
 } from "./errors.js";
+import {
+  combineInstructions,
+  nonEmptyInstructions,
+  validateInstructionSupport,
+} from "./instructions.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
@@ -51,6 +56,7 @@ import type {
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars } from "./text-chunker.js";
+import { preprocessSpeechText } from "./text-preprocessing.js";
 import { deriveTimestampsViaProvider } from "./timestamp-alignment.js";
 import { finalizeTimestamps } from "./timestamp-finalization.js";
 import type { TimestampProvider } from "./timestamp-provider.js";
@@ -159,6 +165,16 @@ export async function generateConversation<
     return resolveOnce(model);
   });
 
+  for (const [index, resolved] of resolvedPerTurn.entries()) {
+    validateInstructionSupport(
+      resolved,
+      combineInstructions(
+        options.instructions,
+        options.turns[index].instructions
+      )
+    );
+  }
+
   const forceStitch =
     hasPerTurnSpeed ||
     needsConversationStitchForMaxInputChars({
@@ -213,6 +229,7 @@ export async function generateConversation<
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
+    instructions: nonEmptyInstructions(options.instructions),
     timestamps: options.timestamps ?? false,
     timestampProvider: options.timestampProvider,
     pronunciations: options.pronunciations,
@@ -343,6 +360,9 @@ async function runGateway<V extends Voice>(args: {
       ...(allSameModel ? {} : { model: resolvedPerTurn[i].modelId }),
       voice: t.voice,
       text: t.text,
+      ...(nonEmptyInstructions(t.instructions) && {
+        instructions: t.instructions,
+      }),
       ...(t.providerOptions && { providerOptions: t.providerOptions }),
       ...(t.speed != null && { speed: t.speed }),
     };
@@ -362,6 +382,7 @@ async function runGateway<V extends Voice>(args: {
         includeTimestamps,
         output: options.output,
         pronunciations: options.pronunciations,
+        instructions: nonEmptyInstructions(options.instructions),
       }),
     buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
   );
@@ -386,7 +407,14 @@ async function runGateway<V extends Voice>(args: {
         audioDurationMs,
         source: "speech-gateway/conversation",
         timestamps: result.timestamps ?? [],
-        turnTexts: options.turns.map((turn) => turn.text),
+        turnTexts: options.turns.map(
+          (turn) =>
+            preprocessSpeechText({
+              resolved: resolvedPerTurn[0],
+              rawText: turn.text,
+              modelIdentifier: "speech-gateway/conversation",
+            }).canonicalText
+        ),
       })
     : undefined;
   const warnings = result.warnings;
@@ -416,6 +444,25 @@ function finalizeGatewayConversationTimestamps(args: {
   readonly timestamps: readonly ConversationWordTimestamp[];
   readonly turnTexts: readonly string[];
 }): readonly ConversationWordTimestamp[] {
+  return (
+    finalizeConversationTurnTimestamps({
+      audioDurationMs: args.audioDurationMs,
+      source: args.source,
+      timestamps: args.timestamps,
+      turnTexts: args.turnTexts,
+    }) ?? []
+  );
+}
+
+function finalizeConversationTurnTimestamps(args: {
+  readonly audioDurationMs?: number;
+  readonly source: string;
+  readonly timestamps: readonly ConversationWordTimestamp[] | undefined;
+  readonly turnTexts: readonly string[];
+}): readonly ConversationWordTimestamp[] | undefined {
+  if (!args.timestamps) {
+    return;
+  }
   const projected: ConversationWordTimestamp[] = [];
   for (const [turnIndex, text] of args.turnTexts.entries()) {
     const turnTimestamps = args.timestamps.filter(
@@ -501,13 +548,24 @@ async function runNative<V extends Voice>(args: {
     ? mergeRules(options.pronunciations.rules)
     : null;
 
-  const substitutedTurns = buildSubstitutedTurns(options.turns, ruleMap);
+  const substitutedTurns = buildSubstitutedTurns(
+    options.turns,
+    resolved,
+    ruleMap
+  );
 
   const result = await pRetry(
     () =>
       generateDialogue({
         modelId: resolved.modelId,
-        turns: substitutedTurns.map((t) => ({ voice: t.voice, text: t.text })),
+        turns: substitutedTurns.map((t) => ({
+          voice: t.voice,
+          text: t.text,
+          ...(t.instructions && { instructions: t.instructions }),
+        })),
+        ...(nonEmptyInstructions(options.instructions) && {
+          instructions: options.instructions,
+        }),
         providerOptions: dialogueProviderOptions,
         abortSignal: options.abortSignal,
         headers: options.headers,
@@ -545,13 +603,19 @@ async function runNative<V extends Voice>(args: {
       resolved,
       abortSignal: options.abortSignal,
       audioDurationMs,
-      substitutedTurnTexts: substitutedTurns.map((t) => t.text),
+      substitutedTurnTexts: substitutedTurns.map((t) => t.canonicalText),
       timestampProvider: options.timestampProvider,
     });
 
-  const timestamps = ruleMap
+  const projectedTimestamps = ruleMap
     ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
     : rawTimestamps;
+  const timestamps = finalizeConversationTurnTimestamps({
+    audioDurationMs,
+    source: `${resolved.provider.id}/${resolved.modelId}`,
+    timestamps: projectedTimestamps,
+    turnTexts: substitutedTurns.map((turn) => turn.originalText),
+  });
 
   // Defer output conversion to applySpeedToConversationResult when top-level speed
   // is active — otherwise we'd encode here and re-encode in the stretch step.
@@ -577,9 +641,14 @@ async function runNative<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
+  const preprocessingWarnings = substitutedTurns.flatMap(
+    (turn) => turn.warnings
+  );
   const mergedWarnings =
-    warnings.length > 0 || attributionWarnings.length > 0
-      ? [...warnings, ...attributionWarnings]
+    warnings.length > 0 ||
+    preprocessingWarnings.length > 0 ||
+    attributionWarnings.length > 0
+      ? [...warnings, ...preprocessingWarnings, ...attributionWarnings]
       : undefined;
 
   return {
@@ -664,7 +733,11 @@ async function runNativeSplit<V extends Voice>(args: {
   const ruleMap = options.pronunciations?.rules?.length
     ? mergeRules(options.pronunciations.rules)
     : null;
-  const substitutedTurns = buildSubstitutedTurns(options.turns, ruleMap);
+  const substitutedTurns = buildSubstitutedTurns(
+    options.turns,
+    resolved,
+    ruleMap
+  );
   const ttsModel = `${resolved.provider.id}/${resolved.modelId}`;
 
   const { decodeAudioToPcm16 } = await import("./audio-decode.js");
@@ -678,7 +751,14 @@ async function runNativeSplit<V extends Voice>(args: {
         () =>
           generateDialogue({
             modelId: resolved.modelId,
-            turns: blockTurns.map((t) => ({ voice: t.voice, text: t.text })),
+            turns: blockTurns.map((t) => ({
+              voice: t.voice,
+              text: t.text,
+              ...(t.instructions && { instructions: t.instructions }),
+            })),
+            ...(nonEmptyInstructions(options.instructions) && {
+              instructions: options.instructions,
+            }),
             providerOptions: dialogueProviderOptions,
             abortSignal: signal,
             headers: options.headers,
@@ -708,7 +788,7 @@ async function runNativeSplit<V extends Voice>(args: {
         resolved,
         abortSignal: signal,
         audioDurationMs: (segment.pcm.length / segment.sampleRate) * 1000,
-        substitutedTurnTexts: blockTurns.map((t) => t.text),
+        substitutedTurnTexts: blockTurns.map((t) => t.canonicalText),
         timestampProvider: options.timestampProvider,
         pcmSegment: segment,
       });
@@ -773,7 +853,10 @@ async function runNativeSplit<V extends Voice>(args: {
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
-  const warnings = perBlock.flatMap((p) => p.warnings);
+  const warnings = [
+    ...substitutedTurns.flatMap((turn) => turn.warnings),
+    ...perBlock.flatMap((p) => p.warnings),
+  ];
 
   return {
     audio: finalAudio,
@@ -792,7 +875,7 @@ function composeBlockTimestamps(args: {
   blocks: readonly (readonly number[])[];
   gapMs: number;
   ruleMap: Map<string, Pronunciation> | null;
-  substitutedTurns: readonly { text: string; edits: readonly Edit[] }[];
+  substitutedTurns: readonly PreparedConversationTurn[];
 }): readonly ConversationWordTimestamp[] | undefined {
   const { perBlock, blocks, gapMs, ruleMap, substitutedTurns } = args;
   const composed: ConversationWordTimestamp[] = [];
@@ -815,9 +898,14 @@ function composeBlockTimestamps(args: {
     const seg = perBlock[b].segment;
     offsetSec += seg.pcm.length / seg.sampleRate + gapSeconds;
   }
-  return ruleMap
+  const projected = ruleMap
     ? inverseAlignDialogueTimestamps(composed, substitutedTurns)
     : composed;
+  return finalizeConversationTurnTimestamps({
+    source: "native conversation blocks",
+    timestamps: projected,
+    turnTexts: substitutedTurns.map((turn) => turn.originalText),
+  });
 }
 
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
@@ -916,7 +1004,12 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   });
 
   return {
-    timestamps: result.timestamps,
+    timestamps: finalizeConversationTurnTimestamps({
+      audioDurationMs: args.audioDurationMs,
+      source: args.ttsModel,
+      timestamps: result.timestamps,
+      turnTexts: args.substitutedTurnTexts,
+    }),
     warnings: result.warnings,
   };
 }
@@ -951,16 +1044,48 @@ async function buildNativeAudio(args: {
   return { audio, outputMediaType };
 }
 
+interface PreparedConversationTurn<V extends Voice = Voice> {
+  readonly canonicalText: string;
+  readonly edits: readonly Edit[];
+  readonly instructions?: string;
+  readonly originalText: string;
+  readonly text: string;
+  readonly voice: V;
+  readonly warnings: readonly string[];
+}
+
 function buildSubstitutedTurns<V extends Voice>(
   turns: readonly ConversationTurn<V>[],
+  resolved: ResolvedModel<V>,
   ruleMap: Map<string, Pronunciation> | null
-): readonly { voice: V; text: string; edits: readonly Edit[] }[] {
-  return turns.map((t) => {
+): readonly PreparedConversationTurn<V>[] {
+  return turns.map((turn) => {
+    const processed = preprocessSpeechText({
+      resolved,
+      rawText: turn.text,
+      modelIdentifier: `${resolved.provider.id}/${resolved.modelId}`,
+    });
     if (!ruleMap) {
-      return { voice: t.voice, text: t.text, edits: [] as readonly Edit[] };
+      return {
+        voice: turn.voice,
+        text: processed.providerText,
+        canonicalText: processed.canonicalText,
+        originalText: processed.canonicalText,
+        instructions: nonEmptyInstructions(turn.instructions),
+        edits: [] as readonly Edit[],
+        warnings: processed.warnings,
+      };
     }
-    const subbed = substitute(t.text, ruleMap);
-    return { voice: t.voice, text: subbed.text, edits: subbed.edits };
+    const canonicalSubstitution = substitute(processed.canonicalText, ruleMap);
+    return {
+      voice: turn.voice,
+      text: substitute(processed.providerText, ruleMap).text,
+      canonicalText: canonicalSubstitution.text,
+      originalText: processed.canonicalText,
+      instructions: nonEmptyInstructions(turn.instructions),
+      edits: canonicalSubstitution.edits,
+      warnings: processed.warnings,
+    };
   });
 }
 
@@ -1008,7 +1133,7 @@ async function applySpeedToConversationResult(args: {
 
 function inverseAlignDialogueTimestamps(
   timestamps: readonly ConversationWordTimestamp[] | undefined,
-  perTurn: readonly { text: string; edits: readonly Edit[] }[]
+  perTurn: readonly PreparedConversationTurn[]
 ): readonly ConversationWordTimestamp[] | undefined {
   if (!timestamps) {
     return timestamps;
@@ -1032,7 +1157,7 @@ function inverseAlignDialogueTimestamps(
     if (turn.edits.length === 0) {
       out.push(...turnTimestamps);
     } else {
-      out.push(...inverseAlign(turnTimestamps, turn.text, turn.edits));
+      out.push(...inverseAlign(turnTimestamps, turn.canonicalText, turn.edits));
     }
   }
   return out;

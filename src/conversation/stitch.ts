@@ -6,6 +6,7 @@ import {
 import { mapWithConcurrency } from "../concurrency.js";
 import { TimestampValidationError, withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
+import { combineInstructions } from "../instructions.js";
 import { debug } from "../logger.js";
 import type { SpeechMetadata } from "../metadata.js";
 import type { PronunciationsInput } from "../pronunciations/types.js";
@@ -28,6 +29,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly deferOutputConversion?: boolean;
   readonly gapMs: number;
   readonly headers?: Record<string, string>;
+  readonly instructions?: string;
   readonly maxConcurrency: number;
   readonly maxInputChars?: number;
   readonly maxRetries: number;
@@ -83,6 +85,10 @@ export async function runStitch<V extends Voice>(
         result = await generateSpeech({
           model: resolved,
           text: turn.text,
+          instructions: combineInstructions(
+            input.instructions,
+            turn.instructions
+          ),
           voice: turn.voice,
           apiKey: input.apiKey,
           providerOptions: mergedProviderOptions,

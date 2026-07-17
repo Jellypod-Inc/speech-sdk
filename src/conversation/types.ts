@@ -4,10 +4,13 @@ import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
+  /** Non-spoken delivery direction for this turn. */
+  readonly instructions?: string;
   readonly model?: string | ResolvedModel<V>;
   readonly providerOptions?: Record<string, unknown>;
   // Time-stretch this turn's rendered audio. Range 0.75–1.5. Forces the stitch path. Stacks with top-level `speed`: turn-level applies first, then top-level applies to the merged audio.
   readonly speed?: number;
+  /** The exact spoken transcript expected for this turn. */
   readonly text: string;
   readonly voice: V;
 }
@@ -23,6 +26,8 @@ export interface GenerateConversationOptions<
   readonly apiKey?: string;
   readonly gapMs?: number;
   readonly headers?: Record<string, string>;
+  /** Non-spoken delivery direction applied to the conversation. */
+  readonly instructions?: string;
   readonly maxConcurrency?: number;
   readonly maxInputChars?: number;
   readonly maxRetries?: number;

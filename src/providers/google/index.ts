@@ -192,19 +192,19 @@ export const GOOGLE_MODELS: readonly ModelInfo[] = [
     id: "gemini-3.1-flash-tts-preview",
     releaseDate: "2026-04-15",
     languages: GOOGLE_GEMINI_3_1_LANGUAGES,
-    features: ["streaming", "audio-tags"],
+    features: ["streaming", "audio-tags", "instructions"],
   },
   {
     id: "gemini-2.5-flash-preview-tts",
     releaseDate: "2025-05-01",
     languages: GOOGLE_GEMINI_2_5_LANGUAGES,
-    features: ["streaming"],
+    features: ["streaming", "instructions"],
   },
   {
     id: "gemini-2.5-pro-preview-tts",
     releaseDate: "2025-05-01",
     languages: GOOGLE_GEMINI_2_5_LANGUAGES,
-    features: ["streaming"],
+    features: ["streaming", "instructions"],
   },
 ] as const;
 
@@ -241,6 +241,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   async generate(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -267,7 +268,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       contents: [
         {
           role: "user",
-          parts: [{ text: `${READ_ALOUD_DIRECTIVE}${options.text}` }],
+          parts: [
+            {
+              text: options.instructions
+                ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${options.text}`
+                : `${READ_ALOUD_DIRECTIVE}${options.text}`,
+            },
+          ],
         },
       ],
       generationConfig: {
@@ -322,6 +329,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   async stream(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -350,6 +358,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   private async streamInteractions(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -364,7 +373,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const body: Record<string, unknown> = {
       model: options.modelId,
-      input: options.text,
+      input: options.instructions
+        ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${options.text}`
+        : options.text,
       response_format: { type: "audio" },
       generation_config: {
         speech_config: [{ voice: voiceName }],
@@ -477,7 +488,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
   async generateDialogue(options: {
     modelId: string;
-    turns: readonly { voice: string; text: string }[];
+    turns: readonly { voice: string; text: string; instructions?: string }[];
+    instructions?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -498,7 +510,26 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       }
       labelled.push(`${label}: ${turn.text}`);
     }
-    const text = labelled.join("\n");
+    const transcript = labelled.join("\n");
+    const perTurnInstructions = options.turns
+      .map((turn, index) => {
+        if (!turn.instructions) {
+          return null;
+        }
+        const label = voiceToLabel.get(turn.voice) ?? `Speaker${index + 1}`;
+        return `${label}: ${turn.instructions}`;
+      })
+      .filter((instruction): instruction is string => instruction !== null);
+    const instructionParts = [
+      options.instructions,
+      perTurnInstructions.length > 0
+        ? perTurnInstructions.join("\n")
+        : undefined,
+    ].filter((instruction): instruction is string => instruction !== undefined);
+    const text =
+      instructionParts.length > 0
+        ? `Delivery instructions:\n${instructionParts.join("\n")}\n\nTranscript:\n${transcript}`
+        : transcript;
 
     const speakerVoiceConfigs = Array.from(voiceToLabel.entries()).map(
       ([voiceName, speaker]) => ({

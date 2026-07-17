@@ -245,6 +245,23 @@ describe("OpenAISpeechProvider.generate with audio tags", () => {
     );
   });
 
+  it("serializes semantic instructions separately from spoken input", async () => {
+    const fetchFn = mockFetch();
+    const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });
+
+    await provider.generate({
+      modelId: "gpt-4o-mini-tts",
+      text: "These words are spoken.",
+      instructions: "Use a measured delivery.",
+      voice: "alloy",
+    });
+
+    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body as string);
+    expect(body.input).toBe("These words are spoken.");
+    expect(body.instructions).toBe("Use a measured delivery.");
+  });
+
   it("passes through text unchanged when no tags are present", async () => {
     const fetchFn = mockFetch();
     const provider = new OpenAISpeechProvider({ apiKey: "k", fetch: fetchFn });

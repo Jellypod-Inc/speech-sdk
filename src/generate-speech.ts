@@ -11,7 +11,6 @@ import {
   applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
-import { detectAudioTags, stripAudioTags } from "./audio-tags.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import {
   NoSpeechGeneratedError,
@@ -19,6 +18,7 @@ import {
   TextChunkingUnsupportedError,
   VolumeAdjustmentUnsupportedError,
 } from "./errors.js";
+import { validateInstructionSupport } from "./instructions.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
@@ -42,6 +42,7 @@ import type {
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
+import { preprocessSpeechText } from "./text-preprocessing.js";
 import { prepareTimestampAlignment } from "./timestamp-alignment.js";
 import type { WordTimestamp } from "./timestamps.js";
 import type { GenerateSpeechOptions } from "./types.js";
@@ -97,19 +98,24 @@ export async function generateSpeech<
 
   validatePronunciationsInput(options.pronunciations);
 
-  const { text: strippedText, warnings } = preprocessText(
+  const { canonicalText, providerText, warnings } = preprocessSpeechText({
     resolved,
-    options.text,
-    modelIdentifier
-  );
+    rawText: options.text,
+    modelIdentifier,
+  });
 
-  if (strippedText.trim().length === 0) {
+  if (providerText.trim().length === 0) {
     throw new NoSpeechGeneratedError(
       warnings.length > 0
         ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
         : "Text must not be empty."
     );
   }
+
+  const instructions = validateInstructionSupport(
+    resolved,
+    options.instructions
+  );
 
   const timestampAlignment = prepareTimestampAlignment({
     modelIdentifier,
@@ -118,13 +124,15 @@ export async function generateSpeech<
     timestampProvider: options.timestampProvider,
   });
 
-  let textToSend = strippedText;
+  let textToSend = providerText;
+  let synthesizedCanonicalText = canonicalText;
   let pronunciationEdits: readonly Edit[] = [];
   if (!isGateway && options.pronunciations?.rules?.length) {
     const ruleMap = mergeRules(options.pronunciations.rules);
-    const subbed = substitute(strippedText, ruleMap);
-    textToSend = subbed.text;
-    pronunciationEdits = subbed.edits;
+    textToSend = substitute(providerText, ruleMap).text;
+    const canonicalSubstitution = substitute(canonicalText, ruleMap);
+    synthesizedCanonicalText = canonicalSubstitution.text;
+    pronunciationEdits = canonicalSubstitution.edits;
   }
 
   const { maxInputChars, shouldChunk, textChunks } = resolveTextChunks({
@@ -158,6 +166,7 @@ export async function generateSpeech<
         resolved,
         modelIdentifier,
         textChunks,
+        instructions,
         voice,
         providerOptions,
         stitchOptions,
@@ -171,6 +180,7 @@ export async function generateSpeech<
     : await generateProviderSpeech({
         resolved,
         text: textToSend,
+        instructions,
         voice,
         providerOptions,
         maxRetries,
@@ -220,11 +230,11 @@ export async function generateSpeech<
     audio: audio.uint8Array,
     audioDurationMs,
     mediaType: stretched.mediaType,
-    originalText: strippedText,
+    originalText: canonicalText,
     pronunciationEdits,
     // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
     providerTimestamps: maybeScale(result.timestamps, localSpeed),
-    synthesizedText: textToSend,
+    synthesizedText: synthesizedCanonicalText,
     abortSignal,
   });
 
@@ -307,6 +317,7 @@ function resolveTextChunks(args: {
 async function generateProviderSpeech<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   text: string;
+  instructions: string | undefined;
   voice: V;
   providerOptions: Record<string, unknown> | undefined;
   maxRetries: number;
@@ -324,6 +335,7 @@ async function generateProviderSpeech<V extends Voice>(args: {
         ? (args.resolved.provider as SpeechGatewayProvider).generate({
             modelId: args.resolved.modelId,
             text: args.text,
+            ...(args.instructions && { instructions: args.instructions }),
             voice: args.voice as unknown as string,
             providerOptions: args.providerOptions,
             abortSignal: args.abortSignal,
@@ -337,6 +349,7 @@ async function generateProviderSpeech<V extends Voice>(args: {
         : args.resolved.provider.generate({
             modelId: args.resolved.modelId,
             text: args.text,
+            ...(args.instructions && { instructions: args.instructions }),
             voice: args.voice,
             providerOptions: args.providerOptions,
             abortSignal: args.abortSignal,
@@ -354,6 +367,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   modelIdentifier: string;
   textChunks: readonly string[];
+  instructions: string | undefined;
   voice: V;
   providerOptions: Record<string, unknown> | undefined;
   stitchOptions: StitchTurnOptions | undefined;
@@ -382,6 +396,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
       const result = await generateProviderSpeech({
         resolved: args.resolved,
         text,
+        instructions: args.instructions,
         voice: args.voice,
         providerOptions: args.providerOptions,
         maxRetries: args.maxRetries,
@@ -576,25 +591,6 @@ async function applyLocalAudioPostProcessing(args: {
   }
 
   return { bytes, mediaType };
-}
-
-function preprocessText(
-  resolved: ResolvedModel,
-  rawText: string,
-  modelIdentifier: string
-): { text: string; warnings: string[] } {
-  // Gateway server handles audio-tag normalization itself — pass raw text through.
-  if (isSpeechGatewayModel(resolved)) {
-    return { text: rawText, warnings: [] };
-  }
-  if (resolved.provider.processAudioTags) {
-    return resolved.provider.processAudioTags(rawText, resolved.modelId);
-  }
-  const tags = detectAudioTags(rawText);
-  if (tags.length > 0) {
-    return stripAudioTags(rawText, modelIdentifier);
-  }
-  return { text: rawText, warnings: [] };
 }
 
 function maybeScale<T extends { start: number; end: number }>(

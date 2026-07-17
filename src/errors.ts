@@ -218,6 +218,18 @@ export class StreamingNotSupportedError extends SpeechSDKError {
   }
 }
 
+export class InstructionsUnsupportedError extends SpeechSDKError {
+  readonly model: string;
+
+  constructor(model: string) {
+    super(
+      `Delivery instructions are not supported by ${model}. Choose a model that declares the instructions capability or omit instructions.`
+    );
+    this.name = "InstructionsUnsupportedError";
+    this.model = model;
+  }
+}
+
 export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   constructor(model: string) {
     super(

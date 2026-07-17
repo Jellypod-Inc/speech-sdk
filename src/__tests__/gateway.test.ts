@@ -67,6 +67,28 @@ describe("SpeechGatewayProvider", () => {
     });
   });
 
+  it("forwards spoken text and instructions as separate gateway fields", async () => {
+    const fetchFn = mockFetchOk();
+    const provider = new SpeechGatewayProvider({
+      apiKey: "gw-key",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    await provider.generate({
+      modelId: "google/gemini-2.5-flash-preview-tts",
+      text: "These words are spoken.",
+      instructions: "Use a warm delivery.",
+      voice: "Kore",
+    });
+
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      model: "google/gemini-2.5-flash-preview-tts",
+      voice: "Kore",
+      text: "These words are spoken.",
+      instructions: "Use a warm delivery.",
+    });
+  });
+
   it("omits `output` from the body when caller does not provide it", async () => {
     const fetchFn = mockFetchOk();
     const provider = new SpeechGatewayProvider({
