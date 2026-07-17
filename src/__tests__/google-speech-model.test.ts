@@ -338,6 +338,48 @@ describe("GoogleSpeechProvider", () => {
     expect(result.audio).toBeInstanceOf(Uint8Array);
   });
 
+  it("keeps delivery instructions separate until Gemini request serialization", async () => {
+    const mockFetch = createMockFetch();
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "These words are spoken.",
+      instructions: "Use a confident, warm delivery.",
+      voice: "Kore",
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts[0].text).toBe(
+      "Use a confident, warm delivery.\n\nRead aloud: These words are spoken."
+    );
+  });
+
+  it("separates native-dialogue delivery notes from its transcript", async () => {
+    const mockFetch = createMockFetch();
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    await provider.generateDialogue({
+      modelId: "gemini-2.5-flash-preview-tts",
+      instructions: "Keep the exchange conversational.",
+      turns: [
+        { voice: "Kore", text: "Hello.", instructions: "Sound upbeat." },
+        { voice: "Puck", text: "Goodbye.", instructions: "Sound calm." },
+      ],
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts[0].text).toBe(
+      "Delivery instructions:\nKeep the exchange conversational.\nSpeaker1: Sound upbeat.\nSpeaker2: Sound calm.\n\nTranscript:\nSpeaker1: Hello.\nSpeaker2: Goodbye."
+    );
+  });
+
   describe("processAudioTags", () => {
     it("passes all tags through for gemini-3.1-flash-tts-preview", () => {
       const provider = new GoogleSpeechProvider({ apiKey: "test-key" });

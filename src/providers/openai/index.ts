@@ -112,7 +112,7 @@ export const OPENAI_MODELS: readonly ModelInfo[] = [
     id: "gpt-4o-mini-tts",
     releaseDate: "2025-03-20",
     languages: OPENAI_LANGUAGES,
-    features: ["streaming", "audio-tags"],
+    features: ["streaming", "audio-tags", "instructions"],
     maxInputChars: 4096,
   },
   {
@@ -150,6 +150,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   private buildRequestInput(
     modelId: string,
     text: string,
+    instructions: string | undefined,
     providerOptions: Record<string, unknown> | undefined
   ): { input: string; instructions: string | undefined } {
     if (modelId !== "gpt-4o-mini-tts") {
@@ -159,22 +160,25 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     const { text: cleaned, instructions: derived } =
       buildOpenAIInstructionsFromTags(text);
 
-    const userInstructions = providerOptions?.instructions;
-    const userInstructionsStr =
-      typeof userInstructions === "string" && userInstructions.length > 0
-        ? userInstructions
+    const legacyInstructions = providerOptions?.instructions;
+    const legacyInstructionsStr =
+      typeof legacyInstructions === "string" && legacyInstructions.length > 0
+        ? legacyInstructions
         : undefined;
+    const userInstructionsStr = [instructions, legacyInstructionsStr]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .join("\n\n");
 
-    let instructions: string | undefined;
+    let combinedInstructions: string | undefined;
     if (userInstructionsStr && derived) {
-      instructions = `${userInstructionsStr}\n\n${derived}`;
+      combinedInstructions = `${userInstructionsStr}\n\n${derived}`;
     } else if (userInstructionsStr) {
-      instructions = userInstructionsStr;
+      combinedInstructions = userInstructionsStr;
     } else if (derived) {
-      instructions = derived;
+      combinedInstructions = derived;
     }
 
-    return { input: cleaned, instructions };
+    return { input: cleaned, instructions: combinedInstructions };
   }
 
   processAudioTags(
@@ -193,6 +197,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   async generate(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -205,6 +210,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     const { input, instructions } = this.buildRequestInput(
       options.modelId,
       options.text,
+      options.instructions,
       options.providerOptions
     );
 
@@ -253,6 +259,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
   async stream(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -265,6 +272,7 @@ export class OpenAISpeechProvider implements SpeechProvider<string, string> {
     const { input, instructions } = this.buildRequestInput(
       options.modelId,
       options.text,
+      options.instructions,
       options.providerOptions
     );
 

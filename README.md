@@ -61,6 +61,26 @@ result.audio.mediaType;   // "audio/mpeg"
 
 Pass a `provider/model` string, or just the provider name to use its default model. The string above is enough to get going — set one env var and you're done.
 
+### Spoken text and delivery instructions
+
+`text` is always the exact transcript expected in the generated audio. Use `instructions` for optional, non-spoken direction about delivery; instructions are sent only to the TTS provider and are never included in forced alignment or timestamp validation.
+
+```ts
+import { generateSpeech } from '@speech-sdk/core';
+import { createGoogle } from '@speech-sdk/core/providers';
+
+const result = await generateSpeech({
+  model: createGoogle()('gemini-2.5-flash-preview-tts'),
+  voice: 'Kore',
+  text: 'The exact words expected in the generated audio.',
+  instructions: 'Use a confident, warm, measured delivery.',
+  timestamps: true,
+  timestampProvider,
+});
+```
+
+Models that accept this field declare the `instructions` feature. Passing non-empty instructions to an unsupported direct model throws `InstructionsUnsupportedError` before synthesis. Existing `text`-only calls and provider-specific `providerOptions` are unchanged.
+
 ## Gateway vs direct provider
 
 The SDK has two ways to reach a provider, and the choice is made by **how you pass `model`**:
@@ -152,7 +172,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native and gateway dialogue keep them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
 ## Timestamps
 
@@ -473,7 +493,8 @@ import type {
 ```ts
 generateSpeech({
   model: string | ResolvedModel,          // required
-  text: string,                           // required
+  text: string,                           // required — exact spoken transcript
+  instructions?: string,                 // optional non-spoken delivery direction
   voice: Voice,                           // required — string | { url } | { audio }
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
@@ -546,6 +567,7 @@ try {
 | `TimestampValidationError` | Requested timestamps are empty, structurally invalid, or do not exactly cover the synthesized text |
 | `TimestampKeyMissingError` | A legacy configured `fallbackSTT` is missing its API key |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
+| `InstructionsUnsupportedError` | Non-empty delivery instructions were supplied to a direct model without the `instructions` capability |
 | `SpeechSDKError` | Base class |
 
 Retries 5xx (except 501), 429, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); other 4xx and 501 are terminal. `SpeechSdkProviderError.retryable` exposes that HTTP classification. When a retriable error carries a `Retry-After` header, the SDK sleeps that long before the next attempt — capped at 60s to avoid pathological waits. The parsed value is surfaced as `retryAfterMs` whenever the header is present, even on terminal errors that aren't retried. Default 2 retries; override via `maxRetries`.

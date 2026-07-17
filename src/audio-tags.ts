@@ -18,10 +18,11 @@ export function stripAudioTags(
       `Audio tag ${tag} is not supported by ${modelIdentifier} and was removed.`
   );
 
-  const stripped = text
-    .replace(AUDIO_TAG_REGEX, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const stripped = textWithoutAudioTags(text);
 
   return { text: stripped, warnings };
+}
+
+export function textWithoutAudioTags(text: string): string {
+  return text.replace(AUDIO_TAG_REGEX, "").replace(/\s+/g, " ").trim();
 }

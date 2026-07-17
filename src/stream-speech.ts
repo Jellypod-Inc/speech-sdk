@@ -4,6 +4,7 @@ import {
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
+import { validateInstructionSupport } from "./instructions.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
@@ -33,6 +34,7 @@ export async function streamSpeech<
   maxRetries?: number;
   abortSignal?: AbortSignal;
   headers?: Record<string, string>;
+  instructions?: string;
   pronunciations?: PronunciationsInput;
 }): Promise<StreamSpeechResult> {
   const { model, voice, providerOptions, abortSignal, headers } = options;
@@ -41,6 +43,10 @@ export async function streamSpeech<
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
+  const instructions = validateInstructionSupport(
+    resolved,
+    options.instructions
+  );
   validatePronunciationsInput(options.pronunciations);
 
   const modelInfo = resolved.provider.models.find(
@@ -98,6 +104,7 @@ export async function streamSpeech<
       return gatewayProvider.stream({
         modelId: resolved.modelId,
         text: textToSend,
+        ...(instructions && { instructions }),
         voice: voice as unknown as string,
         providerOptions,
         abortSignal,
@@ -108,6 +115,7 @@ export async function streamSpeech<
     return streamFn({
       modelId: resolved.modelId,
       text: textToSend,
+      ...(instructions && { instructions }),
       voice,
       providerOptions,
       abortSignal,

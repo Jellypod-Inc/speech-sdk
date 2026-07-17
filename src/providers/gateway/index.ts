@@ -104,6 +104,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   async generate(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -130,6 +131,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       voice: options.voice,
       text: options.text,
     };
+    if (options.instructions) {
+      body.instructions = options.instructions;
+    }
     if (options.volumeDbfs != null) {
       body.volumeDbfs = options.volumeDbfs;
     }
@@ -194,6 +198,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
   async stream(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -216,6 +221,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       voice: options.voice,
       text: options.text,
     };
+    if (options.instructions) {
+      body.instructions = options.instructions;
+    }
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
     }
@@ -270,12 +278,14 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
       model?: string;
       voice: string;
       text: string;
+      instructions?: string;
       providerOptions?: Record<string, unknown>;
       speed?: number;
     }[];
     gapMs?: number;
     volumeDbfs?: number;
     providerOptions?: Record<string, unknown>;
+    instructions?: string;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
     includeTimestamps?: boolean;
@@ -320,6 +330,7 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
         ...(t.model != null && { model: t.model }),
         voice: t.voice,
         text: t.text,
+        ...(t.instructions && { instructions: t.instructions }),
         ...(t.providerOptions && { providerOptions: t.providerOptions }),
         ...(t.speed != null && { speed: t.speed }),
       })),
@@ -328,6 +339,9 @@ export class SpeechGatewayProvider implements SpeechProvider<string, string> {
     };
     if (options.providerOptions) {
       body.providerOptions = options.providerOptions;
+    }
+    if (options.instructions) {
+      body.instructions = options.instructions;
     }
     if (options.output) {
       body.output = options.output;

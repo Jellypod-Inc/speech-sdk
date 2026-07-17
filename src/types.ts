@@ -74,6 +74,8 @@ export interface GenerateSpeechOptions<
   abortSignal?: AbortSignal;
   apiKey?: string;
   headers?: Record<string, string>;
+  /** Non-spoken delivery direction. The selected model must declare instruction support. */
+  instructions?: string;
   // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck). Ignored on the gateway path — the gateway server owns request processing.
   maxConcurrency?: number;
   maxInputChars?: number;
@@ -84,6 +86,7 @@ export interface GenerateSpeechOptions<
   providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;
+  /** The exact spoken transcript expected in the generated audio. */
   text: string;
   timestampProvider?: TimestampProvider;
   timestamps?: boolean;

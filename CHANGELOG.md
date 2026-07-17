@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.0
+
+- Add `instructions` as optional, non-spoken delivery direction on `generateSpeech`, `streamSpeech`, and conversations. `text` remains the exact canonical spoken transcript. Supporting models declare the new `instructions` feature; direct unsupported models throw `InstructionsUnsupportedError` before synthesis, while gateway requests preserve the separate wire fields for server-side capability validation. Google Gemini TTS and OpenAI `gpt-4o-mini-tts` support the new field.
+- Exact timestamp alignment now receives and validates only canonical spoken text after deterministic audio-cue removal and pronunciation substitution. Provider request framing, delivery instructions, supported audio tags, and native-dialogue speaker formatting are excluded. Native, custom `timestampProvider`, legacy STT fallback, gateway, stitched conversation, and native-dialogue paths all retain exact lexical coverage validation.
+
 ## 0.23.0
 
 - **Word timestamps now project exactly onto the text synthesized by the SDK.** Native, gateway, and explicitly derived candidates are accepted only when they completely cover the processed input's Unicode lexical content in order, contain no extra lexical content or punctuation-only entries, and have finite, nonnegative, monotonic timings within the generated audio. Public `WordTimestamp.text` values come from caller input after unsupported audio-tag removal; pronunciation substitutions are aligned against synthesized text and mapped back before return. Invalid requested timestamps throw `TimestampValidationError` instead of returning incorrect or fabricated alignment.

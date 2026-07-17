@@ -33,6 +33,7 @@ export interface ModelInfo {
 export const FEATURES = {
   STREAMING: "streaming",
   AUDIO_TAGS: "audio-tags",
+  INSTRUCTIONS: "instructions",
   VOICE_CLONING: "voice-cloning",
   VOICE_DESIGN: "voice-design",
   OPEN_SOURCE: "open-source",
@@ -136,6 +137,7 @@ export interface SpeechProvider<
   generate(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: TVoice;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
@@ -152,7 +154,8 @@ export interface SpeechProvider<
 
   generateDialogue?(options: {
     modelId: string;
-    turns: readonly { voice: TVoice; text: string }[];
+    turns: readonly { voice: TVoice; text: string; instructions?: string }[];
+    instructions?: string;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
@@ -196,6 +199,7 @@ export interface SpeechProvider<
   stream?(options: {
     modelId: string;
     text: string;
+    instructions?: string;
     voice?: TVoice;
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
