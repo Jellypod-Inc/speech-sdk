@@ -1,0 +1,75 @@
+src/__tests__/google-speech-model.test.ts
+  s_7378542f5aee4a::t_255372d52a1906 361-382
+  s_7378542f5aee4a::t_c5f4b282807697 341-360
+src/stream-speech.ts
+  s_7378542f5aee4a::t_7612d4ce52c72c 7,37,46-49,107,118
+src/__tests__/gateway.test.ts
+  s_7378542f5aee4a::t_c5f4b282807697 70-91
+src/index.ts
+  s_7378542f5aee4a::t_15628fa545c2a2 32
+src/__tests__/instructions-contract.test.ts
+  s_7378542f5aee4a::t_9c40ecfd9de9b3 115-118,135-142
+  s_7378542f5aee4a::t_9c8b648dbf6cd9 1-114,119-134,143-168,170-187,193-217,266
+  s_7378542f5aee4a::t_15628fa545c2a2 169,188-192
+  s_7378542f5aee4a::t_4e4067afa763e5 218-265
+src/conversation/types.ts
+  s_7378542f5aee4a::t_f5eb5002ab2d7c 7-8,13,29-30
+src/generate-speech.ts
+  s_7378542f5aee4a::t_2ad386913713da 21,45,101,103-105,115-119,127-128,132-135,169,183,233,237,320,338,352,370,399
+  s_7378542f5aee4a::t_8b9b411ab423a8 107
+src/types.ts
+  s_7378542f5aee4a::t_f5eb5002ab2d7c 77-78,89
+src/__tests__/openai-speech-model.test.ts
+  s_7378542f5aee4a::t_c5f4b282807697 248-264
+src/text-preprocessing.ts
+  s_7378542f5aee4a::t_575bb7bc6d839f 1-5,7-20,22-57
+  s_7378542f5aee4a::t_15628fa545c2a2 6
+  s_7378542f5aee4a::t_5027e63faf3567 21
+package.json
+  s_7378542f5aee4a::t_431bd96300e2d1 3
+README.md
+  s_7378542f5aee4a::t_431bd96300e2d1 64-83,175,496-497,570
+src/providers/google/index.ts
+  s_7378542f5aee4a::t_4f0638e91da91c 522
+  s_7378542f5aee4a::t_f4274f4e0cc404 195,201,207,244,271-277,332,361,376-378,491-492,513-516,518-521,523-532
+  s_7378542f5aee4a::t_5027e63faf3567 517
+CHANGELOG.md
+  s_7378542f5aee4a::t_431bd96300e2d1 3-7
+src/speech-provider.ts
+  s_7378542f5aee4a::t_f5eb5002ab2d7c 36,140,157-158,202
+src/providers/gateway/index.ts
+  s_7378542f5aee4a::t_f4274f4e0cc404 107,134-136,201,224-226,281,288,333,343-345
+src/providers/openai/index.ts
+  s_7378542f5aee4a::t_f4274f4e0cc404 115,153,163-166,168-170,172,174,176,178,181,200,213,262,275
+src/conversation/stitch.ts
+  s_7378542f5aee4a::t_86961e8724789b 9,32,88-91
+src/audio-tags.ts
+  s_7378542f5aee4a::t_f5eb5002ab2d7c 21,25-27
+  s_7378542f5aee4a::t_99472fcc983539 28
+src/instructions.ts
+  s_7378542f5aee4a::t_2330cf17203675 1-18,23-37,39-44
+  s_7378542f5aee4a::t_15628fa545c2a2 19-22,38
+src/errors.ts
+  s_7378542f5aee4a::t_f5eb5002ab2d7c 221-232
+src/generate-conversation.ts
+  s_7378542f5aee4a::t_de059294d97ba7 447-465
+  s_7378542f5aee4a::t_15628fa545c2a2 171-174,1160
+  s_7378542f5aee4a::t_86961e8724789b 29-33,59,168-170,175-177,232,363-365,385,410-417
+  s_7378542f5aee4a::t_8b170e3779e9d6 551-555,561-568,606,610,613-618,644-646,648-651,736-740,754-761,791,856-859,878,901,904-908,1007-1012,1047-1056,1059,1061-1067,1069-1077,1079-1088,1136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cc292afa498ac89a724997e10831e180aa713c86",
+  "prompts": {},
+  "sessions": {
+    "s_7378542f5aee4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f721c-dac3-7fd2-80a2-e0a3510d23b2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
