@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SpeechSdkProviderError } from "../errors.js";
 import { createElevenLabs } from "../providers/elevenlabs/index.js";
+import { finalizeTimestamps } from "../timestamp-finalization.js";
 
 function successfulResponse(overrides: Record<string, unknown> = {}) {
   return new Response(
@@ -51,14 +52,24 @@ describe("createElevenLabs().forcedAlignment()", () => {
     expect((form.get("file") as Blob).type).toBe("audio/wav");
   });
 
-  it("returns word timestamps from the alignment response", async () => {
+  it("filters non-lexical entries before exact finalization", async () => {
+    const text = "Tropical oceans are — actually biological deserts.";
     const fetchFn = vi.fn().mockResolvedValue(
       successfulResponse({
         words: [
-          { text: "Hi", start: 0, end: 0.2, loss: 0.04 },
-          { text: " ", start: 0.2, end: 0.25, loss: 0.01 },
-          { text: "--", start: 0.25, end: 0.3, loss: 0.01 },
-          { text: "there.", start: 0.3, end: 0.6, loss: 0.04 },
+          { text: "Tropical", start: 0, end: 0.4, loss: 0.04 },
+          { text: " ", start: 0.4, end: 0.44, loss: 0.01 },
+          { text: "oceans", start: 0.44, end: 0.8, loss: 0.04 },
+          { text: " ", start: 0.8, end: 0.84, loss: 0.01 },
+          { text: "are", start: 0.84, end: 1.04, loss: 0.04 },
+          { text: " ", start: 1.04, end: 1.08, loss: 0.01 },
+          { text: "—", start: 1.08, end: 1.12, loss: 0.01 },
+          { text: " ", start: 1.12, end: 1.16, loss: 0.01 },
+          { text: "actually", start: 1.16, end: 1.56, loss: 0.04 },
+          { text: " ", start: 1.56, end: 1.6, loss: 0.01 },
+          { text: "biological", start: 1.6, end: 2.04, loss: 0.04 },
+          { text: " ", start: 2.04, end: 2.08, loss: 0.01 },
+          { text: "deserts.", start: 2.08, end: 2.5, loss: 0.04 },
         ],
       })
     );
@@ -70,13 +81,28 @@ describe("createElevenLabs().forcedAlignment()", () => {
     const result = await adapter.align({
       audio: new Uint8Array([1]),
       mediaType: "audio/mpeg",
-      text: "Hi",
+      text,
     });
 
     expect(result).toEqual([
-      { text: "Hi", start: 0, end: 0.2 },
-      { text: "there.", start: 0.3, end: 0.6 },
+      { text: "Tropical", start: 0, end: 0.4 },
+      { text: "oceans", start: 0.44, end: 0.8 },
+      { text: "are", start: 0.84, end: 1.04 },
+      { text: "actually", start: 1.16, end: 1.56 },
+      { text: "biological", start: 1.6, end: 2.04 },
+      { text: "deserts.", start: 2.08, end: 2.5 },
     ]);
+    expect(finalizeTimestamps({ text, timestamps: result })).toEqual({
+      ok: true,
+      timestamps: [
+        { text: "Tropical", start: 0, end: 0.4 },
+        { text: "oceans", start: 0.44, end: 0.8 },
+        { text: "are —", start: 0.84, end: 1.04 },
+        { text: "actually", start: 1.16, end: 1.56 },
+        { text: "biological", start: 1.6, end: 2.04 },
+        { text: "deserts.", start: 2.08, end: 2.5 },
+      ],
+    });
   });
 
   it("surfaces missing or empty words as an empty alignment candidate", async () => {
