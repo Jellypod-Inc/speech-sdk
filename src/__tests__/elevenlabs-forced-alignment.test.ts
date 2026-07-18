@@ -52,7 +52,16 @@ describe("createElevenLabs().forcedAlignment()", () => {
   });
 
   it("returns word timestamps from the alignment response", async () => {
-    const fetchFn = vi.fn().mockResolvedValue(successfulResponse());
+    const fetchFn = vi.fn().mockResolvedValue(
+      successfulResponse({
+        words: [
+          { text: "Hi", start: 0, end: 0.2, loss: 0.04 },
+          { text: " ", start: 0.2, end: 0.25, loss: 0.01 },
+          { text: "--", start: 0.25, end: 0.3, loss: 0.01 },
+          { text: "there.", start: 0.3, end: 0.6, loss: 0.04 },
+        ],
+      })
+    );
     const adapter = createElevenLabs({
       apiKey: "el-key",
       fetch: fetchFn,
@@ -64,7 +73,10 @@ describe("createElevenLabs().forcedAlignment()", () => {
       text: "Hi",
     });
 
-    expect(result).toEqual([{ text: "Hi", start: 0, end: 0.2 }]);
+    expect(result).toEqual([
+      { text: "Hi", start: 0, end: 0.2 },
+      { text: "there.", start: 0.3, end: 0.6 },
+    ]);
   });
 
   it("surfaces missing or empty words as an empty alignment candidate", async () => {
