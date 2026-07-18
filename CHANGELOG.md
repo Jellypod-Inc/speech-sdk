@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.1
+
+- Fix ElevenLabs forced alignment responses that include spacing or punctuation-only entries in `words`. The adapter now returns lexical word timestamps only, allowing exact transcript validation to preserve caller whitespace and punctuation without rejecting every multiword transcript.
+
 ## 0.24.0
 
 - Add `instructions` as optional, non-spoken delivery direction on `generateSpeech`, `streamSpeech`, and conversations. `text` remains the exact canonical spoken transcript. Supporting models declare the new `instructions` feature; direct unsupported models throw `InstructionsUnsupportedError` before synthesis, while gateway requests preserve the separate wire fields for server-side capability validation. Google Gemini TTS and OpenAI `gpt-4o-mini-tts` support the new field.
