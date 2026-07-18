@@ -3,7 +3,7 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
-import { stripAudioTags } from "../../audio-tags.js";
+import { stripAudioTags, textWithoutAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
 import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
@@ -24,6 +24,7 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import {
@@ -37,6 +38,27 @@ const withTimestampsResponseSchema = z.object({
   alignment: elevenLabsAlignmentSchema.optional(),
   normalized_alignment: elevenLabsAlignmentSchema.optional(),
 });
+
+function resolveElevenLabsTimestamps(
+  payload: z.infer<typeof withTimestampsResponseSchema>,
+  text: string
+): WordTimestamp[] | undefined {
+  const canonicalText = textWithoutAudioTags(text);
+  const candidates = [payload.alignment, payload.normalized_alignment];
+
+  for (const alignment of candidates) {
+    if (!alignment) {
+      continue;
+    }
+    const timestamps = alignmentToWordTimestamps(alignment);
+    if (finalizeTimestamps({ text: canonicalText, timestamps }).ok) {
+      return timestamps;
+    }
+  }
+
+  const alignment = payload.normalized_alignment ?? payload.alignment;
+  return alignment ? alignmentToWordTimestamps(alignment) : undefined;
+}
 
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
@@ -352,12 +374,7 @@ export class ElevenLabsSpeechProvider
       }
 
       const audio = base64ToUint8Array(payload.audio_base64);
-      // normalized_alignment matches what was actually spoken (expanded numbers/abbreviations).
-      const alignment =
-        payload.normalized_alignment ?? payload.alignment ?? null;
-      const timestamps = alignment
-        ? alignmentToWordTimestamps(alignment)
-        : undefined;
+      const timestamps = resolveElevenLabsTimestamps(payload, options.text);
 
       return {
         audio,

@@ -201,7 +201,7 @@ Returned timestamps are projected onto the exact text synthesized by the SDK: ca
 | `true` | Returns validated word timestamps. Native models use their own timestamps. Direct models without native timestamps require `timestampProvider` (or a legacy factory-level `fallbackSTT`). |
 | `false` *(default)* | Never requests, derives, or returns timestamps. |
 
-`timestampProvider` is only used for direct models that do not support native timestamps. It is intentionally a no-op for native models and gateway-routed string models, where the provider or gateway owns timestamp generation. Invalid, empty, or mismatched requested timestamps throw `TimestampValidationError`; the SDK never returns fabricated or partially matched timings.
+`timestampProvider` is used for direct models without native timestamps and as a fallback when direct native timestamps fail validation. It remains a no-op for gateway-routed string models, where the gateway owns timestamp generation. Invalid, empty, or mismatched requested timestamps throw `TimestampValidationError`; the SDK never returns fabricated or partially matched timings.
 
 There is no implicit OpenAI fallback. Existing factory-level `fallbackSTT` configuration remains supported for compatibility, but new integrations should use the narrower `timestampProvider` interface.
 
@@ -499,7 +499,7 @@ generateSpeech({
   providerOptions?: object,
   volumeDbfs?: number,                    // ≤ 0
   timestamps?: boolean,
-  timestampProvider?: TimestampProvider, // used only when the direct model lacks native timestamps
+  timestampProvider?: TimestampProvider, // direct derivation or invalid-native fallback
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,
