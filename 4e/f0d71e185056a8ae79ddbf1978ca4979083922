@@ -1,0 +1,19 @@
+src/__tests__/elevenlabs-forced-alignment.test.ts
+  s_eea98de46d5daf::t_f593703e42026f 4,55-56,60-72,84,88-93,95-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4ef0d71e185056a8ae79ddbf1978ca4979083922",
+  "prompts": {},
+  "sessions": {
+    "s_eea98de46d5daf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7299-8b3f-7d03-964a-5aa54b06edf7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
