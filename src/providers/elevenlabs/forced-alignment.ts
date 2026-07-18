@@ -6,6 +6,8 @@ import {
 } from "../../provider-utils.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 
+const LEXICAL_CHARACTER = /[\p{L}\p{N}]/u;
+
 const forcedAlignmentWordSchema = z.object({
   end: z.number(),
   start: z.number(),
@@ -86,10 +88,12 @@ export class ElevenLabsForcedAlignmentProvider implements TimestampProvider {
     });
 
     const payload = forcedAlignmentResponseSchema.parse(await response.json());
-    return payload.words.map(({ text, start, end }) => ({
-      text,
-      start,
-      end,
-    }));
+    return payload.words
+      .filter(({ text }) => LEXICAL_CHARACTER.test(text))
+      .map(({ text, start, end }) => ({
+        text,
+        start,
+        end,
+      }));
   }
 }
