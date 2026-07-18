@@ -1,0 +1,31 @@
+src/providers/elevenlabs/index.ts
+  s_eaec10b979544d::t_709913414069d0 6,27,42-62,377
+src/__tests__/alignment-quality.test.ts
+  s_eaec10b979544d::t_709913414069d0 107,109-126,136-138,140-143
+README.md
+  s_eaec10b979544d::t_80781c6abdc54a 502
+  s_eaec10b979544d::t_522fc7efacff1f 204
+src/timestamp-alignment.ts
+  s_eaec10b979544d::t_709913414069d0 141,143-174,176,183-188,194,202-206
+  s_eaec10b979544d::t_5746deeea3f80e 207
+src/__tests__/elevenlabs-timestamps.test.ts
+  s_eaec10b979544d::t_709913414069d0 29,67-114
+CHANGELOG.md
+  s_eaec10b979544d::t_27ac6f56211bda 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "169ecfdb42fc4a534f35e1846454829817ab3f75",
+  "prompts": {},
+  "sessions": {
+    "s_eaec10b979544d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f73ac-13f8-7a70-b526-80fa35b2c279",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
