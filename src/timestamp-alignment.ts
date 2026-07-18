@@ -138,26 +138,60 @@ export function prepareTimestampAlignment(args: {
         return {};
       }
 
-      let timestamps: readonly WordTimestamp[];
-      let source: string;
+      let finalized: readonly WordTimestamp[];
       if (includeNative) {
-        timestamps = resolutionArgs.providerTimestamps ?? [];
-        source = args.modelIdentifier;
+        try {
+          finalized = finalizeCandidate({
+            timestamps: resolutionArgs.providerTimestamps ?? [],
+            text: resolutionArgs.synthesizedText,
+            audioDurationMs: resolutionArgs.audioDurationMs,
+            source: args.modelIdentifier,
+          });
+        } catch (error) {
+          if (
+            isGateway ||
+            !args.timestampProvider ||
+            !(error instanceof TimestampValidationError)
+          ) {
+            throw error;
+          }
+          debug(
+            `${args.modelIdentifier}: native timestamps failed validation (${error.reason}); using the supplied timestamp provider.`
+          );
+          const timestamps = await deriveTimestampsViaProvider({
+            abortSignal: resolutionArgs.abortSignal,
+            audio: resolutionArgs.audio,
+            mediaType: resolutionArgs.mediaType,
+            provider: args.timestampProvider,
+            text: resolutionArgs.synthesizedText,
+          });
+          finalized = finalizeCandidate({
+            timestamps,
+            text: resolutionArgs.synthesizedText,
+            audioDurationMs: resolutionArgs.audioDurationMs,
+            source: "timestampProvider",
+          });
+        }
       } else if (args.timestampProvider) {
-        timestamps = await deriveTimestampsViaProvider({
+        const timestamps = await deriveTimestampsViaProvider({
           abortSignal: resolutionArgs.abortSignal,
           audio: resolutionArgs.audio,
           mediaType: resolutionArgs.mediaType,
           provider: args.timestampProvider,
           text: resolutionArgs.synthesizedText,
         });
-        source = "timestampProvider";
+        finalized = finalizeCandidate({
+          timestamps,
+          text: resolutionArgs.synthesizedText,
+          audioDurationMs: resolutionArgs.audioDurationMs,
+          source: "timestampProvider",
+        });
       } else {
         const fallback = args.resolved.fallbackSTT;
         if (!fallback) {
           throw new TimestampProviderRequiredError(args.modelIdentifier);
         }
-        timestamps = await deriveTimestampsViaSTT({
+        const timestamps = await deriveTimestampsViaSTT({
           ttsModel: args.modelIdentifier,
           audio: resolutionArgs.audio,
           mediaType: resolutionArgs.mediaType,
@@ -165,15 +199,14 @@ export function prepareTimestampAlignment(args: {
           timestampFallback: fallback,
           abortSignal: resolutionArgs.abortSignal,
         });
-        source = `${fallback.provider.id}/${fallback.modelId}`;
+        finalized = finalizeCandidate({
+          timestamps,
+          text: resolutionArgs.synthesizedText,
+          audioDurationMs: resolutionArgs.audioDurationMs,
+          source: `${fallback.provider.id}/${fallback.modelId}`,
+        });
       }
 
-      const finalized = finalizeCandidate({
-        timestamps,
-        text: resolutionArgs.synthesizedText,
-        audioDurationMs: resolutionArgs.audioDurationMs,
-        source,
-      });
       return {
         timestamps: projectPublicText({
           timestamps: finalized,

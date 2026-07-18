@@ -4,6 +4,7 @@
 
 - Add `instructions` as optional, non-spoken delivery direction on `generateSpeech`, `streamSpeech`, and conversations. `text` remains the exact canonical spoken transcript. Supporting models declare the new `instructions` feature; direct unsupported models throw `InstructionsUnsupportedError` before synthesis, while gateway requests preserve the separate wire fields for server-side capability validation. Google Gemini TTS and OpenAI `gpt-4o-mini-tts` support the new field.
 - Exact timestamp alignment now receives and validates only canonical spoken text after deterministic audio-cue removal and pronunciation substitution. Provider request framing, delivery instructions, supported audio tags, and native-dialogue speaker formatting are excluded. Native, custom `timestampProvider`, legacy STT fallback, gateway, stitched conversation, and native-dialogue paths all retain exact lexical coverage validation.
+- **Fix: ElevenLabs text normalization no longer causes valid native timestamps to fail with `transcript_mismatch`.** The adapter selects the original-text alignment when normalized text expands numbers or abbreviations and retains normalized alignment when it is the candidate that exactly covers canonical text (for example, after Eleven v3 audio-tag removal). For direct models, an explicitly configured `timestampProvider` now runs as a fallback when native timestamp validation fails; valid native timestamps still avoid the extra alignment request, and gateway responses remain untouched.
 
 ## 0.23.0
 

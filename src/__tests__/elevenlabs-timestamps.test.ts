@@ -26,7 +26,7 @@ function mockFetchReturningTimestampedJson(): ReturnType<typeof vi.fn> {
 }
 
 describe("ElevenLabs /with-timestamps", () => {
-  it("uses expanded numbers and abbreviations from normalized_alignment", async () => {
+  it("uses original alignment when normalized text expands the input", async () => {
     const fetchFn = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -64,8 +64,54 @@ describe("ElevenLabs /with-timestamps", () => {
     });
 
     expect(result.timestamps).toEqual([
-      { text: "Doctor", start: 0, end: 0.3 },
-      { text: "twelve", start: 0.35, end: 0.65 },
+      { text: "Dr.", start: 0, end: 0.15 },
+      { text: "12", start: 0.2, end: 0.3 },
+    ]);
+  });
+
+  it("uses normalized alignment when original alignment contains audio tags", async () => {
+    const original = [..."[laughs] Hello"];
+    const normalized = [..."Hello"];
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          audio_base64: FOUR_BYTES_B64,
+          alignment: {
+            characters: original,
+            character_start_times_seconds: original.map(
+              (_, index) => index * 0.05
+            ),
+            character_end_times_seconds: original.map(
+              (_, index) => (index + 1) * 0.05
+            ),
+          },
+          normalized_alignment: {
+            characters: normalized,
+            character_start_times_seconds: normalized.map(
+              (_, index) => 0.45 + index * 0.05
+            ),
+            character_end_times_seconds: normalized.map(
+              (_, index) => 0.5 + index * 0.05
+            ),
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const provider = new ElevenLabsSpeechProvider({
+      apiKey: "k",
+      fetch: fetchFn as unknown as typeof globalThis.fetch,
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_v3",
+      text: "[laughs] Hello",
+      voice: "v",
+      includeTimestamps: true,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "Hello", start: 0.45, end: 0.7 },
     ]);
   });
 

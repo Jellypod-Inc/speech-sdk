@@ -104,8 +104,26 @@ describe("exact timestamp alignment", () => {
     expect(result.timestamps).toEqual([{ text: "hello", start: 0, end: 0.2 }]);
   });
 
-  it("rejects invalid native coverage without using timestampProvider", async () => {
+  it("falls back to timestampProvider when native coverage is invalid", async () => {
     const provider = timestampProvider([{ text: "hello", start: 0, end: 0.2 }]);
+    const result = await generateSpeech({
+      model: ttsModel({
+        native: true,
+        timestamps: [{ text: "extra", start: 0, end: 0.2 }],
+      }),
+      voice: "v",
+      text: "hello",
+      timestamps: true,
+      timestampProvider: provider,
+    });
+
+    expect(provider.align).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "hello" })
+    );
+    expect(result.timestamps).toEqual([{ text: "hello", start: 0, end: 0.2 }]);
+  });
+
+  it("rejects invalid native coverage when timestampProvider also mismatches", async () => {
     await expect(
       generateSpeech({
         model: ttsModel({
@@ -115,10 +133,14 @@ describe("exact timestamp alignment", () => {
         voice: "v",
         text: "hello",
         timestamps: true,
-        timestampProvider: provider,
+        timestampProvider: timestampProvider([
+          { text: "still wrong", start: 0, end: 0.2 },
+        ]),
       })
-    ).rejects.toMatchObject({ reason: "transcript_mismatch" });
-    expect(provider.align).not.toHaveBeenCalled();
+    ).rejects.toMatchObject({
+      reason: "transcript_mismatch",
+      source: "timestampProvider",
+    });
   });
 
   it("rejects invalid timestampProvider output", async () => {
