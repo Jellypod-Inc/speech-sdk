@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.2
+
+- **Fix: ElevenLabs text normalization no longer causes valid native timestamps to fail with `transcript_mismatch`.** The adapter selects the original-text alignment when normalized text expands numbers or abbreviations and retains normalized alignment when it is the candidate that exactly covers canonical text (for example, after Eleven v3 audio-tag removal). For direct models, an explicitly configured `timestampProvider` now runs as a fallback when native timestamp validation fails; valid native timestamps still avoid the extra alignment request, and gateway responses remain untouched.
+
 ## 0.24.1
 
 - Fix ElevenLabs forced alignment responses that include spacing or punctuation-only entries in `words`. The adapter now returns lexical word timestamps only, allowing exact transcript validation to preserve caller whitespace and punctuation without rejecting every multiword transcript.
