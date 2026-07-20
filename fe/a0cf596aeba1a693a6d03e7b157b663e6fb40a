@@ -1,0 +1,21 @@
+src/providers/elevenlabs/forced-alignment.ts
+  s_dec661ff2b9783::t_8ac013674c5e2c 14,21-22,26,34
+  s_dec661ff2b9783::t_f068e2c262f875 7,9-10,25,27-33,35-47,52-61,132
+  s_dec661ff2b9783::t_50b5e620a3d6c6 48-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fea0cf596aeba1a693a6d03e7b157b663e6fb40a",
+  "prompts": {},
+  "sessions": {
+    "s_dec661ff2b9783": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8082-e730-7b70-8eea-58502344c458",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
