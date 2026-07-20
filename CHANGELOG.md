@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.3
+
+- Fix ElevenLabs Forced Alignment responses that group multiple transcript words into one `words` entry. The adapter now reconstructs exact word boundaries from ElevenLabs character timings, selects that result only when it covers the supplied transcript, and retains the word response as a compatibility fallback. Valid generated audio no longer fails with `transcript_mismatch` because of provider token grouping.
+
 ## 0.24.2
 
 - **Fix: ElevenLabs text normalization no longer causes valid native timestamps to fail with `transcript_mismatch`.** The adapter selects the original-text alignment when normalized text expands numbers or abbreviations and retains normalized alignment when it is the candidate that exactly covers canonical text (for example, after Eleven v3 audio-tag removal). For direct models, an explicitly configured `timestampProvider` now runs as a fallback when native timestamp validation fails; valid native timestamps still avoid the extra alignment request, and gateway responses remain untouched.
