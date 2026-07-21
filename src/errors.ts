@@ -239,6 +239,15 @@ export class VolumeAdjustmentUnsupportedError extends SpeechSDKError {
   }
 }
 
+export class AudioFiltersUnsupportedError extends SpeechSDKError {
+  constructor(model: string) {
+    super(
+      `filters are not supported by ${model}: they require local decoding of provider audio (gateway models and providers without a decodable PCM/WAV output mode cannot apply them).`
+    );
+    this.name = "AudioFiltersUnsupportedError";
+  }
+}
+
 export class UnsupportedSampleRateError extends SpeechSDKError {
   readonly requested: number;
   readonly supported: readonly number[];

@@ -1,4 +1,5 @@
 import { decodeAudioToPcm16 } from "./audio-decode.js";
+import { type AudioFilter, applyFiltersToSegment } from "./audio-filters.js";
 import { base64ToUint8Array } from "./audio-utils.js";
 import {
   concatPcmToWav,
@@ -8,10 +9,13 @@ import {
 
 interface AdjustVolumeInput {
   readonly audio: string | Uint8Array;
+  readonly filters?: readonly AudioFilter[];
   readonly mediaType: string;
-  readonly volumeDbfs: number;
+  readonly volumeDbfs?: number;
 }
 
+// Filters run before RMS normalization: tonal shaping changes level, so
+// normalizing afterwards is what makes the volume target hold post-EQ.
 export async function adjustVolume(
   input: AdjustVolumeInput
 ): Promise<Uint8Array> {
@@ -20,14 +24,17 @@ export async function adjustVolume(
       ? input.audio
       : base64ToUint8Array(input.audio);
 
-  const segment = await decodeAudioToPcm16(bytes, input.mediaType);
-  const [normalized] = normalizeRms(
-    [segment],
-    dbfsToInt16Rms(input.volumeDbfs)
-  );
+  let segment = await decodeAudioToPcm16(bytes, input.mediaType);
+  if (input.filters?.length) {
+    segment = applyFiltersToSegment(segment, input.filters);
+  }
+  const [processed] =
+    input.volumeDbfs == null
+      ? [segment]
+      : normalizeRms([segment], dbfsToInt16Rms(input.volumeDbfs));
 
-  return await concatPcmToWav([normalized], {
+  return await concatPcmToWav([processed], {
     gapMs: 0,
-    targetSampleRate: normalized.sampleRate,
+    targetSampleRate: processed.sampleRate,
   });
 }

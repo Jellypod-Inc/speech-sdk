@@ -1,3 +1,4 @@
+export type { AudioFilter } from "./audio-filters.js";
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 // biome-ignore lint/performance/noBarrelFile: public API entry point
 export { timestampsToCaptions } from "./captions.js";
@@ -26,6 +27,7 @@ export type {
 } from "./errors.js";
 export {
   ApiError,
+  AudioFiltersUnsupportedError,
   AudioOutputInputError,
   CloneSampleFetchError,
   GatewayInputError,

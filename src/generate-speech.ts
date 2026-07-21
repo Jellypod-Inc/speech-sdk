@@ -6,6 +6,7 @@ import {
   validateSpeed,
 } from "./apply-speed.js";
 import { computeAudioDuration } from "./audio-duration.js";
+import { type AudioFilter, validateFilters } from "./audio-filters.js";
 import {
   type AudioOutput,
   applyOptionalOutputConversion,
@@ -13,6 +14,7 @@ import {
 } from "./audio-output.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import {
+  AudioFiltersUnsupportedError,
   NoSpeechGeneratedError,
   OutputConversionUnsupportedError,
   TextChunkingUnsupportedError,
@@ -84,6 +86,7 @@ export async function generateSpeech<
     abortSignal,
     headers,
     volumeDbfs,
+    filters,
     timestamps = false,
     speed,
   } = options;
@@ -91,6 +94,7 @@ export async function generateSpeech<
 
   validateOutput(options.output);
   validateSpeed(speed);
+  validateFilters(filters);
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
@@ -143,12 +147,17 @@ export async function generateSpeech<
     userMaxInputChars: options.maxInputChars,
   });
 
+  if (isGateway && filters?.length) {
+    throw new AudioFiltersUnsupportedError(modelIdentifier);
+  }
+
   const { providerOptions, stitchOptions } =
     resolveProviderOptionsForLocalDecoding({
       resolved,
       isGateway,
       modelIdentifier,
       volumeDbfs,
+      filters,
       output: options.output,
       callerOptions: options.providerOptions,
       maxInputChars,
@@ -209,6 +218,7 @@ export async function generateSpeech<
     resultMediaType: result.mediaType,
     isGateway,
     volumeDbfs,
+    filters,
     output: options.output,
     speed: localSpeed,
   });
@@ -479,6 +489,7 @@ function resolveProviderOptionsForLocalDecoding(args: {
   isGateway: boolean;
   modelIdentifier: string;
   volumeDbfs: number | undefined;
+  filters: readonly AudioFilter[] | undefined;
   output: AudioOutput | undefined;
   callerOptions: Record<string, unknown> | undefined;
   maxInputChars: number | undefined;
@@ -493,7 +504,10 @@ function resolveProviderOptionsForLocalDecoding(args: {
   }
 
   const needsStitchWireFormat =
-    args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
+    args.volumeDbfs != null ||
+    Boolean(args.filters?.length) ||
+    args.shouldChunk ||
+    args.needsDecodableInput;
 
   const sampleRateHint =
     args.output != null && "sampleRate" in args.output
@@ -546,6 +560,9 @@ function resolveProviderOptionsForLocalDecoding(args: {
     if (args.volumeDbfs != null) {
       throw new VolumeAdjustmentUnsupportedError(args.modelIdentifier);
     }
+    if (args.filters?.length) {
+      throw new AudioFiltersUnsupportedError(args.modelIdentifier);
+    }
     throw new OutputConversionUnsupportedError(args.modelIdentifier);
   }
   return {
@@ -561,17 +578,19 @@ async function applyLocalAudioPostProcessing(args: {
   audio: string | Uint8Array;
   mediaType: string;
   volumeDbfs: number | undefined;
+  filters: readonly AudioFilter[] | undefined;
   output: AudioOutput | undefined;
 }): Promise<{ bytes: string | Uint8Array; mediaType: string }> {
   let bytes: string | Uint8Array = args.audio;
   let mediaType = args.mediaType;
 
-  if (args.volumeDbfs != null) {
+  if (args.volumeDbfs != null || args.filters?.length) {
     const { adjustVolume } = await import("./volume-adjust.js");
     bytes = await adjustVolume({
       audio: args.audio,
       mediaType: args.mediaType,
       volumeDbfs: args.volumeDbfs,
+      filters: args.filters,
     });
     mediaType = "audio/wav";
   }
@@ -615,6 +634,7 @@ async function finalizeSpeechAudio(args: {
   readonly resultMediaType: string;
   readonly isGateway: boolean;
   readonly volumeDbfs: number | undefined;
+  readonly filters: readonly AudioFilter[] | undefined;
   readonly output: AudioOutput | undefined;
   readonly speed: number | undefined;
 }): Promise<{ readonly audio: Uint8Array; readonly mediaType: string }> {
@@ -628,6 +648,7 @@ async function finalizeSpeechAudio(args: {
         audio: args.audioData,
         mediaType: args.resultMediaType,
         volumeDbfs: args.volumeDbfs,
+        filters: args.filters,
         output: preStretchOutput,
       });
 

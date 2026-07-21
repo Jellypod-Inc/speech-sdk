@@ -1,3 +1,4 @@
+import type { AudioFilter } from "./audio-filters.js";
 import type { AudioOutput } from "./audio-output.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
@@ -73,6 +74,12 @@ export interface GenerateSpeechOptions<
 > {
   abortSignal?: AbortSignal;
   apiKey?: string;
+  /**
+   * Tonal filters (high-pass, low-shelf) applied to decoded PCM before
+   * volumeDbfs normalization, in order. Local (non-gateway) models only.
+   * Time-preserving; word timestamps stay aligned.
+   */
+  filters?: readonly AudioFilter[];
   headers?: Record<string, string>;
   /** Non-spoken delivery direction. The selected model must declare instruction support. */
   instructions?: string;
