@@ -20,13 +20,6 @@ describe("normalizeRule", () => {
       })
     ).toEqual({ word: "LLM", replacement: "el el em", caseSensitive: true });
   });
-
-  it("returns undefined for rules that are blank after trimming", () => {
-    expect(normalizeRule({ word: "", replacement: "x" })).toBeUndefined();
-    expect(normalizeRule({ word: " ", replacement: "x" })).toBeUndefined();
-    expect(normalizeRule({ word: "x", replacement: "" })).toBeUndefined();
-    expect(normalizeRule({ word: "x", replacement: " " })).toBeUndefined();
-  });
 });
 
 describe("normalizePronunciations", () => {

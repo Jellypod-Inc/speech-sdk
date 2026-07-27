@@ -33,17 +33,16 @@ describe("mergeRules", () => {
     expect(map.get(ruleMapKey("llm", false))?.replacement).toBe("second");
   });
 
-  it("trims rule ends so a stored trailing space matches like the bare word", () => {
-    const map = mergeRules([{ word: "hello ", replacement: " HELLO" }]);
+  it("keys on the trimmed word, leaving internal whitespace intact", () => {
+    const map = mergeRules([
+      { word: "hello ", replacement: " HELLO" },
+      { word: " New York ", replacement: "noo YORK" },
+    ]);
     expect(map.get(ruleMapKey("hello", false))).toEqual({
       word: "hello",
       replacement: "HELLO",
       caseSensitive: false,
     });
-  });
-
-  it("keeps multi-word rules intact", () => {
-    const map = mergeRules([{ word: " New York ", replacement: "noo YORK" }]);
     expect(map.get(ruleMapKey("new york", false))?.word).toBe("New York");
   });
 
