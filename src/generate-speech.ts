@@ -22,9 +22,9 @@ import { validateInstructionSupport } from "./instructions.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
+import { normalizePronunciations } from "./pronunciations/normalize.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -96,7 +96,10 @@ export async function generateSpeech<
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
 
-  validatePronunciationsInput(options.pronunciations);
+  // Gateway warnings come from the server; client-side input diagnostics stay off that path.
+  const pronunciationWarnings = isGateway
+    ? []
+    : normalizePronunciations(options.pronunciations).warnings;
 
   const { canonicalText, providerText, warnings } = preprocessSpeechText({
     resolved,
@@ -244,21 +247,19 @@ export async function generateSpeech<
     ...(audioDurationMs != null && { audioDurationMs }),
   };
 
+  const allWarnings = [
+    ...warnings,
+    ...pronunciationWarnings,
+    ...(result.warnings ?? []),
+  ];
+
   return {
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: mergeWarnings(warnings, result.warnings),
+    warnings: allWarnings.length > 0 ? allWarnings : undefined,
     timestamps: publicAlignment.timestamps,
   };
-}
-
-function mergeWarnings(
-  preprocessingWarnings: string[],
-  providerWarnings: string[] | undefined
-): string[] | undefined {
-  const merged = [...preprocessingWarnings, ...(providerWarnings ?? [])];
-  return merged.length > 0 ? merged : undefined;
 }
 
 function resolveTextChunks(args: {

@@ -7,9 +7,9 @@ import {
 import { validateInstructionSupport } from "./instructions.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
+import { normalizePronunciations } from "./pronunciations/normalize.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -47,7 +47,10 @@ export async function streamSpeech<
     resolved,
     options.instructions
   );
-  validatePronunciationsInput(options.pronunciations);
+  // Gateway warnings come from the server; client-side input diagnostics stay off that path.
+  const pronunciationWarnings = isGateway
+    ? []
+    : normalizePronunciations(options.pronunciations).warnings;
 
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId
@@ -134,11 +137,13 @@ export async function streamSpeech<
     }),
   };
 
+  const allWarnings = [...warnings, ...pronunciationWarnings];
+
   return {
     audio: result.stream,
     mediaType: result.mediaType,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: warnings.length > 0 ? warnings : undefined,
+    warnings: allWarnings.length > 0 ? allWarnings : undefined,
   };
 }

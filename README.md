@@ -365,6 +365,8 @@ await generateSpeech({
 
 The same option is available on `streamSpeech` and `generateConversation`. On `generateConversation`, the option applies globally to every turn.
 
+`word` and `replacement` are trimmed at the ends before matching, so `'hello '` behaves exactly like `'hello'`; internal whitespace is preserved, so multi-word rules like `'New York'` keep matching. A rule whose `word` or `replacement` is empty after trimming is skipped with a warning in the result's `warnings` — the remaining rules still apply.
+
 ## Voice cloning
 
 Some providers support reference-audio cloning. Pass a voice object instead of a string.

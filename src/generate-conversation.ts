@@ -12,7 +12,10 @@ import {
   validateOutput,
 } from "./audio-output.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
-import { chooseConversationPath } from "./conversation/dispatch.js";
+import {
+  chooseConversationPath,
+  type StitchFallbackReason,
+} from "./conversation/dispatch.js";
 import type { Pcm16Segment } from "./conversation/pcm-concat.js";
 import type {
   ConversationTurn,
@@ -35,9 +38,9 @@ import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
+import { normalizePronunciations } from "./pronunciations/normalize.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -190,8 +193,6 @@ export async function generateConversation<
     output: options.output,
   });
 
-  validatePronunciationsInput(options.pronunciations);
-
   if (path.kind === "gateway") {
     // Gateway handles top-level + per-turn speed server-side; no local stretch.
     return await runGateway({
@@ -202,16 +203,28 @@ export async function generateConversation<
   }
 
   if (path.kind === "native") {
+    const native = await runNativeDispatch({
+      options,
+      resolved: path.resolved,
+      blocks: path.blocks,
+    });
+    const warnings = [
+      ...normalizePronunciations(options.pronunciations).warnings,
+      ...(native.warnings ?? []),
+    ];
     return await applySpeedToConversationResult({
-      result: await runNativeDispatch({
-        options,
-        resolved: path.resolved,
-        blocks: path.blocks,
-      }),
+      result: {
+        ...native,
+        warnings: warnings.length > 0 ? warnings : undefined,
+      },
       speed: options.speed,
       output: options.output,
     });
   }
+
+  // Normalize once here — each turn is its own generateSpeech call, so raw rules would warn per turn.
+  const { pronunciations, warnings: pronunciationWarnings } =
+    normalizePronunciations(options.pronunciations);
 
   // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
@@ -232,7 +245,7 @@ export async function generateConversation<
     instructions: nonEmptyInstructions(options.instructions),
     timestamps: options.timestamps ?? false,
     timestampProvider: options.timestampProvider,
-    pronunciations: options.pronunciations,
+    pronunciations,
     // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
     deferOutputConversion: isSpeedActive(options.speed),
   });
@@ -250,19 +263,11 @@ export async function generateConversation<
     perTurn: stitched.metadataPerTurn,
   };
 
-  let fallbackWarning: string | undefined;
-  if (path.reason === "fallback-from-native") {
-    fallbackWarning = `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`;
-  } else if (path.reason === "fallback-from-native-oversized") {
-    fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
-  } else if (path.reason === "fallback-from-native-voice-count") {
-    fallbackWarning = `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
-  } else if (path.reason === "fallback-from-native-voice-count-exceeded") {
-    fallbackWarning = `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
-  }
-  const combinedWarnings = fallbackWarning
-    ? [fallbackWarning, ...stitched.warnings]
-    : stitched.warnings;
+  const combinedWarnings = [
+    ...stitchFallbackWarnings(path.reason, options.turns.length),
+    ...pronunciationWarnings,
+    ...stitched.warnings,
+  ];
 
   return await applySpeedToConversationResult({
     result: {
@@ -278,6 +283,32 @@ export async function generateConversation<
     speed: options.speed,
     output: options.output,
   });
+}
+
+function stitchFallbackWarnings(
+  reason: StitchFallbackReason | undefined,
+  turnCount: number
+): string[] {
+  switch (reason) {
+    case "fallback-from-native":
+      return [
+        `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${turnCount} API calls instead of 1)`,
+      ];
+    case "fallback-from-native-oversized":
+      return [
+        `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${turnCount} API calls instead of 1)`,
+      ];
+    case "fallback-from-native-voice-count":
+      return [
+        `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${turnCount} generateSpeech calls) instead of native multi-speaker dialogue`,
+      ];
+    case "fallback-from-native-voice-count-exceeded":
+      return [
+        `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${turnCount} generateSpeech calls) instead of native multi-speaker dialogue`,
+      ];
+    default:
+      return [];
+  }
 }
 
 function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
