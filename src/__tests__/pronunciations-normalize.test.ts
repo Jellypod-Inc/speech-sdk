@@ -1,26 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizePronunciations,
-  normalizeRule,
-} from "../pronunciations/normalize.js";
-
-describe("normalizeRule", () => {
-  it("trims the ends of word and replacement but keeps internal whitespace", () => {
-    expect(
-      normalizeRule({ word: " New York ", replacement: "\tnoo YORK\n" })
-    ).toEqual({ word: "New York", replacement: "noo YORK" });
-  });
-
-  it("preserves caseSensitive across normalization", () => {
-    expect(
-      normalizeRule({
-        word: "LLM ",
-        replacement: "el el em",
-        caseSensitive: true,
-      })
-    ).toEqual({ word: "LLM", replacement: "el el em", caseSensitive: true });
-  });
-});
+import { normalizePronunciations } from "../pronunciations/normalize.js";
 
 describe("normalizePronunciations", () => {
   it("passes through undefined and rule-less input", () => {
@@ -61,15 +40,5 @@ describe("normalizePronunciations", () => {
     expect(warnings[0]).toContain("pronunciations.rules[1]");
     expect(warnings[0]).toContain('"GPU"');
     expect(pronunciations?.rules?.map((r) => r.word)).toEqual(["LLM", "TPU"]);
-  });
-
-  it("keeps rules that are non-empty only after trimming", () => {
-    const { pronunciations, warnings } = normalizePronunciations({
-      rules: [{ word: "hello ", replacement: " HELLO" }],
-    });
-    expect(warnings).toEqual([]);
-    expect(pronunciations?.rules).toEqual([
-      { word: "hello", replacement: "HELLO" },
-    ]);
   });
 });

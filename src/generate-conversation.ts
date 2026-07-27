@@ -12,10 +12,7 @@ import {
   validateOutput,
 } from "./audio-output.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
-import {
-  chooseConversationPath,
-  type StitchFallbackReason,
-} from "./conversation/dispatch.js";
+import { chooseConversationPath } from "./conversation/dispatch.js";
 import type { Pcm16Segment } from "./conversation/pcm-concat.js";
 import type {
   ConversationTurn,
@@ -203,20 +200,15 @@ export async function generateConversation<
   }
 
   if (path.kind === "native") {
-    const native = await runNativeDispatch({
-      options,
-      resolved: path.resolved,
-      blocks: path.blocks,
-    });
-    const warnings = [
-      ...normalizePronunciations(options.pronunciations).warnings,
-      ...(native.warnings ?? []),
-    ];
     return await applySpeedToConversationResult({
-      result: {
-        ...native,
-        warnings: warnings.length > 0 ? warnings : undefined,
-      },
+      result: withPronunciationWarnings(
+        await runNativeDispatch({
+          options,
+          resolved: path.resolved,
+          blocks: path.blocks,
+        }),
+        normalizePronunciations(options.pronunciations).warnings
+      ),
       speed: options.speed,
       output: options.output,
     });
@@ -263,8 +255,18 @@ export async function generateConversation<
     perTurn: stitched.metadataPerTurn,
   };
 
+  let fallbackWarning: string | undefined;
+  if (path.reason === "fallback-from-native") {
+    fallbackWarning = `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`;
+  } else if (path.reason === "fallback-from-native-oversized") {
+    fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
+  } else if (path.reason === "fallback-from-native-voice-count") {
+    fallbackWarning = `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
+  } else if (path.reason === "fallback-from-native-voice-count-exceeded") {
+    fallbackWarning = `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
+  }
   const combinedWarnings = [
-    ...stitchFallbackWarnings(path.reason, options.turns.length),
+    ...(fallbackWarning ? [fallbackWarning] : []),
     ...pronunciationWarnings,
     ...stitched.warnings,
   ];
@@ -285,30 +287,12 @@ export async function generateConversation<
   });
 }
 
-function stitchFallbackWarnings(
-  reason: StitchFallbackReason | undefined,
-  turnCount: number
-): string[] {
-  switch (reason) {
-    case "fallback-from-native":
-      return [
-        `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${turnCount} API calls instead of 1)`,
-      ];
-    case "fallback-from-native-oversized":
-      return [
-        `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${turnCount} API calls instead of 1)`,
-      ];
-    case "fallback-from-native-voice-count":
-      return [
-        `conversation resolves to a single speaker; rendered as sequential single-speaker speech (${turnCount} generateSpeech calls) instead of native multi-speaker dialogue`,
-      ];
-    case "fallback-from-native-voice-count-exceeded":
-      return [
-        `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${turnCount} generateSpeech calls) instead of native multi-speaker dialogue`,
-      ];
-    default:
-      return [];
-  }
+function withPronunciationWarnings(
+  result: ConversationResult,
+  extra: readonly string[]
+): ConversationResult {
+  const warnings = [...extra, ...(result.warnings ?? [])];
+  return { ...result, warnings: warnings.length > 0 ? warnings : undefined };
 }
 
 function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
