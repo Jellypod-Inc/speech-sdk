@@ -65,6 +65,41 @@ describe("generateSpeech with pronunciations", () => {
   });
 });
 
+describe("generateSpeech with malformed pronunciation rules", () => {
+  it("applies a rule with a trailing space as if it were written without one", async () => {
+    const generateSpy = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+    });
+    await generateSpeech({
+      model: fakeModel(generateSpy),
+      voice: "v1",
+      text: "hello world",
+      pronunciations: { rules: [{ word: "hello ", replacement: "HELLO" }] },
+    });
+    expect(generateSpy.mock.calls[0][0].text).toBe("HELLO world");
+  });
+
+  it("skips an unusable rule and still applies the usable ones", async () => {
+    const generateSpy = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+    });
+    await generateSpeech({
+      model: fakeModel(generateSpy),
+      voice: "v1",
+      text: "What is LLM?",
+      pronunciations: {
+        rules: [
+          { word: " ", replacement: "x" },
+          { word: "LLM", replacement: "el el em" },
+        ],
+      },
+    });
+    expect(generateSpy.mock.calls[0][0].text).toBe("What is el el em?");
+  });
+});
+
 describe("generateSpeech with pronunciations + audio tags", () => {
   it("strips audio tags before substituting (so edits anchor to provider-visible text)", async () => {
     const generateSpy = vi.fn().mockResolvedValue({

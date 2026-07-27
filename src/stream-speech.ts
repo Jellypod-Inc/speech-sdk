@@ -9,7 +9,6 @@ import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -47,7 +46,6 @@ export async function streamSpeech<
     resolved,
     options.instructions
   );
-  validatePronunciationsInput(options.pronunciations);
 
   const modelInfo = resolved.provider.models.find(
     (m) => m.id === resolved.modelId

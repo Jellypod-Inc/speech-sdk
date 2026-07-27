@@ -33,6 +33,33 @@ describe("mergeRules", () => {
     expect(map.get(ruleMapKey("llm", false))?.replacement).toBe("second");
   });
 
+  it("keys on the trimmed word, leaving internal whitespace intact", () => {
+    const map = mergeRules([
+      { word: "hello ", replacement: " HELLO" },
+      { word: " New York ", replacement: "noo YORK" },
+    ]);
+    expect(map.get(ruleMapKey("hello", false))).toEqual({
+      word: "hello",
+      replacement: "HELLO",
+      caseSensitive: false,
+    });
+    expect(map.get(ruleMapKey("new york", false))?.word).toBe("New York");
+  });
+
+  it("skips blank rules — whitespace-only and empty alike — and keeps the rest", () => {
+    const map = mergeRules([
+      { word: "LLM", replacement: "el el em" },
+      { word: "", replacement: "a" },
+      { word: " ", replacement: "b" },
+      { word: "c", replacement: "" },
+      { word: "d", replacement: " " },
+      { word: "GPU", replacement: "gee pee you" },
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get(ruleMapKey("llm", false))?.replacement).toBe("el el em");
+    expect(map.get(ruleMapKey("gpu", false))?.replacement).toBe("gee pee you");
+  });
+
   it("treats case-sensitive and case-insensitive variants of the same word as separate keys", () => {
     const map = mergeRules([
       { word: "LLM", replacement: "case-sens", caseSensitive: true },

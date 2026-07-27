@@ -24,7 +24,6 @@ import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -95,8 +94,6 @@ export async function generateSpeech<
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   const isGateway = isSpeechGatewayModel(resolved);
-
-  validatePronunciationsInput(options.pronunciations);
 
   const { canonicalText, providerText, warnings } = preprocessSpeechText({
     resolved,

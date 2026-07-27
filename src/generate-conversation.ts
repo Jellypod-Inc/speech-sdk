@@ -37,7 +37,6 @@ import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
-import { validatePronunciationsInput } from "./pronunciations/validate.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -189,8 +188,6 @@ export async function generateConversation<
     turns: options.turns,
     output: options.output,
   });
-
-  validatePronunciationsInput(options.pronunciations);
 
   if (path.kind === "gateway") {
     // Gateway handles top-level + per-turn speed server-side; no local stretch.
