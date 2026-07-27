@@ -2,7 +2,7 @@
 
 ## 0.25.0
 
-- **Breaking: one unusable pronunciation rule no longer fails the whole request.** `pronunciations.rules` entries whose `word` or `replacement` is empty after trimming are now skipped with a warning in the result's `warnings` instead of throwing `SpeechSDKError`; the remaining rules still apply. The warning names the offending rule by index and `word` value. Callers that relied on the throw to detect malformed rule sets should inspect `warnings` instead.
+- **Breaking: one unusable pronunciation rule no longer fails the whole request.** `pronunciations.rules` entries whose `word` or `replacement` is empty after trimming are now skipped instead of throwing `SpeechSDKError`; the remaining rules still apply. Skipping is silent — callers that relied on the throw to detect malformed rule sets need to validate their own rule sets before passing them in.
 - **Fix: whitespace-padded pronunciation rules no longer corrupt substituted text.** `word` and `replacement` are trimmed at the ends before matching, so a rule stored as `'hello ' -> 'HELLO'` applies exactly like `'hello' -> 'HELLO'` rather than consuming the following space and fusing tokens (`"hello world"` → `"HELLOworld"`), which broke forced alignment with a non-retryable `transcript_mismatch`. Internal whitespace is untouched, so multi-word rules such as `'New York' -> 'noo YORK'` are unchanged. `" "` and `""` are now treated identically; neither reaches the matcher.
 
 ## 0.24.3

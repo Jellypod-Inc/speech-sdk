@@ -80,12 +80,12 @@ describe("generateSpeech with malformed pronunciation rules", () => {
     expect(generateSpy.mock.calls[0][0].text).toBe("HELLO world");
   });
 
-  it("skips an unusable rule, warns, and still applies the usable ones", async () => {
+  it("skips an unusable rule and still applies the usable ones", async () => {
     const generateSpy = vi.fn().mockResolvedValue({
       audio: new Uint8Array([1]),
       mediaType: "audio/wav",
     });
-    const result = await generateSpeech({
+    await generateSpeech({
       model: fakeModel(generateSpy),
       voice: "v1",
       text: "What is LLM?",
@@ -97,8 +97,6 @@ describe("generateSpeech with malformed pronunciation rules", () => {
       },
     });
     expect(generateSpy.mock.calls[0][0].text).toBe("What is el el em?");
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings?.[0]).toContain("pronunciations.rules[0]");
   });
 });
 

@@ -46,11 +46,13 @@ describe("mergeRules", () => {
     expect(map.get(ruleMapKey("new york", false))?.word).toBe("New York");
   });
 
-  it("skips rules that are blank after trimming and keeps the rest", () => {
+  it("skips blank rules — whitespace-only and empty alike — and keeps the rest", () => {
     const map = mergeRules([
       { word: "LLM", replacement: "el el em" },
-      { word: "  ", replacement: "x" },
-      { word: "y", replacement: "" },
+      { word: "", replacement: "a" },
+      { word: " ", replacement: "b" },
+      { word: "c", replacement: "" },
+      { word: "d", replacement: " " },
       { word: "GPU", replacement: "gee pee you" },
     ]);
     expect(map.size).toBe(2);

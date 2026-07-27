@@ -35,7 +35,6 @@ import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
 import { inverseAlign } from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
-import { normalizePronunciations } from "./pronunciations/normalize.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
 import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
@@ -201,22 +200,15 @@ export async function generateConversation<
 
   if (path.kind === "native") {
     return await applySpeedToConversationResult({
-      result: withPronunciationWarnings(
-        await runNativeDispatch({
-          options,
-          resolved: path.resolved,
-          blocks: path.blocks,
-        }),
-        normalizePronunciations(options.pronunciations).warnings
-      ),
+      result: await runNativeDispatch({
+        options,
+        resolved: path.resolved,
+        blocks: path.blocks,
+      }),
       speed: options.speed,
       output: options.output,
     });
   }
-
-  // Normalize once here — each turn is its own generateSpeech call, so raw rules would warn per turn.
-  const { pronunciations, warnings: pronunciationWarnings } =
-    normalizePronunciations(options.pronunciations);
 
   // Lazy-load so native-only callers don't bundle pcm-concat / mediabunny.
   const { runStitch } = await import("./conversation/stitch.js");
@@ -237,7 +229,7 @@ export async function generateConversation<
     instructions: nonEmptyInstructions(options.instructions),
     timestamps: options.timestamps ?? false,
     timestampProvider: options.timestampProvider,
-    pronunciations,
+    pronunciations: options.pronunciations,
     // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
     deferOutputConversion: isSpeedActive(options.speed),
   });
@@ -265,11 +257,9 @@ export async function generateConversation<
   } else if (path.reason === "fallback-from-native-voice-count-exceeded") {
     fallbackWarning = `conversation uses more unique voices than the provider's native dialogue supports; rendered via stitch (${options.turns.length} generateSpeech calls) instead of native multi-speaker dialogue`;
   }
-  const combinedWarnings = [
-    ...(fallbackWarning ? [fallbackWarning] : []),
-    ...pronunciationWarnings,
-    ...stitched.warnings,
-  ];
+  const combinedWarnings = fallbackWarning
+    ? [fallbackWarning, ...stitched.warnings]
+    : stitched.warnings;
 
   return await applySpeedToConversationResult({
     result: {
@@ -285,14 +275,6 @@ export async function generateConversation<
     speed: options.speed,
     output: options.output,
   });
-}
-
-function withPronunciationWarnings(
-  result: ConversationResult,
-  extra: readonly string[]
-): ConversationResult {
-  const warnings = [...extra, ...(result.warnings ?? [])];
-  return { ...result, warnings: warnings.length > 0 ? warnings : undefined };
 }
 
 function needsConversationStitchForMaxInputChars<V extends Voice>(args: {

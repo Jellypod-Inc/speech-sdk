@@ -1,9 +1,18 @@
-import { normalizeRule } from "./normalize.js";
 import type { Pronunciation } from "./types.js";
 
 // A case-sensitive rule for an already-lowercase word can collide with a case-insensitive rule for the same word in one merge call; gateway dictionaries dedupe via a unique index, and Map.set's last-write-wins is fine for the inline-only case.
 export function ruleMapKey(word: string, caseSensitive: boolean): string {
   return caseSensitive ? word : word.toLowerCase();
+}
+
+// Ends only — internal whitespace is significant, so "New York" -> "noo YORK" keeps matching.
+function normalizeRule(rule: Pronunciation): Pronunciation | undefined {
+  const word = rule.word.trim();
+  const replacement = rule.replacement.trim();
+  if (word.length === 0 || replacement.length === 0) {
+    return;
+  }
+  return { ...rule, word, replacement };
 }
 
 export function mergeRules(
