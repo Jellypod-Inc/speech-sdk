@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.1
+
+- Fix pronunciation timestamp projection for multi-word source phrases when the replacement alignment contains the same number of provider words, and preserve unchanged text when a provider token crosses a pronunciation edit boundary (for example, `S-A-F’s` back to `SAF’s`). The SDK now restores caller word boundaries from exact provider timings instead of rejecting valid audio with `transcript_mismatch`; alignments that cannot map one-to-one remain rejected.
+
 ## 0.25.0
 
 - **Breaking: one unusable pronunciation rule no longer fails the whole request.** `pronunciations.rules` entries whose `word` or `replacement` is empty after trimming are now skipped instead of throwing `SpeechSDKError`; the remaining rules still apply. Skipping is silent — callers that relied on the throw to detect malformed rule sets need to validate their own rule sets before passing them in.

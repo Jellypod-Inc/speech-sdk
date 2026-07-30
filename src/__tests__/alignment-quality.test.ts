@@ -210,6 +210,75 @@ describe("exact timestamp alignment", () => {
     ]);
   });
 
+  it("preserves a suffix when a provider token crosses a pronunciation edit", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({
+        native: true,
+        timestamps: [
+          { text: "S-A-F’s", start: 0, end: 0.4 },
+          { text: "Annual", start: 0.5, end: 0.8 },
+          { text: "Convention.", start: 0.9, end: 1.3 },
+        ],
+      }),
+      voice: "v",
+      text: "SAF’s Annual Convention.",
+      pronunciations: {
+        rules: [{ word: "SAF", replacement: "S-A-F" }],
+      },
+      timestamps: true,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "SAF’s", start: 0, end: 0.4 },
+      { text: "Annual", start: 0.5, end: 0.8 },
+      { text: "Convention.", start: 0.9, end: 1.3 },
+    ]);
+  });
+
+  it("projects a multi-word pronunciation onto provider word boundaries", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({}),
+      voice: "v",
+      text: "lead singer joined",
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leed singer" }],
+      },
+      timestamps: true,
+      timestampProvider: timestampProvider([
+        { text: "leed", start: 0, end: 0.2 },
+        { text: "singer", start: 0.2, end: 0.6 },
+        { text: "joined", start: 0.6, end: 0.9 },
+      ]),
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "lead", start: 0, end: 0.2 },
+      { text: "singer", start: 0.2, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ]);
+  });
+
+  it("rejects a multi-word pronunciation without a one-to-one provider mapping", async () => {
+    await expect(
+      generateSpeech({
+        model: ttsModel({}),
+        voice: "v",
+        text: "lead singer joined",
+        pronunciations: {
+          rules: [{ word: "lead singer", replacement: "leedsinger" }],
+        },
+        timestamps: true,
+        timestampProvider: timestampProvider([
+          { text: "leedsinger", start: 0, end: 0.6 },
+          { text: "joined", start: 0.6, end: 0.9 },
+        ]),
+      })
+    ).rejects.toMatchObject({
+      reason: "transcript_mismatch",
+      source: "pronunciation projection",
+    });
+  });
+
   it("requires timestampProvider before synthesizing a non-native model", async () => {
     const model = ttsModel({});
     await expect(
