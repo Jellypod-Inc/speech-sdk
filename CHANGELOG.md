@@ -2,7 +2,7 @@
 
 ## 0.25.1
 
-- Fix pronunciation timestamp projection for multi-word source phrases when the replacement alignment contains the same number of provider words. The SDK now restores caller word boundaries from those exact provider timings instead of rejecting valid audio with `transcript_mismatch`; alignments that cannot map one-to-one remain rejected.
+- Fix pronunciation timestamp projection for multi-word source phrases when the replacement alignment contains the same number of provider words, and preserve unchanged text when a provider token crosses a pronunciation edit boundary (for example, `S-A-F’s` back to `SAF’s`). The SDK now restores caller word boundaries from exact provider timings instead of rejecting valid audio with `transcript_mismatch`; alignments that cannot map one-to-one remain rejected.
 
 ## 0.25.0
 

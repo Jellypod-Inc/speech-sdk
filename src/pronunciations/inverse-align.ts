@@ -4,12 +4,13 @@ import type { Edit } from "./types.js";
 
 const LEXICAL_CHARACTER = /[\p{L}\p{N}]/u;
 
-function findEditAt(
-  position: number,
+function findOverlappingEdit(
+  start: number,
+  end: number,
   edits: readonly Edit[]
 ): Edit | undefined {
   return edits.find(
-    (e) => position >= e.replacementRange[0] && position < e.replacementRange[1]
+    (edit) => start < edit.replacementRange[1] && end > edit.replacementRange[0]
   );
 }
 
@@ -21,16 +22,49 @@ function findTokenStart(
   return haystack.indexOf(token.toLowerCase(), searchFrom);
 }
 
-function findTokenLexicalStart(position: number, token: string): number {
-  const offset = token.search(LEXICAL_CHARACTER);
-  return offset === -1 ? position : position + offset;
+function findContainedEdits(
+  start: number,
+  end: number,
+  edits: readonly Edit[]
+): readonly Edit[] {
+  return edits.filter(
+    (edit) =>
+      edit.replacementRange[0] >= start && edit.replacementRange[1] <= end
+  );
+}
+
+function projectTextThroughEdits(
+  substitutedText: string,
+  start: number,
+  end: number,
+  edits: readonly Edit[]
+): string {
+  const parts: string[] = [];
+  let cursor = start;
+
+  for (const edit of edits) {
+    parts.push(
+      substitutedText.slice(cursor, edit.replacementRange[0]),
+      edit.originalWord
+    );
+    cursor = edit.replacementRange[1];
+  }
+
+  parts.push(substitutedText.slice(cursor, end));
+  return parts.join("");
 }
 
 function projectOriginalTokens<T extends WordTimestamp>(
   edit: Edit,
-  alignedTimestamps: readonly [T, ...T[]]
+  alignedTimestamps: readonly [T, ...T[]],
+  substitutedText: string,
+  start: number,
+  end: number
 ): T[] {
-  const sourceTokens = tokenizeTimestampSource(edit.originalWord);
+  const originalText = projectTextThroughEdits(substitutedText, start, end, [
+    edit,
+  ]);
+  const sourceTokens = tokenizeTimestampSource(originalText);
   const firstTimestamp = alignedTimestamps[0];
   const lastTimestamp = alignedTimestamps.at(-1) ?? firstTimestamp;
 
@@ -38,7 +72,7 @@ function projectOriginalTokens<T extends WordTimestamp>(
     return [
       {
         ...firstTimestamp,
-        text: edit.originalWord,
+        text: originalText,
         start: firstTimestamp.start,
         end: lastTimestamp.end,
       },
@@ -62,7 +96,12 @@ export function inverseAlign<T extends WordTimestamp>(
 
   const out: T[] = [];
   let cursor = 0;
-  let pendingGroup: { edit: Edit; timestamps: [T, ...T[]] } | null = null;
+  let pendingGroup: {
+    edit: Edit;
+    end: number;
+    start: number;
+    timestamps: [T, ...T[]];
+  } | null = null;
   const haystack = substitutedText.toLowerCase();
 
   const flushPending = () => {
@@ -70,7 +109,13 @@ export function inverseAlign<T extends WordTimestamp>(
       return;
     }
     out.push(
-      ...projectOriginalTokens(pendingGroup.edit, pendingGroup.timestamps)
+      ...projectOriginalTokens(
+        pendingGroup.edit,
+        pendingGroup.timestamps,
+        substitutedText,
+        pendingGroup.start,
+        pendingGroup.end
+      )
     );
     pendingGroup = null;
   };
@@ -82,15 +127,35 @@ export function inverseAlign<T extends WordTimestamp>(
       out.push(ts);
       continue;
     }
-    cursor = pos + ts.text.length;
-    const edit = findEditAt(findTokenLexicalStart(pos, ts.text), edits);
+    const end = pos + ts.text.length;
+    cursor = end;
+    const containedEdits = findContainedEdits(pos, end, edits);
+
+    if (containedEdits.length > 0) {
+      flushPending();
+      out.push({
+        ...ts,
+        text: projectTextThroughEdits(
+          substitutedText,
+          pos,
+          end,
+          containedEdits
+        ),
+      });
+      continue;
+    }
+
+    const lexicalOffset = ts.text.search(LEXICAL_CHARACTER);
+    const lexicalStart = lexicalOffset === -1 ? pos : pos + lexicalOffset;
+    const edit = findOverlappingEdit(lexicalStart, end, edits);
 
     if (edit) {
       if (pendingGroup && pendingGroup.edit === edit) {
         pendingGroup.timestamps.push(ts);
+        pendingGroup.end = end;
       } else {
         flushPending();
-        pendingGroup = { edit, timestamps: [ts] };
+        pendingGroup = { edit, end, start: pos, timestamps: [ts] };
       }
     } else {
       flushPending();

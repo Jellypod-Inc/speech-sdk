@@ -210,6 +210,31 @@ describe("exact timestamp alignment", () => {
     ]);
   });
 
+  it("preserves a suffix when a provider token crosses a pronunciation edit", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({
+        native: true,
+        timestamps: [
+          { text: "S-A-F’s", start: 0, end: 0.4 },
+          { text: "Annual", start: 0.5, end: 0.8 },
+          { text: "Convention.", start: 0.9, end: 1.3 },
+        ],
+      }),
+      voice: "v",
+      text: "SAF’s Annual Convention.",
+      pronunciations: {
+        rules: [{ word: "SAF", replacement: "S-A-F" }],
+      },
+      timestamps: true,
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "SAF’s", start: 0, end: 0.4 },
+      { text: "Annual", start: 0.5, end: 0.8 },
+      { text: "Convention.", start: 0.9, end: 1.3 },
+    ]);
+  });
+
   it("projects a multi-word pronunciation onto provider word boundaries", async () => {
     const result = await generateSpeech({
       model: ttsModel({}),
