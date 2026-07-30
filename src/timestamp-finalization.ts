@@ -31,7 +31,7 @@ function canonicalize(text: string): string {
   ).join("");
 }
 
-function tokenizeSource(text: string): readonly SourceToken[] {
+export function tokenizeTimestampSource(text: string): readonly SourceToken[] {
   const ranges: { start: number; end: number }[] = [];
   let leadingPunctuationStart: number | undefined;
 
@@ -97,7 +97,7 @@ export function finalizeTimestamps(args: {
   readonly text: string;
   readonly timestamps: readonly WordTimestamp[];
 }): TimestampFinalizationResult {
-  const sourceTokens = tokenizeSource(args.text);
+  const sourceTokens = tokenizeTimestampSource(args.text);
 
   if (sourceTokens.length === 0) {
     return args.timestamps.length === 0

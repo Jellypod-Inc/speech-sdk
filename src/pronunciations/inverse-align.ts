@@ -1,3 +1,4 @@
+import { tokenizeTimestampSource } from "../timestamp-finalization.js";
 import type { WordTimestamp } from "../timestamps.js";
 import type { Edit } from "./types.js";
 
@@ -25,6 +26,31 @@ function findTokenLexicalStart(position: number, token: string): number {
   return offset === -1 ? position : position + offset;
 }
 
+function projectOriginalTokens<T extends WordTimestamp>(
+  edit: Edit,
+  alignedTimestamps: readonly [T, ...T[]]
+): T[] {
+  const sourceTokens = tokenizeTimestampSource(edit.originalWord);
+  const firstTimestamp = alignedTimestamps[0];
+  const lastTimestamp = alignedTimestamps.at(-1) ?? firstTimestamp;
+
+  if (sourceTokens.length !== alignedTimestamps.length) {
+    return [
+      {
+        ...firstTimestamp,
+        text: edit.originalWord,
+        start: firstTimestamp.start,
+        end: lastTimestamp.end,
+      },
+    ];
+  }
+
+  return sourceTokens.map(({ text }, index) => ({
+    ...alignedTimestamps[index],
+    text,
+  }));
+}
+
 export function inverseAlign<T extends WordTimestamp>(
   timestamps: readonly T[],
   substitutedText: string,
@@ -36,20 +62,16 @@ export function inverseAlign<T extends WordTimestamp>(
 
   const out: T[] = [];
   let cursor = 0;
-  let pendingGroup: { edit: Edit; first: T; last: T } | null = null;
+  let pendingGroup: { edit: Edit; timestamps: [T, ...T[]] } | null = null;
   const haystack = substitutedText.toLowerCase();
 
   const flushPending = () => {
     if (!pendingGroup) {
       return;
     }
-    const merged = {
-      ...pendingGroup.first,
-      text: pendingGroup.edit.originalWord,
-      start: pendingGroup.first.start,
-      end: pendingGroup.last.end,
-    } as T;
-    out.push(merged);
+    out.push(
+      ...projectOriginalTokens(pendingGroup.edit, pendingGroup.timestamps)
+    );
     pendingGroup = null;
   };
 
@@ -65,10 +87,10 @@ export function inverseAlign<T extends WordTimestamp>(
 
     if (edit) {
       if (pendingGroup && pendingGroup.edit === edit) {
-        pendingGroup.last = ts;
+        pendingGroup.timestamps.push(ts);
       } else {
         flushPending();
-        pendingGroup = { edit, first: ts, last: ts };
+        pendingGroup = { edit, timestamps: [ts] };
       }
     } else {
       flushPending();

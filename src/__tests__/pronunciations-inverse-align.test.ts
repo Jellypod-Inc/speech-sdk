@@ -68,6 +68,50 @@ describe("inverseAlign", () => {
     expect(result[2]).toMatchObject({ start: 0.5, end: 0.8 });
   });
 
+  it("restores word boundaries when a multi-word phrase is replaced", () => {
+    const substituted = "leed singer joined";
+    const edits: Edit[] = [
+      {
+        originalRange: [0, 11],
+        replacementRange: [0, 11],
+        originalWord: "lead singer",
+        ruleKey: "lead singer",
+      },
+    ];
+    const providerTimestamps: WordTimestamp[] = [
+      { text: "leed", start: 0, end: 0.2 },
+      { text: "singer", start: 0.2, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ];
+
+    expect(inverseAlign(providerTimestamps, substituted, edits)).toEqual([
+      { text: "lead", start: 0, end: 0.2 },
+      { text: "singer", start: 0.2, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ]);
+  });
+
+  it("does not invent boundaries when a replacement has fewer aligned words", () => {
+    const substituted = "leedsinger joined";
+    const edits: Edit[] = [
+      {
+        originalRange: [0, 11],
+        replacementRange: [0, 10],
+        originalWord: "lead singer",
+        ruleKey: "lead singer",
+      },
+    ];
+    const providerTimestamps: WordTimestamp[] = [
+      { text: "leedsinger", start: 0, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ];
+
+    expect(inverseAlign(providerTimestamps, substituted, edits)).toEqual([
+      { text: "lead singer", start: 0, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ]);
+  });
+
   it("passes through tokens not found in substituted text without advancing cursor", () => {
     const substituted = "el el em hi";
     const edits: Edit[] = [

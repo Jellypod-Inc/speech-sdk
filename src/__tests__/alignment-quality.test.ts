@@ -210,6 +210,50 @@ describe("exact timestamp alignment", () => {
     ]);
   });
 
+  it("projects a multi-word pronunciation onto provider word boundaries", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({}),
+      voice: "v",
+      text: "lead singer joined",
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leed singer" }],
+      },
+      timestamps: true,
+      timestampProvider: timestampProvider([
+        { text: "leed", start: 0, end: 0.2 },
+        { text: "singer", start: 0.2, end: 0.6 },
+        { text: "joined", start: 0.6, end: 0.9 },
+      ]),
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "lead", start: 0, end: 0.2 },
+      { text: "singer", start: 0.2, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ]);
+  });
+
+  it("rejects a multi-word pronunciation without a one-to-one provider mapping", async () => {
+    await expect(
+      generateSpeech({
+        model: ttsModel({}),
+        voice: "v",
+        text: "lead singer joined",
+        pronunciations: {
+          rules: [{ word: "lead singer", replacement: "leedsinger" }],
+        },
+        timestamps: true,
+        timestampProvider: timestampProvider([
+          { text: "leedsinger", start: 0, end: 0.6 },
+          { text: "joined", start: 0.6, end: 0.9 },
+        ]),
+      })
+    ).rejects.toMatchObject({
+      reason: "transcript_mismatch",
+      source: "pronunciation projection",
+    });
+  });
+
   it("requires timestampProvider before synthesizing a non-native model", async () => {
     const model = ttsModel({});
     await expect(
