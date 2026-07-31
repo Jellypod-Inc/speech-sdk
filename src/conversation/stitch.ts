@@ -151,7 +151,9 @@ export async function runStitch<V extends Voice>(
     (perTurn.length - 1) * Math.round((input.gapMs / 1000) * targetSampleRate);
   const audioDurationMs = Math.round((totalSamples / targetSampleRate) * 1000);
 
-  const warnings = perTurn.flatMap((p) => p.result.warnings ?? []);
+  const warnings = [
+    ...new Set(perTurn.flatMap((p) => p.result.warnings ?? [])),
+  ];
   const metadataPerTurn = perTurn.map((p) => p.result.metadata);
   const providerMetadataPerTurn = perTurn.map((p) => p.result.providerMetadata);
 

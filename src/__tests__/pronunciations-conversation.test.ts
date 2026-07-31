@@ -190,6 +190,48 @@ describe("generateConversation with pronunciations (stitch path)", () => {
     expect(generateMock.mock.calls[0][0].text).toBe("Turn 1 with el el em.");
     expect(generateMock.mock.calls[1][0].text).toBe("Turn 2 with el el em.");
   });
+
+  it("reports an estimated pronunciation boundary warning only once", async () => {
+    const pcm = new Int16Array(2400);
+    pcm.fill(100);
+    const pcmBytes = new Uint8Array(pcm.buffer);
+    const fakeProvider = {
+      id: "fake",
+      defaultModel: "f1",
+      models: [{ id: "f1", features: [], languages: [], releaseDate: "" }],
+      generate: vi.fn().mockResolvedValue({
+        audio: pcmBytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+    const fakeModel = { provider: fakeProvider, modelId: "f1" } as never;
+
+    const result = await generateConversation({
+      model: fakeModel,
+      turns: [
+        { text: "lead singer", voice: "v1" },
+        { text: "lead singer", voice: "v2" },
+        { text: "lead singer", voice: "v3" },
+      ],
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leedsinger" }],
+      },
+      timestamps: true,
+      timestampProvider: {
+        align: vi
+          .fn()
+          .mockResolvedValue([{ text: "leedsinger", start: 0, end: 0.1 }]),
+      },
+    });
+
+    expect(result.warnings).toEqual([
+      "speech-sdk: pronunciation projection estimated one or more word boundaries.",
+    ]);
+  });
 });
 
 describe("generateConversation with pronunciations (gateway path)", () => {
