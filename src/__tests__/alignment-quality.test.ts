@@ -258,25 +258,54 @@ describe("exact timestamp alignment", () => {
     ]);
   });
 
-  it("rejects a multi-word pronunciation without a one-to-one provider mapping", async () => {
-    await expect(
-      generateSpeech({
-        model: ttsModel({}),
-        voice: "v",
-        text: "lead singer joined",
-        pronunciations: {
-          rules: [{ word: "lead singer", replacement: "leedsinger" }],
-        },
-        timestamps: true,
-        timestampProvider: timestampProvider([
-          { text: "leedsinger", start: 0, end: 0.6 },
-          { text: "joined", start: 0.6, end: 0.9 },
-        ]),
-      })
-    ).rejects.toMatchObject({
-      reason: "transcript_mismatch",
-      source: "pronunciation projection",
+  it("projects a multi-word pronunciation without a one-to-one provider mapping", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({}),
+      voice: "v",
+      text: "lead singer joined",
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leedsinger" }],
+      },
+      timestamps: true,
+      timestampProvider: timestampProvider([
+        { text: "leedsinger", start: 0, end: 0.6 },
+        { text: "joined", start: 0.6, end: 0.9 },
+      ]),
     });
+
+    expect(result.timestamps).toEqual([
+      { text: "lead", start: 0, end: 0.3 },
+      { text: "singer", start: 0.3, end: 0.6 },
+      { text: "joined", start: 0.6, end: 0.9 },
+    ]);
+    expect(result.warnings).toEqual([
+      "speech-sdk: pronunciation projection estimated one or more word boundaries.",
+    ]);
+  });
+
+  it("projects Kris Vanhaecht without estimating a boundary", async () => {
+    const result = await generateSpeech({
+      model: ttsModel({}),
+      voice: "v",
+      text: "Kris Vanhaecht joined",
+      pronunciations: {
+        rules: [{ word: "Kris Vanhaecht", replacement: "Kris Van Haagt" }],
+      },
+      timestamps: true,
+      timestampProvider: timestampProvider([
+        { text: "Kris", start: 0, end: 0.18 },
+        { text: "Van", start: 0.18, end: 0.31 },
+        { text: "Haagt", start: 0.31, end: 0.55 },
+        { text: "joined", start: 0.55, end: 0.9 },
+      ]),
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "Kris", start: 0, end: 0.18 },
+      { text: "Vanhaecht", start: 0.18, end: 0.55 },
+      { text: "joined", start: 0.55, end: 0.9 },
+    ]);
+    expect(result.warnings).toBeUndefined();
   });
 
   it("requires timestampProvider before synthesizing a non-native model", async () => {

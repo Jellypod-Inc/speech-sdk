@@ -5,7 +5,10 @@ import {
   withProviderErrorStage,
 } from "./errors.js";
 import { debug } from "./logger.js";
-import { inverseAlign } from "./pronunciations/inverse-align.js";
+import {
+  inverseAlignWithQuality,
+  PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING,
+} from "./pronunciations/inverse-align.js";
 import type { Edit } from "./pronunciations/types.js";
 import {
   isSpeechGatewayModel,
@@ -18,6 +21,7 @@ import type { WordTimestamp } from "./timestamps.js";
 
 export interface TimestampAlignmentResult {
   readonly timestamps?: readonly WordTimestamp[];
+  readonly warnings?: readonly string[];
 }
 
 export interface TimestampAlignmentPlan {
@@ -81,22 +85,27 @@ function projectPublicText(args: {
   readonly pronunciationEdits: readonly Edit[];
   readonly substitutedText: string;
   readonly timestamps: readonly WordTimestamp[];
-}): readonly WordTimestamp[] {
+}): TimestampAlignmentResult {
   if (args.pronunciationEdits.length === 0) {
-    return args.timestamps;
+    return { timestamps: args.timestamps };
   }
 
-  const mapped = inverseAlign(
+  const mapped = inverseAlignWithQuality(
     args.timestamps,
     args.substitutedText,
     args.pronunciationEdits
   );
-  return finalizeCandidate({
-    timestamps: mapped,
-    text: args.originalText,
-    audioDurationMs: args.audioDurationMs,
-    source: "pronunciation projection",
-  });
+  return {
+    timestamps: finalizeCandidate({
+      timestamps: mapped.timestamps,
+      text: args.originalText,
+      audioDurationMs: args.audioDurationMs,
+      source: "pronunciation projection",
+    }),
+    ...(mapped.estimatedBoundaries && {
+      warnings: [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING],
+    }),
+  };
 }
 
 export function prepareTimestampAlignment(args: {
@@ -207,15 +216,13 @@ export function prepareTimestampAlignment(args: {
         });
       }
 
-      return {
-        timestamps: projectPublicText({
-          timestamps: finalized,
-          audioDurationMs: resolutionArgs.audioDurationMs,
-          originalText: resolutionArgs.originalText,
-          pronunciationEdits: resolutionArgs.pronunciationEdits,
-          substitutedText: resolutionArgs.synthesizedText,
-        }),
-      };
+      return projectPublicText({
+        timestamps: finalized,
+        audioDurationMs: resolutionArgs.audioDurationMs,
+        originalText: resolutionArgs.originalText,
+        pronunciationEdits: resolutionArgs.pronunciationEdits,
+        substitutedText: resolutionArgs.synthesizedText,
+      });
     },
   };
 }

@@ -80,6 +80,47 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
     expect(result.timestamps?.map((t) => t.text)).toEqual(["Plain", "LLM"]);
   });
 
+  it("warns when native dialogue pronunciation projection estimates a boundary", async () => {
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+      timestamps: [
+        { text: "leedsinger", start: 0, end: 0.6, turnIndex: 0 },
+        { text: "Hi", start: 0.7, end: 0.9, turnIndex: 1 },
+      ],
+    });
+    const provider = {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: ["timestamps"] }],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
+    };
+    const model = { provider, modelId: "d1" } as never;
+
+    const result = await generateConversation({
+      model,
+      timestamps: true,
+      turns: [
+        { text: "lead singer", voice: "v1" },
+        { text: "Hi", voice: "v2" },
+      ],
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leedsinger" }],
+      },
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "lead", start: 0, end: 0.3, turnIndex: 0 },
+      { text: "singer", start: 0.3, end: 0.6, turnIndex: 0 },
+      { text: "Hi", start: 0.7, end: 0.9, turnIndex: 1 },
+    ]);
+    expect(result.warnings).toContain(
+      "speech-sdk: pronunciation projection estimated one or more word boundaries."
+    );
+  });
+
   it("is a no-op on the native path when pronunciations is undefined", async () => {
     const generateDialogue = vi.fn().mockResolvedValue({
       audio: new Uint8Array([1]),
