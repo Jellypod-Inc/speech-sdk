@@ -80,6 +80,47 @@ describe("generateConversation with pronunciations (native dialogue path)", () =
     expect(result.timestamps?.map((t) => t.text)).toEqual(["Plain", "LLM"]);
   });
 
+  it("warns when native dialogue pronunciation projection estimates a boundary", async () => {
+    const generateDialogue = vi.fn().mockResolvedValue({
+      audio: new Uint8Array([1]),
+      mediaType: "audio/wav",
+      timestamps: [
+        { text: "leedsinger", start: 0, end: 0.6, turnIndex: 0 },
+        { text: "Hi", start: 0.7, end: 0.9, turnIndex: 1 },
+      ],
+    });
+    const provider = {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: ["timestamps"] }],
+      generate: vi.fn(),
+      generateDialogue,
+      dialogueCapabilities: () => ({ maxVoices: 4 }),
+    };
+    const model = { provider, modelId: "d1" } as never;
+
+    const result = await generateConversation({
+      model,
+      timestamps: true,
+      turns: [
+        { text: "lead singer", voice: "v1" },
+        { text: "Hi", voice: "v2" },
+      ],
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leedsinger" }],
+      },
+    });
+
+    expect(result.timestamps).toEqual([
+      { text: "lead", start: 0, end: 0.3, turnIndex: 0 },
+      { text: "singer", start: 0.3, end: 0.6, turnIndex: 0 },
+      { text: "Hi", start: 0.7, end: 0.9, turnIndex: 1 },
+    ]);
+    expect(result.warnings).toContain(
+      "speech-sdk: pronunciation projection estimated one or more word boundaries."
+    );
+  });
+
   it("is a no-op on the native path when pronunciations is undefined", async () => {
     const generateDialogue = vi.fn().mockResolvedValue({
       audio: new Uint8Array([1]),
@@ -148,6 +189,48 @@ describe("generateConversation with pronunciations (stitch path)", () => {
     expect(generateMock).toHaveBeenCalledTimes(2);
     expect(generateMock.mock.calls[0][0].text).toBe("Turn 1 with el el em.");
     expect(generateMock.mock.calls[1][0].text).toBe("Turn 2 with el el em.");
+  });
+
+  it("reports an estimated pronunciation boundary warning only once", async () => {
+    const pcm = new Int16Array(2400);
+    pcm.fill(100);
+    const pcmBytes = new Uint8Array(pcm.buffer);
+    const fakeProvider = {
+      id: "fake",
+      defaultModel: "f1",
+      models: [{ id: "f1", features: [], languages: [], releaseDate: "" }],
+      generate: vi.fn().mockResolvedValue({
+        audio: pcmBytes,
+        mediaType: "audio/pcm;rate=24000",
+      }),
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+    const fakeModel = { provider: fakeProvider, modelId: "f1" } as never;
+
+    const result = await generateConversation({
+      model: fakeModel,
+      turns: [
+        { text: "lead singer", voice: "v1" },
+        { text: "lead singer", voice: "v2" },
+        { text: "lead singer", voice: "v3" },
+      ],
+      pronunciations: {
+        rules: [{ word: "lead singer", replacement: "leedsinger" }],
+      },
+      timestamps: true,
+      timestampProvider: {
+        align: vi
+          .fn()
+          .mockResolvedValue([{ text: "leedsinger", start: 0, end: 0.1 }]),
+      },
+    });
+
+    expect(result.warnings).toEqual([
+      "speech-sdk: pronunciation projection estimated one or more word boundaries.",
+    ]);
   });
 });
 

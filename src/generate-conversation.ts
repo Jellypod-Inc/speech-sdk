@@ -33,7 +33,10 @@ import {
 } from "./instructions.js";
 import { debug } from "./logger.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { inverseAlign } from "./pronunciations/inverse-align.js";
+import {
+  inverseAlignWithQuality,
+  PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING,
+} from "./pronunciations/inverse-align.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
@@ -604,13 +607,13 @@ async function runNative<V extends Voice>(args: {
       timestampProvider: options.timestampProvider,
     });
 
-  const projectedTimestamps = ruleMap
+  const projection = ruleMap
     ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
-    : rawTimestamps;
+    : { estimatedBoundaries: false, timestamps: rawTimestamps };
   const timestamps = finalizeConversationTurnTimestamps({
     audioDurationMs,
     source: `${resolved.provider.id}/${resolved.modelId}`,
-    timestamps: projectedTimestamps,
+    timestamps: projection.timestamps,
     turnTexts: substitutedTurns.map((turn) => turn.originalText),
   });
 
@@ -641,12 +644,16 @@ async function runNative<V extends Voice>(args: {
   const preprocessingWarnings = substitutedTurns.flatMap(
     (turn) => turn.warnings
   );
+  const mergedWarningList = [
+    ...warnings,
+    ...preprocessingWarnings,
+    ...attributionWarnings,
+    ...(projection.estimatedBoundaries
+      ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
+      : []),
+  ];
   const mergedWarnings =
-    warnings.length > 0 ||
-    preprocessingWarnings.length > 0 ||
-    attributionWarnings.length > 0
-      ? [...warnings, ...preprocessingWarnings, ...attributionWarnings]
-      : undefined;
+    mergedWarningList.length > 0 ? mergedWarningList : undefined;
 
   return {
     audio: finalAudio,
@@ -810,7 +817,7 @@ async function runNativeSplit<V extends Voice>(args: {
   const targetSampleRate = stitchTargetRate(leveled);
   const wav = await concatPcmToWav(leveled, { gapMs, targetSampleRate });
 
-  const timestamps = requestTimestamps
+  const timestampProjection = requestTimestamps
     ? composeBlockTimestamps({
         perBlock,
         blocks,
@@ -818,7 +825,8 @@ async function runNativeSplit<V extends Voice>(args: {
         ruleMap,
         substitutedTurns,
       })
-    : undefined;
+    : { estimatedBoundaries: false, timestamps: undefined };
+  const timestamps = timestampProjection.timestamps;
 
   const deferOutput = isSpeedActive(options.speed);
   const converted = await applyOptionalOutputConversion({
@@ -853,6 +861,9 @@ async function runNativeSplit<V extends Voice>(args: {
   const warnings = [
     ...substitutedTurns.flatMap((turn) => turn.warnings),
     ...perBlock.flatMap((p) => p.warnings),
+    ...(timestampProjection.estimatedBoundaries
+      ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
+      : []),
   ];
 
   return {
@@ -864,6 +875,11 @@ async function runNativeSplit<V extends Voice>(args: {
   };
 }
 
+interface DialogueProjectionResult {
+  readonly estimatedBoundaries: boolean;
+  readonly timestamps: readonly ConversationWordTimestamp[] | undefined;
+}
+
 function composeBlockTimestamps(args: {
   perBlock: readonly {
     segment: Pcm16Segment;
@@ -873,7 +889,7 @@ function composeBlockTimestamps(args: {
   gapMs: number;
   ruleMap: Map<string, Pronunciation> | null;
   substitutedTurns: readonly PreparedConversationTurn[];
-}): readonly ConversationWordTimestamp[] | undefined {
+}): DialogueProjectionResult {
   const { perBlock, blocks, gapMs, ruleMap, substitutedTurns } = args;
   const composed: ConversationWordTimestamp[] = [];
   const gapSeconds = gapMs / 1000;
@@ -895,14 +911,17 @@ function composeBlockTimestamps(args: {
     const seg = perBlock[b].segment;
     offsetSec += seg.pcm.length / seg.sampleRate + gapSeconds;
   }
-  const projected = ruleMap
+  const projection = ruleMap
     ? inverseAlignDialogueTimestamps(composed, substitutedTurns)
-    : composed;
-  return finalizeConversationTurnTimestamps({
-    source: "native conversation blocks",
-    timestamps: projected,
-    turnTexts: substitutedTurns.map((turn) => turn.originalText),
-  });
+    : { estimatedBoundaries: false, timestamps: composed };
+  return {
+    estimatedBoundaries: projection.estimatedBoundaries,
+    timestamps: finalizeConversationTurnTimestamps({
+      source: "native conversation blocks",
+      timestamps: projection.timestamps,
+      turnTexts: substitutedTurns.map((turn) => turn.originalText),
+    }),
+  };
 }
 
 async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
@@ -1131,9 +1150,9 @@ async function applySpeedToConversationResult(args: {
 function inverseAlignDialogueTimestamps(
   timestamps: readonly ConversationWordTimestamp[] | undefined,
   perTurn: readonly PreparedConversationTurn[]
-): readonly ConversationWordTimestamp[] | undefined {
+): DialogueProjectionResult {
   if (!timestamps) {
-    return timestamps;
+    return { estimatedBoundaries: false, timestamps };
   }
   const buckets = new Map<number, ConversationWordTimestamp[]>();
   for (const ts of timestamps) {
@@ -1145,6 +1164,7 @@ function inverseAlignDialogueTimestamps(
     }
   }
   const out: ConversationWordTimestamp[] = [];
+  let estimatedBoundaries = false;
   for (let i = 0; i < perTurn.length; i++) {
     const turnTimestamps = buckets.get(i);
     if (!turnTimestamps?.length) {
@@ -1154,8 +1174,14 @@ function inverseAlignDialogueTimestamps(
     if (turn.edits.length === 0) {
       out.push(...turnTimestamps);
     } else {
-      out.push(...inverseAlign(turnTimestamps, turn.canonicalText, turn.edits));
+      const projection = inverseAlignWithQuality(
+        turnTimestamps,
+        turn.canonicalText,
+        turn.edits
+      );
+      out.push(...projection.timestamps);
+      estimatedBoundaries ||= projection.estimatedBoundaries;
     }
   }
-  return out;
+  return { estimatedBoundaries, timestamps: out };
 }

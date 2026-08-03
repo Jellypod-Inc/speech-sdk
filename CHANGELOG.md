@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.2
+
+- Fix pronunciation timestamp projection for arbitrary source and replacement token counts. The projector now preserves exact matching prefix and suffix boundaries, maps equal changed spans one to one, merges multiple replacement words into one caller word, and interpolates only caller boundaries that have no provider evidence. Interpolated results include a warning instead of failing valid generated audio with `transcript_mismatch`.
+
 ## 0.25.1
 
 - Fix pronunciation timestamp projection for multi-word source phrases when the replacement alignment contains the same number of provider words, and preserve unchanged text when a provider token crosses a pronunciation edit boundary (for example, `S-A-F’s` back to `SAF’s`). The SDK now restores caller word boundaries from exact provider timings instead of rejecting valid audio with `transcript_mismatch`; alignments that cannot map one-to-one remain rejected.

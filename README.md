@@ -194,14 +194,14 @@ result.timestamps;
 // ]
 ```
 
-Returned timestamps are projected onto the exact text synthesized by the SDK: caller input after unsupported audio tags are removed and pronunciation substitutions are applied. Provider text is used only to prove complete lexical coverage and provide timing boundaries. Before timestamps are accepted, the SDK verifies Unicode-aware transcript coverage, rejects missing or extra lexical content and punctuation-only entries, and validates finite, nonnegative, monotonic timings against the generated audio. Pronunciation substitutions are mapped back to caller text before timestamps are returned.
+Returned timestamps are projected onto the exact text synthesized by the SDK: caller input after unsupported audio tags are removed and pronunciation substitutions are applied. Provider text is used only to prove complete lexical coverage and provide timing boundaries. Before timestamps are accepted, the SDK verifies Unicode-aware transcript coverage, rejects missing or extra lexical content and punctuation-only entries, and validates finite, nonnegative, monotonic timings against the generated audio. Pronunciation substitutions are mapped back to caller text before timestamps are returned. If replacement boundaries cannot map one-to-one onto multiple caller words, only the unresolved internal boundaries are interpolated and `warnings` reports that the pronunciation projection contains estimated word timings.
 
 | Value | Behavior |
 |---|---|
 | `true` | Returns validated word timestamps. Native models use their own timestamps. Direct models without native timestamps require `timestampProvider` (or a legacy factory-level `fallbackSTT`). |
 | `false` *(default)* | Never requests, derives, or returns timestamps. |
 
-`timestampProvider` is used for direct models without native timestamps and as a fallback when direct native timestamps fail validation. It remains a no-op for gateway-routed string models, where the gateway owns timestamp generation. Invalid, empty, or mismatched requested timestamps throw `TimestampValidationError`; the SDK never returns fabricated or partially matched timings.
+`timestampProvider` is used for direct models without native timestamps and as a fallback when direct native timestamps fail validation. It remains a no-op for gateway-routed string models, where the gateway owns timestamp generation. Invalid, empty, or mismatched requested timestamps throw `TimestampValidationError`. The only estimated timings the SDK returns are missing internal caller-word boundaries inside an otherwise valid pronunciation edit span, and those results include a warning.
 
 There is no implicit OpenAI fallback. Existing factory-level `fallbackSTT` configuration remains supported for compatibility, but new integrations should use the narrower `timestampProvider` interface.
 

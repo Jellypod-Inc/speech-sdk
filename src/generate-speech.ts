@@ -245,16 +245,25 @@ export async function generateSpeech<
     audio,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: mergeWarnings(warnings, result.warnings),
+    warnings: mergeWarnings(
+      warnings,
+      result.warnings,
+      publicAlignment.warnings
+    ),
     timestamps: publicAlignment.timestamps,
   };
 }
 
 function mergeWarnings(
-  preprocessingWarnings: string[],
-  providerWarnings: string[] | undefined
+  preprocessingWarnings: readonly string[],
+  providerWarnings: readonly string[] | undefined,
+  alignmentWarnings: readonly string[] | undefined
 ): string[] | undefined {
-  const merged = [...preprocessingWarnings, ...(providerWarnings ?? [])];
+  const merged = [
+    ...preprocessingWarnings,
+    ...(providerWarnings ?? []),
+    ...(alignmentWarnings ?? []),
+  ];
   return merged.length > 0 ? merged : undefined;
 }
 
