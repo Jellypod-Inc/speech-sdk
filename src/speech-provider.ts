@@ -183,6 +183,12 @@ export interface SpeechProvider<
     modelId: string
   ): { text: string; warnings: string[] };
 
+  /** Resolve the spoken-text budget after provider-owned prompt framing. */
+  resolveMaxInputChars?(
+    modelId: string,
+    options?: { instructions?: string }
+  ): number | undefined;
+
   /**
    * Given the user's desired output format, return the provider-specific options
    * that produce the closest native match, plus the mediaType that the provider
@@ -243,10 +249,14 @@ export function modelDeclaresNativeTimestamps(
 }
 
 export function modelMaxInputChars(
-  resolved: ResolvedModel
+  resolved: ResolvedModel,
+  options?: { instructions?: string }
 ): number | undefined {
-  return resolved.provider.models?.find((m) => m.id === resolved.modelId)
-    ?.maxInputChars;
+  return (
+    resolved.provider.resolveMaxInputChars?.(resolved.modelId, options) ??
+    resolved.provider.models?.find((m) => m.id === resolved.modelId)
+      ?.maxInputChars
+  );
 }
 
 /**

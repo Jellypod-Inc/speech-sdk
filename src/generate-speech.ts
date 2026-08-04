@@ -137,6 +137,7 @@ export async function generateSpeech<
     modelIdentifier,
     isGateway,
     processedText: textToSend,
+    instructions,
     userMaxInputChars: options.maxInputChars,
   });
 
@@ -272,6 +273,7 @@ function resolveTextChunks(args: {
   modelIdentifier: string;
   isGateway: boolean;
   processedText: string;
+  instructions: string | undefined;
   userMaxInputChars: number | undefined;
 }): {
   maxInputChars: number | undefined;
@@ -292,7 +294,9 @@ function resolveTextChunks(args: {
   }
 
   const maxInputCharsResolution = resolveMaxInputChars({
-    providerMaxInputChars: modelMaxInputChars(args.resolved),
+    providerMaxInputChars: modelMaxInputChars(args.resolved, {
+      instructions: args.instructions,
+    }),
     userMaxInputChars: args.userMaxInputChars,
   });
   if (maxInputCharsResolution.userExceedsProvider) {

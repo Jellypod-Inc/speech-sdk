@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.3
+
+- **Fix: long Google Gemini TTS input now chunks automatically instead of reaching Google as one oversized request.** Gemini 3.1 Flash TTS Preview, Gemini 2.5 Flash TTS Preview, and Gemini 2.5 Pro TTS Preview now declare conservative provider-owned input limits below their documented 8,192-token ceiling. The effective spoken-text budget also reserves space for the SDK's read-aloud directive and caller instructions. Direct-provider requests split on sentence/word boundaries, synthesize in parallel, stitch in source order, convert to the requested format, and run timestamp alignment once on the final audio with the complete transcript. Google 400 responses remain non-retryable; gateway routing remains server-owned.
+
 ## 0.25.2
 
 - Fix pronunciation timestamp projection for arbitrary source and replacement token counts. The projector now preserves exact matching prefix and suffix boundaries, maps equal changed spans one to one, merges multiple replacement words into one caller word, and interpolates only caller boundaries that have no provider evidence. Interpolated results include a warning instead of failing valid generated audio with `transcript_mismatch`.

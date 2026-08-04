@@ -58,6 +58,11 @@ const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 // Without a directive, generateContent answers terse input as a chat prompt and a TTS-only model 400s; the text before the colon is delivery guidance Gemini reads from but doesn't voice.
 const READ_ALOUD_DIRECTIVE = "Read aloud: ";
 
+// 5k total prompt chars leaves broad headroom below Gemini TTS's 8,192-token input ceiling across languages and tokenization patterns.
+const GEMINI_TTS_REQUEST_CHAR_BUDGET = 5000;
+const GEMINI_TTS_TEXT_CHAR_BUDGET =
+  GEMINI_TTS_REQUEST_CHAR_BUDGET - READ_ALOUD_DIRECTIVE.length;
+
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
@@ -193,18 +198,21 @@ export const GOOGLE_MODELS: readonly ModelInfo[] = [
     releaseDate: "2026-04-15",
     languages: GOOGLE_GEMINI_3_1_LANGUAGES,
     features: ["streaming", "audio-tags", "instructions"],
+    maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
   },
   {
     id: "gemini-2.5-flash-preview-tts",
     releaseDate: "2025-05-01",
     languages: GOOGLE_GEMINI_2_5_LANGUAGES,
     features: ["streaming", "instructions"],
+    maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
   },
   {
     id: "gemini-2.5-pro-preview-tts",
     releaseDate: "2025-05-01",
     languages: GOOGLE_GEMINI_2_5_LANGUAGES,
     features: ["streaming", "instructions"],
+    maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
   },
 ] as const;
 
@@ -236,6 +244,26 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       return { text, warnings: [] };
     }
     return stripAudioTags(text, `google/${modelId}`);
+  }
+
+  resolveMaxInputChars(
+    modelId: string,
+    options?: { instructions?: string }
+  ): number | undefined {
+    const model = this.models.find((candidate) => candidate.id === modelId);
+    if (!model?.maxInputChars) {
+      return;
+    }
+    const instructionFramingChars = options?.instructions
+      ? options.instructions.length + 2
+      : 0;
+    const textBudget = model.maxInputChars - instructionFramingChars;
+    if (textBudget < 1) {
+      throw new SpeechSDKError(
+        `google/${modelId}: instructions exceed the conservative Gemini TTS input budget.`
+      );
+    }
+    return textBudget;
   }
 
   async generate(options: {
