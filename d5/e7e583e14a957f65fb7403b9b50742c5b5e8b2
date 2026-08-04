@@ -1,0 +1,35 @@
+src/generate-speech.ts
+  s_7c569954a1bc56::t_89331b56a98a89 140,276,297-299
+src/speech-provider.ts
+  s_7c569954a1bc56::t_89331b56a98a89 252-253,255-259
+  s_7c569954a1bc56::t_baddc9e99c53ae 186-190
+  s_7c569954a1bc56::t_fecdad9c8dc703 191
+src/__tests__/google-long-input.test.ts
+  s_7c569954a1bc56::t_4415775e7539fa 1-5,9,12-34,51-55,57-58,74,76-77,133-134,141,153-154
+  s_7c569954a1bc56::t_ada408da1ef0e6 6-7,10-11,35-43,45-50,56,59-60,62-64,72-73,75,78-86,92-98,100-132,135-140,142-152
+  s_7c569954a1bc56::t_9ebba06917920d 8,44,65-71,87-91,99
+  s_7c569954a1bc56::t_f99b048e36f38c 61
+package.json
+  s_7c569954a1bc56::t_e7de79d12b9f78 3
+src/providers/google/index.ts
+  s_7c569954a1bc56::t_89331b56a98a89 61-65,201,208,215,249-266
+  s_7c569954a1bc56::t_a0f8385906f992 267-268
+CHANGELOG.md
+  s_7c569954a1bc56::t_e7de79d12b9f78 3-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d5e7e583e14a957f65fb7403b9b50742c5b5e8b2",
+  "prompts": {},
+  "sessions": {
+    "s_7c569954a1bc56": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fcb1a-3e44-7201-8085-f1c86e38c59f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
