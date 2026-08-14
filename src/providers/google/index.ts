@@ -6,7 +6,7 @@ import {
   parseMediaTypeParam,
   wrapPcm16Mono,
 } from "../../audio-utils.js";
-import { SpeechSDKError } from "../../errors.js";
+import { NoSpeechGeneratedError, SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -31,15 +31,18 @@ function safeParseJson(input: string): unknown {
 }
 
 // Both /generateContent endpoints share the same shape; tolerate missing intermediate fields for nullability differences.
+// finishReason, part text and promptFeedback are diagnostics: a TTS call reads them only when no audio came back.
 const generateContentResponseSchema = z.object({
   candidates: z
     .array(
       z.object({
+        finishReason: z.string().optional(),
         content: z
           .object({
             parts: z
               .array(
                 z.object({
+                  text: z.string().optional(),
                   inlineData: z
                     .object({ data: z.string(), mimeType: z.string() })
                     .optional(),
@@ -51,7 +54,50 @@ const generateContentResponseSchema = z.object({
       })
     )
     .optional(),
+  promptFeedback: z.object({ blockReason: z.string().optional() }).optional(),
 });
+
+type GenerateContentResponse = z.infer<typeof generateContentResponseSchema>;
+
+const MISSING_AUDIO_TEXT_SAMPLE_CHARS = 200;
+
+// A no-audio 200 is the provider declining, not a transport failure; the reason it declined only ever
+// arrives as finishReason, a prompt-level block, or a text part the model answered with instead of voicing.
+function describeMissingAudio(
+  modelIdentifier: string,
+  json: GenerateContentResponse
+): string {
+  const details: string[] = [];
+
+  const blockReason = json.promptFeedback?.blockReason;
+  if (blockReason) {
+    details.push(`blockReason: ${blockReason}`);
+  }
+
+  const candidate = json.candidates?.[0];
+  if (candidate) {
+    if (candidate.finishReason) {
+      details.push(`finishReason: ${candidate.finishReason}`);
+    }
+    const text = (candidate.content?.parts ?? [])
+      .map((part) => part.text)
+      .filter((part): part is string => part != null && part.trim().length > 0)
+      .join(" ")
+      .trim();
+    if (text) {
+      const sample =
+        text.length > MISSING_AUDIO_TEXT_SAMPLE_CHARS
+          ? `${text.slice(0, MISSING_AUDIO_TEXT_SAMPLE_CHARS)}…`
+          : text;
+      details.push(`text response: "${sample}"`);
+    }
+  } else {
+    details.push("no candidates");
+  }
+
+  const suffix = details.length > 0 ? ` (${details.join("; ")})` : "";
+  return `${modelIdentifier}: no audio in generateContent response${suffix}`;
+}
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
@@ -338,7 +384,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     );
 
     if (!part?.inlineData) {
-      throw new Error("No audio data in Gemini TTS response");
+      throw new NoSpeechGeneratedError(
+        describeMissingAudio(`google/${options.modelId}`, json)
+      );
     }
 
     // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
@@ -605,8 +653,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       (p) => p.inlineData?.data
     );
     if (!part?.inlineData) {
-      throw new SpeechSDKError(
-        `google/${options.modelId}: no inline audio in response`
+      throw new NoSpeechGeneratedError(
+        describeMissingAudio(`google/${options.modelId}`, json)
       );
     }
 

@@ -571,7 +571,7 @@ describe("generateSpeech", () => {
         model: { provider, modelId: "test-model" },
         text: "Hello",
       })
-    ).rejects.toThrow("No speech audio was generated.");
+    ).rejects.toThrow("mock/test-model: provider returned empty audio.");
   });
 
   it("handles base64 string audio from provider", async () => {

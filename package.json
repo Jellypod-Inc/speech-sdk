@@ -1,6 +1,6 @@
 {
   "name": "@speech-sdk/core",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "Universal, cross-platform text-to-speech SDK with multi-provider support.",
   "type": "module",
   "packageManager": "pnpm@10.11.1",

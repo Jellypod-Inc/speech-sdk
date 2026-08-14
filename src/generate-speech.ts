@@ -211,7 +211,9 @@ export async function generateSpeech<
   const audioData = result.audio;
 
   if (audioData.length === 0) {
-    throw new NoSpeechGeneratedError();
+    throw new NoSpeechGeneratedError(
+      `${modelIdentifier}: provider returned empty audio.`
+    );
   }
 
   // Gateway already applied speed server-side; only apply locally for direct paths.
@@ -429,7 +431,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   const perChunk = await mapWithConcurrency(
     args.textChunks,
     args.maxConcurrency,
-    async (text, _i, signal) => {
+    async (text, chunkIndex, signal) => {
       const result = await generateProviderSpeech({
         resolved: args.resolved,
         text,
@@ -446,7 +448,10 @@ async function generateChunkedSpeech<V extends Voice>(args: {
         mediaType: result.mediaType,
       }).uint8Array;
       if (audio.length === 0) {
-        throw new NoSpeechGeneratedError();
+        // One silent chunk fails the whole stitch, and the survivors are otherwise indistinguishable.
+        throw new NoSpeechGeneratedError(
+          `${args.modelIdentifier}: provider returned empty audio for chunk ${chunkIndex + 1} of ${args.textChunks.length}.`
+        );
       }
       const resultMediaType = result.mediaType.toLowerCase();
       const decodeMediaType =

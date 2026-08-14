@@ -104,6 +104,16 @@ function requireValidTimestamps(args: {
   return finalized.timestamps;
 }
 
+// Turns may resolve to different models; name every distinct one so the failure points at a provider.
+function describeConversationModels(
+  resolvedPerTurn: readonly ResolvedModel<Voice>[]
+): string {
+  const identifiers = new Set(
+    resolvedPerTurn.map((r) => `${r.provider.id}/${r.modelId}`)
+  );
+  return Array.from(identifiers).join(", ");
+}
+
 export function generateConversation<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> | undefined =
@@ -238,7 +248,9 @@ export async function generateConversation<
   });
 
   if (stitched.audio.length === 0) {
-    throw new NoSpeechGeneratedError();
+    throw new NoSpeechGeneratedError(
+      `${describeConversationModels(resolvedPerTurn)}: stitched conversation audio is empty.`
+    );
   }
 
   const metadata: ConversationMetadata = {
@@ -390,7 +402,9 @@ async function runGateway<V extends Voice>(args: {
   const latencyMs = Math.round(performance.now() - start);
 
   if (result.audio.length === 0) {
-    throw new NoSpeechGeneratedError();
+    throw new NoSpeechGeneratedError(
+      `${describeConversationModels(resolvedPerTurn)}: gateway conversation returned empty audio.`
+    );
   }
 
   const audio = new DefaultGeneratedAudioFile({
@@ -577,7 +591,9 @@ async function runNative<V extends Voice>(args: {
   const latencyMs = Math.round(performance.now() - start);
 
   if (result.audio.length === 0) {
-    throw new NoSpeechGeneratedError();
+    throw new NoSpeechGeneratedError(
+      `${dialogueId}: native dialogue returned empty audio.`
+    );
   }
 
   const { audio, outputMediaType } = await buildNativeAudio({
@@ -749,7 +765,7 @@ async function runNativeSplit<V extends Voice>(args: {
   const perBlock = await mapWithConcurrency(
     blocks,
     maxConcurrency,
-    async (indices, _blockIndex, signal) => {
+    async (indices, blockIndex, signal) => {
       const blockTurns = indices.map((i) => substitutedTurns[i]);
       const result = await pRetry(
         () =>
@@ -771,7 +787,10 @@ async function runNativeSplit<V extends Voice>(args: {
         buildRetryOptions({ maxRetries, abortSignal: signal })
       );
       if (result.audio.length === 0) {
-        throw new NoSpeechGeneratedError();
+        // One silent block fails the whole stitch, and the survivors are otherwise indistinguishable.
+        throw new NoSpeechGeneratedError(
+          `${ttsModel}: native dialogue block ${blockIndex + 1} of ${blocks.length} returned empty audio (turns ${indices[0] + 1}-${(indices.at(-1) ?? indices[0]) + 1}).`
+        );
       }
       // generateDialogue may return base64 (string) or raw bytes; normalize before decoding.
       const blockAudio = new DefaultGeneratedAudioFile({

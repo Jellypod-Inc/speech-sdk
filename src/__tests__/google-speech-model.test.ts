@@ -279,7 +279,9 @@ describe("GoogleSpeechProvider", () => {
         text: "Hello",
         voice: "Kore",
       })
-    ).rejects.toThrow("No audio data");
+    ).rejects.toThrow(
+      "google/gemini-2.5-flash-preview-tts: no audio in generateContent response"
+    );
   });
 
   it("uses custom baseURL", async () => {

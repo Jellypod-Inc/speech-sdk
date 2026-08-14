@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.0
+
+- **A 200 response carrying no audio now reports why.** Both provider sites that detect a parsed-but-empty synthesis response previously discarded the only evidence of why the provider declined. Google's `generateContent` response schema now also parses `finishReason`, part `text`, and top-level `promptFeedback.blockReason`, and the error names whichever came back, including a truncated sample of any text the model answered with instead of voicing (the single-shot and multi-speaker dialogue paths both report it). ElevenLabs' `/with-timestamps` missing-`audio_base64` error now names the `request-id` response header and whether `alignment` and `normalized_alignment` came back, separating "the model generated nothing" from "the audio was dropped on the way out".
+- **Both provider sites now throw `NoSpeechGeneratedError`** instead of a bare `Error` (Google single-shot) or `SpeechSDKError` (Google dialogue, ElevenLabs), so callers can distinguish a provider declining from a transport failure by error class.
+- **The six argument-less `NoSpeechGeneratedError` throws now name their model.** They previously surfaced only the class default, "No speech audio was generated.", naming neither provider nor model. The two fan-out sites (chunked synthesis, native-split dialogue blocks) additionally name which chunk or block was empty, since one silent piece fails the whole stitch and the survivors are otherwise indistinguishable.
+
+These are diagnostics: no request is reshaped, and no previously failing synthesis now succeeds. Callers matching on error message text will need to update their patterns.
+
 ## 0.26.0
 
 - **Breaking: on direct-provider paths, word timestamps never fail synthesis.** Empty, invalid, or mismatched timings no longer throw `TimestampValidationError` and no longer discard correctly synthesized audio. When native timestamps and alignment both fail — or the input is below a few words, where forced alignment cannot succeed and is skipped — the SDK distributes the words evenly across the measured audio duration (a single span for one word). Callers that relied on the throw should check the new `metadata.timestampsSource` field (`'native' | 'aligned' | 'estimated'`) instead. Gateway-routed requests are unchanged: the gateway server owns its timestamp contract, so its failures still surface as `TimestampValidationError`.
