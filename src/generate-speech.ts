@@ -165,46 +165,40 @@ export async function generateSpeech<
 
   const startTime = performance.now();
 
-  // Validated only when chunking — maxConcurrency governs chunked synthesis and per-chunk alignment, and stays ignored on other paths (notably the gateway).
-  const maxConcurrency = shouldChunk
-    ? resolveMaxConcurrency(options.maxConcurrency)
-    : undefined;
-
   const result: ProviderGenerateResult & {
     alignmentChunks?: readonly AlignmentAudioChunk[];
-  } =
-    maxConcurrency == null
-      ? await generateProviderSpeech({
-          resolved,
-          text: textToSend,
-          instructions,
-          voice,
-          providerOptions,
-          maxRetries,
-          abortSignal,
-          headers,
-          includeTimestamps: shouldRequestNative,
-          volumeDbfs,
-          output: options.output,
-          pronunciations: options.pronunciations,
-          speed,
-        })
-      : await generateChunkedSpeech({
-          resolved,
-          modelIdentifier,
-          textChunks,
-          instructions,
-          voice,
-          providerOptions,
-          stitchOptions,
-          maxInputChars: maxInputChars ?? textToSend.length,
-          maxRetries,
-          maxConcurrency,
-          abortSignal,
-          headers,
-          includeTimestamps: shouldRequestNative,
-          buildAlignmentChunks: timestamps,
-        });
+  } = shouldChunk
+    ? await generateChunkedSpeech({
+        resolved,
+        modelIdentifier,
+        textChunks,
+        instructions,
+        voice,
+        providerOptions,
+        stitchOptions,
+        maxInputChars: maxInputChars ?? textToSend.length,
+        maxRetries,
+        maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
+        abortSignal,
+        headers,
+        includeTimestamps: shouldRequestNative,
+        buildAlignmentChunks: timestamps,
+      })
+    : await generateProviderSpeech({
+        resolved,
+        text: textToSend,
+        instructions,
+        voice,
+        providerOptions,
+        maxRetries,
+        abortSignal,
+        headers,
+        includeTimestamps: shouldRequestNative,
+        volumeDbfs,
+        output: options.output,
+        pronunciations: options.pronunciations,
+        speed,
+      });
 
   const latencyMs = Math.round(performance.now() - startTime);
 
@@ -243,7 +237,10 @@ export async function generateSpeech<
     audio: audio.uint8Array,
     audioDurationMs,
     alignmentChunks: result.alignmentChunks,
-    maxConcurrency,
+    // maxConcurrency stays unvalidated (documented as ignored) on paths that never fan out.
+    maxConcurrency: shouldChunk
+      ? resolveMaxConcurrency(options.maxConcurrency)
+      : undefined,
     mediaType: stretched.mediaType,
     originalText: canonicalText,
     pronunciationEdits,
