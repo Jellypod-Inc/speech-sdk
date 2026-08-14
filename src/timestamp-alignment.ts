@@ -1,4 +1,5 @@
 import { isSpeedActive, scaleTimestamps } from "./apply-speed.js";
+import { mapWithConcurrency } from "./concurrency.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import {
   TimestampProviderRequiredError,
@@ -22,7 +23,11 @@ import {
   tokenizeTimestampSource,
 } from "./timestamp-finalization.js";
 import type { TimestampProvider } from "./timestamp-provider.js";
-import type { TimestampsSource, WordTimestamp } from "./timestamps.js";
+import {
+  concatTimestampsWithOffsets,
+  type TimestampsSource,
+  type WordTimestamp,
+} from "./timestamps.js";
 
 // Forced alignment is unreliable on very short utterances (a single word often returns nothing), and an even distribution over so few words is just as good.
 const MIN_ALIGNMENT_WORD_COUNT = 3;
@@ -45,9 +50,11 @@ interface TimestampResolutionArgs {
   readonly alignmentChunks?: readonly AlignmentAudioChunk[];
   readonly audio: Uint8Array;
   readonly audioDurationMs?: number;
+  readonly maxConcurrency?: number;
   readonly mediaType: string;
   readonly originalText: string;
   readonly pronunciationEdits: readonly Edit[];
+  // Raw provider timings; pre-stretch sources are scaled to final-audio time here, not by the caller.
   readonly providerTimestamps?: readonly WordTimestamp[];
   readonly speed?: number;
   readonly synthesizedText: string;
@@ -56,6 +63,15 @@ interface TimestampResolutionArgs {
 export interface TimestampAlignmentPlan {
   readonly includeNative: boolean;
   resolve(args: TimestampResolutionArgs): Promise<TimestampAlignmentResult>;
+}
+
+function scalePreStretch(
+  timestamps: readonly WordTimestamp[],
+  speed: number | undefined
+): readonly WordTimestamp[] {
+  return isSpeedActive(speed)
+    ? (scaleTimestamps(timestamps, speed) ?? [])
+    : timestamps;
 }
 
 function finalizeCandidate(args: {
@@ -128,13 +144,7 @@ function projectPublicText(args: {
   };
 }
 
-interface Aligner {
-  align(input: {
-    readonly abortSignal?: AbortSignal;
-    readonly audio: Uint8Array;
-    readonly mediaType: string;
-    readonly text: string;
-  }): Promise<readonly WordTimestamp[]>;
+interface Aligner extends TimestampProvider {
   readonly source: string;
 }
 
@@ -175,26 +185,26 @@ async function alignPerChunk(args: {
   readonly abortSignal?: AbortSignal;
   readonly aligner: Aligner;
   readonly chunks: readonly AlignmentAudioChunk[];
+  readonly maxConcurrency: number;
 }): Promise<WordTimestamp[]> {
-  const timestamps: WordTimestamp[] = [];
-  let offsetSeconds = 0;
-  for (const chunk of args.chunks) {
-    const words = await args.aligner.align({
-      abortSignal: args.abortSignal,
-      audio: await chunk.audio(),
-      mediaType: chunk.mediaType,
-      text: chunk.text,
-    });
-    for (const word of words) {
-      timestamps.push({
-        text: word.text,
-        start: word.start + offsetSeconds,
-        end: word.end + offsetSeconds,
-      });
-    }
-    offsetSeconds += chunk.durationSeconds;
-  }
-  return timestamps;
+  const perChunkWords = await mapWithConcurrency(
+    args.chunks,
+    args.maxConcurrency,
+    async (chunk, _i, signal) =>
+      await args.aligner.align({
+        abortSignal: signal,
+        audio: await chunk.audio(),
+        mediaType: chunk.mediaType,
+        text: chunk.text,
+      }),
+    { signal: args.abortSignal }
+  );
+  return concatTimestampsWithOffsets(
+    args.chunks.map((chunk, index) => ({
+      durationSeconds: chunk.durationSeconds,
+      words: perChunkWords[index] ?? [],
+    }))
+  );
 }
 
 async function deriveAlignedTimestamps(args: {
@@ -207,11 +217,10 @@ async function deriveAlignedTimestamps(args: {
       abortSignal: resolutionArgs.abortSignal,
       aligner,
       chunks: resolutionArgs.alignmentChunks,
+      maxConcurrency: resolutionArgs.maxConcurrency ?? 1,
     });
-    // Chunk audio is pre-stretch; scale like native timestamps so timings match the final audio.
-    return isSpeedActive(resolutionArgs.speed)
-      ? (scaleTimestamps(chunked, resolutionArgs.speed) ?? [])
-      : chunked;
+    // Chunk audio is pre-stretch, unlike the whole-audio path below, which aligns the final audio.
+    return scalePreStretch(chunked, resolutionArgs.speed);
   }
   return await aligner.align({
     abortSignal: resolutionArgs.abortSignal,
@@ -246,14 +255,13 @@ function finalizeAndProject(args: {
 }
 
 interface DirectResolveContext {
+  readonly aligner?: Aligner;
   readonly includeNative: boolean;
   readonly modelIdentifier: string;
-  readonly resolved: ResolvedModel;
-  readonly timestampProvider?: TimestampProvider;
 }
 
 function tryResolveNative(
-  context: DirectResolveContext,
+  modelIdentifier: string,
   resolutionArgs: TimestampResolutionArgs
 ): { result?: TimestampAlignmentResult; error?: unknown } {
   try {
@@ -261,8 +269,11 @@ function tryResolveNative(
       result: finalizeAndProject({
         resolutionArgs,
         source: "native",
-        timestamps: resolutionArgs.providerTimestamps ?? [],
-        validationSource: context.modelIdentifier,
+        timestamps: scalePreStretch(
+          resolutionArgs.providerTimestamps ?? [],
+          resolutionArgs.speed
+        ),
+        validationSource: modelIdentifier,
       }),
     };
   } catch (error) {
@@ -270,14 +281,14 @@ function tryResolveNative(
       throw error;
     }
     debug(
-      `${context.modelIdentifier}: native timestamps failed validation (${error.reason}).`
+      `${modelIdentifier}: native timestamps failed validation (${error.reason}).`
     );
     return { error };
   }
 }
 
 async function tryResolveAligned(
-  context: DirectResolveContext,
+  modelIdentifier: string,
   aligner: Aligner,
   resolutionArgs: TimestampResolutionArgs
 ): Promise<{ result?: TimestampAlignmentResult; error?: unknown }> {
@@ -296,10 +307,33 @@ async function tryResolveAligned(
     }
     const message = error instanceof Error ? error.message : `${error}`;
     debug(
-      `${context.modelIdentifier}: alignment via ${aligner.source} failed (${message}).`
+      `${modelIdentifier}: alignment via ${aligner.source} failed (${message}).`
     );
     return { error };
   }
+}
+
+function shouldAttemptAlignment(
+  modelIdentifier: string,
+  resolutionArgs: TimestampResolutionArgs
+): boolean {
+  // Without a measured duration the estimated floor cannot stand in, so alignment is always worth attempting.
+  const durationKnown =
+    resolutionArgs.audioDurationMs != null &&
+    resolutionArgs.audioDurationMs > 0;
+  if (!durationKnown) {
+    return true;
+  }
+  const wordCount = tokenizeTimestampSource(
+    resolutionArgs.synthesizedText
+  ).length;
+  if (wordCount >= MIN_ALIGNMENT_WORD_COUNT) {
+    return true;
+  }
+  debug(
+    `${modelIdentifier}: skipping alignment for ${wordCount} word(s); using estimated timestamps.`
+  );
+  return false;
 }
 
 async function resolveDirectTimestamps(
@@ -309,31 +343,22 @@ async function resolveDirectTimestamps(
   let lastError: unknown;
 
   if (context.includeNative) {
-    const native = tryResolveNative(context, resolutionArgs);
+    const native = tryResolveNative(context.modelIdentifier, resolutionArgs);
     if (native.result) {
       return native.result;
     }
     lastError = native.error;
   }
 
-  const estimated = estimateTimestamps({
-    audioDurationMs: resolutionArgs.audioDurationMs,
-    text: resolutionArgs.originalText,
-  });
-  const wordCount = tokenizeTimestampSource(
-    resolutionArgs.synthesizedText
-  ).length;
-  const aligner = resolveAligner(context);
-  // Only skip alignment for tiny inputs when the estimated floor can actually stand in.
-  const skipAlignment =
-    estimated != null && wordCount < MIN_ALIGNMENT_WORD_COUNT;
-
-  if (aligner && skipAlignment) {
-    debug(
-      `${context.modelIdentifier}: skipping alignment for ${wordCount} word(s); using estimated timestamps.`
+  if (
+    context.aligner &&
+    shouldAttemptAlignment(context.modelIdentifier, resolutionArgs)
+  ) {
+    const aligned = await tryResolveAligned(
+      context.modelIdentifier,
+      context.aligner,
+      resolutionArgs
     );
-  } else if (aligner) {
-    const aligned = await tryResolveAligned(context, aligner, resolutionArgs);
     if (aligned.result) {
       return aligned.result;
     }
@@ -341,6 +366,10 @@ async function resolveDirectTimestamps(
   }
 
   // Estimated floor: synthesized audio is never discarded for want of timings.
+  const estimated = estimateTimestamps({
+    audioDurationMs: resolutionArgs.audioDurationMs,
+    text: resolutionArgs.originalText,
+  });
   if (estimated == null) {
     throw (
       lastError ??
@@ -365,16 +394,9 @@ export function prepareTimestampAlignment(args: {
   const isGateway = isSpeechGatewayModel(args.resolved);
   const hasNative = modelDeclaresNativeTimestamps(args.resolved);
   const includeNative = args.request && (isGateway || hasNative);
+  const aligner = resolveAligner(args);
 
-  if (
-    args.request &&
-    !(
-      isGateway ||
-      hasNative ||
-      args.timestampProvider ||
-      args.resolved.fallbackSTT
-    )
-  ) {
+  if (args.request && !(isGateway || hasNative || aligner)) {
     throw new TimestampProviderRequiredError(args.modelIdentifier);
   }
 
@@ -390,29 +412,22 @@ export function prepareTimestampAlignment(args: {
 
   return {
     includeNative,
-    resolve: (resolutionArgs) => {
+    resolve: async (resolutionArgs) => {
       if (!args.request) {
-        return Promise.resolve({});
+        return {};
       }
 
       // Gateway invariant: the SDK is a transport; the gateway server owns the timestamp contract, so its failures surface unchanged.
       if (isGateway) {
-        return Promise.resolve(
-          finalizeAndProject({
-            resolutionArgs,
-            timestamps: resolutionArgs.providerTimestamps ?? [],
-            validationSource: args.modelIdentifier,
-          })
-        );
+        return finalizeAndProject({
+          resolutionArgs,
+          timestamps: resolutionArgs.providerTimestamps ?? [],
+          validationSource: args.modelIdentifier,
+        });
       }
 
-      return resolveDirectTimestamps(
-        {
-          includeNative,
-          modelIdentifier: args.modelIdentifier,
-          resolved: args.resolved,
-          timestampProvider: args.timestampProvider,
-        },
+      return await resolveDirectTimestamps(
+        { aligner, includeNative, modelIdentifier: args.modelIdentifier },
         resolutionArgs
       );
     },
