@@ -32,7 +32,7 @@ function googleAudioResponse(marker = 0): Response {
 }
 
 describe("Google Gemini TTS long input", () => {
-  it("chunks bounded requests, stitches them in order, and aligns the final requested output once", async () => {
+  it("chunks bounded requests, stitches them in order, and aligns each chunk against its own audio", async () => {
     const prompts: string[] = [];
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -57,20 +57,19 @@ describe("Google Gemini TTS long input", () => {
       (_, index) => `Sentence ${index} stays in order.`
     ).join(" ");
     const instructions = "Use a calm delivery. ".repeat(50).trim();
-    const align = vi.fn(
-      ({ audio, text: alignmentText }: { audio: Uint8Array; text: string }) => {
-        const words = alignmentText.split(" ");
-        const durationSeconds = audio.byteLength / 2 / 24_000;
-        const wordDuration = durationSeconds / words.length;
-        return Promise.resolve(
-          words.map((word, index) => ({
-            text: word,
-            start: index * wordDuration,
-            end: (index + 1) * wordDuration,
-          }))
-        );
-      }
-    );
+    // Every mocked provider response carries 2 samples at 24 kHz.
+    const chunkDurationSeconds = 2 / 24_000;
+    const align = vi.fn(({ text: alignmentText }: { text: string }) => {
+      const words = alignmentText.split(" ");
+      const wordDuration = chunkDurationSeconds / words.length;
+      return Promise.resolve(
+        words.map((word, index) => ({
+          text: word,
+          start: index * wordDuration,
+          end: (index + 1) * wordDuration,
+        }))
+      );
+    });
 
     const result = await generateSpeech({
       model: { provider, modelId: MODEL_ID },
@@ -107,17 +106,22 @@ describe("Google Gemini TTS long input", () => {
     expect(Array.from(actualSamples)).toEqual(expectedMarkers);
     expect(result.audio.mediaType).toBe("audio/pcm;rate=24000");
 
-    expect(align).toHaveBeenCalledOnce();
-    expect(align).toHaveBeenCalledWith(
-      expect.objectContaining({
-        audio: result.audio.uint8Array,
-        mediaType: "audio/pcm;rate=24000",
-        text,
-      })
+    expect(align).toHaveBeenCalledTimes(prompts.length);
+    const alignCalls = align.mock.calls.map(
+      ([input]) => input as unknown as { mediaType: string; text: string }
     );
+    expect(alignCalls.every((call) => call.mediaType === "audio/wav")).toBe(
+      true
+    );
+    expect(alignCalls.map((call) => call.text).join(" ")).toBe(text);
     expect(result.timestamps?.map(({ text: word }) => word)).toEqual(
       text.split(" ")
     );
+    const starts = result.timestamps?.map(({ start }) => start) ?? [];
+    for (let index = 1; index < starts.length; index++) {
+      expect(starts[index]).toBeGreaterThanOrEqual(starts[index - 1] ?? 0);
+    }
+    expect(result.metadata.timestampsSource).toBe("aligned");
   });
 
   it("keeps normal input to one Google request", async () => {

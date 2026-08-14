@@ -1,3 +1,5 @@
+export type TimestampsSource = "native" | "aligned" | "estimated";
+
 export interface WordTimestamp {
   readonly end: number;
   readonly start: number;

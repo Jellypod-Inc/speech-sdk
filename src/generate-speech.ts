@@ -11,6 +11,7 @@ import {
   applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
+import { textWithoutAudioTags } from "./audio-tags.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import {
   NoSpeechGeneratedError,
@@ -42,7 +43,10 @@ import type {
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
 import { preprocessSpeechText } from "./text-preprocessing.js";
-import { prepareTimestampAlignment } from "./timestamp-alignment.js";
+import {
+  type AlignmentAudioChunk,
+  prepareTimestampAlignment,
+} from "./timestamp-alignment.js";
 import type { WordTimestamp } from "./timestamps.js";
 import type { GenerateSpeechOptions } from "./types.js";
 
@@ -159,7 +163,7 @@ export async function generateSpeech<
 
   const startTime = performance.now();
 
-  const result = shouldChunk
+  const chunkedResult = shouldChunk
     ? await generateChunkedSpeech({
         resolved,
         modelIdentifier,
@@ -175,21 +179,24 @@ export async function generateSpeech<
         headers,
         includeTimestamps: shouldRequestNative,
       })
-    : await generateProviderSpeech({
-        resolved,
-        text: textToSend,
-        instructions,
-        voice,
-        providerOptions,
-        maxRetries,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-        volumeDbfs,
-        output: options.output,
-        pronunciations: options.pronunciations,
-        speed,
-      });
+    : undefined;
+  const result =
+    chunkedResult ??
+    (await generateProviderSpeech({
+      resolved,
+      text: textToSend,
+      instructions,
+      voice,
+      providerOptions,
+      maxRetries,
+      abortSignal,
+      headers,
+      includeTimestamps: shouldRequestNative,
+      volumeDbfs,
+      output: options.output,
+      pronunciations: options.pronunciations,
+      speed,
+    }));
 
   const latencyMs = Math.round(performance.now() - startTime);
 
@@ -227,11 +234,13 @@ export async function generateSpeech<
   const publicAlignment = await timestampAlignment.resolve({
     audio: audio.uint8Array,
     audioDurationMs,
+    alignmentChunks: chunkedResult?.alignmentChunks,
     mediaType: stretched.mediaType,
     originalText: canonicalText,
     pronunciationEdits,
     // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
     providerTimestamps: maybeScale(result.timestamps, localSpeed),
+    speed: localSpeed,
     synthesizedText: synthesizedCanonicalText,
     abortSignal,
   });
@@ -240,6 +249,9 @@ export async function generateSpeech<
     latencyMs,
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
+    ...(publicAlignment.source != null && {
+      timestampsSource: publicAlignment.source,
+    }),
   };
 
   return {
@@ -387,7 +399,11 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   abortSignal: AbortSignal | undefined;
   headers: Record<string, string> | undefined;
   includeTimestamps: boolean;
-}): Promise<ProviderGenerateResult> {
+}): Promise<
+  ProviderGenerateResult & {
+    alignmentChunks: readonly AlignmentAudioChunk[];
+  }
+> {
   if (!args.stitchOptions) {
     throw new TextChunkingUnsupportedError(
       args.modelIdentifier,
@@ -428,7 +444,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           ? result.mediaType
           : stitchOptions.mediaType;
       const segment = await decodeAudioToPcm16(audio, decodeMediaType);
-      return { result, segment };
+      return { result, segment, text };
     },
     { signal: args.abortSignal }
   );
@@ -449,9 +465,24 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     ? { chunks: providerMetadataChunks }
     : undefined;
 
+  // Per-chunk audio for forced alignment, encoded lazily — alignment over the unbounded stitched result exceeds aligner input limits.
+  const alignmentChunks: readonly AlignmentAudioChunk[] = perChunk.map(
+    ({ segment, text }) => ({
+      audio: () =>
+        concatPcmToWav([segment], {
+          gapMs: 0,
+          targetSampleRate: segment.sampleRate,
+        }),
+      durationSeconds: segment.pcm.length / segment.sampleRate,
+      mediaType: "audio/wav",
+      text: textWithoutAudioTags(text),
+    })
+  );
+
   return {
     audio,
     audioDurationMs: Math.round(durationSeconds * 1000),
+    alignmentChunks,
     mediaType: "audio/wav",
     providerMetadata,
     timestamps: mergeChunkTimestamps(perChunk),

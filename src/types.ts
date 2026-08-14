@@ -63,6 +63,7 @@ export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { TimestampProvider } from "./timestamp-provider.js";
 export type {
   ConversationWordTimestamp,
+  TimestampsSource,
   WordTimestamp,
 } from "./timestamps.js";
 export type { TurnTimestamp } from "./turns.js";
