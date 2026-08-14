@@ -108,10 +108,9 @@ function requireValidTimestamps(args: {
 function describeConversationModels(
   resolvedPerTurn: readonly ResolvedModel<Voice>[]
 ): string {
-  const identifiers = new Set(
-    resolvedPerTurn.map((r) => `${r.provider.id}/${r.modelId}`)
-  );
-  return Array.from(identifiers).join(", ");
+  return [
+    ...new Set(resolvedPerTurn.map((r) => `${r.provider.id}/${r.modelId}`)),
+  ].join(", ");
 }
 
 export function generateConversation<

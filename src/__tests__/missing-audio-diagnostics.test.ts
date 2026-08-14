@@ -6,19 +6,15 @@ import { GoogleSpeechProvider } from "../providers/google/index.js";
 // base64 of 4 bytes of 16-bit PCM (2 samples of silence)
 const PCM_BASE64 = "AAAAAA==";
 
-function mockGoogleJson(data: unknown): ReturnType<typeof vi.fn> {
-  return vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    headers: new Headers({ "content-type": "application/json" }),
-    json: async () => data,
-  });
-}
-
 function googleProvider(data: unknown) {
   return new GoogleSpeechProvider({
     apiKey: "test-key",
-    fetch: mockGoogleJson(data),
+    fetch: vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => data,
+    }),
   });
 }
 

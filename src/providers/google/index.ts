@@ -11,6 +11,7 @@ import {
   handleErrorResponse,
   resolveApiKey,
   SDK_USER_AGENT,
+  truncate,
 } from "../../provider-utils.js";
 import {
   hasFeature,
@@ -59,10 +60,7 @@ const generateContentResponseSchema = z.object({
 
 type GenerateContentResponse = z.infer<typeof generateContentResponseSchema>;
 
-const MISSING_AUDIO_TEXT_SAMPLE_CHARS = 200;
-
-// A no-audio 200 is the provider declining, not a transport failure; the reason it declined only ever
-// arrives as finishReason, a prompt-level block, or a text part the model answered with instead of voicing.
+// A no-audio 200 is the provider declining; the reason only ever arrives as finishReason, a prompt block, or a text part.
 function describeMissingAudio(
   modelIdentifier: string,
   json: GenerateContentResponse
@@ -80,16 +78,11 @@ function describeMissingAudio(
       details.push(`finishReason: ${candidate.finishReason}`);
     }
     const text = (candidate.content?.parts ?? [])
-      .map((part) => part.text)
-      .filter((part): part is string => part != null && part.trim().length > 0)
-      .join(" ")
-      .trim();
+      .map((part) => part.text?.trim())
+      .filter((part) => part)
+      .join(" ");
     if (text) {
-      const sample =
-        text.length > MISSING_AUDIO_TEXT_SAMPLE_CHARS
-          ? `${text.slice(0, MISSING_AUDIO_TEXT_SAMPLE_CHARS)}…`
-          : text;
-      details.push(`text response: "${sample}"`);
+      details.push(`text response: "${truncate(text)}"`);
     }
   } else {
     details.push("no candidates");

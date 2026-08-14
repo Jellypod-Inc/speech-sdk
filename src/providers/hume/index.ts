@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
-import { SpeechSDKError } from "../../errors.js";
+import { NoSpeechGeneratedError, SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -211,7 +211,7 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     const payload = ttsResponseSchema.parse(await response.json());
     const gen = payload.generations?.[0];
     if (!gen?.audio) {
-      throw new SpeechSDKError(
+      throw new NoSpeechGeneratedError(
         `hume/${options.modelId}: /v0/tts response missing generations[0].audio`
       );
     }

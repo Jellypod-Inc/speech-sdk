@@ -372,13 +372,9 @@ export class ElevenLabsSpeechProvider
       const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
-        // request-id is what ElevenLabs support traces; alignment presence separates "the model generated
-        // nothing" from "the audio was dropped on the way out", which is the only lever without their logs.
+        // request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
         throw new NoSpeechGeneratedError(
-          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64 ` +
-            `(request-id: ${requestId ?? "none"}; ` +
-            `alignment: ${payload.alignment ? "present" : "absent"}; ` +
-            `normalized_alignment: ${payload.normalized_alignment ? "present" : "absent"})`
+          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64 (request-id: ${requestId ?? "none"}; alignment: ${payload.alignment ? "present" : "absent"}; normalized_alignment: ${payload.normalized_alignment ? "present" : "absent"})`
         );
       }
 
