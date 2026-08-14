@@ -263,6 +263,38 @@ describe("timestamps never fail synthesis", () => {
     expect(result.warnings).toBeUndefined();
   });
 
+  it("recovers via the factory fallbackSTT when native timestamps fail validation", async () => {
+    const provider = wavProvider({
+      audio: await silentWav(1),
+      native: true,
+      timestamps: [{ text: "hallucinated garbage words", start: 0, end: 0.5 }],
+    });
+    const stt = sttMock([
+      { text: "alpha", start: 0, end: 0.3 },
+      { text: "beta", start: 0.3, end: 0.6 },
+      { text: "gamma", start: 0.6, end: 0.9 },
+    ]);
+
+    const result = await generateSpeech({
+      model: {
+        provider,
+        modelId: "m",
+        fallbackSTT: { provider: stt, modelId: "m" },
+      },
+      text: "alpha beta gamma",
+      voice: "v",
+      timestamps: true,
+    });
+
+    expect(stt.transcribe).toHaveBeenCalledOnce();
+    expect(result.timestamps).toEqual([
+      { text: "alpha", start: 0, end: 0.3 },
+      { text: "beta", start: 0.3, end: 0.6 },
+      { text: "gamma", start: 0.6, end: 0.9 },
+    ]);
+    expect(result.metadata.timestampsSource).toBe("aligned");
+  });
+
   it("reports the aligned source when a timestamp provider supplies timings", async () => {
     const provider = wavProvider({ audio: await silentWav(1) });
     const aligner = alignerMock([

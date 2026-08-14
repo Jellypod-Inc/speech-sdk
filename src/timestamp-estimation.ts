@@ -9,7 +9,11 @@ export function estimateTimestamps(args: {
   if (tokens.length === 0) {
     return [];
   }
-  if (args.audioDurationMs == null || args.audioDurationMs <= 0) {
+  if (
+    args.audioDurationMs == null ||
+    !Number.isFinite(args.audioDurationMs) ||
+    args.audioDurationMs <= 0
+  ) {
     return;
   }
 

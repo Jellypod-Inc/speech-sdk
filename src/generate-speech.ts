@@ -165,42 +165,46 @@ export async function generateSpeech<
 
   const startTime = performance.now();
 
-  const maxConcurrency = resolveMaxConcurrency(options.maxConcurrency);
+  // Validated only when chunking — maxConcurrency governs chunked synthesis and per-chunk alignment, and stays ignored on other paths (notably the gateway).
+  const maxConcurrency = shouldChunk
+    ? resolveMaxConcurrency(options.maxConcurrency)
+    : undefined;
 
   const result: ProviderGenerateResult & {
     alignmentChunks?: readonly AlignmentAudioChunk[];
-  } = shouldChunk
-    ? await generateChunkedSpeech({
-        resolved,
-        modelIdentifier,
-        textChunks,
-        instructions,
-        voice,
-        providerOptions,
-        stitchOptions,
-        maxInputChars: maxInputChars ?? textToSend.length,
-        maxRetries,
-        maxConcurrency,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-        buildAlignmentChunks: timestamps,
-      })
-    : await generateProviderSpeech({
-        resolved,
-        text: textToSend,
-        instructions,
-        voice,
-        providerOptions,
-        maxRetries,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-        volumeDbfs,
-        output: options.output,
-        pronunciations: options.pronunciations,
-        speed,
-      });
+  } =
+    maxConcurrency == null
+      ? await generateProviderSpeech({
+          resolved,
+          text: textToSend,
+          instructions,
+          voice,
+          providerOptions,
+          maxRetries,
+          abortSignal,
+          headers,
+          includeTimestamps: shouldRequestNative,
+          volumeDbfs,
+          output: options.output,
+          pronunciations: options.pronunciations,
+          speed,
+        })
+      : await generateChunkedSpeech({
+          resolved,
+          modelIdentifier,
+          textChunks,
+          instructions,
+          voice,
+          providerOptions,
+          stitchOptions,
+          maxInputChars: maxInputChars ?? textToSend.length,
+          maxRetries,
+          maxConcurrency,
+          abortSignal,
+          headers,
+          includeTimestamps: shouldRequestNative,
+          buildAlignmentChunks: timestamps,
+        });
 
   const latencyMs = Math.round(performance.now() - startTime);
 
