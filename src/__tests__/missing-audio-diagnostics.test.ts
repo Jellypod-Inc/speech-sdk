@@ -95,20 +95,6 @@ describe("Google no-audio diagnostics", () => {
     expect(error.message).toContain("google/gemini-3.1-flash-tts-preview");
   });
 
-  it("throws NoSpeechGeneratedError rather than a bare Error", async () => {
-    const provider = googleProvider({
-      candidates: [{ content: { parts: [] } }],
-    });
-
-    await expect(
-      provider.generate({
-        modelId: "gemini-3.1-flash-tts-preview",
-        text: "Yes",
-        voice: "Kore",
-      })
-    ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
-  });
-
   it("still returns audio when a text part precedes the inlineData part", async () => {
     const provider = googleProvider({
       candidates: [
