@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.26.0
+
+- **Breaking: on direct-provider paths, word timestamps never fail synthesis.** Empty, invalid, or mismatched timings no longer throw `TimestampValidationError` and no longer discard correctly synthesized audio. When native timestamps and alignment both fail — or the input is below a few words, where forced alignment cannot succeed and is skipped — the SDK distributes the words evenly across the measured audio duration (a single span for one word). Callers that relied on the throw should check the new `metadata.timestampsSource` field (`'native' | 'aligned' | 'estimated'`) instead. Gateway-routed requests are unchanged: the gateway server owns its timestamp contract, so its failures still surface as `TimestampValidationError`.
+- **Chunked forced alignment.** When long input is split by `maxInputChars` and stitched, forced alignment now runs once per synthesis chunk against that chunk's own audio and text, concatenated with the stitch offsets the SDK already computes — instead of a single unbounded call over the stitched result that exceeds aligner input limits.
+- Native timestamp validation failures on direct paths now fall back to the factory-level `fallbackSTT` when no `timestampProvider` is configured, matching the existing `timestampProvider` recovery behavior.
+
 ## 0.25.3
 
 - **Fix: long Google Gemini TTS input now chunks automatically instead of reaching Google as one oversized request.** Gemini 3.1 Flash TTS Preview, Gemini 2.5 Flash TTS Preview, and Gemini 2.5 Pro TTS Preview now declare conservative provider-owned input limits below their documented 8,192-token ceiling. The effective spoken-text budget also reserves space for the SDK's read-aloud directive and caller instructions. Direct-provider requests split on sentence/word boundaries, synthesize in parallel, stitch in source order, convert to the requested format, and run timestamp alignment once on the final audio with the complete transcript. Google 400 responses remain non-retryable; gateway routing remains server-owned.

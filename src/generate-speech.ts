@@ -2,7 +2,6 @@ import pRetry from "p-retry";
 import {
   applySpeedToAudio,
   isSpeedActive,
-  scaleTimestamps,
   validateSpeed,
 } from "./apply-speed.js";
 import { computeAudioDuration } from "./audio-duration.js";
@@ -11,6 +10,7 @@ import {
   applyOptionalOutputConversion,
   validateOutput,
 } from "./audio-output.js";
+import { textWithoutAudioTags } from "./audio-tags.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import {
   NoSpeechGeneratedError,
@@ -42,8 +42,14 @@ import type {
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
 import { preprocessSpeechText } from "./text-preprocessing.js";
-import { prepareTimestampAlignment } from "./timestamp-alignment.js";
-import type { WordTimestamp } from "./timestamps.js";
+import {
+  type AlignmentAudioChunk,
+  prepareTimestampAlignment,
+} from "./timestamp-alignment.js";
+import {
+  concatTimestampsWithOffsets,
+  type WordTimestamp,
+} from "./timestamps.js";
 import type { GenerateSpeechOptions } from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
@@ -159,37 +165,46 @@ export async function generateSpeech<
 
   const startTime = performance.now();
 
-  const result = shouldChunk
-    ? await generateChunkedSpeech({
-        resolved,
-        modelIdentifier,
-        textChunks,
-        instructions,
-        voice,
-        providerOptions,
-        stitchOptions,
-        maxInputChars: maxInputChars ?? textToSend.length,
-        maxRetries,
-        maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-      })
-    : await generateProviderSpeech({
-        resolved,
-        text: textToSend,
-        instructions,
-        voice,
-        providerOptions,
-        maxRetries,
-        abortSignal,
-        headers,
-        includeTimestamps: shouldRequestNative,
-        volumeDbfs,
-        output: options.output,
-        pronunciations: options.pronunciations,
-        speed,
-      });
+  let result: ProviderGenerateResult & {
+    alignmentChunks?: readonly AlignmentAudioChunk[];
+  };
+  // Resolved only when chunking — maxConcurrency governs chunked synthesis and per-chunk alignment, and stays unvalidated (documented as ignored) on paths that never fan out.
+  let maxConcurrency: number | undefined;
+  if (shouldChunk) {
+    maxConcurrency = resolveMaxConcurrency(options.maxConcurrency);
+    result = await generateChunkedSpeech({
+      resolved,
+      modelIdentifier,
+      textChunks,
+      instructions,
+      voice,
+      providerOptions,
+      stitchOptions,
+      maxInputChars: maxInputChars ?? textToSend.length,
+      maxRetries,
+      maxConcurrency,
+      abortSignal,
+      headers,
+      includeTimestamps: shouldRequestNative,
+      buildAlignmentChunks: timestamps,
+    });
+  } else {
+    result = await generateProviderSpeech({
+      resolved,
+      text: textToSend,
+      instructions,
+      voice,
+      providerOptions,
+      maxRetries,
+      abortSignal,
+      headers,
+      includeTimestamps: shouldRequestNative,
+      volumeDbfs,
+      output: options.output,
+      pronunciations: options.pronunciations,
+      speed,
+    });
+  }
 
   const latencyMs = Math.round(performance.now() - startTime);
 
@@ -227,11 +242,14 @@ export async function generateSpeech<
   const publicAlignment = await timestampAlignment.resolve({
     audio: audio.uint8Array,
     audioDurationMs,
+    alignmentChunks: result.alignmentChunks,
+    maxConcurrency,
     mediaType: stretched.mediaType,
     originalText: canonicalText,
     pronunciationEdits,
-    // Native timestamps reference pre-stretch timing on direct paths; gateway already returns scaled timestamps.
-    providerTimestamps: maybeScale(result.timestamps, localSpeed),
+    providerTimestamps: result.timestamps,
+    // localSpeed is undefined on the gateway path, whose timestamps arrive already scaled.
+    speed: localSpeed,
     synthesizedText: synthesizedCanonicalText,
     abortSignal,
   });
@@ -240,6 +258,9 @@ export async function generateSpeech<
     latencyMs,
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
+    ...(publicAlignment.source != null && {
+      timestampsSource: publicAlignment.source,
+    }),
   };
 
   return {
@@ -387,7 +408,12 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   abortSignal: AbortSignal | undefined;
   headers: Record<string, string> | undefined;
   includeTimestamps: boolean;
-}): Promise<ProviderGenerateResult> {
+  buildAlignmentChunks: boolean;
+}): Promise<
+  ProviderGenerateResult & {
+    alignmentChunks?: readonly AlignmentAudioChunk[];
+  }
+> {
   if (!args.stitchOptions) {
     throw new TextChunkingUnsupportedError(
       args.modelIdentifier,
@@ -398,6 +424,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
 
   const { decodeAudioToPcm16 } = await import("./audio-decode.js");
   const { concatPcmToWav } = await import("./conversation/pcm-concat.js");
+  const { wrapPcm16Mono } = await import("./audio-utils.js");
 
   const perChunk = await mapWithConcurrency(
     args.textChunks,
@@ -428,7 +455,12 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           ? result.mediaType
           : stitchOptions.mediaType;
       const segment = await decodeAudioToPcm16(audio, decodeMediaType);
-      return { result, segment };
+      return {
+        result,
+        segment,
+        text,
+        durationSeconds: segment.pcm.length / segment.sampleRate,
+      };
     },
     { signal: args.abortSignal }
   );
@@ -439,8 +471,8 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     gapMs: 0,
     targetSampleRate,
   });
-  const durationSeconds = segments.reduce(
-    (sum, segment) => sum + segment.pcm.length / segment.sampleRate,
+  const durationSeconds = perChunk.reduce(
+    (sum, c) => sum + c.durationSeconds,
     0
   );
   const warnings = perChunk.flatMap((c) => c.result.warnings ?? []);
@@ -449,9 +481,28 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     ? { chunks: providerMetadataChunks }
     : undefined;
 
+  // Per-chunk audio for forced alignment, encoded lazily — alignment over the unbounded stitched result exceeds aligner input limits. Skipped when timestamps are off so the PCM segments aren't retained.
+  const alignmentChunks = args.buildAlignmentChunks
+    ? perChunk.map(({ segment, text, durationSeconds: chunkSeconds }) => ({
+        audio: () =>
+          wrapPcm16Mono(
+            new Uint8Array(
+              segment.pcm.buffer,
+              segment.pcm.byteOffset,
+              segment.pcm.byteLength
+            ),
+            segment.sampleRate
+          ),
+        durationSeconds: chunkSeconds,
+        mediaType: "audio/wav",
+        text: textWithoutAudioTags(text),
+      }))
+    : undefined;
+
   return {
     audio,
     audioDurationMs: Math.round(durationSeconds * 1000),
+    ...(alignmentChunks && { alignmentChunks }),
     mediaType: "audio/wav",
     providerMetadata,
     timestamps: mergeChunkTimestamps(perChunk),
@@ -462,26 +513,18 @@ async function generateChunkedSpeech<V extends Voice>(args: {
 function mergeChunkTimestamps(
   perChunk: readonly {
     result: ProviderGenerateResult;
-    segment: { pcm: Int16Array; sampleRate: number };
+    durationSeconds: number;
   }[]
 ): WordTimestamp[] | undefined {
   if (perChunk.some((c) => !c.result.timestamps?.length)) {
     return;
   }
-
-  const timestamps: WordTimestamp[] = [];
-  let offset = 0;
-  for (const chunk of perChunk) {
-    for (const word of chunk.result.timestamps ?? []) {
-      timestamps.push({
-        text: word.text,
-        start: word.start + offset,
-        end: word.end + offset,
-      });
-    }
-    offset += chunk.segment.pcm.length / chunk.segment.sampleRate;
-  }
-  return timestamps;
+  return concatTimestampsWithOffsets(
+    perChunk.map((c) => ({
+      durationSeconds: c.durationSeconds,
+      words: c.result.timestamps ?? [],
+    }))
+  );
 }
 
 function resolveProviderOptionsForLocalDecoding(args: {
@@ -601,13 +644,6 @@ async function applyLocalAudioPostProcessing(args: {
   }
 
   return { bytes, mediaType };
-}
-
-function maybeScale<T extends { start: number; end: number }>(
-  timestamps: readonly T[] | undefined,
-  speed: number | undefined
-): readonly T[] | undefined {
-  return isSpeedActive(speed) ? scaleTimestamps(timestamps, speed) : timestamps;
 }
 
 function maybeScaleDurationMs(
