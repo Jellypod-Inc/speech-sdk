@@ -3,7 +3,6 @@ import { wrapPcm16Mono } from "../audio-utils.js";
 import { generateSpeech } from "../generate-speech.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { SpeechToTextProvider } from "../speech-to-text-provider.js";
-import { TIMESTAMP_ESTIMATED_WARNING } from "../timestamp-alignment.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
 import type { WordTimestamp } from "../timestamps.js";
 
@@ -96,7 +95,7 @@ describe("timestamps never fail synthesis", () => {
     expect(result.timestamps[0]?.start).toBe(0);
     expect(result.timestamps[0]?.end).toBeCloseTo(1, 3);
     expect(result.metadata.timestampsSource).toBe("estimated");
-    expect(result.warnings).toContain(TIMESTAMP_ESTIMATED_WARNING);
+    expect(result.warnings).toBeUndefined();
   });
 
   it("estimates a tiny input when native timestamps come back empty, without calling the STT fallback", async () => {
@@ -150,7 +149,7 @@ describe("timestamps never fail synthesis", () => {
     expect(result.timestamps[1]?.start).toBeCloseTo(0.25, 3);
     expect(result.timestamps[3]?.end).toBeCloseTo(1, 3);
     expect(result.metadata.timestampsSource).toBe("estimated");
-    expect(result.warnings).toContain(TIMESTAMP_ESTIMATED_WARNING);
+    expect(result.warnings).toBeUndefined();
   });
 
   it("falls back to estimated timestamps when the alignment provider errors", async () => {
@@ -168,7 +167,7 @@ describe("timestamps never fail synthesis", () => {
     expect(align).toHaveBeenCalledOnce();
     expect(result.timestamps).toHaveLength(4);
     expect(result.metadata.timestampsSource).toBe("estimated");
-    expect(result.warnings).toContain(TIMESTAMP_ESTIMATED_WARNING);
+    expect(result.warnings).toBeUndefined();
   });
 
   it("aligns each synthesis chunk separately and concatenates with stitch offsets", async () => {

@@ -27,9 +27,6 @@ import type { TimestampsSource, WordTimestamp } from "./timestamps.js";
 // Forced alignment is unreliable on very short utterances (a single word often returns nothing), and an even distribution over so few words is just as good.
 const MIN_ALIGNMENT_WORD_COUNT = 3;
 
-export const TIMESTAMP_ESTIMATED_WARNING =
-  "speech-sdk: word timestamps were estimated by distributing words evenly across the audio duration.";
-
 export interface AlignmentAudioChunk {
   audio(): Promise<Uint8Array>;
   readonly durationSeconds: number;
@@ -356,11 +353,7 @@ async function resolveDirectTimestamps(
   debug(
     `${context.modelIdentifier}: distributing ${estimated.length} words evenly across the audio duration.`
   );
-  return {
-    timestamps: estimated,
-    warnings: [TIMESTAMP_ESTIMATED_WARNING],
-    source: "estimated",
-  };
+  return { timestamps: estimated, source: "estimated" };
 }
 
 export function prepareTimestampAlignment(args: {

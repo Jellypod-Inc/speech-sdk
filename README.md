@@ -203,7 +203,7 @@ Returned timestamps are projected onto the exact text synthesized by the SDK: ca
 
 `timestampProvider` is used for direct models without native timestamps and as a fallback when direct native timestamps fail validation. It remains a no-op for gateway-routed string models, where the gateway owns timestamp generation. Missing internal caller-word boundaries inside an otherwise valid pronunciation edit span are interpolated, and those results include a warning.
 
-On direct paths, timestamps never fail synthesis. When the SDK chunks a long input, forced alignment runs per synthesis chunk and the timings are concatenated with the stitch offsets; alignment is skipped entirely for inputs below a few words, where it cannot succeed and is not needed. If timings are still empty or fail transcript validation, the SDK distributes the words evenly across the measured audio duration (a single span for one word) instead of throwing, and `warnings` says so. `metadata.timestampsSource` reports how the returned timings were produced: `'native'`, `'aligned'`, or `'estimated'`. Gateway-routed calls are unchanged — the gateway server owns its timestamp contract, so its failures surface as `TimestampValidationError`.
+On direct paths, timestamps never fail synthesis. When the SDK chunks a long input, forced alignment runs per synthesis chunk and the timings are concatenated with the stitch offsets; alignment is skipped entirely for inputs below a few words, where it cannot succeed and is not needed. If timings are still empty or fail transcript validation, the SDK distributes the words evenly across the measured audio duration (a single span for one word) instead of throwing. `metadata.timestampsSource` reports how the returned timings were produced: `'native'`, `'aligned'`, or `'estimated'`. Gateway-routed calls are unchanged — the gateway server owns its timestamp contract, so its failures surface as `TimestampValidationError`.
 
 There is no implicit OpenAI fallback. Existing factory-level `fallbackSTT` configuration remains supported for compatibility, but new integrations should use the narrower `timestampProvider` interface.
 
@@ -253,7 +253,7 @@ result.timestamps;
 
 ```
 
-Any object implementing the exported `TimestampProvider` interface can be passed the same way. It receives generated audio, its media type, the exact synthesized text, and the request's abort signal. Provider, network, and validation failures during alignment don't discard the synthesized audio — the SDK falls back to evenly estimated timings and reports it via `warnings` and `metadata.timestampsSource`.
+Any object implementing the exported `TimestampProvider` interface can be passed the same way. It receives generated audio, its media type, the exact synthesized text, and the request's abort signal. Provider, network, and validation failures during alignment don't discard the synthesized audio — the SDK falls back to evenly estimated timings and reports it via `metadata.timestampsSource`.
 
 `generateConversation` retains its boolean `timestamps` option and returns `ConversationWordTimestamp[]` — every word carries a `turnIndex: number` pointing back into the input `turns[]`.
 
