@@ -1,6 +1,6 @@
 import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
-import { SpeechSDKError } from "../../errors.js";
+import { NoSpeechGeneratedError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -110,7 +110,9 @@ export class SpeechifySpeechProvider implements SpeechProvider<string, string> {
     const response = await this.fetchSpeech(options, "/audio/speech", "wav");
     const payload = (await response.json()) as SpeechifySpeechResponse;
     if (typeof payload.audio_data !== "string") {
-      throw new SpeechSDKError("speechify: response missing audio_data");
+      throw new NoSpeechGeneratedError(
+        "speechify: response missing audio_data"
+      );
     }
 
     const audioFormat =

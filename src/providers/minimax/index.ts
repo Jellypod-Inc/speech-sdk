@@ -8,6 +8,7 @@ import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
 import {
   ApiError,
   InvalidCloneFieldError,
+  NoSpeechGeneratedError,
   SpeechSDKError,
 } from "../../errors.js";
 import {
@@ -203,7 +204,7 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
 
     const hexAudio = payload.data?.audio;
     if (!hexAudio) {
-      throw new SpeechSDKError(
+      throw new NoSpeechGeneratedError(
         `minimax/${options.modelId}: response contained no audio data`
       );
     }

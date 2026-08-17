@@ -3,7 +3,7 @@ import type { AudioOutput } from "../../audio-output.js";
 import { base64ToUint8Array, uint8ArrayToBase64 } from "../../audio-utils.js";
 import { defaultCloneLanguage } from "../../clone-voice.js";
 import { DEFAULT_PREVIEW_TEXT } from "../../design-voice.js";
-import { SpeechSDKError } from "../../errors.js";
+import { NoSpeechGeneratedError, SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -236,7 +236,7 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
 
     const json = ttsResponseSchema.parse(await response.json());
     if (!json.audioContent) {
-      throw new Error(
+      throw new NoSpeechGeneratedError(
         `inworld/${options.modelId}: response missing audioContent`
       );
     }

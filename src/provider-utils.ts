@@ -22,7 +22,7 @@ export function resolveApiKey(
   return key;
 }
 
-function truncate(body: string): string {
+export function truncate(body: string): string {
   return body.length > 200 ? `${body.slice(0, 200)}…` : body;
 }
 

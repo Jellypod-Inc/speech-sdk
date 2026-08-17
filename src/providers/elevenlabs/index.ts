@@ -6,7 +6,11 @@ import {
 import { stripAudioTags, textWithoutAudioTags } from "../../audio-tags.js";
 import { base64ToUint8Array } from "../../audio-utils.js";
 import { appendProviderOption, appendSampleBlob } from "../../clone-voice.js";
-import { SpeechSDKError, UnsupportedSampleRateError } from "../../errors.js";
+import {
+  NoSpeechGeneratedError,
+  SpeechSDKError,
+  UnsupportedSampleRateError,
+} from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -368,8 +372,9 @@ export class ElevenLabsSpeechProvider
       const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
-        throw new SpeechSDKError(
-          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64`
+        // request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
+        throw new NoSpeechGeneratedError(
+          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64 (request-id: ${requestId ?? "none"}; alignment: ${payload.alignment ? "present" : "absent"}; normalized_alignment: ${payload.normalized_alignment ? "present" : "absent"})`
         );
       }
 
