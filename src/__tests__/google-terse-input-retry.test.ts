@@ -86,41 +86,26 @@ describe("Google terse-input reshaped retry", () => {
     ]);
   });
 
-  it("sends a payload that differs from the first attempt", async () => {
+  // Gemini 3.1 declares 80 languages and the terse threshold is exactly where CJK, Devanagari and Arabic
+  // lines land, so a Latin-only terminator set would append a second terminator to text that already ends one.
+  it.each([
+    ["Yes.", 'Read aloud: "Yes."'],
+    ["Really?", 'Read aloud: "Really?"'],
+    ["Well,", 'Read aloud: "Well,"'],
+    ["はい。", 'Read aloud: "はい。"'],
+    ["नमस्ते।", 'Read aloud: "नमस्ते।"'],
+    ["نعم۔", 'Read aloud: "نعم۔"'],
+    ["そう", 'Read aloud: "そう."'],
+  ])("wraps %s without doubling terminal punctuation", async (text, expected) => {
     const { fetchMock, google } = provider([NO_AUDIO_RESPONSE, AUDIO_RESPONSE]);
 
     await google.generate({
       modelId: "gemini-3.1-flash-tts-preview",
-      text: "Yes",
+      text,
       voice: "Kore",
     });
 
-    const [first, second] = promptsFrom(fetchMock);
-    expect(second).not.toBe(first);
-  });
-
-  it("keeps existing terminal punctuation instead of doubling it", async () => {
-    const { fetchMock, google } = provider([NO_AUDIO_RESPONSE, AUDIO_RESPONSE]);
-
-    await google.generate({
-      modelId: "gemini-3.1-flash-tts-preview",
-      text: "Yes.",
-      voice: "Kore",
-    });
-
-    expect(promptsFrom(fetchMock)[1]).toBe('Read aloud: "Yes."');
-  });
-
-  it("preserves a question mark", async () => {
-    const { fetchMock, google } = provider([NO_AUDIO_RESPONSE, AUDIO_RESPONSE]);
-
-    await google.generate({
-      modelId: "gemini-3.1-flash-tts-preview",
-      text: "Really?",
-      voice: "Kore",
-    });
-
-    expect(promptsFrom(fetchMock)[1]).toBe('Read aloud: "Really?"');
+    expect(promptsFrom(fetchMock)[1]).toBe(expected);
   });
 
   it("carries instructions through to the reshaped attempt", async () => {
@@ -154,13 +139,38 @@ describe("Google terse-input reshaped retry", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not retry input that is already quoted", async () => {
+  // Both matched and unmatched quotes: re-quoting either yields a no-op or a nested quote, neither worth a request.
+  it.each([
+    '"Yes."',
+    '"Yes',
+    'He said "yes',
+  ])("does not retry input already containing a quote (%s)", async (text) => {
     const { fetchMock, google } = provider([NO_AUDIO_RESPONSE]);
 
     await expect(
       google.generate({
         modelId: "gemini-3.1-flash-tts-preview",
-        text: '"Yes."',
+        text,
+        voice: "Kore",
+      })
+    ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["a safety finish reason", { candidates: [{ finishReason: "SAFETY" }] }],
+    [
+      "a prompt-level block",
+      { candidates: [], promptFeedback: { blockReason: "OTHER" } },
+    ],
+  ])("does not retry a content refusal (%s)", async (_label, response) => {
+    const { fetchMock, google } = provider([response]);
+
+    await expect(
+      google.generate({
+        modelId: "gemini-3.1-flash-tts-preview",
+        text: "Yes",
         voice: "Kore",
       })
     ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
