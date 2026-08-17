@@ -60,6 +60,36 @@ const generateContentResponseSchema = z.object({
 
 type GenerateContentResponse = z.infer<typeof generateContentResponseSchema>;
 
+function findAudioPart(json: GenerateContentResponse) {
+  const part = json.candidates?.[0]?.content?.parts?.find(
+    (p) => p.inlineData?.data
+  );
+  return part?.inlineData;
+}
+
+const TERMINAL_PUNCTUATION_RE = /[.!?…:;,]$/;
+
+// Gemini TTS is generateContent, so a payload short enough to read as a bare chat turn can come back
+// answered rather than voiced. Quoting gives the model an explicit object to read instead of respond to.
+// Deliberately below the length of a short sentence: longer input has never shown this failure, and
+// quoting it risks changing delivery on text that would otherwise voice correctly.
+const TERSE_INPUT_MAX_CHARS = 24;
+
+function reshapeTerseInput(text: string): string | undefined {
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > TERSE_INPUT_MAX_CHARS) {
+    return;
+  }
+  // Already quoted: reshaping would be a no-op, and a no-op retry is the one the logs prove cannot help.
+  if (trimmed.startsWith('"')) {
+    return;
+  }
+  const punctuated = TERMINAL_PUNCTUATION_RE.test(trimmed)
+    ? trimmed
+    : `${trimmed}.`;
+  return `"${punctuated}"`;
+}
+
 // A no-audio 200 is the provider declining; the reason only ever arrives as finishReason, a prompt block, or a text part.
 function describeMissingAudio(
   modelIdentifier: string,
@@ -305,6 +335,66 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return textBudget;
   }
 
+  private async postGenerateContent(
+    options: {
+      modelId: string;
+      instructions?: string;
+      voice?: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    text: string
+  ): Promise<GenerateContentResponse> {
+    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
+
+    const body: Record<string, unknown> = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: options.instructions
+                ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${text}`
+                : `${READ_ALOUD_DIRECTIVE}${text}`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseModalities: ["audio"],
+        speech_config: {
+          voice_config: {
+            prebuilt_voice_config: { voice_name: options.voice ?? "Kore" },
+          },
+        },
+        ...options.providerOptions,
+      },
+    };
+
+    const response = await this.fetchFn(
+      `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Agent": SDK_USER_AGENT,
+          ...options.headers,
+        },
+        body: JSON.stringify(body),
+        signal: options.abortSignal,
+      }
+    );
+
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
+
+    return generateContentResponseSchema.parse(await response.json());
+  }
+
   async generate(options: {
     modelId: string;
     text: string;
@@ -319,74 +409,35 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
+    const modelIdentifier = `google/${options.modelId}`;
 
-    const voiceName = options.voice ?? "Kore";
+    const json = await this.postGenerateContent(options, options.text);
+    let part = findAudioPart(json);
 
-    const speechConfig: Record<string, unknown> = {
-      voice_config: {
-        prebuilt_voice_config: {
-          voice_name: voiceName,
-        },
-      },
-    };
+    // The identical retry the SDK already performs cannot help a response that came back without audio,
+    // so a terse payload gets one differently shaped attempt before the segment is failed.
+    let reshapedJson: GenerateContentResponse | undefined;
+    if (!part) {
+      const reshaped = reshapeTerseInput(options.text);
+      if (reshaped) {
+        reshapedJson = await this.postGenerateContent(options, reshaped);
+        part = findAudioPart(reshapedJson);
+      }
+    }
 
-    const body: Record<string, unknown> = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: options.instructions
-                ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${options.text}`
-                : `${READ_ALOUD_DIRECTIVE}${options.text}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ["audio"],
-        speech_config: speechConfig,
-        ...options.providerOptions,
-      },
-    };
-
-    const url = `${this.baseURL}/models/${options.modelId}:generateContent?key=${apiKey}`;
-
-    const response = await this.fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
-      },
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
-    });
-
-    await handleErrorResponse(response, {
-      provider: this.id,
-      model: options.modelId,
-      stage: "synthesis",
-    });
-
-    const json = generateContentResponseSchema.parse(await response.json());
-
-    const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData != null
-    );
-
-    if (!part?.inlineData) {
+    if (!part) {
       throw new NoSpeechGeneratedError(
-        describeMissingAudio(`google/${options.modelId}`, json)
+        reshapedJson
+          ? `${describeMissingAudio(modelIdentifier, json)}; retried with a quoted payload and still got none (${describeMissingAudio(modelIdentifier, reshapedJson)})`
+          : describeMissingAudio(modelIdentifier, json)
       );
     }
 
     // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
     const sampleRate =
-      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
+      parseMediaTypeParam(part.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
-    const pcm = base64ToUint8Array(part.inlineData.data);
+    const pcm = base64ToUint8Array(part.data);
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
@@ -642,18 +693,16 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     });
 
     const json = generateContentResponseSchema.parse(await response.json());
-    const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData?.data
-    );
-    if (!part?.inlineData) {
+    const part = findAudioPart(json);
+    if (!part) {
       throw new NoSpeechGeneratedError(
         describeMissingAudio(`google/${options.modelId}`, json)
       );
     }
 
-    const pcm = base64ToUint8Array(part.inlineData.data);
+    const pcm = base64ToUint8Array(part.data);
     const sampleRate =
-      parseMediaTypeParam(part.inlineData.mimeType ?? "", "rate") ??
+      parseMediaTypeParam(part.mimeType ?? "", "rate") ??
       DEFAULT_GEMINI_SAMPLE_RATE;
     const wav = await wrapPcm16Mono(pcm, sampleRate);
 
