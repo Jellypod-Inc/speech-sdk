@@ -144,6 +144,11 @@ describe("Google terse-input reshaped retry", () => {
     '"Yes."',
     '"Yes',
     'He said "yes',
+    "“Yes.”",
+    "‘Yes’",
+    "「はい」",
+    "«Ja»",
+    "„Ja“",
   ])("does not retry input already containing a quote (%s)", async (text) => {
     const { fetchMock, google } = provider([NO_AUDIO_RESPONSE]);
 

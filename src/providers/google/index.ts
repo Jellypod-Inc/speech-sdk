@@ -71,6 +71,10 @@ function findInlineAudio(json: GenerateContentResponse) {
 // Reads as deliberate punctuation but isn't a sentence terminator, so appending a period would look wrong.
 const TRAILING_PUNCTUATION_RE = /[…:;,]$/;
 
+// Quote marks across the scripts Gemini declares, including the German and CJK forms; matching only the
+// ASCII pair would wrap text that is already quoted, producing a nested quote rather than a cleaner prompt.
+const QUOTE_CHARACTER_RE = /["'‘’‚“”„「」『』«»]/;
+
 // Finish reasons where the model refused the content itself; a differently shaped payload cannot change those.
 const CONTENT_DECLINE_FINISH_REASONS = new Set([
   "SAFETY",
@@ -99,7 +103,7 @@ function reshapeTerseInput(text: string): string | undefined {
     return;
   }
   // Any existing quote makes the reshape either a no-op or a nested quote, and a no-op retry is the one the logs prove cannot help.
-  if (trimmed.includes('"')) {
+  if (QUOTE_CHARACTER_RE.test(trimmed)) {
     return;
   }
   const alreadyPunctuated =
