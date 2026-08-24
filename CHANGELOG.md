@@ -6,6 +6,7 @@
 - **Removed:** `createSpeechGateway`, `SpeechGatewayProvider`, `SpeechGatewayProviderConfig`, `GatewayInputError`, and `MixedDispatchError`. The `SPEECHBASE_API_KEY` and `SPEECH_GATEWAY_API_KEY` environment variables are no longer read. Callers passing string models must have the relevant provider's own key available; callers who imported `createSpeechGateway` for a custom proxy URL should use the target provider's factory with a `baseURL` instead.
 - **Conversations lose the gateway dispatch path.** `generateConversation` now chooses between native dialogue and local stitch only. Mixing providers across turns is no longer an error class of its own — heterogeneous turns simply render via stitch.
 - The `apiKey` option on `generateSpeech` / `streamSpeech` / `generateConversation` now supplies the resolved provider's key rather than a gateway key. It is still ignored when `model` is a `ResolvedModel` from a factory.
+- **`SpeechSdkProviderError.stage` is no longer read off a provider's error body.** The `stage` field was part of the gateway's problem+json envelope; upstream provider APIs never return it, and every direct call site already sets `stage` itself, which took precedence. The field is still populated as before on synthesis and alignment errors.
 
 ## 0.28.0
 
