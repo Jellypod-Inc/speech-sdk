@@ -6,7 +6,7 @@ export interface SpeechMetadata {
   readonly inputChars: number;
   // For streaming, equals ttfbMs (we return as soon as the stream is ready).
   readonly latencyMs: number;
-  // How the returned word timestamps were produced. Set on direct-provider paths when timestamps are requested; unset on the gateway path, where the gateway server owns the timestamp contract.
+  // How the returned word timestamps were produced. Set when timestamps are requested.
   readonly timestampsSource?: TimestampsSource;
   // Streaming only.
   readonly ttfbMs?: number;

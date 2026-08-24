@@ -10,7 +10,7 @@
 
 `generateConversation` returns a `ConversationResult`, which extends `SpeechResult` with:
 
-- `metadata.perTurn` — array of per-turn `SpeechMetadata` on the local-stitch path; `undefined` on gateway and native-dialogue paths
+- `metadata.perTurn` — array of per-turn `SpeechMetadata` on the local-stitch path; `undefined` on the native-dialogue path
 - `timestamps[].turnIndex` — index into the input `turns[]` for each word
 
 `streamSpeech` returns a `StreamSpeechResult` whose `audio` is a `ReadableStream<Uint8Array>` instead of a `GeneratedAudioFile`. See `streaming.md`.

@@ -28,7 +28,7 @@ Learn more at [speechsdk.dev](https://speechsdk.dev/).
 
 - **Universal** — one `generateSpeech()` call across every supported provider.
 - **Streaming** — `streamSpeech()` returns a standard `ReadableStream<Uint8Array>`.
-- **Conversations** — `generateConversation()` produces multi-speaker audio, picking a gateway, native-dialogue, or local-stitch path automatically.
+- **Conversations** — `generateConversation()` produces multi-speaker audio, picking a native-dialogue or local-stitch path automatically.
 - **Word-level timestamps** — `timestamps: true` returns alignment, using the provider's native data or falling back to STT.
 - **Volume normalization** — RMS-level outputs to an absolute loudness target.
 - **Audio tags & voice cloning** — bracket cues like `[laugh]` and reference-audio cloning where supported.
@@ -81,29 +81,26 @@ const result = await generateSpeech({
 
 Models that accept this field declare the `instructions` feature. Passing non-empty instructions to an unsupported direct model throws `InstructionsUnsupportedError` before synthesis. Existing `text`-only calls and provider-specific `providerOptions` are unchanged.
 
-## Gateway vs direct provider
+## Model string vs factory
 
-The SDK has two ways to reach a provider, and the choice is made by **how you pass `model`**:
+Every call goes straight to the provider's own API. The two ways to name a model differ only in how much you configure:
 
 ```ts
-// 1. String → routes through Speech Gateway (https://api.speechbase.ai)
-//    Needs SPEECHBASE_API_KEY (sign up at https://speechbase.ai).
+// 1. String → "<provider>/<model>", resolved to that provider with default config.
+//    Reads the provider's env var (e.g. OPENAI_API_KEY), or pass apiKey to the call.
 await generateSpeech({ model: 'openai/gpt-4o-mini-tts', text: '...', voice: 'alloy' });
 
-// 2. Factory → calls the provider directly (no proxy hop)
-//    Reads the provider's env var (e.g. OPENAI_API_KEY), or pass apiKey to the factory.
+// 2. Factory → same provider, plus baseURL / fetch / fallbackSTT and other config.
 import { createOpenAI } from '@speech-sdk/core/providers';
 await generateSpeech({ model: createOpenAI()('gpt-4o-mini-tts'), text: '...', voice: 'alloy' });
 ```
 
-| | Speech Gateway (string) | Direct provider (factory) |
+| | String | Factory |
 |---|---|---|
-| When to use | You want a single endpoint and easy provider swaps | You already have provider keys, want zero-hop latency, or need provider features the gateway hasn't surfaced |
-| Setup | `SPEECHBASE_API_KEY` only | One env var per provider you use |
-| Key resolution | `apiKey` option → `SPEECHBASE_API_KEY` → `SPEECH_GATEWAY_API_KEY` (legacy) | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
-| Endpoint | `api.speechbase.ai` | Provider's own API |
+| When to use | The common case — one key per provider, nothing to configure | You need a custom `baseURL`, a custom `fetch`, an STT fallback, or several differently-configured instances of one provider |
+| Key resolution | `apiKey` option → `<PROVIDER>_API_KEY` | `createX({ apiKey })` → `<PROVIDER>_API_KEY` |
 
-The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want to construct it explicitly (e.g. for a custom proxy URL).
+A bare provider id (`'openai'`) uses that provider's default model. An unrecognized prefix throws before any request is made.
 
 ## Supported providers
 
@@ -126,7 +123,7 @@ The gateway also accepts `createSpeechGateway({ apiKey, baseURL })` if you want 
 | [MiniMax](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | `minimax` | `MINIMAX_API_KEY` |
 | [Speechify](https://docs.speechify.ai) ([voice IDs](https://docs.speechify.ai/build/api-reference/v1/voices/get)) | `speechify` | `SPEECHIFY_API_KEY` |
 
-The env var applies when you call the provider directly via its factory. Pass a string `model` like `"openai/tts-1"` to route through Speech Gateway instead, which reads `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) — see [Gateway vs direct provider](#gateway-vs-direct-provider). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
+The prefix is what a string `model` like `"openai/tts-1"` resolves to, and the env var supplies the key for both the string and factory forms — see [Model string vs factory](#model-string-vs-factory). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 
@@ -154,11 +151,8 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 
 `generateConversation()` produces a single multi-voice clip from an ordered array of turns. The path is chosen by what the turns are:
 
-- **Gateway** — every turn uses a gateway-routed string model (e.g. `"openai/tts-1"`). One request to Speech Gateway; the server handles rendering, stitching, and normalization. The SDK never stitches locally on this path — clone voices on gateway models throw `StitchUnsupportedError`.
-- **Native dialogue** — every turn uses the same direct-provider model and that model exposes a multi-speaker endpoint. One API call, naturally mixed.
-- **Stitch** — direct-provider conversations that don't qualify for native dialogue (multi-provider, or no dialogue endpoint). Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
-
-Mixing gateway-routed turns with direct-provider turns in one call throws `MixedDispatchError`.
+- **Native dialogue** — every turn uses the same model and that model exposes a multi-speaker endpoint. One API call, naturally mixed.
+- **Stitch** — conversations that don't qualify for native dialogue (multi-provider, or no dialogue endpoint). Runs turns in parallel, RMS-levels each, inserts silence, returns a single WAV.
 
 ```ts
 import { generateConversation } from '@speech-sdk/core';
@@ -172,7 +166,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native and gateway dialogue keep them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
 ## Timestamps
 
@@ -201,9 +195,9 @@ Returned timestamps are projected onto the exact text synthesized by the SDK: ca
 | `true` | Returns validated word timestamps. Native models use their own timestamps. Direct models without native timestamps require `timestampProvider` (or a legacy factory-level `fallbackSTT`). |
 | `false` *(default)* | Never requests, derives, or returns timestamps. |
 
-`timestampProvider` is used for direct models without native timestamps and as a fallback when direct native timestamps fail validation. It remains a no-op for gateway-routed string models, where the gateway owns timestamp generation. Missing internal caller-word boundaries inside an otherwise valid pronunciation edit span are interpolated, and those results include a warning.
+`timestampProvider` is used for models without native timestamps and as a fallback when native timestamps fail validation. Missing internal caller-word boundaries inside an otherwise valid pronunciation edit span are interpolated, and those results include a warning.
 
-On direct paths, timestamps never fail synthesis. When the SDK chunks a long input, forced alignment runs per synthesis chunk and the timings are concatenated with the stitch offsets; alignment is skipped entirely for inputs below a few words, where it cannot succeed and is not needed. If timings are still empty or fail transcript validation, the SDK distributes the words evenly across the measured audio duration (a single span for one word) instead of throwing. `metadata.timestampsSource` reports how the returned timings were produced: `'native'`, `'aligned'`, or `'estimated'`. Gateway-routed calls are unchanged — the gateway server owns its timestamp contract, so its failures surface as `TimestampValidationError`.
+Timestamps never fail synthesis. When the SDK chunks a long input, forced alignment runs per synthesis chunk and the timings are concatenated with the stitch offsets; alignment is skipped entirely for inputs below a few words, where it cannot succeed and is not needed. If timings are still empty or fail transcript validation, the SDK distributes the words evenly across the measured audio duration (a single span for one word) instead of throwing. `metadata.timestampsSource` reports how the returned timings were produced: `'native'`, `'aligned'`, or `'estimated'`.
 
 There is no implicit OpenAI fallback. Existing factory-level `fallbackSTT` configuration remains supported for compatibility, but new integrations should use the narrower `timestampProvider` interface.
 
@@ -312,8 +306,8 @@ result.audio.mediaType;  // "audio/wav" — re-encoded after normalization
 
 ### Output format
 
-By default, `generateSpeech` preserves the provider or gateway response format.
-`generateConversation` returns WAV when the SDK stitches direct-provider audio.
+By default, `generateSpeech` preserves the provider response format.
+`generateConversation` returns WAV when the SDK stitches the turns.
 
 Pass `output` to request a specific final format:
 
@@ -330,9 +324,7 @@ result.audio.mediaType; // "audio/mpeg"
 
 Supported explicit formats are `wav`, `mp3`, and `pcm`.
 
-For direct providers, the SDK first asks each provider whether it can natively produce the requested format. If yes, the provider returns it directly and the SDK passes the bytes through unchanged. If the provider can return WAV/PCM but not the requested format (e.g. ElevenLabs has no native WAV output, Cartesia has no native MP3), the SDK requests a decodable format and converts via mediabunny. The SDK never decodes compressed audio (mp3/opus/aac) — providers must return wav/pcm for any local conversion to succeed.
-
-For gateway models, the SDK forwards `output` to the gateway API unchanged.
+The SDK first asks each provider whether it can natively produce the requested format. If yes, the provider returns it directly and the SDK passes the bytes through unchanged. If the provider can return WAV/PCM but not the requested format (e.g. ElevenLabs has no native WAV output, Cartesia has no native MP3), the SDK requests a decodable format and converts via mediabunny. The SDK never decodes compressed audio (mp3/opus/aac) — providers must return wav/pcm for any local conversion to succeed.
 
 MP3 encoding uses [`@mediabunny/mp3-encoder`](https://mediabunny.dev/guide/extensions/mp3-encoder), loaded dynamically only when MP3 output is requested and the host environment does not already provide native MP3 encoding.
 
@@ -356,7 +348,7 @@ Customize how specific words are pronounced. Rules are applied as text substitut
 import { generateSpeech } from '@speech-sdk/core';
 
 await generateSpeech({
-  model: 'openai/tts-1', // gateway path; or use createOpenAI()(...)
+  model: 'openai/tts-1', // or createOpenAI()('tts-1')
   voice: 'alloy',
   text: 'What is LLM?',
   pronunciations: {
@@ -473,7 +465,6 @@ import {
   createCartesia,
   createGradium,
   createSpeechify,
-  createSpeechGateway,
 } from '@speech-sdk/core/providers';
 ```
 

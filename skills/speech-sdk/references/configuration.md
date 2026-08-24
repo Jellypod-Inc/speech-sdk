@@ -1,6 +1,6 @@
 # Configuration
 
-String models read `SPEECHBASE_API_KEY` (falling back to the legacy `SPEECH_GATEWAY_API_KEY`) from the environment. Factory models call upstream providers directly with provider-specific keys, base URLs, or fetch implementations.
+String models (`"provider/model"`) resolve to that provider and read its own env var (e.g. `OPENAI_API_KEY`) unless you pass `apiKey`. Factory models reach the same providers but let you set provider-specific keys, base URLs, or fetch implementations.
 
 ## String Models
 
@@ -9,7 +9,7 @@ await generateSpeech({
   model: "provider/model",
   text: "Hello!",
   voice: "voice-id",
-  apiKey: process.env.SPEECHBASE_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
   timestamps: true,
   volumeDbfs: -20,
 })
@@ -44,7 +44,7 @@ Each factory accepts a config object with these common fields:
 - `fetch` — custom fetch implementation
 - `fallbackSTT` — resolved STT model (from `<otherFactory>().stt(...)`) used when `timestamps: true` and the chosen TTS model has no native alignment
 
-The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config. Factories: `createOpenAI`, `createElevenLabs`, `createDeepgram`, `createCartesia`, `createHume`, `createGoogle`, `createFishAudio`, `createGradium`, `createInworld`, `createMurf`, `createResemble`, `createFal`, `createMistral`, `createXai`, `createSmallestAI`, `createSpeechGateway`.
+The exact set of factories (and any provider-specific config) is exported from `@speech-sdk/core/providers`. See `providers/<name>.md` for each provider's factory name and any provider-specific config. Factories: `createOpenAI`, `createElevenLabs`, `createDeepgram`, `createCartesia`, `createHume`, `createGoogle`, `createFishAudio`, `createGradium`, `createInworld`, `createMurf`, `createResemble`, `createFal`, `createMistral`, `createXai`, `createSmallestAI`, `createSpeechify`.
 
 ## Request Options
 
@@ -59,7 +59,7 @@ The exact set of factories (and any provider-specific config) is exported from `
 - `volumeDbfs` — RMS target loudness (≤ 0)
 - `timestamps` — boolean, default `false`
 - `pronunciations` — `{ rules }`
-- `maxInputChars` — override per-model chunk threshold (direct path only; ignored on the gateway)
+- `maxInputChars` — override per-model chunk threshold
 - `maxConcurrency` — chunk request parallelism on the auto-chunking path (default 6, direct path only)
 - `maxRetries` — default 2; retries 5xx, 429 (honors `Retry-After`), and network only
 - `apiKey`
@@ -104,7 +104,7 @@ await generateSpeech({
 
 ### Retries
 
-Retries 5xx, 429, and network errors with exponential backoff. 429 honors `Retry-After`. 501 is treated as terminal (gateway uses it for "this capability will never work for this model"). 4xx other than 429 are not retried. Default: 2.
+Retries 5xx, 429, and network errors with exponential backoff. 429 honors `Retry-After`. 501 is treated as terminal ("this capability will never work for this model"). 4xx other than 429 are not retried. Default: 2.
 
 ```ts
 await generateSpeech({ ..., maxRetries: 5 })

@@ -5,7 +5,6 @@ import {
   TextChunkingUnsupportedError,
 } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
-import { createSpeechGateway } from "../providers/gateway/index.js";
 import { OpenAISpeechProvider } from "../providers/openai/index.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
@@ -244,56 +243,6 @@ describe("generateSpeech", () => {
     expect(provider.generate).toHaveBeenCalledWith(
       expect.objectContaining({ text: "First sentence. Second sentence." })
     );
-  });
-
-  it("does not chunk gateway-routed calls when maxInputChars is provided", async () => {
-    const fetchFn = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ "content-type": "audio/mpeg" }),
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-    });
-    const gateway = createSpeechGateway({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    await generateSpeech({
-      model: gateway("openai/tts-1"),
-      text: "First sentence. Second sentence.",
-      voice: "alloy",
-      maxInputChars: 16,
-    });
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-    const [, init] = fetchFn.mock.calls[0];
-    expect(JSON.parse(init.body)).toEqual({
-      model: "openai/tts-1",
-      voice: "alloy",
-      text: "First sentence. Second sentence.",
-    });
-  });
-
-  it("does not validate ignored gateway maxInputChars values", async () => {
-    const fetchFn = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ "content-type": "audio/mpeg" }),
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-    });
-    const gateway = createSpeechGateway({
-      apiKey: "gw-key",
-      fetch: fetchFn as unknown as typeof globalThis.fetch,
-    });
-
-    await generateSpeech({
-      model: gateway("openai/tts-1"),
-      text: "First sentence. Second sentence.",
-      voice: "alloy",
-      maxInputChars: Number.NaN,
-    });
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
   it("throws when chunking is required but the provider cannot stitch chunks", async () => {
@@ -831,16 +780,12 @@ describe("generateSpeech", () => {
     }
   });
 
-  it("routes string models through the speech gateway with apiKey as bearer", async () => {
+  it("routes string models straight to the provider with apiKey as bearer", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "content-type": "application/json" }),
-      json: async () => ({
-        audio: btoa("\x01\x02\x03"),
-        mediaType: "audio/mpeg",
-        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
-      }),
+      headers: new Headers({ "content-type": "audio/mpeg" }),
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     });
 
     const savedFetch = globalThis.fetch;
@@ -850,59 +795,17 @@ describe("generateSpeech", () => {
         model: "openai/tts-1",
         text: "Hello",
         voice: "alloy",
-        apiKey: "gw-custom-key",
-        timestamps: true,
+        apiKey: "sk-custom-key",
       });
 
       expect(result.audio).toBeDefined();
       const [url, init] = mockFetch.mock.calls[0];
-      expect(url).toBe(
-        "https://api.speechbase.ai/v1/audio/speech/with-timestamps"
-      );
-      expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
+      expect(url).toBe("https://api.openai.com/v1/audio/speech");
+      expect(init.headers.Authorization).toBe("Bearer sk-custom-key");
       const body = JSON.parse(init.body);
-      expect(body).toEqual({
-        model: "openai/tts-1",
-        voice: "alloy",
-        text: "Hello",
-      });
-    } finally {
-      globalThis.fetch = savedFetch;
-    }
-  });
-
-  it("passes volumeDbfs through to the speech gateway instead of normalizing locally", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ "content-type": "application/json" }),
-      json: async () => ({
-        audio: btoa("\x01\x02\x03"),
-        mediaType: "audio/mpeg",
-        timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
-      }),
-    });
-
-    const savedFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch as typeof globalThis.fetch;
-    try {
-      const result = await generateSpeech({
-        model: "openai/tts-1",
-        text: "Hello",
-        voice: "alloy",
-        apiKey: "gw-custom-key",
-        volumeDbfs: -20,
-        timestamps: true,
-      });
-
-      expect(result.audio.mediaType).toBe("audio/mpeg");
-      const [, init] = mockFetch.mock.calls[0];
-      expect(JSON.parse(init.body)).toEqual({
-        model: "openai/tts-1",
-        voice: "alloy",
-        text: "Hello",
-        volumeDbfs: -20,
-      });
+      expect(body.model).toBe("tts-1");
+      expect(body.input).toBe("Hello");
+      expect(body.voice).toBe("alloy");
     } finally {
       globalThis.fetch = savedFetch;
     }
@@ -941,7 +844,7 @@ describe("generateSpeech", () => {
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
-  it("does not retry gateway 401 responses", async () => {
+  it("does not retry provider 401 responses", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -957,7 +860,7 @@ describe("generateSpeech", () => {
           model: "openai/tts-1",
           text: "Hello",
           voice: "alloy",
-          apiKey: "bad-gw-key",
+          apiKey: "bad-key",
           maxRetries: 2,
         })
       ).rejects.toMatchObject({
@@ -971,7 +874,7 @@ describe("generateSpeech", () => {
   });
 
   it("does not retry on 501 Not Implemented", async () => {
-    // 501 = gateway's "this capability will never work" signal; retrying wastes round-trips.
+    // 501 signals "this capability will never work"; retrying wastes round-trips.
     const error = new ApiError("Not implemented", {
       statusCode: 501,
       code: "timestamps_unsupported",

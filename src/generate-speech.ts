@@ -24,11 +24,9 @@ import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, PronunciationsInput } from "./pronunciations/types.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
-  isSpeechGatewayModel,
   modelMaxInputChars,
   type ResolvedModel,
   type SpeechProvider,
@@ -99,7 +97,6 @@ export async function generateSpeech<
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
-  const isGateway = isSpeechGatewayModel(resolved);
 
   const { canonicalText, providerText, warnings } = preprocessSpeechText({
     resolved,
@@ -130,7 +127,7 @@ export async function generateSpeech<
   let textToSend = providerText;
   let synthesizedCanonicalText = canonicalText;
   let pronunciationEdits: readonly Edit[] = [];
-  if (!isGateway && options.pronunciations?.rules?.length) {
+  if (options.pronunciations?.rules?.length) {
     const ruleMap = mergeRules(options.pronunciations.rules);
     textToSend = substitute(providerText, ruleMap).text;
     const canonicalSubstitution = substitute(canonicalText, ruleMap);
@@ -141,7 +138,6 @@ export async function generateSpeech<
   const { maxInputChars, shouldChunk, textChunks } = resolveTextChunks({
     resolved,
     modelIdentifier,
-    isGateway,
     processedText: textToSend,
     instructions,
     userMaxInputChars: options.maxInputChars,
@@ -150,7 +146,6 @@ export async function generateSpeech<
   const { providerOptions, stitchOptions } =
     resolveProviderOptionsForLocalDecoding({
       resolved,
-      isGateway,
       modelIdentifier,
       volumeDbfs,
       output: options.output,
@@ -158,7 +153,7 @@ export async function generateSpeech<
       maxInputChars,
       shouldChunk,
       // Time-stretching needs decodable PCM/WAV input — request the stitch wire format from the provider.
-      needsDecodableInput: !isGateway && isSpeedActive(speed),
+      needsDecodableInput: isSpeedActive(speed),
     });
 
   const shouldRequestNative = timestampAlignment.includeNative;
@@ -216,16 +211,12 @@ export async function generateSpeech<
     );
   }
 
-  // Gateway already applied speed server-side; only apply locally for direct paths.
-  const localSpeed = isGateway ? undefined : speed;
-
   const stretched = await finalizeSpeechAudio({
     audioData,
     resultMediaType: result.mediaType,
-    isGateway,
     volumeDbfs,
     output: options.output,
-    speed: localSpeed,
+    speed,
   });
 
   const audio = new DefaultGeneratedAudioFile({
@@ -238,8 +229,7 @@ export async function generateSpeech<
     stretched.mediaType
   );
   const audioDurationMs =
-    computedDuration ??
-    maybeScaleDurationMs(result.audioDurationMs, localSpeed);
+    computedDuration ?? maybeScaleDurationMs(result.audioDurationMs, speed);
 
   const publicAlignment = await timestampAlignment.resolve({
     audio: audio.uint8Array,
@@ -250,8 +240,7 @@ export async function generateSpeech<
     originalText: canonicalText,
     pronunciationEdits,
     providerTimestamps: result.timestamps,
-    // localSpeed is undefined on the gateway path, whose timestamps arrive already scaled.
-    speed: localSpeed,
+    speed,
     synthesizedText: synthesizedCanonicalText,
     abortSignal,
   });
@@ -294,7 +283,6 @@ function mergeWarnings(
 function resolveTextChunks(args: {
   resolved: ResolvedModel;
   modelIdentifier: string;
-  isGateway: boolean;
   processedText: string;
   instructions: string | undefined;
   userMaxInputChars: number | undefined;
@@ -303,19 +291,6 @@ function resolveTextChunks(args: {
   shouldChunk: boolean;
   textChunks: readonly string[];
 } {
-  if (args.isGateway) {
-    if (args.userMaxInputChars != null) {
-      debug(
-        `${args.modelIdentifier}: maxInputChars is not applied on the speech gateway path; the gateway server owns request processing.`
-      );
-    }
-    return {
-      maxInputChars: undefined,
-      shouldChunk: false,
-      textChunks: [args.processedText],
-    };
-  }
-
   const maxInputCharsResolution = resolveMaxInputChars({
     providerMaxInputChars: modelMaxInputChars(args.resolved, {
       instructions: args.instructions,
@@ -364,31 +339,16 @@ async function generateProviderSpeech<V extends Voice>(args: {
 }): Promise<ProviderGenerateResult> {
   return await pRetry(
     () =>
-      isSpeechGatewayModel(args.resolved)
-        ? (args.resolved.provider as SpeechGatewayProvider).generate({
-            modelId: args.resolved.modelId,
-            text: args.text,
-            ...(args.instructions && { instructions: args.instructions }),
-            voice: args.voice as unknown as string,
-            providerOptions: args.providerOptions,
-            abortSignal: args.abortSignal,
-            headers: args.headers,
-            includeTimestamps: args.includeTimestamps,
-            volumeDbfs: args.volumeDbfs,
-            output: args.output,
-            pronunciations: args.pronunciations,
-            speed: args.speed,
-          })
-        : args.resolved.provider.generate({
-            modelId: args.resolved.modelId,
-            text: args.text,
-            ...(args.instructions && { instructions: args.instructions }),
-            voice: args.voice,
-            providerOptions: args.providerOptions,
-            abortSignal: args.abortSignal,
-            headers: args.headers,
-            includeTimestamps: args.includeTimestamps,
-          }),
+      args.resolved.provider.generate({
+        modelId: args.resolved.modelId,
+        text: args.text,
+        ...(args.instructions && { instructions: args.instructions }),
+        voice: args.voice,
+        providerOptions: args.providerOptions,
+        abortSignal: args.abortSignal,
+        headers: args.headers,
+        includeTimestamps: args.includeTimestamps,
+      }),
     buildRetryOptions({
       maxRetries: args.maxRetries,
       abortSignal: args.abortSignal,
@@ -534,7 +494,6 @@ function mergeChunkTimestamps(
 
 function resolveProviderOptionsForLocalDecoding(args: {
   resolved: ResolvedModel;
-  isGateway: boolean;
   modelIdentifier: string;
   volumeDbfs: number | undefined;
   output: AudioOutput | undefined;
@@ -546,10 +505,6 @@ function resolveProviderOptionsForLocalDecoding(args: {
   providerOptions: Record<string, unknown> | undefined;
   stitchOptions: StitchTurnOptions | undefined;
 } {
-  if (args.isGateway) {
-    return { providerOptions: args.callerOptions, stitchOptions: undefined };
-  }
-
   const needsStitchWireFormat =
     args.volumeDbfs != null || args.shouldChunk || args.needsDecodableInput;
 
@@ -664,7 +619,6 @@ function maybeScaleDurationMs(
 async function finalizeSpeechAudio(args: {
   readonly audioData: string | Uint8Array;
   readonly resultMediaType: string;
-  readonly isGateway: boolean;
   readonly volumeDbfs: number | undefined;
   readonly output: AudioOutput | undefined;
   readonly speed: number | undefined;
@@ -673,14 +627,12 @@ async function finalizeSpeechAudio(args: {
   // we'd encode to `output` here and then decode/re-encode in the stretch step,
   // a wasteful round-trip that loses quality on lossy formats.
   const preStretchOutput = isSpeedActive(args.speed) ? undefined : args.output;
-  const postProcessed = args.isGateway
-    ? { bytes: args.audioData, mediaType: args.resultMediaType }
-    : await applyLocalAudioPostProcessing({
-        audio: args.audioData,
-        mediaType: args.resultMediaType,
-        volumeDbfs: args.volumeDbfs,
-        output: preStretchOutput,
-      });
+  const postProcessed = await applyLocalAudioPostProcessing({
+    audio: args.audioData,
+    mediaType: args.resultMediaType,
+    volumeDbfs: args.volumeDbfs,
+    output: preStretchOutput,
+  });
 
   const postProcessedBytes = new DefaultGeneratedAudioFile({
     data: postProcessed.bytes,

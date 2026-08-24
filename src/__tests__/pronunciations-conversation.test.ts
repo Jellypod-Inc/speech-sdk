@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateConversation } from "../generate-conversation.js";
-import { createSpeechGateway } from "../providers/gateway/index.js";
 
 describe("generateConversation with pronunciations (native dialogue path)", () => {
   it("substitutes each turn's text before native dispatch and inverse-aligns combined timestamps", async () => {
@@ -231,59 +230,5 @@ describe("generateConversation with pronunciations (stitch path)", () => {
     expect(result.warnings).toEqual([
       "speech-sdk: pronunciation projection estimated one or more word boundaries.",
     ]);
-  });
-});
-
-describe("generateConversation with pronunciations (gateway path)", () => {
-  it("passes pronunciations into the gateway conversation body", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          audio: Buffer.from(new Uint8Array([1])).toString("base64"),
-          mediaType: "audio/wav",
-          timestamps: [],
-          warnings: [],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
-    );
-    const gw = createSpeechGateway({ apiKey: "test", fetch: fetchSpy });
-    await generateConversation({
-      model: gw("openai/tts-1"),
-      turns: [
-        { text: "T1", voice: "alloy" },
-        { text: "T2", voice: "echo" },
-      ],
-      pronunciations: { rules: [{ word: "T1", replacement: "tee one" }] },
-    });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
-    expect(body.pronunciations).toEqual({
-      rules: [{ word: "T1", replacement: "tee one" }],
-    });
-  });
-
-  it("is a no-op when pronunciations is undefined (gateway path)", async () => {
-    const fetchSpy = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          audio: Buffer.from(new Uint8Array([1])).toString("base64"),
-          mediaType: "audio/wav",
-          timestamps: [],
-          warnings: [],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
-    );
-    const gw = createSpeechGateway({ apiKey: "test", fetch: fetchSpy });
-    await generateConversation({
-      model: gw("openai/tts-1"),
-      turns: [
-        { text: "T1", voice: "alloy" },
-        { text: "T2", voice: "echo" },
-      ],
-    });
-    const body = JSON.parse(fetchSpy.mock.calls[0][1].body as string);
-    expect("pronunciations" in body).toBe(false);
   });
 });

@@ -82,7 +82,7 @@ function parseErrorBody(body: string | undefined): {
   }
 }
 
-// 501 is terminal — gateway uses it for "capability will never work" (e.g. timestamps_unsupported).
+// 501 is terminal — it signals "capability will never work" (e.g. timestamps_unsupported).
 // 429 retry honors Retry-After in retry-options.ts (RFC 7231 §7.1.3).
 export function isRetriableApiError(error: ApiError): boolean {
   if (error instanceof SpeechSdkProviderError) {

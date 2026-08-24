@@ -121,7 +121,7 @@ describe("streamSpeech", () => {
     expect(streamFn).toHaveBeenCalledTimes(1);
   });
 
-  it("streams string models through the speech gateway with apiKey as bearer", async () => {
+  it("streams string models straight to the provider with apiKey as bearer", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -141,7 +141,7 @@ describe("streamSpeech", () => {
 
       expect(result.mediaType).toBe("audio/mpeg");
       const [url, init] = mockFetch.mock.calls[0];
-      expect(url).toBe("https://api.speechbase.ai/v1/audio/speech/stream");
+      expect(url).toBe("https://api.openai.com/v1/audio/speech");
       expect(init.headers.Authorization).toBe("Bearer gw-custom-key");
     } finally {
       globalThis.fetch = savedFetch;

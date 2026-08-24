@@ -1,11 +1,10 @@
 import { type AudioOutput, sampleRateHintFrom } from "../audio-output.js";
-import {
-  isSpeechGatewayModel,
-  type ResolvedModel,
-  type StitchTurnOptions,
-  type Voice,
+import type {
+  ResolvedModel,
+  StitchTurnOptions,
+  Voice,
 } from "../speech-provider.js";
-import { MixedDispatchError, StitchUnsupportedError } from "./errors.js";
+import { StitchUnsupportedError } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyer } from "./validate.js";
 
@@ -16,7 +15,6 @@ export type StitchFallbackReason =
   | "fallback-from-native-voice-count-exceeded";
 
 export type ConversationPath =
-  | { kind: "gateway"; resolvedPerTurn: readonly ResolvedModel<Voice>[] }
   | {
       kind: "native";
       resolved: ResolvedModel<Voice>;
@@ -39,16 +37,6 @@ export function chooseConversationPath(input: {
 }): ConversationPath {
   const { forceStitch = false, resolvedPerTurn, turns, output } = input;
   const sampleRateHint = sampleRateHintFrom(output);
-
-  // Gateway and direct-provider routing can't be combined in one conversation — no coherent ordering/stitching exists across both paths.
-  const gatewayCount = resolvedPerTurn.filter(isSpeechGatewayModel).length;
-  if (gatewayCount > 0 && gatewayCount < resolvedPerTurn.length) {
-    throw new MixedDispatchError();
-  }
-
-  if (gatewayCount === resolvedPerTurn.length) {
-    return { kind: "gateway", resolvedPerTurn };
-  }
 
   // Compare by provider instance reference so two factories with different apiKey/baseURL/fetch configs aren't silently merged.
   const first = resolvedPerTurn[0];

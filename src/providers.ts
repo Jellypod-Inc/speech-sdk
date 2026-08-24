@@ -9,8 +9,6 @@ export type { FalSpeechProviderConfig } from "./providers/fal/index.js";
 export { createFal } from "./providers/fal/index.js";
 export type { FishAudioSpeechProviderConfig } from "./providers/fish-audio/index.js";
 export { createFishAudio } from "./providers/fish-audio/index.js";
-export type { SpeechGatewayProviderConfig } from "./providers/gateway/index.js";
-export { createSpeechGateway } from "./providers/gateway/index.js";
 export type { GoogleSpeechProviderConfig } from "./providers/google/index.js";
 export { createGoogle } from "./providers/google/index.js";
 export type { GradiumSpeechProviderConfig } from "./providers/gradium/index.js";

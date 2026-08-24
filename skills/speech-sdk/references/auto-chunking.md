@@ -61,10 +61,6 @@ If `output: { format }` was requested, conversion to the final container happens
 
 Chunking requires the provider/model to expose decodable PCM/WAV (so the SDK can decode each chunk before stitching). Models that only emit opaque compressed audio throw `TextChunkingUnsupportedError` when input exceeds `maxInputChars`.
 
-## Gateway
-
-The gateway path ignores `maxInputChars` and `maxConcurrency` — the gateway server owns request processing and does its own chunking server-side. Passing them with a `provider/model` string is a no-op (debug-logged).
-
 ## Streaming
 
 `streamSpeech` does not chunk; the request goes out as a single call. Use `generateSpeech` if you need auto-chunking.

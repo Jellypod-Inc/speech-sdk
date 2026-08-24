@@ -39,12 +39,3 @@ export class StitchUnsupportedError extends SpeechSDKError {
     this.model = options.model;
   }
 }
-
-export class MixedDispatchError extends SpeechSDKError {
-  constructor() {
-    super(
-      'generateConversation: cannot mix gateway-routed models (e.g. "openai/tts-1") with direct-provider models in a single conversation. All turns must route through the gateway, or all turns must use direct providers.'
-    );
-    this.name = "MixedDispatchError";
-  }
-}

@@ -22,6 +22,8 @@ const SMALLEST_TTS_MODEL_PATH = "lightning-v3.1";
 // model-agnostic endpoint (defaults to and recommends lightning-v3.1).
 const SMALLEST_CLONE_PATH = "voice-cloning";
 
+export const SMALLEST_AI_PROVIDER_ID = "smallest-ai" as const;
+
 export interface SmallestAISpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
@@ -31,7 +33,7 @@ export interface SmallestAISpeechProviderConfig {
 export class SmallestAISpeechProvider
   implements SpeechProvider<string, string>
 {
-  readonly id = "smallest-ai";
+  readonly id = SMALLEST_AI_PROVIDER_ID;
   readonly defaultModel = "lightning_v3.1";
 
   readonly models = [

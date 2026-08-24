@@ -1,6 +1,6 @@
 # All Providers
 
-SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<prefix>/<model>"`) read `SPEECHBASE_API_KEY` (or the legacy `SPEECH_GATEWAY_API_KEY`) and dispatch to the hosted backend. Provider factories (`create<Name>()`) call upstream providers directly with provider-specific keys. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. Some providers have no default and require an explicit model path.
+SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<prefix>/<model>"`) resolve to that provider and read its own env var from the table below. Provider factories (`create<Name>()`) reach the same providers with explicit per-provider config. Passing just `"<prefix>"` (no `/model`) uses each provider's current default — see `providers/<name>.md` for what that resolves to. Some providers have no default and require an explicit model path.
 
 ## Provider Table
 
@@ -88,4 +88,4 @@ await generateSpeech({
 
 ## API Key Resolution
 
-String models read `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`) or use the `apiKey` option. Direct factory models read the upstream provider env var in the table above, or use the factory's `apiKey` config. See `configuration.md`.
+String models read the upstream provider env var in the table above, or use the call's `apiKey` option. Factory models read the same env var, or use the factory's `apiKey` config. See `configuration.md`.

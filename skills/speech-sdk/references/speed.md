@@ -15,9 +15,8 @@ const result = await generateSpeech({
 
 ## How it works
 
-- **Direct providers** — the SDK requests a decodable wire format from the provider, decodes the audio, time-stretches in PCM, and re-encodes (preserving `output.format` if set, else mp3 by default — chosen so that callers who only set `speed` get the same container they'd get without speed).
-- **Gateway** — `speed` is forwarded on the wire and the gateway server time-stretches server-side. The SDK does not reapply locally.
-- **Mono only** — direct-path stretching processes mono PCM. Most TTS providers emit mono, so this is rarely a constraint.
+- **All providers** — the SDK requests a decodable wire format from the provider, decodes the audio, time-stretches in PCM, and re-encodes (preserving `output.format` if set, else mp3 by default — chosen so that callers who only set `speed` get the same container they'd get without speed).
+- **Mono only** — stretching processes mono PCM. Most TTS providers emit mono, so this is rarely a constraint.
 
 ## Timestamps and Duration
 

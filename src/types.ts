@@ -30,7 +30,6 @@ export type { DeepgramSpeechProviderConfig } from "./providers/deepgram/index.js
 export type { ElevenLabsSpeechProviderConfig } from "./providers/elevenlabs/index.js";
 export type { FalSpeechProviderConfig } from "./providers/fal/index.js";
 export type { FishAudioSpeechProviderConfig } from "./providers/fish-audio/index.js";
-export type { SpeechGatewayProviderConfig } from "./providers/gateway/index.js";
 export type { GoogleSpeechProviderConfig } from "./providers/google/index.js";
 export type { GradiumSpeechProviderConfig } from "./providers/gradium/index.js";
 export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
@@ -77,7 +76,7 @@ export interface GenerateSpeechOptions<
   headers?: Record<string, string>;
   /** Non-spoken delivery direction. The selected model must declare instruction support. */
   instructions?: string;
-  // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck). Ignored on the gateway path — the gateway server owns request processing.
+  // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck).
   maxConcurrency?: number;
   maxInputChars?: number;
   maxRetries?: number;

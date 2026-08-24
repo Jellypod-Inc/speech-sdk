@@ -3,7 +3,7 @@ import {
   stripAudioTags,
   textWithoutAudioTags,
 } from "./audio-tags.js";
-import { isSpeechGatewayModel, type ResolvedModel } from "./speech-provider.js";
+import type { ResolvedModel } from "./speech-provider.js";
 
 export interface PreprocessedSpeechText {
   readonly canonicalText: string;
@@ -17,15 +17,6 @@ export function preprocessSpeechText(args: {
   readonly resolved: ResolvedModel;
 }): PreprocessedSpeechText {
   const canonicalText = textWithoutAudioTags(args.rawText);
-
-  // The gateway owns cue serialization; the SDK retains cue-free text for exact response validation.
-  if (isSpeechGatewayModel(args.resolved)) {
-    return {
-      canonicalText,
-      providerText: args.rawText,
-      warnings: [],
-    };
-  }
 
   if (args.resolved.provider.processAudioTags) {
     const processed = args.resolved.provider.processAudioTags(

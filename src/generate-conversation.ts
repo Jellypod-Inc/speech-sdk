@@ -40,11 +40,9 @@ import {
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { Edit, Pronunciation } from "./pronunciations/types.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
-  isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
   modelMaxInputChars,
   type ResolvedModel,
@@ -68,7 +66,6 @@ import type { ConversationWordTimestamp, WordTimestamp } from "./timestamps.js";
 export {
   ConversationInputError,
   DialogueConstraintError,
-  MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
 export type {
@@ -201,15 +198,6 @@ export async function generateConversation<
     output: options.output,
   });
 
-  if (path.kind === "gateway") {
-    // Gateway handles top-level + per-turn speed server-side; no local stretch.
-    return await runGateway({
-      options,
-      resolvedPerTurn: path.resolvedPerTurn,
-      maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
-    });
-  }
-
   if (path.kind === "native") {
     return await applySpeedToConversationResult({
       result: await runNativeDispatch({
@@ -297,16 +285,10 @@ function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
   userMaxInputChars: number | undefined;
 }): boolean {
   let forceStitch = false;
-  let sawGatewayMaxOverride = false;
   const overrideLogs: string[] = [];
 
   for (let i = 0; i < args.resolvedPerTurn.length; i++) {
     const resolved = args.resolvedPerTurn[i];
-    if (isSpeechGatewayModel(resolved)) {
-      sawGatewayMaxOverride ||= args.userMaxInputChars != null;
-      continue;
-    }
-
     const resolution = resolveMaxInputChars({
       providerMaxInputChars: modelMaxInputChars(resolved),
       userMaxInputChars: args.userMaxInputChars,
@@ -327,11 +309,6 @@ function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
     }
   }
 
-  if (sawGatewayMaxOverride) {
-    debug(
-      "generateConversation: maxInputChars is not applied on the speech gateway path; the gateway server owns request processing."
-    );
-  }
   if (!forceStitch) {
     for (const message of overrideLogs) {
       debug(message);
@@ -339,132 +316,6 @@ function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
   }
 
   return forceStitch;
-}
-
-async function runGateway<V extends Voice>(args: {
-  options: GenerateConversationOptions<V>;
-  resolvedPerTurn: readonly ResolvedModel<V>[];
-  maxRetries: number;
-}): Promise<ConversationResult> {
-  const { options, resolvedPerTurn, maxRetries } = args;
-  const start = performance.now();
-
-  const provider = resolvedPerTurn[0]
-    .provider as unknown as SpeechGatewayProvider;
-
-  const includeTimestamps = options.timestamps ?? false;
-
-  // Pick wire shape: shared model when every turn resolved to the same modelId
-  // (covers both `options.model` and the case where every turn happened to
-  // resolve identically); per-turn model when they diverge.
-  const firstModelId = resolvedPerTurn[0].modelId;
-  const allSameModel = resolvedPerTurn.every((r) => r.modelId === firstModelId);
-
-  // Object-shaped voices aren't supported on the gateway conversation path.
-  const wireTurns = options.turns.map((t, i) => {
-    if (typeof t.voice !== "string") {
-      throw new Error(
-        `speech-gateway/conversation: gateway conversation path requires string voices; turns[${i}].voice is an object.`
-      );
-    }
-    return {
-      ...(allSameModel ? {} : { model: resolvedPerTurn[i].modelId }),
-      voice: t.voice,
-      text: t.text,
-      ...(nonEmptyInstructions(t.instructions) && {
-        instructions: t.instructions,
-      }),
-      ...(t.providerOptions && { providerOptions: t.providerOptions }),
-      ...(t.speed != null && { speed: t.speed }),
-    };
-  });
-
-  const result = await pRetry(
-    () =>
-      provider.generateConversation({
-        ...(allSameModel && { modelId: firstModelId }),
-        turns: wireTurns,
-        gapMs: options.gapMs ?? DEFAULT_GAP_MS,
-        volumeDbfs: options.volumeDbfs,
-        providerOptions: options.providerOptions,
-        speed: options.speed,
-        abortSignal: options.abortSignal,
-        headers: options.headers,
-        includeTimestamps,
-        output: options.output,
-        pronunciations: options.pronunciations,
-        instructions: nonEmptyInstructions(options.instructions),
-      }),
-    buildRetryOptions({ maxRetries, abortSignal: options.abortSignal })
-  );
-
-  const latencyMs = Math.round(performance.now() - start);
-
-  if (result.audio.length === 0) {
-    throw new NoSpeechGeneratedError(
-      `${describeConversationModels(resolvedPerTurn)}: gateway conversation returned empty audio.`
-    );
-  }
-
-  const audio = new DefaultGeneratedAudioFile({
-    data: result.audio,
-    mediaType: result.mediaType,
-  });
-  const audioDurationMs = await computeAudioDuration(
-    audio.uint8Array,
-    result.mediaType
-  );
-
-  const timestamps = includeTimestamps
-    ? finalizeGatewayConversationTimestamps({
-        audioDurationMs,
-        source: "speech-gateway/conversation",
-        timestamps: result.timestamps ?? [],
-        turnTexts: options.turns.map(
-          (turn) =>
-            preprocessSpeechText({
-              resolved: resolvedPerTurn[0],
-              rawText: turn.text,
-              modelIdentifier: "speech-gateway/conversation",
-            }).canonicalText
-        ),
-      })
-    : undefined;
-  const warnings = result.warnings;
-
-  const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
-
-  const metadata: SpeechMetadata = {
-    latencyMs,
-    inputChars,
-    ...(audioDurationMs != null && { audioDurationMs }),
-  };
-
-  return {
-    audio,
-    metadata,
-    ...(result.providerMetadata !== undefined && {
-      providerMetadata: result.providerMetadata,
-    }),
-    timestamps,
-    warnings: warnings && warnings.length > 0 ? warnings : undefined,
-  };
-}
-
-function finalizeGatewayConversationTimestamps(args: {
-  readonly audioDurationMs?: number;
-  readonly source: string;
-  readonly timestamps: readonly ConversationWordTimestamp[];
-  readonly turnTexts: readonly string[];
-}): readonly ConversationWordTimestamp[] {
-  return (
-    finalizeConversationTurnTimestamps({
-      audioDurationMs: args.audioDurationMs,
-      source: args.source,
-      timestamps: args.timestamps,
-      turnTexts: args.turnTexts,
-    }) ?? []
-  );
 }
 
 function finalizeConversationTurnTimestamps(args: {

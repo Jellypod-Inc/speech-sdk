@@ -4,8 +4,6 @@ import { generateSpeech } from "./_save-audio.js";
 
 const hasKey = !!process.env.MINIMAX_API_KEY;
 
-// Direct/factory path only: bare `minimax/<model>` strings route through the
-// Speech Gateway (a separate hosted backend), not this provider.
 describe.skipIf(!hasKey)("MiniMax e2e", () => {
   const TEST_TEXT = "Hello, this is a test of the speech SDK.";
   const voice = process.env.MINIMAX_VOICE_ID ?? "Wise_Woman";

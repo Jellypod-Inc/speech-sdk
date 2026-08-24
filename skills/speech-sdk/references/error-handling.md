@@ -22,10 +22,8 @@ import {
 | `AudioOutputInputError`                     | Invalid `output` shape (e.g. `bitrate` on non-mp3)                                      |
 | `MissingApiKeyError`                        | `apiKey` not provided and the per-provider env var is unset                             |
 | `TimestampKeyMissingError`                  | `timestamps: true` STT fallback triggered but no key configured                         |
-| `GatewayInputError`                         | Gateway request invariant violated (e.g. mixing shared + per-turn `model`)              |
 | `ConversationInputError`                    | Invalid `generateConversation` input                                                    |
 | `DialogueConstraintError`                   | Provider/model can't satisfy the requested turns (more unique voices than supported). A single-voice conversation does not throw — it renders via stitch. |
-| `MixedDispatchError`                        | Mixing gateway-string turns with direct-factory turns                                   |
 | `StitchUnsupportedError`                    | A stitch turn's provider/model can't expose decodable PCM/WAV                           |
 | `SpeechSDKError`                            | Base class for all SDK errors                                                           |
 
@@ -38,7 +36,7 @@ try {
   if (error instanceof ApiError) {
     error.statusCode    // 401, 429, 500, ...
     error.responseBody  // raw body from the API
-    error.code          // optional RFC 7807 problem+json `code` (gateway only)
+    error.code          // optional RFC 7807 problem+json `code`
     error.retryAfterMs  // parsed from `Retry-After` on 429 (RFC 7231 §7.1.3)
     error.turnIndex     // 0-based turn index on the conversation stitch path; undefined otherwise
   } else if (error instanceof SpeechSDKError) {

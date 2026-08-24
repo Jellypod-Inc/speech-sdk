@@ -11,7 +11,6 @@ export { cloneVoice } from "./clone-voice.js";
 export {
   ConversationInputError,
   DialogueConstraintError,
-  MixedDispatchError,
   StitchUnsupportedError,
 } from "./conversation/errors.js";
 export type {
@@ -28,7 +27,6 @@ export {
   ApiError,
   AudioOutputInputError,
   CloneSampleFetchError,
-  GatewayInputError,
   InstructionsUnsupportedError,
   InvalidCloneFieldError,
   InvalidDesignFieldError,
