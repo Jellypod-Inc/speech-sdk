@@ -10,7 +10,7 @@ export class ApiError extends SpeechSDKError {
   readonly responseBody?: unknown;
   // Provider canonical code or RFC 7807 `code` extension.
   readonly code?: string;
-  // Set by generateConversation's stitch path; undefined for single-turn calls and single-API-call paths (gateway, native dialogue).
+  // Set by generateConversation's stitch path; undefined for single-turn calls and single-API-call paths (native dialogue).
   readonly turnIndex?: number;
   readonly retryAfterMs?: number;
 
@@ -277,13 +277,6 @@ export class AudioOutputInputError extends SpeechSDKError {
   constructor(message: string) {
     super(message);
     this.name = "AudioOutputInputError";
-  }
-}
-
-export class GatewayInputError extends SpeechSDKError {
-  constructor(message: string) {
-    super(message);
-    this.name = "GatewayInputError";
   }
 }
 

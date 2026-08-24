@@ -24,7 +24,7 @@ function makePcm16Bytes(numSamples: number): Uint8Array {
 }
 
 describe("audio-output", () => {
-  it("leaves omitted output undefined for gateway wire compatibility", () => {
+  it("leaves omitted output undefined", () => {
     expect(validateOutput(undefined)).toBeUndefined();
   });
 

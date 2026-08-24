@@ -13,7 +13,6 @@ import {
 } from "./pronunciations/inverse-align.js";
 import type { Edit } from "./pronunciations/types.js";
 import {
-  isSpeechGatewayModel,
   modelDeclaresNativeTimestamps,
   type ResolvedModel,
 } from "./speech-provider.js";
@@ -391,12 +390,11 @@ export function prepareTimestampAlignment(args: {
   readonly resolved: ResolvedModel;
   readonly timestampProvider?: TimestampProvider;
 }): TimestampAlignmentPlan {
-  const isGateway = isSpeechGatewayModel(args.resolved);
   const hasNative = modelDeclaresNativeTimestamps(args.resolved);
-  const includeNative = args.request && (isGateway || hasNative);
+  const includeNative = args.request && hasNative;
   const aligner = resolveAligner(args);
 
-  if (args.request && !(isGateway || hasNative || aligner)) {
+  if (args.request && !(hasNative || aligner)) {
     throw new TimestampProviderRequiredError(args.modelIdentifier);
   }
 
@@ -415,15 +413,6 @@ export function prepareTimestampAlignment(args: {
     resolve: async (resolutionArgs) => {
       if (!args.request) {
         return {};
-      }
-
-      // Gateway invariant: the SDK is a transport; the gateway server owns the timestamp contract, so its failures surface unchanged.
-      if (isGateway) {
-        return finalizeAndProject({
-          resolutionArgs,
-          timestamps: resolutionArgs.providerTimestamps ?? [],
-          validationSource: args.modelIdentifier,
-        });
       }
 
       return await resolveDirectTimestamps(

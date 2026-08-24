@@ -24,23 +24,20 @@ This is `@speech-sdk/core` — a universal TTS SDK (Node, Edge, Browser) with a 
 **Core flow:** `generateSpeech()` → `resolveModel()` → `provider.generate()` → `SpeechResult`
 
 - `src/generate-speech.ts` — the public API entry point; handles retry logic via `p-retry`
-- `src/resolve-provider.ts` — bare `"provider/model"` strings resolve to the gateway provider; `ResolvedModel` instances pass through unchanged
-- `src/providers/gateway/index.ts` — `SpeechGatewayProvider` + `createSpeechGateway()`; proxies inline-mode requests to `api.speechbase.ai`. Aggregates every built-in provider's `models[]` under namespaced ids (`openai/tts-1`) so capability checks work through the gateway
+- `src/resolve-provider.ts` — `"provider/model"` strings resolve to that provider's own factory via `PROVIDER_FACTORIES`; `ResolvedModel` instances pass through unchanged
 - `src/speech-provider.ts` — `SpeechProvider` interface all providers implement
 - `src/speech-result.ts` — `DefaultGeneratedAudioFile` with lazy base64 conversion
 - `src/provider-utils.ts` — shared `resolveApiKey()` and `handleErrorResponse()`
 - `src/providers/openai/` and `src/providers/elevenlabs/` — provider implementations
 
-**Two paths to a provider** (chosen by how the caller passes `model`):
-- String (`"openai/tts-1"`) → routes through `SpeechGatewayProvider`; needs `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY` still honored).
-- Factory (`createOpenAI()("tts-1")`) → calls the provider directly; reads the per-provider env var (`OPENAI_API_KEY`) unless an explicit `apiKey` is passed to the factory.
-
-**Gateway invariant:** when routing through `SpeechGatewayProvider`, the SDK is a thin REST wrapper. A call made via the SDK must be byte-equivalent to the same call made via `curl` against `api.speechbase.ai`. The SDK does not add behavior on the gateway path — no client-side recovery, no client-side enrichment, no synthesizing fields from caller input that weren't on the wire, no fallbacks. The gateway server owns its contract; the SDK is a transport. Any new feature must work identically whether the caller uses the SDK or hits the REST API directly.
+**Two ways to name a model** (both hit the provider's own API directly):
+- String (`"openai/tts-1"`) → `resolveModel()` looks the prefix up in `PROVIDER_FACTORIES` and builds that provider with default config; reads the per-provider env var (`OPENAI_API_KEY`) unless `apiKey` is passed to the call. A bare provider id (`"openai"`) uses the provider's `defaultModel`.
+- Factory (`createOpenAI()("tts-1")`) → same provider, but lets you set `baseURL`, `fetch`, `fallbackSTT`, and other per-provider config.
 
 **Adding a new provider:**
 1. Create `src/providers/<name>/index.ts` with a `<Name>SpeechProvider` class implementing `SpeechProvider` and a `create<Name>()` factory.
 2. Add subpath export in `package.json` under `exports`.
-3. Register the provider in `aggregatedModels()` in `src/providers/gateway/index.ts` so its models are discoverable through the gateway path.
+3. Register the provider id and factory in `PROVIDER_FACTORIES` in `src/resolve-provider.ts` so `"<id>/<model>"` strings resolve to it.
 4. Implement `resolveOutputFormat(modelId, output)` so the SDK can request the user's chosen output format natively from the API. Return `{ providerOptions, expectedMediaType }` for each format the provider supports; for formats the provider can't produce natively, return options that yield a decodable wav/pcm so the SDK can convert via mediabunny. Return `undefined` for unknown model ids. The SDK never decodes compressed audio — providers must produce wav/pcm for any format the user requests that isn't natively available.
 5. Implement `getStitchOptions(modelId)` so the conversation stitch path can request decodable wav/pcm regardless of user format preference (the stitch pipeline always operates on raw samples).
 

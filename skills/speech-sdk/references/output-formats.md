@@ -42,8 +42,6 @@ For each direct-provider call, the SDK first asks the provider whether it can em
 
 If the provider can't expose any decodable wire format and can't produce the requested format natively, the SDK throws `OutputConversionUnsupportedError`. (The `output` option is also incompatible with providers/models that only emit opaque compressed audio not matching the request.)
 
-On the gateway path, the SDK forwards `output` to the gateway server and the gateway owns format selection.
-
 ## Streaming
 
 `streamSpeech` does not accept `output` — the streaming wire format is whatever the provider emits, and re-encoding mid-stream isn't supported. Use `generateSpeech` if you need a specific container.

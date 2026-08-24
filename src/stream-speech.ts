@@ -9,13 +9,11 @@ import type { SpeechMetadata } from "./metadata.js";
 import { mergeRules } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
-import type { SpeechGatewayProvider } from "./providers/gateway/index.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
   FEATURES,
   hasFeature,
-  isSpeechGatewayModel,
   type ResolvedModel,
   type Voice,
 } from "./speech-provider.js";
@@ -41,7 +39,6 @@ export async function streamSpeech<
 
   const resolved = resolveModel(model, { apiKey: options.apiKey });
   const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
-  const isGateway = isSpeechGatewayModel(resolved);
   const instructions = validateInstructionSupport(
     resolved,
     options.instructions
@@ -87,7 +84,7 @@ export async function streamSpeech<
   }
 
   let textToSend = processedText;
-  if (!isGateway && options.pronunciations?.rules?.length) {
+  if (options.pronunciations?.rules?.length) {
     const ruleMap = mergeRules(options.pronunciations.rules);
     textToSend = substitute(processedText, ruleMap).text;
   }
@@ -96,30 +93,19 @@ export async function streamSpeech<
 
   const startTime = performance.now();
 
-  const result = await pRetry(() => {
-    if (isGateway) {
-      const gatewayProvider = resolved.provider as SpeechGatewayProvider;
-      return gatewayProvider.stream({
+  const result = await pRetry(
+    () =>
+      streamFn({
         modelId: resolved.modelId,
         text: textToSend,
         ...(instructions && { instructions }),
-        voice: voice as unknown as string,
+        voice,
         providerOptions,
         abortSignal,
         headers,
-        pronunciations: options.pronunciations,
-      });
-    }
-    return streamFn({
-      modelId: resolved.modelId,
-      text: textToSend,
-      ...(instructions && { instructions }),
-      voice,
-      providerOptions,
-      abortSignal,
-      headers,
-    });
-  }, buildRetryOptions({ maxRetries, abortSignal }));
+      }),
+    buildRetryOptions({ maxRetries, abortSignal })
+  );
 
   const ttfbMs = Math.round(performance.now() - startTime);
 

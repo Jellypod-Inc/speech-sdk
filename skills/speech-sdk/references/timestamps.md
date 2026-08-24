@@ -29,17 +29,15 @@ result.timestamps
 - `true` — return timestamps. Native alignment when the provider supplies it; STT fallback otherwise (direct path only).
 - `false` *(default)* — never return timestamps; no STT round-trip is attempted.
 
-`result.timestamps` is populated when `timestamps: true` and the underlying transport surfaces alignment. On gateway-routed calls the SDK is a thin REST wrapper — if the wire response lacks timestamps, `result.timestamps` is `undefined` rather than thrown.
+`result.timestamps` is populated when `timestamps: true` and the underlying transport surfaces alignment.
 
 ## Cascade
 
 When `timestamps: true`, the SDK resolves alignment in this order:
 
-1. **Native** — provider returns alignment directly in its TTS response (or, for the gateway, the wire payload includes `timestamps`).
+1. **Native** — provider returns alignment directly in its TTS response.
 2. **Configured fallback STT** — if the resolved factory has `fallbackSTT` set, that STT model transcribes the synthesized audio. Direct path only.
 3. **Default STT fallback** — `createOpenAI().stt("whisper-1")` is loaded lazily and used. Requires `OPENAI_API_KEY`, else throws `TimestampKeyMissingError` naming the env var.
-
-Gateway-routed calls never run a client-side STT round-trip — alignment is whatever the gateway returns.
 
 ## Per-Provider Support
 
@@ -74,7 +72,7 @@ There is no per-call `timestampProvider` option — `fallbackSTT` is the only ov
 
 `generateConversation` accepts the same boolean `timestamps` option and returns a flat list of words across all turns. Each word carries a `turnIndex` — the index into the input `turns[]` array that produced it.
 
-When the underlying transport renders all turns in one call (native dialogue or gateway), `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings on `result.warnings`; the SDK does not fabricate word timestamps from caller text when the observed word stream is empty.
+When the underlying transport renders all turns in one call (native dialogue), `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings on `result.warnings`; the SDK does not fabricate word timestamps from caller text when the observed word stream is empty.
 
 When turns are rendered separately and stitched, `turnIndex` is exact by construction and word timings are offset by cumulative turn duration plus inter-turn gap. Turns whose underlying call returned no per-word alignment are filled proportionally, with a warning identifying them.
 

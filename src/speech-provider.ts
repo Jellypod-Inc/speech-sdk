@@ -1,8 +1,4 @@
 import { UnsupportedSampleRateError } from "./errors.js";
-import {
-  SPEECH_GATEWAY_PROVIDER_ID,
-  type SpeechGatewayProvider,
-} from "./providers/gateway/index.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
 
@@ -231,12 +227,6 @@ export interface ResolvedModel<TVoice extends Voice = Voice> {
   fallbackSTT?: ResolvedSTTModel;
   modelId: string;
   provider: SpeechProvider<string, TVoice>;
-}
-
-export function isSpeechGatewayModel<V extends Voice>(
-  model: ResolvedModel<V>
-): model is ResolvedModel<V> & { provider: SpeechGatewayProvider } {
-  return model.provider.id === SPEECH_GATEWAY_PROVIDER_ID;
 }
 
 export function modelDeclaresNativeTimestamps(

@@ -320,21 +320,4 @@ describe("exact timestamp alignment", () => {
     ).rejects.toMatchObject({ name: "TimestampProviderRequiredError" });
     expect(model.provider.generate).not.toHaveBeenCalled();
   });
-
-  it("ignores timestampProvider for gateway-routed models", async () => {
-    const provider = timestampProvider([{ text: "wrong", start: 0, end: 0.2 }]);
-    const result = await generateSpeech({
-      model: ttsModel({
-        id: "speech-gateway",
-        timestamps: [{ text: "hello", start: 0, end: 0.2 }],
-      }),
-      voice: "v",
-      text: "hello",
-      timestamps: true,
-      timestampProvider: provider,
-    });
-
-    expect(provider.align).not.toHaveBeenCalled();
-    expect(result.timestamps).toEqual([{ text: "hello", start: 0, end: 0.2 }]);
-  });
 });

@@ -53,4 +53,4 @@ const fal = createFal({ apiKey: process.env.FAL_API_KEY })
 await generateSpeech({ model: fal("f5-tts"), text: "...", voice: { url: "..." } })
 ```
 
-The factory call takes the bare model id (`fal("f5-tts")`), not `fal("fal-ai/f5-tts")`. The `fal-ai/` prefix only applies when using the gateway string form.
+The factory call takes the bare model id (`fal("f5-tts")`), not `fal("fal-ai/f5-tts")`. The `fal-ai/` prefix only applies in the `provider/model` string form.

@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { chooseConversationPath } from "../conversation/dispatch.js";
-import {
-  MixedDispatchError,
-  StitchUnsupportedError,
-} from "../conversation/errors.js";
-import { createSpeechGateway } from "../providers/gateway/index.js";
+import { StitchUnsupportedError } from "../conversation/errors.js";
 import type { SpeechProvider } from "../speech-provider.js";
 
 function mockProvider(overrides: Partial<SpeechProvider> = {}): SpeechProvider {
@@ -387,85 +383,5 @@ describe("chooseConversationPath", () => {
         ],
       })
     ).toThrow(StitchUnsupportedError);
-  });
-
-  it("returns gateway when all turns share one supported gateway model", () => {
-    const gateway = createSpeechGateway({ apiKey: "k" });
-    const resolved = gateway("openai/gpt-4o-mini-tts");
-    const result = chooseConversationPath({
-      resolvedPerTurn: [resolved, resolved],
-      turns: [
-        { voice: "alloy", text: "Hi." },
-        { voice: "nova", text: "Hello." },
-      ],
-    });
-    expect(result.kind).toBe("gateway");
-    if (result.kind === "gateway") {
-      expect(result.resolvedPerTurn.map((r) => r.modelId)).toEqual([
-        "openai/gpt-4o-mini-tts",
-        "openai/gpt-4o-mini-tts",
-      ]);
-    }
-  });
-
-  it("returns gateway when gateway models are heterogeneous", () => {
-    const gateway = createSpeechGateway({ apiKey: "k" });
-    const resolvedA = gateway("openai/gpt-4o-mini-tts");
-    const resolvedB = gateway("elevenlabs/eleven_v3");
-    const result = chooseConversationPath({
-      resolvedPerTurn: [resolvedA, resolvedB],
-      turns: [
-        { voice: "alloy", text: "Hi." },
-        { voice: "rachel", text: "Hello." },
-      ],
-    });
-    expect(result.kind).toBe("gateway");
-    if (result.kind === "gateway") {
-      expect(result.resolvedPerTurn.map((r) => r.modelId)).toEqual([
-        "openai/gpt-4o-mini-tts",
-        "elevenlabs/eleven_v3",
-      ]);
-    }
-  });
-
-  it("returns gateway for arbitrary aggregated models (no per-model gate)", () => {
-    const gateway = createSpeechGateway({ apiKey: "k" });
-    // cartesia/sonic-3 was not in the old 3-entry capability table; proves no SDK-side allowlist.
-    const resolved = gateway("cartesia/sonic-3");
-    const result = chooseConversationPath({
-      resolvedPerTurn: [resolved, resolved],
-      turns: [
-        { voice: "a", text: "Hi." },
-        { voice: "b", text: "Hello." },
-      ],
-    });
-    expect(result.kind).toBe("gateway");
-    if (result.kind === "gateway") {
-      expect(result.resolvedPerTurn[0].modelId).toBe("cartesia/sonic-3");
-    }
-  });
-
-  it("throws MixedDispatchError when one turn is gateway and another is direct", () => {
-    const gateway = createSpeechGateway({ apiKey: "k" });
-    const gatewayResolved = gateway("openai/gpt-4o-mini-tts");
-    const direct = mockProvider({
-      id: "openai",
-      getStitchOptions: () => ({
-        providerOptions: { response_format: "pcm" },
-        mediaType: "audio/pcm;rate=24000",
-      }),
-    });
-    expect(() =>
-      chooseConversationPath({
-        resolvedPerTurn: [
-          gatewayResolved,
-          { provider: direct, modelId: "tts-1" },
-        ],
-        turns: [
-          { voice: "alloy", text: "Hi." },
-          { voice: "nova", text: "Hello." },
-        ],
-      })
-    ).toThrow(MixedDispatchError);
   });
 });

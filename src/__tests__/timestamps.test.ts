@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  TimestampProviderRequiredError,
-  TimestampValidationError,
-} from "../errors.js";
+import { TimestampProviderRequiredError } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
 import { alignmentToWordTimestamps } from "../providers/elevenlabs/alignment.js";
 import type { SpeechProvider } from "../speech-provider.js";
@@ -151,56 +148,6 @@ describe("generateSpeech timestamps option", () => {
     expect(result.timestamps?.[0]?.text).toBe("Hello");
   });
 
-  it("on mode: asks the gateway for server-side timestamps before STT fallback", async () => {
-    let captured: boolean | undefined;
-    const provider = createTTSProvider({
-      id: "speech-gateway",
-      timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
-      captureIncludeTimestamps: (v) => {
-        captured = v;
-      },
-    });
-    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
-
-    const result = await generateSpeech({
-      model: {
-        provider,
-        modelId: "openai/tts-1",
-        fallbackSTT: { provider: stt, modelId: "m" },
-      },
-      text: "Hello",
-      voice: "v",
-      timestamps: true,
-    });
-
-    expect(captured).toBe(true);
-    expect(stt.transcribe).not.toHaveBeenCalled();
-    expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
-  });
-
-  it("on mode: never runs client-side STT fallback for gateway requests", async () => {
-    const provider = createTTSProvider({
-      id: "speech-gateway",
-      timestamps: [{ text: "Hello", start: 0, end: 0.4 }],
-    });
-    const stt = createSTTProvider([{ text: "DERIVED", start: 0, end: 1 }]);
-
-    const result = await generateSpeech({
-      model: {
-        provider,
-        modelId: "openai/tts-1",
-        fallbackSTT: { provider: stt, modelId: "m" },
-      },
-      text: "Hello",
-      voice: "v",
-      timestamps: true,
-    });
-
-    expect(result.audio).toBeDefined();
-    expect(result.timestamps).toEqual([{ text: "Hello", start: 0, end: 0.4 }]);
-    expect(stt.transcribe).not.toHaveBeenCalled();
-  });
-
   it("requires a timestamp provider before synthesis when native timestamps are unavailable", async () => {
     const provider: SpeechProvider = {
       id: "stub",
@@ -260,22 +207,6 @@ describe("generateSpeech timestamps option", () => {
     });
 
     expect(receivedText).toBe("Hello world");
-  });
-
-  it("rejects a gateway response that omits requested timestamps", async () => {
-    const provider = createTTSProvider({ id: "speech-gateway" });
-
-    await expect(
-      generateSpeech({
-        model: { provider, modelId: "openai/tts-1" },
-        text: "Hello",
-        voice: "v",
-        timestamps: true,
-      })
-    ).rejects.toMatchObject({
-      name: TimestampValidationError.name,
-      reason: "empty",
-    });
   });
 
   it("uses factory-configured fallbackSTT when no per-call timestampFallback is passed", async () => {

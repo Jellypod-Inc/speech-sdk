@@ -1,10 +1,5 @@
 import { InstructionsUnsupportedError } from "./errors.js";
-import {
-  FEATURES,
-  hasFeature,
-  isSpeechGatewayModel,
-  type ResolvedModel,
-} from "./speech-provider.js";
+import { FEATURES, hasFeature, type ResolvedModel } from "./speech-provider.js";
 
 export function nonEmptyInstructions(
   instructions: string | undefined
@@ -28,7 +23,7 @@ export function validateInstructionSupport(
   instructions: string | undefined
 ): string | undefined {
   const normalized = nonEmptyInstructions(instructions);
-  if (!normalized || isSpeechGatewayModel(resolved)) {
+  if (!normalized) {
     return normalized;
   }
 

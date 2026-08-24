@@ -4,7 +4,7 @@
 
 **Don't** loop over `generateSpeech` yourself. `generateConversation`:
 
-- Picks the most efficient transport for the given turns automatically (gateway → native dialogue → local stitch).
+- Picks the most efficient transport for the given turns automatically (native dialogue → local stitch).
 - RMS-normalizes the output so every conversation plays back at the same loudness.
 - Returns a result identical in shape to `SpeechResult`, except every word in `timestamps` carries a `turnIndex` pointing back into the input `turns[]`, and `metadata.perTurn` carries per-turn metadata on the stitch path.
 
@@ -66,8 +66,6 @@ await generateConversation({
 })
 ```
 
-All turns must dispatch the same way — every turn through the gateway (`"provider/model"` strings) or every turn through direct factories. Mixing the two throws `MixedDispatchError`.
-
 ## Volume Normalization
 
 Every conversation is RMS-leveled to `volumeDbfs` (default `-20` dBFS, the podcast voice standard) so two conversations generated independently play back at the same loudness. Override with `volumeDbfs: -18` (must be ≤ 0) to retarget.
@@ -81,11 +79,10 @@ Native-dialogue providers cap how much text a single call can render (e.g. Gemin
 
 - This is transparent — same call, same result shape. `gapMs` (default 300) applies only at block seams, not between every turn.
 - If the conversation can't be split into voice-valid blocks (e.g. a single turn longer than the limit, or a long single-speaker run on a two-voice model), it falls back to the local-stitch path and surfaces a warning.
-- Gateway turns are unaffected — the gateway server owns its own chunking.
 
 ## Single-Speaker Conversations
 
-When every turn resolves to the same voice, the conversation is just sequential single-speaker speech, so `generateConversation` renders it per turn via `generateSpeech` and stitches the turns into one clip (honoring `gapMs` / `volumeDbfs` / `speed` / `output`) — it never routes a single voice into a provider's native multi-speaker dialogue path. This matters for native-dialogue providers that require multiple distinct voices (e.g. Google's `gemini-3.1-flash-tts-preview` requires exactly 2): a single-voice conversation succeeds via stitch instead of throwing `DialogueConstraintError`. A warning notes the fallback. Two or more distinct voices use the native path as before; a conversation with **more** unique voices than the provider supports still throws `DialogueConstraintError`. Gateway turns are unaffected.
+When every turn resolves to the same voice, the conversation is just sequential single-speaker speech, so `generateConversation` renders it per turn via `generateSpeech` and stitches the turns into one clip (honoring `gapMs` / `volumeDbfs` / `speed` / `output`) — it never routes a single voice into a provider's native multi-speaker dialogue path. This matters for native-dialogue providers that require multiple distinct voices (e.g. Google's `gemini-3.1-flash-tts-preview` requires exactly 2): a single-voice conversation succeeds via stitch instead of throwing `DialogueConstraintError`. A warning notes the fallback. Two or more distinct voices use the native path as before; a conversation with **more** unique voices than the provider supports still throws `DialogueConstraintError`.
 
 ## Per-Turn Speed
 
@@ -106,14 +103,13 @@ Per-turn speed forces the local-stitch path (so each turn can be re-rendered ind
 The result has the same top-level shape as `SpeechResult` (`audio`, `metadata`, `providerMetadata`, `warnings`, `timestamps`). The differences:
 
 - Every word in `timestamps` includes `turnIndex` pointing back into the input `turns[]`.
-- `metadata.perTurn` is an array of per-turn `SpeechMetadata` entries on the local-stitch path; `undefined` on gateway and native-dialogue paths (no per-turn boundaries exist as separate provider calls).
-- `providerMetadata` is passthrough-only — when stitched, it carries `{ turns: [...] }` aggregating each underlying call's provider metadata; on gateway and native dialogue paths it reflects whatever the wire returned.
+- `metadata.perTurn` is an array of per-turn `SpeechMetadata` entries on the local-stitch path; `undefined` on the native-dialogue path (no per-turn boundaries exist as separate provider calls).
+- `providerMetadata` is passthrough-only — when stitched, it carries `{ turns: [...] }` aggregating each underlying call's provider metadata; on the native dialogue path it reflects whatever the wire returned.
 
 When `timestamps: true` is requested, the SDK returns observed word timestamps for stitched and native-dialogue conversations when the provider/STT supplies word-level alignment. The attribution mechanism varies by path:
 
 - **Stitched** — `turnIndex` is exact by construction (one call per turn). Turns whose underlying call returned no per-word alignment are filled proportionally; a warning identifies them.
 - **Native dialogue** — `turnIndex` is derived via a tiered attribution ladder (validated silence-anchor → improved text-match → proportional over observed words). Lower tiers emit warnings. If the observed word stream is empty, `timestamps` is absent with a warning; the SDK does not fabricate word timestamps from caller text.
-- **Gateway** — whatever the gateway response returns. The SDK is a thin REST wrapper here; if the wire returns no timestamps, the field is absent.
 
 Inspect `result.warnings` for attribution-confidence diagnostics in production.
 
@@ -127,7 +123,6 @@ From `@speech-sdk/core`:
 | --------------------------- | -------------------------------------------------------------------------------------------- |
 | `ConversationInputError`    | Invalid input (no turns, empty text, etc.)                                                   |
 | `DialogueConstraintError`   | Provider/model can't satisfy the requested turns (more unique voices than it supports). A single-voice conversation does not throw — it renders via stitch. |
-| `MixedDispatchError`        | Conversation mixes gateway (`provider/model` string) turns with direct-factory turns         |
 | `StitchUnsupportedError`    | A provider/model can't expose decodable PCM/WAV, so turns can't be locally mixed             |
 | `NoSpeechGeneratedError`    | Final concatenated audio is empty                                                            |
 | `ApiError`                  | Per-turn 4xx (carries `turnIndex` on the stitch path). 5xx/429/network get retried up to `maxRetries`. |

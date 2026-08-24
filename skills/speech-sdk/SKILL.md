@@ -5,7 +5,7 @@ description: "How to use @speech-sdk/core for text-to-speech and multi-speaker c
 
 # @speech-sdk/core
 
-Universal TypeScript TTS SDK. One API. String models use Speech Gateway. Factory models call providers directly. Runs in Node, Edge, and Browser.
+Universal TypeScript TTS SDK. One API. String models and factory models both call providers directly. Runs in Node, Edge, and Browser.
 
 **Three top-level functions** — `generateSpeech` (single utterance), `streamSpeech` (chunked audio), `generateConversation` (multi-speaker dialogue).
 
@@ -31,7 +31,7 @@ result.audio.base64     // lazy-computed base64
 result.audio.mediaType
 ```
 
-Pass `provider/model` strings to dispatch via `SPEECHBASE_API_KEY` (legacy `SPEECH_GATEWAY_API_KEY`, or the `apiKey` option). Use provider factories from `@speech-sdk/core/providers` to call the upstream provider directly with its own API key. See `references/providers.md` for the list of providers and their factories.
+Pass `provider/model` strings to reach a provider with default config, using its own env var (or the `apiKey` option). Use provider factories from `@speech-sdk/core/providers` when you need a custom `baseURL`, `fetch`, or STT fallback. See `references/providers.md` for the list of providers and their factories.
 
 ## Streaming
 
@@ -72,7 +72,7 @@ result.audio.mediaType
 - **Per-turn overrides**: `{ voice, text, model?, providerOptions?, speed? }` — mix providers across turns.
 - **Volume normalization**: always on — every conversation is RMS-leveled to `-20` dBFS so separate outputs play back at the same loudness. Pass `volumeDbfs: -18` (must be ≤ 0) to retarget.
 - **Options**: `gapMs` (default 300), `maxConcurrency` (default 6), `maxRetries` (default 2), `maxInputChars`, `apiKey`, `abortSignal`, `headers`, `providerOptions` (top-level — merged with per-turn), `output`, `speed`, `pronunciations`, `timestamps`.
-- **Errors**: `ConversationInputError`, `DialogueConstraintError`, `MixedDispatchError`, `StitchUnsupportedError`. Import from `@speech-sdk/core`.
+- **Errors**: `ConversationInputError`, `DialogueConstraintError`, `StitchUnsupportedError`. Import from `@speech-sdk/core`.
 
 See `references/conversation.md` for the full API and cross-provider mixing.
 
@@ -99,11 +99,11 @@ Pass `output: { format: "wav" | "pcm" | "mp3", bitrate? }` to pick the container
 
 ## Speed
 
-Pass `speed: 0.75–1.5` (1 = unchanged) on `generateSpeech` / `generateConversation`. Direct-provider paths decode → time-stretch → re-encode locally; the gateway applies speed server-side. Timestamps and `audioDurationMs` scale with the value. Conversation turns can also set their own `speed` per turn (turn-level applies first, then top-level applies to the merged audio). See `references/speed.md`.
+Pass `speed: 0.75–1.5` (1 = unchanged) on `generateSpeech` / `generateConversation`. The SDK decodes → time-stretches → re-encodes locally. Timestamps and `audioDurationMs` scale with the value. Conversation turns can also set their own `speed` per turn (turn-level applies first, then top-level applies to the merged audio). See `references/speed.md`.
 
 ## Long Text (Auto-Chunking)
 
-When the input exceeds the model's `maxInputChars`, direct-provider paths split on sentence/paragraph boundaries and stitch the chunks back together. Override via `maxInputChars`; cap parallelism via `maxConcurrency` (default 6). The gateway path ignores both — the gateway server owns chunking. See `references/auto-chunking.md`.
+When the input exceeds the model's `maxInputChars`, the SDK splits on sentence/paragraph boundaries and stitches the chunks back together. Override via `maxInputChars`; cap parallelism via `maxConcurrency` (default 6). See `references/auto-chunking.md`.
 
 ## Pronunciations
 
