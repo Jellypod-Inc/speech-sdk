@@ -38,17 +38,11 @@ function stringProperty(value: unknown, property: string): string | undefined {
   return typeof candidate === "string" ? candidate : undefined;
 }
 
-function providerErrorStage(value: unknown): ProviderErrorStage | undefined {
-  const stage = stringProperty(value, "stage");
-  return stage === "alignment" || stage === "synthesis" ? stage : undefined;
-}
-
 function parseErrorBody(body: string | undefined): {
   message?: string;
   code?: string;
   details?: unknown;
   requestId?: string;
-  stage?: ProviderErrorStage;
 } {
   if (!body) {
     return {};
@@ -75,8 +69,7 @@ function parseErrorBody(body: string | undefined): {
       stringProperty(json, "request_id") ??
       stringProperty(error, "requestId") ??
       stringProperty(error, "request_id");
-    const stage = providerErrorStage(json) ?? providerErrorStage(error);
-    return { message, code, details: json, requestId, stage };
+    return { message, code, details: json, requestId };
   } catch {
     return { message: truncate(body), details: body };
   }
@@ -119,7 +112,6 @@ export function parseRetryAfter(
 }
 
 export interface ProviderErrorContext {
-  readonly message?: string;
   readonly model?: string;
   readonly provider: string;
   readonly stage?: ProviderErrorStage;
@@ -151,11 +143,9 @@ export async function handleErrorResponse(
   }
   const rawResponse = await response.text().catch(() => undefined);
   const parsed = parseErrorBody(rawResponse);
-  const message =
-    context.message ??
-    (parsed.message
-      ? `API error ${response.status}: ${parsed.message}`
-      : `API error ${response.status}`);
+  const message = parsed.message
+    ? `API error ${response.status}: ${parsed.message}`
+    : `API error ${response.status}`;
   const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
   const retryable =
     response.status === 429 ||
@@ -170,7 +160,7 @@ export async function handleErrorResponse(
     rawResponse,
     requestId: responseRequestId(response) ?? parsed.requestId,
     retryable,
-    stage: context.stage ?? parsed.stage,
+    stage: context.stage,
     ...(retryAfterMs != null && { retryAfterMs }),
   });
 }
