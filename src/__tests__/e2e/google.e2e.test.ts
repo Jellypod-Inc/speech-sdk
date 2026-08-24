@@ -4,6 +4,9 @@ import { streamSpeech } from "../../stream-speech.js";
 import { collectStreamAndSave, generateSpeech } from "./_save-audio.js";
 
 const hasKey = !!process.env.GOOGLE_API_KEY;
+const GEMINI_SAMPLE_RATE = 24_000;
+const BYTES_PER_SAMPLE = 2;
+const WAV_HEADER_BYTES = 44;
 
 describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
   const TEST_TEXT = "Hello, this is a test of the speech SDK.";
@@ -61,5 +64,43 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
     expect(result.metadata.inputChars).toBe(TEST_TEXT.length);
     expect(result.metadata.audioDurationMs).toBeTypeOf("number");
     expect(result.metadata.ttfbMs).toBeUndefined();
+  });
+  // JEL-2332: under the old fused "Read aloud: <line>" framing these one-word lines parsed as a bare
+  // delivery directive, never tripped the speech synthesis classifier, and came back PROHIBITED_CONTENT.
+  it.each([
+    "Slowly.",
+    "Quietly.",
+    "Softly.",
+    "Loudly.",
+    "Firmly.",
+    "Calmly.",
+    "Warmly.",
+    "Yes.",
+    "Instantly.",
+  ])("voices the one-word line %s", async (text) => {
+    const result = await generateSpeech({
+      model: "google/gemini-3.1-flash-tts-preview",
+      text,
+      voice: "Kore",
+    });
+
+    expect(result.audio.uint8Array.byteLength).toBeGreaterThan(
+      WAV_HEADER_BYTES
+    );
+  });
+
+  // A spoken preamble would add several seconds; a normal line stays close to its own length.
+  it("does not voice the framing preamble on a normal-length line", async () => {
+    const result = await generateSpeech({
+      model: "google/gemini-3.1-flash-tts-preview",
+      text: TEST_TEXT,
+      voice: "Kore",
+    });
+
+    const seconds =
+      (result.audio.uint8Array.byteLength - WAV_HEADER_BYTES) /
+      (GEMINI_SAMPLE_RATE * BYTES_PER_SAMPLE);
+    expect(seconds).toBeGreaterThan(1);
+    expect(seconds).toBeLessThan(6);
   });
 });

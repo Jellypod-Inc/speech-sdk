@@ -3,7 +3,7 @@ import { generateSpeech } from "../generate-speech.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
 const MODEL_ID = "gemini-3.1-flash-tts-preview";
-const READ_ALOUD_DIRECTIVE = "Read aloud: ";
+const TRANSCRIPT_LABEL = "\nTranscript:\n";
 const CONSERVATIVE_REQUEST_CHAR_BUDGET = 5000;
 const SENTENCE_NUMBER_RE = /Sentence (\d+)/;
 
@@ -89,8 +89,11 @@ describe("Google Gemini TTS long input", () => {
     ).toBe(true);
     expect(
       prompts
-        .map((prompt) => prompt.slice(prompt.indexOf(READ_ALOUD_DIRECTIVE)))
-        .map((prompt) => prompt.slice(READ_ALOUD_DIRECTIVE.length))
+        .map((prompt) =>
+          prompt.slice(
+            prompt.indexOf(TRANSCRIPT_LABEL) + TRANSCRIPT_LABEL.length
+          )
+        )
         .join(" ")
     ).toBe(text);
 

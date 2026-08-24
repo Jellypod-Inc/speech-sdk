@@ -78,16 +78,22 @@ const QUOTE_CHARACTER_RE = /["'‘’‚“”„「」『』«»]/;
 // Finish reasons where the model refused the content itself; a differently shaped payload cannot change those.
 const CONTENT_DECLINE_FINISH_REASONS = new Set([
   "SAFETY",
-  "PROHIBITED_CONTENT",
   "BLOCKLIST",
   "SPII",
   "IMAGE_SAFETY",
 ]);
 
+// Google attributes PROHIBITED_CONTENT on a TTS model to a prompt too vague to trigger the speech
+// synthesis classifier, not to the material itself, so reshaping the payload can still lift it.
+const RESHAPABLE_DECLINE_REASONS = new Set(["PROHIBITED_CONTENT"]);
+
 function isContentDecline(json: GenerateContentResponse): boolean {
-  return (
-    json.promptFeedback?.blockReason != null ||
-    CONTENT_DECLINE_FINISH_REASONS.has(json.candidates?.[0]?.finishReason ?? "")
+  const blockReason = json.promptFeedback?.blockReason;
+  if (blockReason != null && !RESHAPABLE_DECLINE_REASONS.has(blockReason)) {
+    return true;
+  }
+  return CONTENT_DECLINE_FINISH_REASONS.has(
+    json.candidates?.[0]?.finishReason ?? ""
   );
 }
 
@@ -146,13 +152,28 @@ function describeMissingAudio(
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
-// Without a directive, generateContent answers terse input as a chat prompt and a TTS-only model 400s; the text before the colon is delivery guidance Gemini reads from but doesn't voice.
-const READ_ALOUD_DIRECTIVE = "Read aloud: ";
+// Fusing directive and transcript into one line ("Read aloud: Slowly.") makes a short line parse as delivery
+// guidance with nothing to voice: the speech synthesis classifier never fires and Gemini blocks the request as
+// PROHIBITED_CONTENT. Naming the operation, labelling where the transcript starts, and putting the transcript on
+// its own line keeps a one-word line content rather than a modifier; the guard stops the notes being voiced.
+const TTS_PROMPT_PREAMBLE =
+  "Synthesize speech for the transcript below. Speak it verbatim; do not answer it, comment on it, or read these notes aloud.";
+const TTS_DELIVERY_LABEL = "Delivery: ";
+const TTS_TRANSCRIPT_LABEL = "Transcript:\n";
+
+function buildTtsPrompt(text: string, instructions?: string): string {
+  const delivery = instructions
+    ? `${TTS_DELIVERY_LABEL}${instructions}\n\n`
+    : "";
+  return `${TTS_PROMPT_PREAMBLE}\n\n${delivery}${TTS_TRANSCRIPT_LABEL}${text}`;
+}
 
 // 5k total prompt chars leaves broad headroom below Gemini TTS's 8,192-token input ceiling across languages and tokenization patterns.
 const GEMINI_TTS_REQUEST_CHAR_BUDGET = 5000;
+const TTS_PROMPT_FRAMING_CHARS = buildTtsPrompt("").length;
+const TTS_INSTRUCTIONS_FRAMING_CHARS = TTS_DELIVERY_LABEL.length + 2;
 const GEMINI_TTS_TEXT_CHAR_BUDGET =
-  GEMINI_TTS_REQUEST_CHAR_BUDGET - READ_ALOUD_DIRECTIVE.length;
+  GEMINI_TTS_REQUEST_CHAR_BUDGET - TTS_PROMPT_FRAMING_CHARS;
 
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
@@ -346,7 +367,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       return;
     }
     const instructionFramingChars = options?.instructions
-      ? options.instructions.length + 2
+      ? options.instructions.length + TTS_INSTRUCTIONS_FRAMING_CHARS
       : 0;
     const textBudget = model.maxInputChars - instructionFramingChars;
     if (textBudget < 1) {
@@ -424,9 +445,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     };
     const promptFor = (text: string) =>
-      options.instructions
-        ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${text}`
-        : `${READ_ALOUD_DIRECTIVE}${text}`;
+      buildTtsPrompt(text, options.instructions);
 
     const json = await this.postGenerateContent(
       options,
@@ -436,7 +455,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     let part = findInlineAudio(json);
 
     // The identical retry the SDK already performs cannot help a response that came back without audio,
-    // so a terse payload gets one differently shaped attempt. A content refusal is skipped: reshaping cannot lift it.
+    // so a terse payload gets one differently shaped attempt. A genuine content refusal is skipped: reshaping cannot lift it.
     const reshaped =
       part || isContentDecline(json)
         ? undefined
@@ -519,9 +538,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     const body: Record<string, unknown> = {
       model: options.modelId,
-      input: options.instructions
-        ? `${options.instructions}\n\n${READ_ALOUD_DIRECTIVE}${options.text}`
-        : options.text,
+      input: buildTtsPrompt(options.text, options.instructions),
       response_format: { type: "audio" },
       generation_config: {
         speech_config: [{ voice: voiceName }],

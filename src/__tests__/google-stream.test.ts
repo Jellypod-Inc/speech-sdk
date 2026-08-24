@@ -132,8 +132,7 @@ describe("GoogleSpeechProvider.stream", () => {
     const body = JSON.parse(init.body as string);
     expect(body.stream).toBe(true);
     expect(body.model).toBe("gemini-3.1-flash-tts-preview");
-    // /interactions synthesizes `input` literally — the directive must not leak here.
-    expect(body.input).toBe("hi");
+    expect(body.input).toContain("\nTranscript:\nhi");
     expect(body.generation_config.speech_config).toEqual([{ voice: "Kore" }]);
     expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(
       "gg-test"
