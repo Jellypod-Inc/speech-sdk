@@ -78,8 +78,9 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
     "Yes.",
     "Instantly.",
   ])("voices the one-word line %s", async (text) => {
+    const google = createGoogle();
     const result = await generateSpeech({
-      model: "google/gemini-3.1-flash-tts-preview",
+      model: google("gemini-3.1-flash-tts-preview"),
       text,
       voice: "Kore",
     });
@@ -91,8 +92,9 @@ describe.skipIf(!hasKey)("Google (Gemini TTS) e2e", () => {
 
   // A spoken preamble would add several seconds; a normal line stays close to its own length.
   it("does not voice the framing preamble on a normal-length line", async () => {
+    const google = createGoogle();
     const result = await generateSpeech({
-      model: "google/gemini-3.1-flash-tts-preview",
+      model: google("gemini-3.1-flash-tts-preview"),
       text: TEST_TEXT,
       voice: "Kore",
     });
