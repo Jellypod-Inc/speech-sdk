@@ -4,6 +4,9 @@ import { SpeechSdkProviderError } from "../index.js";
 import { SDK_USER_AGENT } from "../provider-utils.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
+const PREAMBLE =
+  "Synthesize speech for the transcript below. Speak it verbatim; do not answer it, comment on it, or read these notes aloud.";
+
 describe("GoogleSpeechProvider", () => {
   // base64 of 4 bytes of 16-bit PCM (2 samples of silence)
   const pcmBase64 = "AAAAAA==";
@@ -70,7 +73,14 @@ describe("GoogleSpeechProvider", () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.contents).toEqual([
-      { role: "user", parts: [{ text: "Read aloud: Hello world" }] },
+      {
+        role: "user",
+        parts: [
+          {
+            text: `${PREAMBLE}\n\nTranscript:\nHello world`,
+          },
+        ],
+      },
     ]);
     expect(body.generationConfig.responseModalities).toEqual(["audio"]);
     expect(body.generationConfig.speech_config).toEqual({
@@ -322,7 +332,7 @@ describe("GoogleSpeechProvider", () => {
     expect(body.generationConfig.temperature).toBe(0.5);
   });
 
-  it("frames terse single-turn input as a read-aloud directive instead of a bare turn", async () => {
+  it("frames terse single-turn input as labelled transcript instead of a bare turn", async () => {
     const mockFetch = createMockFetch();
     const provider = new GoogleSpeechProvider({
       apiKey: "test-key",
@@ -336,7 +346,9 @@ describe("GoogleSpeechProvider", () => {
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.contents[0].parts[0].text).toBe("Read aloud: Hello there.");
+    expect(body.contents[0].parts[0].text).toBe(
+      `${PREAMBLE}\n\nTranscript:\nHello there.`
+    );
     expect(result.audio).toBeInstanceOf(Uint8Array);
   });
 
@@ -356,7 +368,7 @@ describe("GoogleSpeechProvider", () => {
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.contents[0].parts[0].text).toBe(
-      "Use a confident, warm delivery.\n\nRead aloud: These words are spoken."
+      `${PREAMBLE}\n\nDelivery: Use a confident, warm delivery.\n\nTranscript:\nThese words are spoken.`
     );
   });
 
