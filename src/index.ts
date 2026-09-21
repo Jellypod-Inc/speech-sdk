@@ -32,6 +32,8 @@ export {
   InvalidDesignFieldError,
   MissingApiKeyError,
   NoSpeechGeneratedError,
+  type NoSpeechGeneratedErrorOptions,
+  type NoSpeechReason,
   OutputConversionUnsupportedError,
   SpeechSDKError,
   SpeechSdkProviderError,

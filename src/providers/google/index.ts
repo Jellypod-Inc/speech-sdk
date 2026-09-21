@@ -6,7 +6,11 @@ import {
   parseMediaTypeParam,
   wrapPcm16Mono,
 } from "../../audio-utils.js";
-import { NoSpeechGeneratedError, SpeechSDKError } from "../../errors.js";
+import {
+  NoSpeechGeneratedError,
+  type NoSpeechReason,
+  SpeechSDKError,
+} from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -95,6 +99,10 @@ function isContentDecline(json: GenerateContentResponse): boolean {
   return CONTENT_DECLINE_FINISH_REASONS.has(
     json.candidates?.[0]?.finishReason ?? ""
   );
+}
+
+function noSpeechReason(json: GenerateContentResponse): NoSpeechReason {
+  return isContentDecline(json) ? "content_refusal" : "provider_empty_response";
 }
 
 // Gemini TTS is generateContent, so a payload short enough to read as a bare chat turn can come back
@@ -475,7 +483,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         ? `; retried with a quoted payload and still got none (${describeMissingAudio(modelIdentifier, reshapedJson)})`
         : "";
       throw new NoSpeechGeneratedError(
-        `${describeMissingAudio(modelIdentifier, json)}${retryNote}`
+        `${describeMissingAudio(modelIdentifier, json)}${retryNote}`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: noSpeechReason(reshapedJson ?? json),
+        }
       );
     }
 
@@ -712,7 +725,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     const part = findInlineAudio(json);
     if (!part) {
       throw new NoSpeechGeneratedError(
-        describeMissingAudio(`google/${options.modelId}`, json)
+        describeMissingAudio(`google/${options.modelId}`, json),
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: noSpeechReason(json),
+        }
       );
     }
 

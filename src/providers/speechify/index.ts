@@ -111,7 +111,12 @@ export class SpeechifySpeechProvider implements SpeechProvider<string, string> {
     const payload = (await response.json()) as SpeechifySpeechResponse;
     if (typeof payload.audio_data !== "string") {
       throw new NoSpeechGeneratedError(
-        "speechify: response missing audio_data"
+        "speechify: response missing audio_data",
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: "provider_empty_response",
+        }
       );
     }
 

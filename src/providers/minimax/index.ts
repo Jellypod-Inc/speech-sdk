@@ -205,7 +205,12 @@ export class MiniMaxSpeechProvider implements SpeechProvider<string, string> {
     const hexAudio = payload.data?.audio;
     if (!hexAudio) {
       throw new NoSpeechGeneratedError(
-        `minimax/${options.modelId}: response contained no audio data`
+        `minimax/${options.modelId}: response contained no audio data`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: "provider_empty_response",
+        }
       );
     }
 

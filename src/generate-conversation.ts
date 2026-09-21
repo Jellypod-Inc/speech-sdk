@@ -236,7 +236,8 @@ export async function generateConversation<
 
   if (stitched.audio.length === 0) {
     throw new NoSpeechGeneratedError(
-      `${describeConversationModels(resolvedPerTurn)}: stitched conversation audio is empty.`
+      `${describeConversationModels(resolvedPerTurn)}: stitched conversation audio is empty.`,
+      { reason: "provider_empty_response" }
     );
   }
 
@@ -442,7 +443,12 @@ async function runNative<V extends Voice>(args: {
 
   if (result.audio.length === 0) {
     throw new NoSpeechGeneratedError(
-      `${dialogueId}: native dialogue returned empty audio.`
+      `${dialogueId}: native dialogue returned empty audio.`,
+      {
+        model: resolved.modelId,
+        provider: resolved.provider.id,
+        reason: "provider_empty_response",
+      }
     );
   }
 
@@ -639,7 +645,12 @@ async function runNativeSplit<V extends Voice>(args: {
       if (result.audio.length === 0) {
         // One silent block fails the whole stitch, and the survivors are otherwise indistinguishable.
         throw new NoSpeechGeneratedError(
-          `${ttsModel}: native dialogue block ${blockIndex + 1} of ${blocks.length} returned empty audio (turns ${indices[0] + 1}-${(indices.at(-1) ?? indices[0]) + 1}).`
+          `${ttsModel}: native dialogue block ${blockIndex + 1} of ${blocks.length} returned empty audio (turns ${indices[0] + 1}-${(indices.at(-1) ?? indices[0]) + 1}).`,
+          {
+            model: resolved.modelId,
+            provider: resolved.provider.id,
+            reason: "provider_empty_response",
+          }
         );
       }
       // generateDialogue may return base64 (string) or raw bytes; normalize before decoding.

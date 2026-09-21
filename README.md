@@ -548,6 +548,21 @@ try {
 }
 ```
 
+A 200 response with no audio, a provider declining to voice the text, and text that holds no words all surface as `NoSpeechGeneratedError`. Only the first recovers on a retry, so the error carries its classification:
+
+```ts
+if (error instanceof NoSpeechGeneratedError) {
+  error.reason;      // provider_empty_response | content_refusal | empty_input
+  error.retryable;   // true only for provider_empty_response
+  error.provider;    // elevenlabs (optional)
+  error.model;       // eleven_v3 (optional)
+  error.requestId;   // provider request ID, for support (optional)
+  error.turnIndex;   // which conversation turn (optional)
+}
+```
+
+Callers deciding whether to re-attempt should read `retryable` rather than treating the class as terminal: an ElevenLabs `/with-timestamps` response carrying alignment and no `audio_base64` is a transient provider defect that a plain retry recovers, while a Gemini `SAFETY` decline and wordless input repeat identically forever. The SDK applies the same rule to its own retries.
+
 `SpeechSdkProviderError` extends `ApiError`, so existing `instanceof ApiError`, `statusCode`, and `responseBody` handling remains compatible. `code` is populated from provider error codes (including Google `error.status`) or the RFC 7807 `code` extension. Match on `code` over `message` text — codes are a stable contract, messages aren't.
 
 ElevenLabs Terms-of-Service content blocks use the canonical code `content_policy` with `retryable: false`. App callers should map that code to their content-refusal UX (for example, `content_refused` with guidance to edit the wording or switch hosts). The original ElevenLabs `type` and `code` remain available in `details`; string matching is only a compatibility fallback for older SDK versions.
@@ -557,7 +572,7 @@ ElevenLabs Terms-of-Service content blocks use the canonical code `content_polic
 | `SpeechSdkProviderError` | Provider returned non-2xx; includes the parsed and raw provider response |
 | `ApiError` | Backward-compatible base class for API failures |
 | `MissingApiKeyError` | No `apiKey` passed and the provider's env var is unset |
-| `NoSpeechGeneratedError` | Empty input (after tag stripping) or empty provider response |
+| `NoSpeechGeneratedError` | Empty input (after tag stripping), a provider declining to voice the text, or an empty provider response — `reason` says which |
 | `StreamingNotSupportedError` | `streamSpeech()` on a non-streaming model |
 | `VolumeAdjustmentUnsupportedError` | `volumeDbfs` with no decodable output mode |
 | `TimestampProviderRequiredError` | `timestamps: true` on a direct model without native timestamps or an explicit timestamp provider |
@@ -567,7 +582,7 @@ ElevenLabs Terms-of-Service content blocks use the canonical code `content_polic
 | `InstructionsUnsupportedError` | Non-empty delivery instructions were supplied to a direct model without the `instructions` capability |
 | `SpeechSDKError` | Base class |
 
-Retries 5xx (except 501), 429, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); other 4xx and 501 are terminal. `SpeechSdkProviderError.retryable` exposes that HTTP classification. When a retriable error carries a `Retry-After` header, the SDK sleeps that long before the next attempt — capped at 60s to avoid pathological waits. The parsed value is surfaced as `retryAfterMs` whenever the header is present, even on terminal errors that aren't retried. Default 2 retries; override via `maxRetries`.
+Retries 5xx (except 501), 429, `NoSpeechGeneratedError` with `retryable: true`, and network errors with jittered exponential backoff ([p-retry](https://github.com/sindresorhus/p-retry)); other 4xx and 501 are terminal. `SpeechSdkProviderError.retryable` exposes that HTTP classification. When a retriable error carries a `Retry-After` header, the SDK sleeps that long before the next attempt — capped at 60s to avoid pathological waits. The parsed value is surfaced as `retryAfterMs` whenever the header is present, even on terminal errors that aren't retried. Default 2 retries; override via `maxRetries`.
 
 ## Development
 
