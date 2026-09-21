@@ -79,7 +79,12 @@ export async function streamSpeech<
     throw new NoSpeechGeneratedError(
       warnings.length > 0
         ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
-        : "Text must not be empty."
+        : "Text must not be empty.",
+      {
+        model: resolved.modelId,
+        provider: resolved.provider.id,
+        reason: "empty_input",
+      }
     );
   }
 

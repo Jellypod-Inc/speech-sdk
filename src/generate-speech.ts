@@ -108,7 +108,12 @@ export async function generateSpeech<
     throw new NoSpeechGeneratedError(
       warnings.length > 0
         ? `Text is empty after removing unsupported audio tags for ${modelIdentifier}.`
-        : "Text must not be empty."
+        : "Text must not be empty.",
+      {
+        model: resolved.modelId,
+        provider: resolved.provider.id,
+        reason: "empty_input",
+      }
     );
   }
 
@@ -207,7 +212,12 @@ export async function generateSpeech<
 
   if (audioData.length === 0) {
     throw new NoSpeechGeneratedError(
-      `${modelIdentifier}: provider returned empty audio.`
+      `${modelIdentifier}: provider returned empty audio.`,
+      {
+        model: resolved.modelId,
+        provider: resolved.provider.id,
+        reason: "provider_empty_response",
+      }
     );
   }
 
@@ -410,7 +420,12 @@ async function generateChunkedSpeech<V extends Voice>(args: {
       if (audio.length === 0) {
         // One silent chunk fails the whole stitch, and the survivors are otherwise indistinguishable.
         throw new NoSpeechGeneratedError(
-          `${args.modelIdentifier}: provider returned empty audio for chunk ${chunkIndex + 1} of ${args.textChunks.length}.`
+          `${args.modelIdentifier}: provider returned empty audio for chunk ${chunkIndex + 1} of ${args.textChunks.length}.`,
+          {
+            model: args.resolved.modelId,
+            provider: args.resolved.provider.id,
+            reason: "provider_empty_response",
+          }
         );
       }
       const resultMediaType = result.mediaType.toLowerCase();

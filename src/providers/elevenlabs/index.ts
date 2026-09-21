@@ -230,6 +230,24 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
   },
 ] as const;
 
+// request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
+function missingAudioError(
+  modelId: string,
+  requestId: string | null,
+  payload: { alignment?: unknown; normalized_alignment?: unknown }
+): NoSpeechGeneratedError {
+  const present = (value: unknown) => (value ? "present" : "absent");
+  return new NoSpeechGeneratedError(
+    `elevenlabs/${modelId}: /with-timestamps response missing audio_base64 (request-id: ${requestId ?? "none"}; alignment: ${present(payload.alignment)}; normalized_alignment: ${present(payload.normalized_alignment)})`,
+    {
+      model: modelId,
+      provider: ELEVENLABS_PROVIDER_ID,
+      reason: "provider_empty_response",
+      requestId: requestId ?? undefined,
+    }
+  );
+}
+
 export class ElevenLabsSpeechProvider
   implements SpeechProvider<string, string>
 {
@@ -372,10 +390,7 @@ export class ElevenLabsSpeechProvider
       const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
-        // request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
-        throw new NoSpeechGeneratedError(
-          `elevenlabs/${options.modelId}: /with-timestamps response missing audio_base64 (request-id: ${requestId ?? "none"}; alignment: ${payload.alignment ? "present" : "absent"}; normalized_alignment: ${payload.normalized_alignment ? "present" : "absent"})`
-        );
+        throw missingAudioError(options.modelId, requestId, payload);
       }
 
       const audio = base64ToUint8Array(payload.audio_base64);

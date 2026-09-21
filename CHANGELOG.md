@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.30.0
+
+- **`NoSpeechGeneratedError` now says why no speech came back.** The class covered three unrelated conditions behind one message string: a provider answering 200 with no audio, a provider declining to voice the text, and text holding no words after tag stripping. Only the first recovers on a retry, and a caller had no way to tell them apart, so the safe reading was to treat every one as terminal — which is what stranded the transient ElevenLabs failure below. The error now carries `reason` (`provider_empty_response` | `content_refusal` | `empty_input`), a derived `retryable`, and, where the throw site knows them, `provider`, `model`, and `requestId`. An error constructed without a reason keeps the previous behavior and reports `provider_empty_response`. `withTurnIndex` carries the classification through the conversation stitch path.
+- **ElevenLabs `/with-timestamps` responses missing `audio_base64` are classified retryable and carry their `request-id` as a field.** The request-id was previously only interpolated into the message, so reporting one to provider support meant parsing it back out of prose. Observed at roughly 0.4 occurrences a day against `eleven_v3` with alignment present and no audio; the same request succeeds on a later attempt.
+- **The SDK no longer retries a no-speech failure that cannot succeed.** `buildRetryOptions` retried every non-`ApiError`, so a Gemini `SAFETY` decline and empty input each burned the full `maxRetries` budget — billed provider attempts that reach the same answer. Those are now terminal on the first attempt. Empty provider responses retry exactly as before. Gemini `PROHIBITED_CONTENT` stays retryable, matching the existing reshape stance that on a TTS model it reflects prompt shape rather than the material.
+
 ## 0.29.1
 
 - Classify ElevenLabs Terms-of-Service blocks as `SpeechSdkProviderError` with canonical `code: "content_policy"` and `retryable: false`, while preserving the original provider payload in `details` and leaving unrelated 403 responses unchanged. App callers should map `content_policy` to content-refusal UX (for example, `content_refused` with guidance to edit wording or switch hosts) instead of matching message strings.

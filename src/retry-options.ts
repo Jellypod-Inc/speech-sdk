@@ -1,5 +1,5 @@
 import type { Options as PRetryOptions } from "p-retry";
-import { ApiError } from "./errors.js";
+import { ApiError, NoSpeechGeneratedError } from "./errors.js";
 import { isRetriableApiError } from "./provider-utils.js";
 
 // Cap server-supplied Retry-After at 60s. A misbehaving upstream sending Retry-After: 86400
@@ -16,8 +16,7 @@ export function buildRetryOptions(args: {
     retries: args.maxRetries,
     signal: args.abortSignal,
     randomize: true,
-    shouldRetry: ({ error }) =>
-      !(error instanceof ApiError) || isRetriableApiError(error),
+    shouldRetry: ({ error }) => shouldRetryError(error),
     onFailedAttempt: async ({ error, retryDelay }) => {
       if (
         !(error instanceof ApiError) ||
@@ -37,6 +36,14 @@ export function buildRetryOptions(args: {
       }
     },
   };
+}
+
+// A refusal and wordless input are settled: repeating the same request bills another attempt to reach the same answer.
+function shouldRetryError(error: unknown): boolean {
+  if (error instanceof NoSpeechGeneratedError) {
+    return error.retryable;
+  }
+  return !(error instanceof ApiError) || isRetriableApiError(error);
 }
 
 function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {

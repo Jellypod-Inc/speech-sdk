@@ -237,7 +237,12 @@ export class InworldSpeechProvider implements SpeechProvider<string, string> {
     const json = ttsResponseSchema.parse(await response.json());
     if (!json.audioContent) {
       throw new NoSpeechGeneratedError(
-        `inworld/${options.modelId}: response missing audioContent`
+        `inworld/${options.modelId}: response missing audioContent`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: "provider_empty_response",
+        }
       );
     }
 

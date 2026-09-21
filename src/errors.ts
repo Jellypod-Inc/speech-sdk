@@ -146,13 +146,39 @@ export class SpeechSdkProviderError extends ApiError {
   }
 }
 
+// A provider that answered without audio, a provider that declined to voice the text, and
+// text that held no words all reach the caller as NoSpeechGeneratedError; only the first recovers on a retry.
+export type NoSpeechReason =
+  | "content_refusal"
+  | "empty_input"
+  | "provider_empty_response";
+
+export interface NoSpeechGeneratedErrorOptions {
+  readonly model?: string;
+  readonly provider?: string;
+  readonly reason?: NoSpeechReason;
+  readonly requestId?: string;
+  readonly turnIndex?: number;
+}
+
 export class NoSpeechGeneratedError extends SpeechSDKError {
+  readonly model?: string;
+  readonly provider?: string;
+  readonly reason: NoSpeechReason;
+  // What provider support traces a missing-audio response by.
+  readonly requestId?: string;
+  readonly retryable: boolean;
   // Set by generateConversation's stitch path; undefined for single-turn calls.
   readonly turnIndex?: number;
 
-  constructor(message?: string, options?: { turnIndex?: number }) {
+  constructor(message?: string, options?: NoSpeechGeneratedErrorOptions) {
     super(message ?? "No speech audio was generated.");
     this.name = "NoSpeechGeneratedError";
+    this.model = options?.model;
+    this.provider = options?.provider;
+    this.reason = options?.reason ?? "provider_empty_response";
+    this.requestId = options?.requestId;
+    this.retryable = this.reason === "provider_empty_response";
     this.turnIndex = options?.turnIndex;
   }
 }
@@ -172,7 +198,13 @@ export function withTurnIndex(err: unknown, turnIndex: number): unknown {
     });
   }
   if (err instanceof NoSpeechGeneratedError) {
-    return new NoSpeechGeneratedError(err.message, { turnIndex });
+    return new NoSpeechGeneratedError(err.message, {
+      model: err.model,
+      provider: err.provider,
+      reason: err.reason,
+      requestId: err.requestId,
+      turnIndex,
+    });
   }
   return err;
 }

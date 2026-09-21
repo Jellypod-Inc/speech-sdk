@@ -212,7 +212,12 @@ export class HumeSpeechProvider implements SpeechProvider<string, string> {
     const gen = payload.generations?.[0];
     if (!gen?.audio) {
       throw new NoSpeechGeneratedError(
-        `hume/${options.modelId}: /v0/tts response missing generations[0].audio`
+        `hume/${options.modelId}: /v0/tts response missing generations[0].audio`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: "provider_empty_response",
+        }
       );
     }
 
