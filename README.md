@@ -561,7 +561,7 @@ if (error instanceof NoSpeechGeneratedError) {
 }
 ```
 
-Callers deciding whether to re-attempt should read `retryable` rather than treating the class as terminal: an ElevenLabs `/with-timestamps` response carrying alignment and no `audio_base64` is a transient provider defect that a plain retry recovers, while a Gemini `SAFETY` decline and wordless input repeat identically forever. The SDK applies the same rule to its own retries.
+Callers deciding whether to re-attempt should read `retryable` rather than treating the class as terminal. An ElevenLabs `/with-timestamps` response carrying alignment and no `audio_base64` is retried once against the plain text-to-speech endpoint before `NoSpeechGeneratedError` is thrown; if that response is also empty, the error stays `retryable`. A Gemini `SAFETY` decline and wordless input repeat identically forever. The SDK applies the same rule to its own retries.
 
 `SpeechSdkProviderError` extends `ApiError`, so existing `instanceof ApiError`, `statusCode`, and `responseBody` handling remains compatible. `code` is populated from provider error codes (including Google `error.status`) or the RFC 7807 `code` extension. Match on `code` over `message` text — codes are a stable contract, messages aren't.
 

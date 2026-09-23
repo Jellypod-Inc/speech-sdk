@@ -47,6 +47,13 @@ function emptyWithTimestamps(requestId?: string) {
   );
 }
 
+function emptyAudio() {
+  return new Response(new Uint8Array(), {
+    status: 200,
+    headers: { "Content-Type": "audio/mpeg" },
+  });
+}
+
 function refusingProvider(reason: NoSpeechReason): SpeechProvider {
   return {
     id: "mock",
@@ -108,7 +115,10 @@ describe("NoSpeechGeneratedError classification", () => {
 
 describe("provider classification", () => {
   it("marks an ElevenLabs empty response retryable and carries its request-id", async () => {
-    const { provider } = elevenLabs(emptyWithTimestamps("req_abc123"));
+    const { provider } = elevenLabs(
+      emptyWithTimestamps("req_abc123"),
+      emptyAudio()
+    );
 
     const error = (await provider
       .generate({
@@ -202,6 +212,7 @@ describe("generateSpeech retry policy", () => {
   it("recovers when an ElevenLabs empty response is followed by audio", async () => {
     const { fetchMock, provider } = elevenLabs(
       emptyWithTimestamps("req_abc123"),
+      emptyAudio(),
       jsonResponse({
         audio_base64: AUDIO_B64,
         alignment: {
@@ -220,7 +231,7 @@ describe("generateSpeech retry policy", () => {
     });
 
     expect(result.audio.uint8Array).toEqual(AUDIO);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   }, 15_000);
 
   it("does not repeat a request the provider refused", async () => {

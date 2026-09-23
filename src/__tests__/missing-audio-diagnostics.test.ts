@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { NoSpeechGeneratedError } from "../errors.js";
+import { NoSpeechGeneratedError, SpeechSdkProviderError } from "../errors.js";
 import { ElevenLabsSpeechProvider } from "../providers/elevenlabs/index.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
@@ -148,33 +148,50 @@ describe("Google no-audio diagnostics", () => {
   });
 });
 
+const HI_ALIGNMENT = {
+  characters: ["H", "i"],
+  character_start_times_seconds: [0, 0.05],
+  character_end_times_seconds: [0.05, 0.1],
+};
+
 describe("ElevenLabs missing audio_base64 diagnostics", () => {
-  function elevenLabsProvider(
-    payload: unknown,
-    headers: Record<string, string>
-  ) {
-    return new ElevenLabsSpeechProvider({
-      apiKey: "test-key",
-      fetch: vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(payload), {
+  function elevenLabsProvider(options: {
+    fallback?: Response;
+    headers?: Record<string, string>;
+    payload: unknown;
+  }) {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(options.payload), {
           status: 200,
-          headers: { "Content-Type": "application/json", ...headers },
+          headers: {
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
         })
-      ),
-    });
+      )
+      .mockResolvedValueOnce(
+        options.fallback ??
+          new Response(new Uint8Array(), {
+            status: 200,
+            headers: { "Content-Type": "audio/mpeg" },
+          })
+      );
+    return {
+      fetch,
+      provider: new ElevenLabsSpeechProvider({
+        apiKey: "test-key",
+        fetch,
+      }),
+    };
   }
 
   it("names the request-id and which alignments came back", async () => {
-    const provider = elevenLabsProvider(
-      {
-        alignment: {
-          characters: ["H", "i"],
-          character_start_times_seconds: [0, 0.05],
-          character_end_times_seconds: [0.05, 0.1],
-        },
-      },
-      { "request-id": "req_abc123" }
-    );
+    const { fetch, provider } = elevenLabsProvider({
+      headers: { "request-id": "req_abc123" },
+      payload: { alignment: HI_ALIGNMENT },
+    });
 
     const error = await provider
       .generate({
@@ -190,10 +207,14 @@ describe("ElevenLabs missing audio_base64 diagnostics", () => {
     expect(error.message).toContain("request-id: req_abc123");
     expect(error.message).toContain("alignment: present");
     expect(error.message).toContain("normalized_alignment: absent");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(String(fetch.mock.calls[1]?.[0])).toBe(
+      "https://api.elevenlabs.io/v1/text-to-speech/voice-id"
+    );
   });
 
   it("reports both alignments absent and no request-id", async () => {
-    const provider = elevenLabsProvider({}, {});
+    const { provider } = elevenLabsProvider({ payload: {} });
 
     const error = await provider
       .generate({
@@ -207,5 +228,104 @@ describe("ElevenLabs missing audio_base64 diagnostics", () => {
     expect(error.message).toContain("request-id: none");
     expect(error.message).toContain("alignment: absent");
     expect(error.message).toContain("normalized_alignment: absent");
+  });
+
+  it("falls back to plain TTS and keeps timestamps when alignment is present", async () => {
+    const audio = new Uint8Array([9, 8, 7, 6]);
+    const { fetch, provider } = elevenLabsProvider({
+      fallback: new Response(audio, {
+        status: 200,
+        headers: {
+          "Content-Type": "audio/mpeg",
+          "audio-duration-seconds": "0.25",
+          "request-id": "req_plain",
+        },
+      }),
+      headers: {
+        "audio-duration-seconds": "9",
+        "request-id": "req_ts",
+      },
+      payload: {
+        alignment: HI_ALIGNMENT,
+        normalized_alignment: HI_ALIGNMENT,
+      },
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_v3",
+      text: "Hi",
+      voice: "voice-id",
+      includeTimestamps: true,
+      providerOptions: { output_format: "mp3_44100_128", stability: 0.4 },
+    });
+
+    expect(result.audio).toEqual(audio);
+    expect(result.timestamps).toEqual([{ text: "Hi", start: 0, end: 0.1 }]);
+    expect(result.mediaType).toBe("audio/mpeg");
+    expect(result.audioDurationMs).toBe(250);
+    expect(result.providerMetadata).toEqual({ requestId: "req_plain" });
+
+    const [firstUrl, firstInit] = fetch.mock.calls[0] as [string, RequestInit];
+    const [secondUrl, secondInit] = fetch.mock.calls[1] as [
+      string,
+      RequestInit,
+    ];
+    expect(firstUrl).toBe(
+      "https://api.elevenlabs.io/v1/text-to-speech/voice-id/with-timestamps?output_format=mp3_44100_128"
+    );
+    expect(secondUrl).toBe(
+      "https://api.elevenlabs.io/v1/text-to-speech/voice-id?output_format=mp3_44100_128"
+    );
+    expect(JSON.parse(String(firstInit.body))).toEqual({
+      model_id: "eleven_v3",
+      stability: 0.4,
+      text: "Hi",
+    });
+    expect(JSON.parse(String(secondInit.body))).toEqual(
+      JSON.parse(String(firstInit.body))
+    );
+  });
+
+  it("returns plain TTS audio without timestamps when alignment is absent", async () => {
+    const audio = new Uint8Array([1, 2, 3, 4]);
+    const { provider } = elevenLabsProvider({
+      fallback: new Response(audio, {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg", "request-id": "req_plain" },
+      }),
+      payload: {},
+    });
+
+    const result = await provider.generate({
+      modelId: "eleven_v3",
+      text: "Hi",
+      voice: "voice-id",
+      includeTimestamps: true,
+    });
+
+    expect(result.audio).toEqual(audio);
+    expect(result.timestamps).toBeUndefined();
+    expect(result.providerMetadata).toEqual({ requestId: "req_plain" });
+  });
+
+  it("surfaces a plain TTS failure instead of the missing-audio error", async () => {
+    const { provider } = elevenLabsProvider({
+      fallback: new Response("busy", { status: 500 }),
+      headers: { "request-id": "req_ts" },
+      payload: { alignment: HI_ALIGNMENT },
+    });
+
+    const error = await provider
+      .generate({
+        modelId: "eleven_v3",
+        text: "Hi",
+        voice: "voice-id",
+        includeTimestamps: true,
+      })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SpeechSdkProviderError);
+    expect(error).not.toBeInstanceOf(NoSpeechGeneratedError);
+    expect(error).toMatchObject({ status: 500 });
   });
 });

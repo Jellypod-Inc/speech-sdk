@@ -379,18 +379,32 @@ export class ElevenLabsSpeechProvider
     });
 
     const requestId = response.headers.get("request-id");
-    const durationHeader = response.headers.get("audio-duration-seconds");
-    const parsedDuration =
-      durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
-    const headerDurationMs = Number.isFinite(parsedDuration)
-      ? Math.round(parsedDuration * 1000)
-      : undefined;
+    const headerDurationMs = durationMsFromHeader(
+      response.headers.get("audio-duration-seconds")
+    );
 
     if (options.includeTimestamps) {
       const payload = withTimestampsResponseSchema.parse(await response.json());
 
       if (!payload.audio_base64) {
-        throw missingAudioError(options.modelId, requestId, payload);
+        const plain = await this.generatePlainSpeech({
+          abortSignal: options.abortSignal,
+          body,
+          headers: options.headers,
+          modelId: options.modelId,
+          outputFormat,
+          queryString,
+          voice: options.voice,
+        });
+        if (plain.audio.byteLength === 0) {
+          throw missingAudioError(options.modelId, requestId, payload);
+        }
+        // No TimestampProvider on generate(), so forced alignment stays outside.
+        const timestamps = resolveElevenLabsTimestamps(payload, options.text);
+        if (timestamps == null || timestamps.length === 0) {
+          return plain;
+        }
+        return { ...plain, timestamps };
       }
 
       const audio = base64ToUint8Array(payload.audio_base64);
@@ -418,6 +432,63 @@ export class ElevenLabsSpeechProvider
     return {
       audio: new Uint8Array(arrayBuffer),
       audioDurationMs: headerDurationMs,
+      mediaType,
+      providerMetadata: requestId ? { requestId } : undefined,
+    };
+  }
+
+  private async generatePlainSpeech(args: {
+    abortSignal?: AbortSignal;
+    body: Record<string, unknown>;
+    headers?: Record<string, string>;
+    modelId: string;
+    outputFormat: string | undefined;
+    queryString: string;
+    voice: string;
+  }): Promise<{
+    audio: Uint8Array;
+    audioDurationMs?: number;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    let url = `${this.baseURL}/v1/text-to-speech/${args.voice}`;
+    if (args.queryString) {
+      url += `?${args.queryString}`;
+    }
+
+    const response = await this.fetchFn(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": resolveApiKey(
+          this.apiKey,
+          "ELEVENLABS_API_KEY",
+          "ElevenLabs"
+        ),
+        "X-User-Agent": SDK_USER_AGENT,
+        ...args.headers,
+      },
+      body: JSON.stringify(args.body),
+      signal: args.abortSignal,
+    });
+
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: args.modelId,
+      stage: "synthesis",
+    });
+
+    const requestId = response.headers.get("request-id");
+    const mediaType =
+      args.outputFormat == null
+        ? (response.headers.get("content-type") ?? "audio/mpeg")
+        : elevenLabsFormatToMediaType(args.outputFormat);
+
+    return {
+      audio: new Uint8Array(await response.arrayBuffer()),
+      audioDurationMs: durationMsFromHeader(
+        response.headers.get("audio-duration-seconds")
+      ),
       mediaType,
       providerMetadata: requestId ? { requestId } : undefined,
     };
@@ -788,6 +859,16 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   return Object.assign(factory, {
     forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
   });
+}
+
+function durationMsFromHeader(
+  durationHeader: string | null
+): number | undefined {
+  const parsedDuration =
+    durationHeader == null ? Number.NaN : Number.parseFloat(durationHeader);
+  return Number.isFinite(parsedDuration)
+    ? Math.round(parsedDuration * 1000)
+    : undefined;
 }
 
 // Unknown formats fall back to mp3 (the endpoint's default).
