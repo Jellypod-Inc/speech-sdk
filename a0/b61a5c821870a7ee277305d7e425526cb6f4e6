@@ -1,0 +1,33 @@
+src/conversation/stitch.ts
+  s_59364fb5d299a2::t_65c2abc41ec4db 72-73,77,105
+  s_59364fb5d299a2::t_1b561c57040550 71
+src/__tests__/text-chunker.test.ts
+  s_59364fb5d299a2::t_f0eea8010dd8e0 51-53
+  s_59364fb5d299a2::t_cbc4a4133f3fc4 54
+  s_59364fb5d299a2::t_1af0e5b964cef2 55
+  s_59364fb5d299a2::t_ed0271a0a025c8 49-50,56-67
+src/sentence-boundaries.ts
+  s_59364fb5d299a2::t_65c2abc41ec4db 5
+src/text-chunker.ts
+  s_59364fb5d299a2::t_65c2abc41ec4db 10
+src/__tests__/google-speech-model.test.ts
+  s_59364fb5d299a2::t_65c2abc41ec4db 165-166
+src/__tests__/generate-conversation.test.ts
+  s_59364fb5d299a2::t_ed0271a0a025c8 182-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a0b61a5c821870a7ee277305d7e425526cb6f4e6",
+  "prompts": {},
+  "sessions": {
+    "s_59364fb5d299a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d04b-fa92-7c60-a06a-e97851154c61",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
