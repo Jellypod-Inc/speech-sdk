@@ -184,6 +184,10 @@ describe("GoogleSpeechProvider", () => {
             domain: "generativelanguage.googleapis.com",
             metadata: { rejectedField: "speech_config" },
           },
+          {
+            "@type": "type.googleapis.com/google.rpc.RequestInfo",
+            requestId: "google-request-123",
+          },
         ],
       },
     };
@@ -191,7 +195,7 @@ describe("GoogleSpeechProvider", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
-      headers: new Headers({ "x-goog-request-id": "google-request-123" }),
+      headers: new Headers(),
       text: async () => rawResponse,
     });
 
@@ -234,6 +238,7 @@ describe("GoogleSpeechProvider", () => {
       provider: "google",
       model: "gemini-3.1-flash-tts-preview",
       code: "INVALID_ARGUMENT",
+      requestId: "google-request-123",
       retryable: false,
       rawResponse,
     });
@@ -245,6 +250,84 @@ describe("GoogleSpeechProvider", () => {
     ]);
     expect(logged.details.error.details[1].metadata).toEqual({
       rejectedField: "speech_config",
+    });
+  });
+
+  it("prefers the Google request ID header over RequestInfo", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers({ "x-goog-request-id": "header-request-123" }),
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 400,
+            message: "Request contains an invalid argument.",
+            status: "INVALID_ARGUMENT",
+            details: [
+              {
+                "@type": "type.googleapis.com/google.rpc.RequestInfo",
+                requestId: "body-request-123",
+              },
+            ],
+          },
+        }),
+    });
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const error = await provider
+      .generate({
+        modelId: "gemini-3.1-flash-tts-preview",
+        text: "Hello",
+        voice: "Kore",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: "INVALID_ARGUMENT",
+      requestId: "header-request-123",
+      retryable: false,
+    });
+  });
+
+  it("extracts RequestInfo from a bare Google status", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers(),
+      text: async () =>
+        JSON.stringify({
+          code: 400,
+          message: "Request contains an invalid argument.",
+          status: "INVALID_ARGUMENT",
+          details: [
+            {
+              "@type": "type.googleapis.com/google.rpc.RequestInfo",
+              requestId: "bare-status-request-123",
+            },
+          ],
+        }),
+    });
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+
+    const error = await provider
+      .generate({
+        modelId: "gemini-3.1-flash-tts-preview",
+        text: "Hello",
+        voice: "Kore",
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: "INVALID_ARGUMENT",
+      requestId: "bare-status-request-123",
+      retryable: false,
     });
   });
 

@@ -66,6 +66,28 @@ function errorBodyCandidates(json: unknown): readonly unknown[] {
   ];
 }
 
+const GOOGLE_REQUEST_INFO_TYPE = "type.googleapis.com/google.rpc.RequestInfo";
+
+function requestIdFromGoogleRequestInfo(error: unknown): string | undefined {
+  const details = nestedRecord(error, "details");
+  if (!Array.isArray(details)) {
+    return;
+  }
+
+  for (const detail of details) {
+    if (stringProperty(detail, "@type") !== GOOGLE_REQUEST_INFO_TYPE) {
+      continue;
+    }
+    const requestId =
+      stringProperty(detail, "requestId") ??
+      stringProperty(detail, "request_id");
+    if (requestId) {
+      return requestId;
+    }
+  }
+  return;
+}
+
 function parseErrorBody(body: string | undefined): ParsedErrorBody {
   if (!body) {
     return { messages: [], providerCodes: [] };
@@ -104,7 +126,9 @@ function parseErrorBody(body: string | undefined): ParsedErrorBody {
       stringProperty(json, "requestId") ??
       stringProperty(json, "request_id") ??
       stringProperty(error, "requestId") ??
-      stringProperty(error, "request_id");
+      stringProperty(error, "request_id") ??
+      requestIdFromGoogleRequestInfo(error) ??
+      requestIdFromGoogleRequestInfo(json);
     return {
       message,
       messages,
