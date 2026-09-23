@@ -127,7 +127,8 @@ function parseErrorBody(body: string | undefined): ParsedErrorBody {
       stringProperty(json, "request_id") ??
       stringProperty(error, "requestId") ??
       stringProperty(error, "request_id") ??
-      requestIdFromGoogleRequestInfo(error);
+      requestIdFromGoogleRequestInfo(error) ??
+      requestIdFromGoogleRequestInfo(json);
     return {
       message,
       messages,
