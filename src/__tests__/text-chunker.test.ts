@@ -81,6 +81,17 @@ describe("splitTextByMaxChars", () => {
     ]);
   });
 
+  it("keeps closing parentheses with the preceding sentence", () => {
+    expect(splitTextByMaxChars("Hello (world.) Next sentence.", 16)).toEqual([
+      "Hello (world.)",
+      "Next sentence.",
+    ]);
+    expect(splitTextByMaxChars("你好世界。）再见世界。", 6)).toEqual([
+      "你好世界。）",
+      "再见世界。",
+    ]);
+  });
+
   it("supports Devanagari sentence boundaries", () => {
     expect(splitTextByMaxChars("राम गया।सीता आई।", 8)).toEqual([
       "राम गया।",
