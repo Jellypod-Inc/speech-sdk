@@ -70,7 +70,7 @@ import { generateSpeech } from '@speech-sdk/core';
 import { createGoogle } from '@speech-sdk/core/providers';
 
 const result = await generateSpeech({
-  model: createGoogle()('gemini-2.5-flash-preview-tts'),
+  model: createGoogle()('gemini-3.8-flash-lite-tts'),
   voice: 'Kore',
   text: 'The exact words expected in the generated audio.',
   instructions: 'Use a confident, warm, measured delivery.',
