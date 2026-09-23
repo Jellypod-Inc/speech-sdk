@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.32.0
+
+- Complete Gemini 3.8 Flash and Flash-Lite TTS support through structured Interactions requests. Spoken text remains verbatim; `instructions` becomes non-spoken turn style. Prebuilt and persistent custom voices work for single-speaker generation, while two prebuilt voices use native dialogue and custom-voice dialogue uses local stitching. Unary WAV is preserved, and progressive streaming returns raw 24 kHz PCM.
+- Translate a documented set of square-bracket vocal tags to Gemini inline tags and reject unsupported directions. Keep tags out of timestamp alignment and preserve caller wording after pronunciation substitution.
+- Add `maxChunkWords` to target shorter audio chunks, enforce the conservative Gemini 3.8 request ceiling, and expose ordered per-chunk spans, durations, retry counts, and provider diagnostics. Bound nested stitching concurrency by the caller's `maxConcurrency`.
+- Verify with unit tests and live single-speaker narration, native two-speaker dialogue, streaming, and forced-aligned timestamps. See the README for migration guidance and limits that remain provider- or application-owned.
+
 ## 0.31.0
 
 - Add Gemini 3.8 Flash TTS and Flash-Lite TTS with structured speech directions, native dialogue, and progressive streaming. Complete 3.8 responses are already WAV, so the SDK preserves them without adding another header. Flash-Lite 3.8 is now the default Google model; callers who need the previous default can select `gemini-2.5-flash-preview-tts` explicitly.
