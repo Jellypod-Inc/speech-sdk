@@ -1,0 +1,21 @@
+src/__tests__/text-chunker.test.ts
+  s_59364fb5d299a2::t_db1c400886dcef 84-94
+src/sentence-boundaries.ts
+  s_59364fb5d299a2::t_db1c400886dcef 2,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1dcd29254c2fb9cb39fed5e3497f7de493cf2288",
+  "prompts": {},
+  "sessions": {
+    "s_59364fb5d299a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d04b-fa92-7c60-a06a-e97851154c61",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
