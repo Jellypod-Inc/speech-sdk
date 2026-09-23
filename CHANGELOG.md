@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.0
+
+- Add Gemini 3.8 Flash TTS and Flash-Lite TTS with structured speech directions, native dialogue, and progressive streaming. Complete 3.8 responses are already WAV, so the SDK preserves them without adding another header. Flash-Lite 3.8 is now the default Google model; callers who need the previous default can select `gemini-2.5-flash-preview-tts` explicitly.
+- Verify both new models with unit tests and live Google API calls across four voices, native two-speaker dialogue, and Flash-Lite streaming.
+
 ## 0.30.1
 
 - Preserve Google `google.rpc.RequestInfo.requestId` on `SpeechSdkProviderError.requestId` for both wrapped and bare status responses, while retaining complete structured error details and keeping generic `INVALID_ARGUMENT` responses non-retryable.
