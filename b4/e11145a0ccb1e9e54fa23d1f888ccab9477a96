@@ -1,0 +1,24 @@
+src/provider-utils.ts
+  s_584e1b6e2869ba::t_aaa12240892321 70-90,129-130
+  s_584e1b6e2869ba::t_c81208af9962dc 69
+src/__tests__/google-speech-model.test.ts
+  s_584e1b6e2869ba::t_aaa12240892321 187-190,198
+src/__tests__/google-terse-input-retry.test.ts
+  s_584e1b6e2869ba::t_aaa12240892321 191-192,197,200-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b4e11145a0ccb1e9e54fa23d1f888ccab9477a96",
+  "prompts": {},
+  "sessions": {
+    "s_584e1b6e2869ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceef-eb02-7d60-8ff2-265e06286c24",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
