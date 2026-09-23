@@ -1,0 +1,22 @@
+src/__tests__/google-speech-model.test.ts
+  s_584e1b6e2869ba::t_699d694bc72d6d 241,256-332
+  s_584e1b6e2869ba::t_89bdefef8278c2 333
+src/provider-utils.ts
+  s_584e1b6e2869ba::t_699d694bc72d6d 130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7ef46a8dfdbab4ef2c67b34e14c673abe00d9428",
+  "prompts": {},
+  "sessions": {
+    "s_584e1b6e2869ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceef-eb02-7d60-8ff2-265e06286c24",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
