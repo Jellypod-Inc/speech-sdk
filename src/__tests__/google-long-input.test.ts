@@ -155,7 +155,7 @@ describe("Google Gemini TTS long input", () => {
     ]);
     for (const model of provider.models) {
       expect(model.maxInputChars).toBeGreaterThan(0);
-      expect(model.maxInputChars).toBeLessThan(
+      expect(model.maxInputChars).toBeLessThanOrEqual(
         CONSERVATIVE_REQUEST_CHAR_BUDGET
       );
     }

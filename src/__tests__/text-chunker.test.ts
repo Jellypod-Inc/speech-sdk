@@ -1,5 +1,71 @@
 import { describe, expect, it } from "vitest";
-import { splitTextByMaxChars } from "../text-chunker.js";
+import {
+  splitTextByMaxChars,
+  splitTextByMaxCharsAtTokens,
+  splitTextByMaxWords,
+} from "../text-chunker.js";
+
+describe("spoken-word chunking", () => {
+  it("keeps sentence punctuation, whitespace, and vocal tags intact", () => {
+    expect(
+      splitTextByMaxWords(
+        "Hello[laughs], world.  Next line [short pause] here.",
+        2
+      )
+    ).toEqual(["Hello[laughs], world.", "Next line [short pause] here."]);
+  });
+
+  it("never splits a word or vocal tag at the hard character ceiling", () => {
+    expect(
+      splitTextByMaxCharsAtTokens("One [short pause] two. Three four.", 22)
+    ).toEqual(["One [short pause] two.", "Three four."]);
+  });
+
+  it("rejects invalid word and character limits", () => {
+    for (const limit of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => splitTextByMaxWords("Hello.", limit)).toThrow(
+        "maxChunkWords must be a positive integer."
+      );
+      expect(() => splitTextByMaxCharsAtTokens("Hello.", limit)).toThrow(
+        "maxChars must be a positive integer."
+      );
+    }
+    expect(() => splitTextByMaxCharsAtTokens("unbreakable", 5)).toThrow(
+      "A word or vocal tag exceeds maxInputChars=5."
+    );
+  });
+
+  it("splits unspaced CJK text and respects Unicode sentence boundaries", () => {
+    expect(splitTextByMaxWords("你好世界。再见世界。", 4)).toEqual([
+      "你好世界。",
+      "再见世界。",
+    ]);
+    const text = "你好世界。".repeat(1200);
+    const chunks = splitTextByMaxCharsAtTokens(text, 5000);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every((chunk) => chunk.length <= 5000)).toBe(true);
+    expect(chunks.join("")).toBe(text);
+  });
+
+  it("keeps space-separated Korean words intact", () => {
+    expect(
+      splitTextByMaxWords("안녕하세요 여러분. 다음 문장입니다.", 2)
+    ).toEqual(["안녕하세요 여러분.", "다음 문장입니다."]);
+    expect(() => splitTextByMaxCharsAtTokens("안녕하세요 여러분.", 4)).toThrow(
+      "A word or vocal tag exceeds maxInputChars=4."
+    );
+  });
+
+  it("splits after a sentence ending with a closing parenthesis", () => {
+    expect(splitTextByMaxWords("Hello (world.) Next sentence.", 2)).toEqual([
+      "Hello (world.)",
+      "Next sentence.",
+    ]);
+    expect(
+      splitTextByMaxCharsAtTokens("Hello (world.) Next sentence.", 17)
+    ).toEqual(["Hello (world.)", "Next sentence."]);
+  });
+});
 
 describe("splitTextByMaxChars", () => {
   it("splits on sentence boundaries before whitespace", () => {
@@ -11,6 +77,17 @@ describe("splitTextByMaxChars", () => {
   it("supports CJK sentence boundaries without spaces", () => {
     expect(splitTextByMaxChars("你好世界。再见世界。", 6)).toEqual([
       "你好世界。",
+      "再见世界。",
+    ]);
+  });
+
+  it("keeps closing parentheses with the preceding sentence", () => {
+    expect(splitTextByMaxChars("Hello (world.) Next sentence.", 16)).toEqual([
+      "Hello (world.)",
+      "Next sentence.",
+    ]);
+    expect(splitTextByMaxChars("你好世界。）再见世界。", 6)).toEqual([
+      "你好世界。）",
       "再见世界。",
     ]);
   });

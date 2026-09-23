@@ -99,6 +99,7 @@ export interface SpeechProvider<
   TModel extends string = string,
   TVoice extends Voice = Voice,
 > {
+  acceptsDialogueVoices?(modelId: string, voices: readonly TVoice[]): boolean;
   /**
    * Create a persisted cloned voice from reference samples and return a reusable
    * voice ID. Providers that can't clone omit this; `cloneVoice()` throws

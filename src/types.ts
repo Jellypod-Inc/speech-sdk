@@ -76,6 +76,8 @@ export interface GenerateSpeechOptions<
   headers?: Record<string, string>;
   /** Non-spoken delivery direction. The selected model must declare instruction support. */
   instructions?: string;
+  /** Approximate spoken-word target per audio chunk. At 150 words/minute, 150 words is about one minute. */
+  maxChunkWords?: number;
   // When the input exceeds the model's maxInputChars and the SDK chunks it locally, this caps how many chunk requests fire in parallel. Default 6. Set to 1 to serialize (e.g. when a provider's account-level concurrency is the bottleneck).
   maxConcurrency?: number;
   maxInputChars?: number;

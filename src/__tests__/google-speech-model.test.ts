@@ -124,6 +124,48 @@ describe("GoogleSpeechProvider", () => {
     expect(view.getUint32(24, true)).toBe(24_000);
   });
 
+  it("preserves legacy Gemini WAV responses for speech and dialogue", async () => {
+    const wav = new Uint8Array(48);
+    wav.set(new TextEncoder().encode("RIFF"), 0);
+    wav.set(new TextEncoder().encode("WAVE"), 8);
+    const mockFetch = createMockFetch({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: "audio/wav",
+                  data: btoa(String.fromCharCode(...wav)),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const provider = new GoogleSpeechProvider({
+      apiKey: "test-key",
+      fetch: mockFetch,
+    });
+    const speech = await provider.generate({
+      modelId: "gemini-2.5-flash-preview-tts",
+      text: "Hello",
+      voice: "Kore",
+    });
+    const dialogue = await provider.generateDialogue({
+      modelId: "gemini-2.5-flash-preview-tts",
+      turns: [
+        { voice: "Kore", text: "Hello" },
+        { voice: "Puck", text: "Hi" },
+      ],
+    });
+    expect(speech.audio).toEqual(wav);
+    expect(dialogue.audio).toEqual(wav);
+    expect(speech.mediaType).toBe("audio/wav");
+    expect(dialogue.mediaType).toBe("audio/wav");
+  });
+
   it("falls back to default sample rate when mimeType rate is invalid", async () => {
     // Malformed mimeType with rate=0 should not slip through to pcmToWav.
     // Without the guard, 0 satisfies `??` fallback (nullish only) and

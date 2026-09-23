@@ -68,10 +68,13 @@ export async function runStitch<V extends Voice>(
   input: StitchInput<V>
 ): Promise<StitchOutput> {
   const start = performance.now();
+  // Divide the call budget across active turns so nested chunking cannot exceed it.
+  const turnConcurrency = Math.min(input.maxConcurrency, input.turns.length);
+  const chunkConcurrency = Math.floor(input.maxConcurrency / turnConcurrency);
 
   const perTurn = await mapWithConcurrency(
     input.turns,
-    input.maxConcurrency,
+    turnConcurrency,
     async (turn, i, signal) => {
       const resolved = input.resolvedPerTurn[i];
       const stitchOpts = input.stitchOptionsPerTurn[i];
@@ -99,7 +102,7 @@ export async function runStitch<V extends Voice>(
           timestampProvider: input.timestampProvider,
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
-          maxConcurrency: input.maxConcurrency,
+          maxConcurrency: chunkConcurrency,
           speed: turn.speed,
         });
       } catch (err) {

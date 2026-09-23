@@ -1,7 +1,14 @@
 import { z } from "zod";
-import { SENTENCE_BOUNDARY_RE } from "./sentence-boundaries.js";
+import {
+  SENTENCE_BOUNDARY_RE,
+  SENTENCE_TERMINATOR_RE,
+} from "./sentence-boundaries.js";
 
 const WHITESPACE_RE = /\s+/g;
+const VOCAL_TAG_RE = /^\[[^\]]+\]$|^<[^>]+>$/;
+const SPEECH_UNIT_RE =
+  /\[[^\]]+\]|<[^>]+>|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]|[^\s[\]<>\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+/gu;
+const SPOKEN_UNIT_RE = /[\p{L}\p{N}]/u;
 const LEADING_WHITESPACE_RE = /\s/;
 const WHITESPACE_BREAK_PENALTY = 512;
 const MAX_INPUT_CHARS_SCHEMA = z.number().finite().int().positive();
@@ -96,6 +103,95 @@ export function splitTextByMaxChars(text: string, maxChars: number): string[] {
     chunks.push(finalChunk);
   }
   return chunks;
+}
+
+export function splitTextByMaxWords(text: string, maxWords: number): string[] {
+  if (!Number.isInteger(maxWords) || maxWords < 1) {
+    throw new Error("maxChunkWords must be a positive integer.");
+  }
+  const units = collectSpeechUnits(text);
+  const chunks: string[] = [];
+  let start = units[0]?.start ?? 0;
+  let end = start;
+  let previousSpoken = "";
+  let words = 0;
+  for (const unit of units) {
+    const isWord =
+      !VOCAL_TAG_RE.test(unit.text) && SPOKEN_UNIT_RE.test(unit.text);
+    if (
+      isWord &&
+      words >= maxWords &&
+      (SENTENCE_TERMINATOR_RE.test(previousSpoken) || words >= maxWords * 1.25)
+    ) {
+      chunks.push(text.slice(start, end).trim());
+      start = unit.start;
+      words = 0;
+    }
+    end = unit.end;
+    if (!VOCAL_TAG_RE.test(unit.text)) {
+      previousSpoken = unit.text;
+      if (isWord) {
+        words++;
+      }
+    }
+  }
+  if (end > start) {
+    chunks.push(text.slice(start, end).trim());
+  }
+  return chunks;
+}
+
+export function splitTextByMaxCharsAtTokens(
+  text: string,
+  maxChars: number
+): string[] {
+  const { maxChars: resolvedMaxChars } = parseWithMessage(
+    SPLIT_TEXT_OPTIONS_SCHEMA,
+    { maxChars },
+    "splitTextByMaxCharsAtTokens: maxChars must be a positive integer."
+  );
+  const units = collectSpeechUnits(text);
+  const chunks: string[] = [];
+  let current: SpeechUnit[] = [];
+  for (const unit of units) {
+    if (unit.text.length > resolvedMaxChars) {
+      throw new Error(
+        `A word or vocal tag exceeds maxInputChars=${resolvedMaxChars}.`
+      );
+    }
+    while (
+      current.length > 0 &&
+      unit.end - current[0].start > resolvedMaxChars
+    ) {
+      const sentenceEnd = current
+        .map((candidate) => SENTENCE_TERMINATOR_RE.test(candidate.text))
+        .lastIndexOf(true);
+      const splitAfter = sentenceEnd >= 0 ? sentenceEnd + 1 : current.length;
+      chunks.push(
+        text.slice(current[0].start, current[splitAfter - 1].end).trim()
+      );
+      current = current.slice(splitAfter);
+    }
+    current.push(unit);
+  }
+  if (current.length > 0) {
+    chunks.push(text.slice(current[0].start, current.at(-1)?.end).trim());
+  }
+  return chunks;
+}
+
+interface SpeechUnit {
+  readonly end: number;
+  readonly start: number;
+  readonly text: string;
+}
+
+function collectSpeechUnits(text: string): SpeechUnit[] {
+  return [...text.matchAll(SPEECH_UNIT_RE)].map((match) => ({
+    text: match[0],
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
 }
 
 function parseWithMessage<T>(

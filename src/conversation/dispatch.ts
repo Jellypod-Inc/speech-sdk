@@ -10,6 +10,7 @@ import { newVoiceKeyer } from "./validate.js";
 
 export type StitchFallbackReason =
   | "fallback-from-native"
+  | "fallback-from-native-custom-voice"
   | "fallback-from-native-oversized"
   | "fallback-from-native-voice-count"
   | "fallback-from-native-voice-count-exceeded";
@@ -130,6 +131,14 @@ function tryNativeDialoguePath(args: {
   // dialogue supports also has no valid native call, so render per-turn (stitch has no voice cap).
   if (countUniqueVoices(turns) > caps.maxVoices) {
     return { fallbackReason: "fallback-from-native-voice-count-exceeded" };
+  }
+  if (
+    provider.acceptsDialogueVoices?.(
+      modelId,
+      turns.map((turn) => turn.voice)
+    ) === false
+  ) {
+    return { fallbackReason: "fallback-from-native-custom-voice" };
   }
   const blocks = planNativeBlocks({
     provider,

@@ -253,6 +253,8 @@ export async function generateConversation<
   let fallbackWarning: string | undefined;
   if (path.reason === "fallback-from-native") {
     fallbackWarning = `native dialogue unavailable because per-turn providerOptions are set; rendered via stitch (${options.turns.length} API calls instead of 1)`;
+  } else if (path.reason === "fallback-from-native-custom-voice") {
+    fallbackWarning = `native dialogue requires prebuilt voices; custom voices were rendered via stitch (${options.turns.length} generateSpeech calls) instead`;
   } else if (path.reason === "fallback-from-native-oversized") {
     fallbackWarning = `native dialogue exceeds the provider's per-call limit and couldn't be split into voice-valid blocks; rendered via stitch (${options.turns.length} API calls instead of 1)`;
   } else if (path.reason === "fallback-from-native-voice-count") {

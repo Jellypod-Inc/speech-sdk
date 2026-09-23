@@ -38,7 +38,12 @@ import type {
   SpeechResultWithTimestamps,
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
-import { resolveMaxInputChars, splitTextByMaxChars } from "./text-chunker.js";
+import {
+  resolveMaxInputChars,
+  splitTextByMaxChars,
+  splitTextByMaxCharsAtTokens,
+  splitTextByMaxWords,
+} from "./text-chunker.js";
 import { preprocessSpeechText } from "./text-preprocessing.js";
 import {
   type AlignmentAudioChunk,
@@ -51,6 +56,7 @@ import {
 import type { GenerateSpeechOptions } from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
+type RetriedGenerateResult = ProviderGenerateResult & { retryCount: number };
 
 function chunkStitchTargetRate(
   segments: readonly { sampleRate: number }[]
@@ -146,6 +152,7 @@ export async function generateSpeech<
     processedText: textToSend,
     instructions,
     userMaxInputChars: options.maxInputChars,
+    maxChunkWords: options.maxChunkWords,
   });
 
   const { providerOptions, stitchOptions } =
@@ -167,6 +174,8 @@ export async function generateSpeech<
 
   let result: ProviderGenerateResult & {
     alignmentChunks?: readonly AlignmentAudioChunk[];
+    retryCount?: number;
+    chunks?: SpeechMetadata["chunks"];
   };
   // Resolved only when chunking — maxConcurrency governs chunked synthesis and per-chunk alignment, and stays unvalidated (documented as ignored) on paths that never fan out.
   let maxConcurrency: number | undefined;
@@ -176,6 +185,7 @@ export async function generateSpeech<
       resolved,
       modelIdentifier,
       textChunks,
+      sourceText: textToSend,
       instructions,
       voice,
       providerOptions,
@@ -259,6 +269,8 @@ export async function generateSpeech<
     latencyMs,
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
+    ...(result.retryCount != null && { retryCount: result.retryCount }),
+    ...(result.chunks && { chunks: result.chunks }),
     ...(publicAlignment.source != null && {
       timestampsSource: publicAlignment.source,
     }),
@@ -296,6 +308,7 @@ function resolveTextChunks(args: {
   processedText: string;
   instructions: string | undefined;
   userMaxInputChars: number | undefined;
+  maxChunkWords: number | undefined;
 }): {
   maxInputChars: number | undefined;
   shouldChunk: boolean;
@@ -313,11 +326,24 @@ function resolveTextChunks(args: {
     );
   }
 
-  const maxInputChars = maxInputCharsResolution.value;
-  const textChunks =
-    maxInputChars == null
+  const isGemini38 =
+    args.resolved.provider.id === "google" &&
+    args.resolved.modelId.startsWith("gemini-3.8-");
+  const maxInputChars = isGemini38
+    ? Math.min(maxInputCharsResolution.value ?? 5000, 5000)
+    : maxInputCharsResolution.value;
+  const wordChunks =
+    args.maxChunkWords == null
       ? [args.processedText]
-      : splitTextByMaxChars(args.processedText, maxInputChars);
+      : splitTextByMaxWords(args.processedText, args.maxChunkWords);
+  const textChunks = wordChunks.flatMap((chunk) => {
+    if (maxInputChars == null) {
+      return [chunk];
+    }
+    return isGemini38
+      ? splitTextByMaxCharsAtTokens(chunk, maxInputChars)
+      : splitTextByMaxChars(chunk, maxInputChars);
+  });
   const shouldChunk = textChunks.length > 1;
   if (shouldChunk) {
     const source =
@@ -346,10 +372,12 @@ async function generateProviderSpeech<V extends Voice>(args: {
   output?: AudioOutput;
   pronunciations?: PronunciationsInput;
   speed?: number;
-}): Promise<ProviderGenerateResult> {
-  return await pRetry(
-    () =>
-      args.resolved.provider.generate({
+}): Promise<RetriedGenerateResult> {
+  let attempts = 0;
+  const result = await pRetry(
+    () => {
+      attempts++;
+      return args.resolved.provider.generate({
         modelId: args.resolved.modelId,
         text: args.text,
         ...(args.instructions && { instructions: args.instructions }),
@@ -358,18 +386,21 @@ async function generateProviderSpeech<V extends Voice>(args: {
         abortSignal: args.abortSignal,
         headers: args.headers,
         includeTimestamps: args.includeTimestamps,
-      }),
+      });
+    },
     buildRetryOptions({
       maxRetries: args.maxRetries,
       abortSignal: args.abortSignal,
     })
   );
+  return { ...result, retryCount: attempts - 1 };
 }
 
 async function generateChunkedSpeech<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   modelIdentifier: string;
   textChunks: readonly string[];
+  sourceText: string;
   instructions: string | undefined;
   voice: V;
   providerOptions: Record<string, unknown> | undefined;
@@ -384,6 +415,8 @@ async function generateChunkedSpeech<V extends Voice>(args: {
 }): Promise<
   ProviderGenerateResult & {
     alignmentChunks?: readonly AlignmentAudioChunk[];
+    retryCount: number;
+    chunks: NonNullable<SpeechMetadata["chunks"]>;
   }
 > {
   if (!args.stitchOptions) {
@@ -460,6 +493,24 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   const providerMetadata = providerMetadataChunks.some((m) => m != null)
     ? { chunks: providerMetadataChunks }
     : undefined;
+  let textOffset = 0;
+  const chunks = perChunk.map((chunk, index) => {
+    const textStart = args.sourceText.indexOf(chunk.text, textOffset);
+    if (textStart < 0) {
+      throw new Error("Chunk text was not found in the synthesized input.");
+    }
+    textOffset = textStart + chunk.text.length;
+    return {
+      index,
+      textStart,
+      textEnd: textOffset,
+      audioDurationMs: Math.round(chunk.durationSeconds * 1000),
+      retryCount: chunk.result.retryCount,
+      ...(chunk.result.providerMetadata && {
+        providerMetadata: chunk.result.providerMetadata,
+      }),
+    };
+  });
 
   // Per-chunk audio for forced alignment, encoded lazily — alignment over the unbounded stitched result exceeds aligner input limits. Skipped when timestamps are off so the PCM segments aren't retained.
   const alignmentChunks = args.buildAlignmentChunks
@@ -485,6 +536,8 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     ...(alignmentChunks && { alignmentChunks }),
     mediaType: "audio/wav",
     providerMetadata,
+    retryCount: chunks.reduce((total, chunk) => total + chunk.retryCount, 0),
+    chunks,
     timestamps: mergeChunkTimestamps(perChunk),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
