@@ -10,6 +10,7 @@ import { newVoiceKeyer } from "./validate.js";
 
 export type StitchFallbackReason =
   | "fallback-from-native"
+  | "fallback-from-native-custom-voice"
   | "fallback-from-native-oversized"
   | "fallback-from-native-voice-count"
   | "fallback-from-native-voice-count-exceeded";
@@ -137,7 +138,7 @@ function tryNativeDialoguePath(args: {
       turns.map((turn) => turn.voice)
     ) === false
   ) {
-    return { fallbackReason: "fallback-from-native" };
+    return { fallbackReason: "fallback-from-native-custom-voice" };
   }
   const blocks = planNativeBlocks({
     provider,

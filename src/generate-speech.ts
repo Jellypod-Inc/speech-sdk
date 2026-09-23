@@ -185,6 +185,7 @@ export async function generateSpeech<
       resolved,
       modelIdentifier,
       textChunks,
+      sourceText: textToSend,
       instructions,
       voice,
       providerOptions,
@@ -399,6 +400,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   modelIdentifier: string;
   textChunks: readonly string[];
+  sourceText: string;
   instructions: string | undefined;
   voice: V;
   providerOptions: Record<string, unknown> | undefined;
@@ -493,7 +495,10 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     : undefined;
   let textOffset = 0;
   const chunks = perChunk.map((chunk, index) => {
-    const textStart = args.textChunks.join(" ").indexOf(chunk.text, textOffset);
+    const textStart = args.sourceText.indexOf(chunk.text, textOffset);
+    if (textStart < 0) {
+      throw new Error("Chunk text was not found in the synthesized input.");
+    }
     textOffset = textStart + chunk.text.length;
     return {
       index,

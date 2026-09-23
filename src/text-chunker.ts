@@ -1,10 +1,13 @@
 import { z } from "zod";
-import { SENTENCE_BOUNDARY_RE } from "./sentence-boundaries.js";
+import {
+  SENTENCE_BOUNDARY_RE,
+  SENTENCE_TERMINATOR_RE,
+} from "./sentence-boundaries.js";
 
 const WHITESPACE_RE = /\s+/g;
 const VOCAL_TAG_RE = /^\[[^\]]+\]$|^<[^>]+>$/;
-const SENTENCE_END_RE = /[.!?]["'”’)]?$/;
-const SPEECH_UNIT_RE = /\[[^\]]+\]|<[^>]+>|[^\s[\]<>]+/g;
+const SPEECH_UNIT_RE =
+  /\[[^\]]+\]|<[^>]+>|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|[^\s[\]<>\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+/gu;
 const SPOKEN_UNIT_RE = /[\p{L}\p{N}]/u;
 const LEADING_WHITESPACE_RE = /\s/;
 const WHITESPACE_BREAK_PENALTY = 512;
@@ -118,16 +121,18 @@ export function splitTextByMaxWords(text: string, maxWords: number): string[] {
     if (
       isWord &&
       words >= maxWords &&
-      (SENTENCE_END_RE.test(previousSpoken) || words >= maxWords * 1.25)
+      (SENTENCE_TERMINATOR_RE.test(previousSpoken) || words >= maxWords * 1.25)
     ) {
       chunks.push(text.slice(start, end).trim());
       start = unit.start;
       words = 0;
     }
     end = unit.end;
-    if (isWord) {
-      words++;
+    if (!VOCAL_TAG_RE.test(unit.text)) {
       previousSpoken = unit.text;
+      if (isWord) {
+        words++;
+      }
     }
   }
   if (end > start) {
@@ -140,16 +145,26 @@ export function splitTextByMaxCharsAtTokens(
   text: string,
   maxChars: number
 ): string[] {
+  const { maxChars: resolvedMaxChars } = parseWithMessage(
+    SPLIT_TEXT_OPTIONS_SCHEMA,
+    { maxChars },
+    "splitTextByMaxCharsAtTokens: maxChars must be a positive integer."
+  );
   const units = collectSpeechUnits(text);
   const chunks: string[] = [];
   let current: SpeechUnit[] = [];
   for (const unit of units) {
-    if (unit.text.length > maxChars) {
-      throw new Error(`A word or vocal tag exceeds maxInputChars=${maxChars}.`);
+    if (unit.text.length > resolvedMaxChars) {
+      throw new Error(
+        `A word or vocal tag exceeds maxInputChars=${resolvedMaxChars}.`
+      );
     }
-    while (current.length > 0 && unit.end - current[0].start > maxChars) {
+    while (
+      current.length > 0 &&
+      unit.end - current[0].start > resolvedMaxChars
+    ) {
       const sentenceEnd = current
-        .map((candidate) => SENTENCE_END_RE.test(candidate.text))
+        .map((candidate) => SENTENCE_TERMINATOR_RE.test(candidate.text))
         .lastIndexOf(true);
       const splitAfter = sentenceEnd >= 0 ? sentenceEnd + 1 : current.length;
       chunks.push(

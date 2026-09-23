@@ -66,6 +66,19 @@ describe("Gemini 3.8 TTS", () => {
     });
   });
 
+  it("allows caller generation_config to override the default speech config", async () => {
+    const fetch = vi.fn().mockResolvedValue(interactionResponse());
+    const provider = new GoogleSpeechProvider({ apiKey: "key", fetch });
+    await provider.generate({
+      modelId: "gemini-3.8-flash-tts",
+      text: "Hello.",
+      voice: "Kore",
+      providerOptions: { speech_config: [{ voice: "Puck" }] },
+    });
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.generation_config.speech_config).toEqual([{ voice: "Puck" }]);
+  });
+
   it("uses speaker annotations for two prebuilt voices and stitches custom voices", async () => {
     const fetch = vi.fn().mockResolvedValue(interactionResponse());
     const provider = new GoogleSpeechProvider({ apiKey: "key", fetch });
@@ -97,6 +110,9 @@ describe("Gemini 3.8 TTS", () => {
       ],
     });
     expect(path.kind).toBe("stitch");
+    if (path.kind === "stitch") {
+      expect(path.reason).toBe("fallback-from-native-custom-voice");
+    }
   });
 
   it("rejects unsupported directions rather than voicing them", async () => {
@@ -186,7 +202,7 @@ describe("Gemini 3.8 TTS", () => {
         apiKey: "key",
         fetch: fetch as typeof globalThis.fetch,
       })("gemini-3.8-flash-tts"),
-      text: "One two three. Four five six. Seven eight nine.",
+      text: "One two three.  Four five six.  Seven eight nine.",
       voice: "Kore",
       maxChunkWords: 3,
       maxConcurrency: 2,
@@ -199,6 +215,9 @@ describe("Gemini 3.8 TTS", () => {
     ]);
     expect(result.metadata.chunks?.map((chunk) => chunk.index)).toEqual([
       0, 1, 2,
+    ]);
+    expect(result.metadata.chunks?.map((chunk) => chunk.textStart)).toEqual([
+      0, 16, 32,
     ]);
   });
 

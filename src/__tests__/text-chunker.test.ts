@@ -20,6 +20,32 @@ describe("spoken-word chunking", () => {
       splitTextByMaxCharsAtTokens("One [short pause] two. Three four.", 22)
     ).toEqual(["One [short pause] two.", "Three four."]);
   });
+
+  it("rejects invalid word and character limits", () => {
+    for (const limit of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => splitTextByMaxWords("Hello.", limit)).toThrow(
+        "maxChunkWords must be a positive integer."
+      );
+      expect(() => splitTextByMaxCharsAtTokens("Hello.", limit)).toThrow(
+        "maxChars must be a positive integer."
+      );
+    }
+    expect(() => splitTextByMaxCharsAtTokens("unbreakable", 5)).toThrow(
+      "A word or vocal tag exceeds maxInputChars=5."
+    );
+  });
+
+  it("splits unspaced CJK text and respects Unicode sentence boundaries", () => {
+    expect(splitTextByMaxWords("你好世界。再见世界。", 4)).toEqual([
+      "你好世界。",
+      "再见世界。",
+    ]);
+    const text = "你好世界。".repeat(1200);
+    const chunks = splitTextByMaxCharsAtTokens(text, 5000);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every((chunk) => chunk.length <= 5000)).toBe(true);
+    expect(chunks.join("")).toBe(text);
+  });
 });
 
 describe("splitTextByMaxChars", () => {

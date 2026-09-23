@@ -30,6 +30,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly gapMs: number;
   readonly headers?: Record<string, string>;
   readonly instructions?: string;
+  readonly limitNestedConcurrency?: boolean;
   readonly maxConcurrency: number;
   readonly maxInputChars?: number;
   readonly maxRetries: number;
@@ -99,7 +100,9 @@ export async function runStitch<V extends Voice>(
           timestampProvider: input.timestampProvider,
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
-          maxConcurrency: 1,
+          maxConcurrency: input.limitNestedConcurrency
+            ? 1
+            : input.maxConcurrency,
           speed: turn.speed,
         });
       } catch (err) {

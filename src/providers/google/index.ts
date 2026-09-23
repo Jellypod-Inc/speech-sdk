@@ -64,12 +64,26 @@ const generateContentResponseSchema = z.object({
 });
 
 type GenerateContentResponse = z.infer<typeof generateContentResponseSchema>;
+const GEMINI_WAV_MIME_RE = /^audio\/(?:x-)?wav(?:;|$)/i;
 
 function findInlineAudio(json: GenerateContentResponse) {
   const part = json.candidates?.[0]?.content?.parts?.find(
     (p) => p.inlineData?.data
   );
   return part?.inlineData;
+}
+
+async function decodeGeminiAudio(part: {
+  data: string;
+  mimeType: string;
+}): Promise<Uint8Array> {
+  const audio = base64ToUint8Array(part.data);
+  if (GEMINI_WAV_MIME_RE.test(part.mimeType)) {
+    return audio;
+  }
+  const sampleRate =
+    parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
+  return await wrapPcm16Mono(audio, sampleRate);
 }
 
 // Reads as deliberate punctuation but isn't a sentence terminator, so appending a period would look wrong.
@@ -569,11 +583,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
-    const sampleRate =
-      parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
-    const pcm = base64ToUint8Array(part.data);
-    const wav = await wrapPcm16Mono(pcm, sampleRate);
+    const wav = await decodeGeminiAudio(part);
 
     return {
       audio: wav,
@@ -625,8 +635,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         input,
         response_format: { type: "audio" },
         generation_config: {
-          ...options.providerOptions,
           speech_config: speechConfig,
+          ...options.providerOptions,
         },
       }),
       signal: options.abortSignal,
@@ -980,10 +990,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const pcm = base64ToUint8Array(part.data);
-    const sampleRate =
-      parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
-    const wav = await wrapPcm16Mono(pcm, sampleRate);
+    const wav = await decodeGeminiAudio(part);
 
     return {
       audio: wav,
