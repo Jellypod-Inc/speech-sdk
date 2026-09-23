@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { splitTextByMaxChars } from "../text-chunker.js";
+import {
+  splitTextByMaxChars,
+  splitTextByMaxCharsAtTokens,
+  splitTextByMaxWords,
+} from "../text-chunker.js";
+
+describe("spoken-word chunking", () => {
+  it("keeps sentence punctuation, whitespace, and vocal tags intact", () => {
+    expect(
+      splitTextByMaxWords(
+        "Hello[laughs], world.  Next line [short pause] here.",
+        2
+      )
+    ).toEqual(["Hello[laughs], world.", "Next line [short pause] here."]);
+  });
+
+  it("never splits a word or vocal tag at the hard character ceiling", () => {
+    expect(
+      splitTextByMaxCharsAtTokens("One [short pause] two. Three four.", 22)
+    ).toEqual(["One [short pause] two.", "Three four."]);
+  });
+});
 
 describe("splitTextByMaxChars", () => {
   it("splits on sentence boundaries before whitespace", () => {

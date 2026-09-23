@@ -131,6 +131,14 @@ function tryNativeDialoguePath(args: {
   if (countUniqueVoices(turns) > caps.maxVoices) {
     return { fallbackReason: "fallback-from-native-voice-count-exceeded" };
   }
+  if (
+    provider.acceptsDialogueVoices?.(
+      modelId,
+      turns.map((turn) => turn.voice)
+    ) === false
+  ) {
+    return { fallbackReason: "fallback-from-native" };
+  }
   const blocks = planNativeBlocks({
     provider,
     modelId,

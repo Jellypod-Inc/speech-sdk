@@ -99,7 +99,7 @@ export async function runStitch<V extends Voice>(
           timestampProvider: input.timestampProvider,
           pronunciations: input.pronunciations,
           maxInputChars: input.maxInputChars,
-          maxConcurrency: input.maxConcurrency,
+          maxConcurrency: 1,
           speed: turn.speed,
         });
       } catch (err) {

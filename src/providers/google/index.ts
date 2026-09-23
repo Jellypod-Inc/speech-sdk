@@ -160,16 +160,6 @@ function describeMissingAudio(
 
 const DEFAULT_GEMINI_SAMPLE_RATE = 24_000;
 
-async function decodeGeminiWav(part: { data: string; mimeType: string }) {
-  const audio = base64ToUint8Array(part.data);
-  if (part.mimeType.toLowerCase().startsWith("audio/wav")) {
-    return audio;
-  }
-  const sampleRate =
-    parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
-  return await wrapPcm16Mono(audio, sampleRate);
-}
-
 // Fusing directive and transcript into one line ("Read aloud: Slowly.") makes a short line parse as delivery
 // guidance with nothing to voice: the speech synthesis classifier never fires and Gemini blocks the request as
 // PROHIBITED_CONTENT. Naming the operation, labelling where the transcript starts, and putting the transcript on
@@ -195,14 +185,51 @@ const GEMINI_TTS_TEXT_CHAR_BUDGET =
 
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
+const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
 const GEMINI_3_8_MODELS = new Set([
   "gemini-3.8-flash-tts",
   "gemini-3.8-flash-lite-tts",
 ]);
-const INTERACTIONS_STREAMING_MODELS = new Set([
-  "gemini-3.1-flash-tts-preview",
-  ...GEMINI_3_8_MODELS,
-]);
+const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
+const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
+
+const GEMINI_3_8_TAGS: Record<string, string> = {
+  "[laughs]": "<laugh>",
+  "[sighs]": "<sigh>",
+  "[coughs]": "<cough>",
+  "[gasps]": "<gasp>",
+  "[breath]": "<breath>",
+  "[short pause]": "<short pause>",
+  "[long pause]": "<long pause>",
+};
+
+function gemini38Text(text: string): string {
+  return text.replace(/\[[^\]]+\]/g, (tag) => {
+    const replacement = GEMINI_3_8_TAGS[tag.toLowerCase()];
+    if (!replacement) {
+      throw new SpeechSDKError(`Unsupported Gemini 3.8 audio tag: ${tag}`);
+    }
+    return replacement;
+  });
+}
+
+function gemini38Content(text: string, style?: string, speaker?: string) {
+  return {
+    type: "text",
+    text: gemini38Text(text),
+    ...(style || speaker
+      ? {
+          annotations: [
+            {
+              type: "speech_metadata",
+              ...(speaker && { speaker }),
+              ...(style && { style }),
+            },
+          ],
+        }
+      : {}),
+  };
+}
 
 // /interactions step.delta events carry base64 PCM in delta.data, tagged by delta.mime_type (e.g. "audio/l16"). Non-audio deltas are ignored.
 const interactionAudioDeltaSchema = z.object({
@@ -333,17 +360,29 @@ const GOOGLE_GEMINI_3_1_LANGUAGES = [
 export const GOOGLE_MODELS: readonly ModelInfo[] = [
   {
     id: "gemini-3.8-flash-tts",
-    releaseDate: "2026-09-23",
+    releaseDate: "2026-07-01",
     languages: GOOGLE_GEMINI_3_1_LANGUAGES,
     features: ["streaming", "audio-tags", "instructions"],
-    maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
+    maxInputChars: 5000,
   },
   {
     id: "gemini-3.8-flash-lite-tts",
-    releaseDate: "2026-09-23",
-    languages: GOOGLE_GEMINI_3_1_LANGUAGES,
+    releaseDate: "2026-07-01",
+    languages: [
+      "en",
+      "es",
+      "fr",
+      "de",
+      "pt",
+      "it",
+      "ja",
+      "ko",
+      "hi",
+      "ar",
+      "zh",
+    ],
     features: ["streaming", "audio-tags", "instructions"],
-    maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
+    maxInputChars: 5000,
   },
   {
     id: "gemini-3.1-flash-tts-preview",
@@ -406,6 +445,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     if (!model?.maxInputChars) {
       return;
     }
+    if (GEMINI_3_8_MODELS.has(modelId)) {
+      return model.maxInputChars;
+    }
     const instructionFramingChars = options?.instructions
       ? options.instructions.length + TTS_INSTRUCTIONS_FRAMING_CHARS
       : 0;
@@ -427,21 +469,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       abortSignal?: AbortSignal;
       headers?: Record<string, string>;
     },
-    promptText: string | Record<string, unknown>[],
+    promptText: string,
     speechConfig: Record<string, unknown>
   ): Promise<GenerateContentResponse> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
 
     const body: Record<string, unknown> = {
-      contents: [
-        {
-          role: "user",
-          parts:
-            typeof promptText === "string"
-              ? [{ text: promptText }]
-              : promptText,
-        },
-      ],
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
       generationConfig: {
         responseModalities: ["audio"],
         speech_config: speechConfig,
@@ -486,6 +520,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    if (GEMINI_3_8_MODELS.has(options.modelId)) {
+      return this.generateInteraction(options);
+    }
     const modelIdentifier = `google/${options.modelId}`;
     const speechConfig = {
       voice_config: {
@@ -493,16 +530,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     };
     const promptFor = (text: string) =>
-      GEMINI_3_8_MODELS.has(options.modelId)
-        ? [
-            {
-              text,
-              ...(options.instructions && {
-                speech_metadata: { style: options.instructions },
-              }),
-            },
-          ]
-        : buildTtsPrompt(text, options.instructions);
+      buildTtsPrompt(text, options.instructions);
 
     const json = await this.postGenerateContent(
       options,
@@ -514,7 +542,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     // The identical retry the SDK already performs cannot help a response that came back without audio,
     // so a terse payload gets one differently shaped attempt. A genuine content refusal is skipped: reshaping cannot lift it.
     const reshaped =
-      part || isContentDecline(json) || GEMINI_3_8_MODELS.has(options.modelId)
+      part || isContentDecline(json)
         ? undefined
         : reshapeTerseInput(options.text);
     let reshapedJson: GenerateContentResponse | undefined;
@@ -541,11 +569,135 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const wav = await decodeGeminiWav(part);
+    // Gemini returns raw 16-bit mono PCM; wrap as WAV so callers can play it directly.
+    const sampleRate =
+      parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
+    const pcm = base64ToUint8Array(part.data);
+    const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
       audio: wav,
       mediaType: "audio/wav",
+    };
+  }
+
+  private generateInteraction(options: {
+    modelId: string;
+    text: string;
+    instructions?: string;
+    voice?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }) {
+    const input = [
+      {
+        type: "user_input",
+        content: [gemini38Content(options.text, options.instructions)],
+      },
+    ];
+    return this.postInteraction(options, input, [
+      { voice: options.voice ?? "Kore" },
+    ]);
+  }
+
+  private async postInteraction(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    input: unknown,
+    speechConfig: unknown
+  ) {
+    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
+    const response = await this.fetchFn(`${this.baseURL}/interactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+        "X-User-Agent": SDK_USER_AGENT,
+        ...options.headers,
+      },
+      body: JSON.stringify({
+        model: options.modelId,
+        input,
+        response_format: { type: "audio" },
+        generation_config: {
+          ...options.providerOptions,
+          speech_config: speechConfig,
+        },
+      }),
+      signal: options.abortSignal,
+    });
+    await handleErrorResponse(response, {
+      provider: this.id,
+      model: options.modelId,
+      stage: "synthesis",
+    });
+    const json: unknown = await response.json();
+    const interaction = z
+      .object({
+        id: z.string().optional(),
+        model: z.string().optional(),
+        status: z.string().optional(),
+        error: z
+          .object({
+            code: z.string().optional(),
+            message: z.string().optional(),
+          })
+          .optional(),
+        steps: z
+          .array(
+            z.object({
+              type: z.string().optional(),
+              content: z
+                .array(
+                  z.object({
+                    type: z.string(),
+                    data: z.string().optional(),
+                    mime_type: z.string().optional(),
+                  })
+                )
+                .optional(),
+            })
+          )
+          .optional(),
+      })
+      .parse(json);
+    const audioPart = interaction.steps
+      ?.flatMap((step) => step.content ?? [])
+      .find((part) => part.type === "audio" && part.data);
+    if (!audioPart?.data) {
+      throw new NoSpeechGeneratedError(
+        `google/${options.modelId}: no audio in interaction response (status: ${interaction.status ?? "unknown"}${interaction.error?.code ? `; code: ${interaction.error.code}` : ""}).`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          ...(interaction.id && { requestId: interaction.id }),
+          reason: CONTENT_REFUSAL_CODE_RE.test(interaction.error?.code ?? "")
+            ? "content_refusal"
+            : "provider_empty_response",
+        }
+      );
+    }
+    const encoded = base64ToUint8Array(audioPart.data);
+    const mimeType = audioPart.mime_type ?? "audio/wav";
+    const audio = mimeType.toLowerCase().startsWith("audio/l16")
+      ? await wrapPcm16Mono(
+          encoded,
+          parseMediaTypeParam(mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE
+        )
+      : encoded;
+    return {
+      audio,
+      mediaType: "audio/wav",
+      providerMetadata: {
+        ...(interaction.id && { requestId: interaction.id }),
+        model: interaction.model ?? options.modelId,
+        ...(interaction.status && { status: interaction.status }),
+      },
     };
   }
 
@@ -562,6 +714,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    if (GEMINI_3_8_MODELS.has(options.modelId)) {
+      return this.streamInteractions(options);
+    }
     if (INTERACTIONS_STREAMING_MODELS.has(options.modelId)) {
       return this.streamInteractions(options);
     }
@@ -600,17 +755,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         ? [
             {
               type: "user_input",
-              content: [
-                {
-                  type: "text",
-                  text: options.text,
-                  ...(options.instructions && {
-                    annotations: [
-                      { type: "speech_metadata", style: options.instructions },
-                    ],
-                  }),
-                },
-              ],
+              content: [gemini38Content(options.text, options.instructions)],
             },
           ]
         : buildTtsPrompt(options.text, options.instructions),
@@ -627,7 +772,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
-        "Api-Revision": "2026-05-20",
+        ...(!GEMINI_3_8_MODELS.has(options.modelId) && {
+          "Api-Revision": "2026-05-20",
+        }),
         "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
@@ -725,6 +872,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return;
   }
 
+  acceptsDialogueVoices(modelId: string, voices: readonly string[]): boolean {
+    return (
+      !GEMINI_3_8_MODELS.has(modelId) ||
+      voices.every((voice) => !CUSTOM_VOICE_ID_RE.test(voice))
+    );
+  }
+
   async generateDialogue(options: {
     modelId: string;
     turns: readonly { voice: string; text: string; instructions?: string }[];
@@ -737,6 +891,35 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    if (GEMINI_3_8_MODELS.has(options.modelId)) {
+      const voiceToLabel = new Map<string, string>();
+      const content = options.turns.map((turn) => {
+        let speaker = voiceToLabel.get(turn.voice);
+        if (!speaker) {
+          speaker = `Speaker${voiceToLabel.size + 1}`;
+          voiceToLabel.set(turn.voice, speaker);
+        }
+        const style = [options.instructions, turn.instructions]
+          .filter(Boolean)
+          .join("; ");
+        return gemini38Content(turn.text, style || undefined, speaker);
+      });
+      if (
+        voiceToLabel.size !== 2 ||
+        !this.acceptsDialogueVoices(options.modelId, [...voiceToLabel.keys()])
+      ) {
+        throw new SpeechSDKError(
+          `google/${options.modelId}: native dialogue requires two prebuilt voices.`
+        );
+      }
+      return this.postInteraction(options, [{ type: "user_input", content }], {
+        mode: "conversational",
+        speakers: [...voiceToLabel].map(([voice, speaker]) => ({
+          speaker,
+          voice,
+        })),
+      });
+    }
     const voiceToLabel = new Map<string, string>();
     const labelled: string[] = [];
     for (const turn of options.turns) {
@@ -777,20 +960,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       })
     );
 
-    const parts = GEMINI_3_8_MODELS.has(options.modelId)
-      ? options.turns.map((turn) => ({
-          text: turn.text,
-          speech_metadata: {
-            speaker: voiceToLabel.get(turn.voice),
-            ...((turn.instructions || options.instructions) && {
-              style: [options.instructions, turn.instructions]
-                .filter(Boolean)
-                .join("\n"),
-            }),
-          },
-        }))
-      : text;
-    const json = await this.postGenerateContent(options, parts, {
+    const json = await this.postGenerateContent(options, text, {
       multi_speaker_voice_config: {
         speaker_voice_configs: speakerVoiceConfigs,
       },
@@ -810,7 +980,10 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       );
     }
 
-    const wav = await decodeGeminiWav(part);
+    const pcm = base64ToUint8Array(part.data);
+    const sampleRate =
+      parseMediaTypeParam(part.mimeType, "rate") ?? DEFAULT_GEMINI_SAMPLE_RATE;
+    const wav = await wrapPcm16Mono(pcm, sampleRate);
 
     return {
       audio: wav,
