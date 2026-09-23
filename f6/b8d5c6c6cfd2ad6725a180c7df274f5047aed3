@@ -1,0 +1,40 @@
+src/__tests__/google-long-input.test.ts
+  s_dfb6684df63735::t_c2917c1d761cf0 150-151
+README.md
+  s_dfb6684df63735::t_5cf9f8f2a77312 73
+src/__tests__/e2e/google.e2e.test.ts
+  s_dfb6684df63735::t_5cf9f8f2a77312 15-16
+src/__tests__/provider-stitch-options.test.ts
+  s_dfb6684df63735::t_c2917c1d761cf0 49-50
+src/providers/google/index.ts
+  s_dfb6684df63735::t_f2bc8ead6bb5dc 163-169,171-172
+  s_dfb6684df63735::t_4832cf16c226ef 210-211,373,656-657
+  s_dfb6684df63735::t_6bd81148f94977 170
+  s_dfb6684df63735::t_04894293d6372c 440-442,497-504,600-615,786-788
+  s_dfb6684df63735::t_5cf9f8f2a77312 517
+  s_dfb6684df63735::t_fe9efa0497714f 198-205,334-347,430,436-439,443-444,496,505,544,599,616,780-785,789-793,813
+CHANGELOG.md
+  s_dfb6684df63735::t_588aecf62e7e9c 3-7
+src/__tests__/google-3-8.test.ts
+  s_dfb6684df63735::t_04894293d6372c 2-5,9-20,28-41,51-54,63-65,67-76,83-86,99-109,115-126,137-148,151-153
+  s_dfb6684df63735::t_0fdafbe3be91f1 155-158
+  s_dfb6684df63735::t_e4a0a067015d29 1,6-8,21-27,42-50,55-62,66,77-82,87-98,110-114,127-136,149-150,154,159
+package.json
+  s_dfb6684df63735::t_588aecf62e7e9c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f6b8d5c6c6cfd2ad6725a180c7df274f5047aed3",
+  "prompts": {},
+  "sessions": {
+    "s_dfb6684df63735": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cfc7-06cc-7570-8351-dc07143ef4a6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
