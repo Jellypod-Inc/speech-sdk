@@ -1,0 +1,44 @@
+src/__tests__/text-chunker.test.ts
+  s_59364fb5d299a2::t_74dc8935b8da3a 23-48
+src/providers/google/index.ts
+  s_59364fb5d299a2::t_0c0964b1b37ab1 67,81
+  s_59364fb5d299a2::t_4431d3105c09f5 76-80,82-88,586,639,993
+README.md
+  s_59364fb5d299a2::t_c3720bba7c64cf 11
+src/generate-conversation.ts
+  s_59364fb5d299a2::t_4431d3105c09f5 223,257-258
+src/__tests__/google-speech-model.test.ts
+  s_59364fb5d299a2::t_02b7665d2f12ef 127-166
+src/text-chunker.ts
+  s_59364fb5d299a2::t_c2423b510d3d06 2-5,131,133-135,148-152,157-160,167
+  s_59364fb5d299a2::t_95e77866f79ca2 9-10,124,162-165
+src/conversation/dispatch.ts
+  s_59364fb5d299a2::t_4431d3105c09f5 13
+  s_59364fb5d299a2::t_8196b63c9590e7 141
+src/generate-speech.ts
+  s_59364fb5d299a2::t_8196b63c9590e7 403
+  s_59364fb5d299a2::t_4431d3105c09f5 188,498-501
+src/conversation/stitch.ts
+  s_59364fb5d299a2::t_4431d3105c09f5 33,103-105
+src/__tests__/google-3-8.test.ts
+  s_59364fb5d299a2::t_713e0e564e0ffe 113-115
+  s_59364fb5d299a2::t_74dc8935b8da3a 219,221
+  s_59364fb5d299a2::t_02b7665d2f12ef 69-81
+  s_59364fb5d299a2::t_ae26b18d1a2614 205,220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b8cd080efe520d64db3695297b3546a5eaee406a",
+  "prompts": {},
+  "sessions": {
+    "s_59364fb5d299a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d04b-fa92-7c60-a06a-e97851154c61",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
