@@ -46,6 +46,25 @@ describe("spoken-word chunking", () => {
     expect(chunks.every((chunk) => chunk.length <= 5000)).toBe(true);
     expect(chunks.join("")).toBe(text);
   });
+
+  it("keeps space-separated Korean words intact", () => {
+    expect(
+      splitTextByMaxWords("안녕하세요 여러분. 다음 문장입니다.", 2)
+    ).toEqual(["안녕하세요 여러분.", "다음 문장입니다."]);
+    expect(() => splitTextByMaxCharsAtTokens("안녕하세요 여러분.", 4)).toThrow(
+      "A word or vocal tag exceeds maxInputChars=4."
+    );
+  });
+
+  it("splits after a sentence ending with a closing parenthesis", () => {
+    expect(splitTextByMaxWords("Hello (world.) Next sentence.", 2)).toEqual([
+      "Hello (world.)",
+      "Next sentence.",
+    ]);
+    expect(
+      splitTextByMaxCharsAtTokens("Hello (world.) Next sentence.", 17)
+    ).toEqual(["Hello (world.)", "Next sentence."]);
+  });
 });
 
 describe("splitTextByMaxChars", () => {

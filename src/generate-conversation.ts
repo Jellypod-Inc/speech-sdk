@@ -220,7 +220,6 @@ export async function generateConversation<
     apiKey: options.apiKey,
     gapMs: options.gapMs ?? DEFAULT_GAP_MS,
     maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
-    limitNestedConcurrency: path.reason === "fallback-from-native-custom-voice",
     maxInputChars: options.maxInputChars,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     output: options.output,

@@ -7,7 +7,7 @@ import {
 const WHITESPACE_RE = /\s+/g;
 const VOCAL_TAG_RE = /^\[[^\]]+\]$|^<[^>]+>$/;
 const SPEECH_UNIT_RE =
-  /\[[^\]]+\]|<[^>]+>|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|[^\s[\]<>\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]+/gu;
+  /\[[^\]]+\]|<[^>]+>|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]|[^\s[\]<>\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+/gu;
 const SPOKEN_UNIT_RE = /[\p{L}\p{N}]/u;
 const LEADING_WHITESPACE_RE = /\s/;
 const WHITESPACE_BREAK_PENALTY = 512;

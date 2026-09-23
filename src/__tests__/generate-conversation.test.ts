@@ -179,6 +179,53 @@ describe("generateConversation", () => {
     expect(result.metadata.perTurn).toHaveLength(1);
   });
 
+  it("bounds concurrent chunk calls across stitched turns", async () => {
+    let active = 0;
+    let peak = 0;
+    const pcm = new Uint8Array(new Int16Array(2400).buffer);
+    const generate = vi.fn(async () => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      return { audio: pcm, mediaType: "audio/pcm;rate=24000" };
+    });
+    const provider: SpeechProvider = {
+      id: "stitch",
+      defaultModel: "m",
+      models: [],
+      generate,
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: "audio/pcm;rate=24000",
+      }),
+    };
+    const model = { provider, modelId: "m" };
+    const turn = { voice: "Kore", text: "First sentence. Second sentence." };
+
+    await generateConversation({
+      model,
+      turns: [turn],
+      maxInputChars: 16,
+      maxConcurrency: 2,
+      gapMs: 0,
+    });
+    expect(peak).toBe(2);
+
+    active = 0;
+    peak = 0;
+    generate.mockClear();
+    await generateConversation({
+      model,
+      turns: [turn, turn],
+      maxInputChars: 16,
+      maxConcurrency: 2,
+      gapMs: 0,
+    });
+    expect(generate).toHaveBeenCalledTimes(4);
+    expect(peak).toBe(2);
+  });
+
   it("uses stitch when untrimmed text exceeds maxInputChars", async () => {
     const pcm = new Int16Array(2400);
     const bytes = new Uint8Array(pcm.buffer);

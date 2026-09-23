@@ -162,6 +162,8 @@ describe("GoogleSpeechProvider", () => {
     });
     expect(speech.audio).toEqual(wav);
     expect(dialogue.audio).toEqual(wav);
+    expect(speech.mediaType).toBe("audio/wav");
+    expect(dialogue.mediaType).toBe("audio/wav");
   });
 
   it("falls back to default sample rate when mimeType rate is invalid", async () => {
