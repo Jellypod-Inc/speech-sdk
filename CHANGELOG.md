@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.1
+
+- Preserve Google `google.rpc.RequestInfo.requestId` on `SpeechSdkProviderError.requestId` for both wrapped and bare status responses, while retaining complete structured error details and keeping generic `INVALID_ARGUMENT` responses non-retryable.
+
 ## 0.30.0
 
 - **`NoSpeechGeneratedError` now says why no speech came back.** The class covered three unrelated conditions behind one message string: a provider answering 200 with no audio, a provider declining to voice the text, and text holding no words after tag stripping. Only the first recovers on a retry, and a caller had no way to tell them apart, so the safe reading was to treat every one as terminal — which is what stranded the transient ElevenLabs failure below. The error now carries `reason` (`provider_empty_response` | `content_refusal` | `empty_input`), a derived `retryable`, and, where the throw site knows them, `provider`, `model`, and `requestId`. An error constructed without a reason keeps the previous behavior and reports `provider_empty_response`. `withTurnIndex` carries the classification through the conversation stitch path.
