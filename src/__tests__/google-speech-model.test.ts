@@ -184,6 +184,10 @@ describe("GoogleSpeechProvider", () => {
             domain: "generativelanguage.googleapis.com",
             metadata: { rejectedField: "speech_config" },
           },
+          {
+            "@type": "type.googleapis.com/google.rpc.RequestInfo",
+            requestId: "google-request-123",
+          },
         ],
       },
     };
@@ -191,7 +195,7 @@ describe("GoogleSpeechProvider", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
-      headers: new Headers({ "x-goog-request-id": "google-request-123" }),
+      headers: new Headers(),
       text: async () => rawResponse,
     });
 

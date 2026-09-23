@@ -188,15 +188,22 @@ describe("Google terse-input reshaped retry", () => {
   ])("does not retry a content refusal (%s)", async (_label, response) => {
     const { fetchMock, google } = provider([response]);
 
-    await expect(
-      google.generate({
+    const error = await google
+      .generate({
         modelId: "gemini-3.1-flash-tts-preview",
         text: "Yes",
         voice: "Kore",
       })
-    ).rejects.toBeInstanceOf(NoSpeechGeneratedError);
+      .catch((caught: unknown) => caught);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(NoSpeechGeneratedError);
+    expect(error).toMatchObject({
+      model: "gemini-3.1-flash-tts-preview",
+      provider: "google",
+      reason: "content_refusal",
+      retryable: false,
+    });
   });
 
   it("retries at most once and reports both attempts when both come back empty", async () => {
