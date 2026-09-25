@@ -4,14 +4,6 @@
 
 # Speech SDK
 
-## Gemini 3.8 TTS migration
-
-Use `google/gemini-3.8-flash-tts` for the highest fidelity or `google/gemini-3.8-flash-lite-tts` for higher volume. Both use the Interactions API. `text` is the spoken transcript; `instructions` becomes turn-level `speech_metadata.style` and is never prepended to the transcript. The Google adapter maps `[laughs]`, `[sighs]`, `[coughs]`, `[gasps]`, `[breath]`, `[short pause]`, and `[long pause]` to supported inline vocal tags. Other square-bracket directions throw; move sustained delivery cues to `instructions`.
-
-Prebuilt voices, persistent `voice_...` IDs, and temporary `voicekey_...` keys work for single-speaker calls. Native two-speaker dialogue requires two prebuilt voices; custom voices use the SDK's local turn stitching. Unary generation returns a complete WAV file. Progressive streaming emits headerless 24 kHz mono PCM chunks. The SDK can convert unary WAV to its other advertised output formats.
-
-Use `maxChunkWords` to target shorter audio chunks (roughly 150 spoken words per minute), `maxConcurrency` to bound SDK-created parallel calls, and `maxRetries` for isolated chunk retries. Gemini 3.8 requests retain a conservative 5,000-character hard ceiling even if `maxInputChars` is set higher. When a call is split, `metadata.chunks` reports ordered chunk indices, text spans in the normalized synthesized text, durations, retry counts, and provider diagnostics. `metadata.timestampsSource` distinguishes native, forced-aligned, and estimated timings; estimated timings do not prove transcript completeness. Google does not guarantee a maximum reliable audio duration or cross-request voice identity. Google project-wide quota enforcement belongs in the caller.
-
 **Text-to-speech across 15 providers, one API.**
 
 A lightweight, provider-agnostic TypeScript SDK. Zero lock-in. Runs in Node.js, Edge runtimes, and the browser.
