@@ -115,6 +115,7 @@ A bare provider id (`'openai'`) uses that provider's default model. An unrecogni
 | [Google Gemini TTS](https://docs.cloud.google.com/text-to-speech/docs/gemini-tts) | `google` | `GOOGLE_API_KEY` |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `FISH_AUDIO_API_KEY` |
 | [Gradium](https://docs.gradium.ai) | `gradium` | `GRADIUM_API_KEY` |
+| [Lokutor](https://docs.lokutor.com) | `lokutor` | `LOKUTOR_API_KEY` |
 | [Murf](https://murf.ai/api/docs) | `murf` | `MURF_API_KEY` |
 | [Resemble](https://docs.resemble.ai) | `resemble` | `RESEMBLE_API_KEY` |
 | [fal](https://fal.ai/models) | `fal-ai` | `FAL_API_KEY` |
