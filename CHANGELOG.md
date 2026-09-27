@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.33.1
+
+- **Gemini 3.8 no longer rejects unknown bracket tags.** Since 0.32.0, any bracket outside the seven supported tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Non-verbal synonyms now map onto the supported inline tags (`[chuckles]`, `[chuckle]`, `[laugh]`, `[laughing]`, `[giggles]` → `<laugh>`; `[sigh]`, `[sighing]`, `[exhales]` → `<sigh>`; `[inhales]`, `[breathes]` → `<breath>`; `[pause]`, `[pauses]` → `<short pause>`; `[cough]`, `[gasp]`). Every other bracket is a delivery direction: it is removed from the spoken text and added to that turn's `speech_metadata.style`, after caller and per-turn `instructions`. A direction in the middle of a turn also applies to the whole turn. Each turn stays one content item, so turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged, and tags stay out of timestamp alignment as before.
+- One warning per request lists the tags mapped inline and the tags turned into style. The seven supported tags add no warning. A turn made only of directions throws `NoSpeechGeneratedError` with `reason: "empty_input"` instead of sending empty text.
+- `SpeechProvider.stream()` and `generateDialogue()` results can carry `warnings`, which `streamSpeech` and `generateConversation` (native and native-split paths) now pass through to `result.warnings`.
+- Other providers are unchanged: ElevenLabs keeps its own tag handling and older Gemini models still strip tags.
+
 ## 0.33.0
 
 - **Per-turn audio from `generateConversation`.** `splitTurns: true` (requires `timestamps: true`) adds `result.turns`: one entry per input turn with `turnIndex`, `audio` (same format as the conversation audio), `startMs`, `endMs`, and `timestamps` rebased to the slice. Slices cover the whole audio with no gaps or overlaps and are cut sample-accurately on decoded PCM. Each boundary is cut in the middle of the first silence (≥100 ms of 20 ms frames, each 40 dB below the 90th-percentile frame level) after turn N's last word, so a breath or laugh opening turn N+1 stays with that turn; with no silence in the gap the cut goes at its quietest frame. Joins the SDK made itself (stitch gaps, native-split block joins) are cut in the middle of the inserted gap. Works on the native, native-split, and stitch paths; `speed` and `output` apply to every slice.

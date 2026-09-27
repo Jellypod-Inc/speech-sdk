@@ -376,6 +376,48 @@ await generateSpeech({
 });
 ```
 
+### Gemini 3.8 tags
+
+Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) voices seven inline tags. The SDK translates these brackets, case-insensitively:
+
+| Bracket | Sent as |
+| --- | --- |
+| `[laughs]` | `<laugh>` |
+| `[sighs]` | `<sigh>` |
+| `[coughs]` | `<cough>` |
+| `[gasps]` | `<gasp>` |
+| `[breath]` | `<breath>` |
+| `[short pause]` | `<short pause>` |
+| `[long pause]` | `<long pause>` |
+
+These non-verbal synonyms map onto the same tags:
+
+| Bracket | Sent as |
+| --- | --- |
+| `[laugh]`, `[chuckles]`, `[chuckle]`, `[laughing]`, `[giggles]` | `<laugh>` |
+| `[sigh]`, `[sighing]`, `[exhales]` | `<sigh>` |
+| `[cough]` | `<cough>` |
+| `[gasp]` | `<gasp>` |
+| `[inhales]`, `[breathes]` | `<breath>` |
+| `[pause]`, `[pauses]` | `<short pause>` |
+
+Every other bracket, such as `[skeptical]`, `[warmly]` or `[genuinely surprised]`, is a delivery direction. The SDK removes it from the text, so Gemini never speaks it, and adds it to the style of the turn it appears in (`speech_metadata.style`), after `instructions` and any per-turn `instructions`, joined with `; `. The style applies to the whole turn, so a direction in the middle of a turn (`'Wait, [excited] that changes everything.'`) colors the full turn, not just the words after it. A turn is always sent as one content item, so turn indexes, `turnIndex` on timestamps, and `splitTurns` output are the same as without tags. On a long single-speaker text that the SDK splits into several requests, a direction applies to the request it appears in.
+
+Mapped synonyms and directions are listed in one warning per request in `result.warnings`. The seven supported tags add no warning. A turn made only of directions throws `NoSpeechGeneratedError` with `reason: 'empty_input'`. Older Gemini models still strip every bracket tag with a warning.
+
+```ts
+const result = await generateConversation({
+  model: 'google/gemini-3.8-flash-tts',
+  instructions: 'relaxed podcast banter',
+  turns: [
+    { voice: 'Kore', text: '[skeptical] So you tried the ramen place?' },
+    { voice: 'Puck', text: '[chuckles] I did. Wait, [excited] the broth was incredible.' },
+  ],
+});
+// Turn 1: text 'So you tried the ramen place?', style 'relaxed podcast banter; skeptical'
+// Turn 2: text '<laugh> I did. Wait, the broth was incredible.', style 'relaxed podcast banter; excited'
+```
+
 ## Pronunciations
 
 Customize how specific words are pronounced. Rules are applied as text substitution before the request is sent to the provider; word timestamps are inverse-mapped on return so the substitution is invisible to the caller.

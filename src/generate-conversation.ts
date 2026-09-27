@@ -616,6 +616,7 @@ async function runNative<V extends Voice>(args: {
   const mergedWarningList = [
     ...warnings,
     ...preprocessingWarnings,
+    ...(result.warnings ?? []),
     ...(projection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),
@@ -777,6 +778,7 @@ async function runNativeSplit<V extends Voice>(args: {
         segment,
         timestamps,
         providerMetadata: result.providerMetadata,
+        warnings: result.warnings ?? [],
       };
     },
     { signal: options.abortSignal }
@@ -850,6 +852,7 @@ async function runNativeSplit<V extends Voice>(args: {
 
   const warnings = [
     ...substitutedTurns.flatMap((turn) => turn.warnings),
+    ...perBlock.flatMap((block) => block.warnings),
     ...(timestampProjection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),

@@ -115,20 +115,6 @@ describe("Gemini 3.8 TTS", () => {
     }
   });
 
-  it("rejects unsupported directions rather than voicing them", async () => {
-    const provider = new GoogleSpeechProvider({
-      apiKey: "key",
-      fetch: vi.fn(),
-    });
-    await expect(
-      provider.generate({
-        modelId: "gemini-3.8-flash-tts",
-        text: "Hi [applause]",
-        voice: "Kore",
-      })
-    ).rejects.toThrow("Unsupported Gemini 3.8 audio tag");
-  });
-
   it("keeps vocal tags out of the alignment transcript", () => {
     const resolved = createGoogle({ apiKey: "key" })("gemini-3.8-flash-tts");
     const processed = preprocessSpeechText({

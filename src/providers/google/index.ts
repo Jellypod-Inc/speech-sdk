@@ -207,30 +207,124 @@ const GEMINI_3_8_MODELS = new Set([
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
+// Gemini 3.8 voices only these inline tags; the synonyms below map onto them so script writers can use natural cue words.
 const GEMINI_3_8_TAGS: Record<string, string> = {
-  "[laughs]": "<laugh>",
-  "[sighs]": "<sigh>",
-  "[coughs]": "<cough>",
-  "[gasps]": "<gasp>",
-  "[breath]": "<breath>",
-  "[short pause]": "<short pause>",
-  "[long pause]": "<long pause>",
+  laughs: "<laugh>",
+  sighs: "<sigh>",
+  coughs: "<cough>",
+  gasps: "<gasp>",
+  breath: "<breath>",
+  "short pause": "<short pause>",
+  "long pause": "<long pause>",
 };
 
-function gemini38Text(text: string): string {
-  return text.replace(/\[[^\]]+\]/g, (tag) => {
-    const replacement = GEMINI_3_8_TAGS[tag.toLowerCase()];
-    if (!replacement) {
-      throw new SpeechSDKError(`Unsupported Gemini 3.8 audio tag: ${tag}`);
+const GEMINI_3_8_TAG_SYNONYMS: Record<string, string> = {
+  laugh: "<laugh>",
+  chuckles: "<laugh>",
+  chuckle: "<laugh>",
+  laughing: "<laugh>",
+  giggles: "<laugh>",
+  sigh: "<sigh>",
+  sighing: "<sigh>",
+  exhales: "<sigh>",
+  cough: "<cough>",
+  gasp: "<gasp>",
+  inhales: "<breath>",
+  breathes: "<breath>",
+  pause: "<short pause>",
+  pauses: "<short pause>",
+};
+
+const BRACKET_TAG_RE = /\[([^\]]+)\]/g;
+const TAG_WHITESPACE_RE = /\s+/g;
+const REPEATED_SPACES_RE = /[ \t]{2,}/g;
+
+interface Gemini38Script {
+  readonly directions: readonly string[];
+  readonly mapped: readonly string[];
+  readonly text: string;
+}
+
+// Any other bracket is a delivery direction: it leaves the spoken text and becomes speech_metadata.style, so it is never voiced.
+function parseGemini38Text(text: string): Gemini38Script {
+  const directions: string[] = [];
+  const mapped: string[] = [];
+  const spoken = text.replace(BRACKET_TAG_RE, (_tag, inner: string) => {
+    const name = inner.trim().replace(TAG_WHITESPACE_RE, " ");
+    const key = name.toLowerCase();
+    const supported = GEMINI_3_8_TAGS[key];
+    if (supported) {
+      return supported;
     }
-    return replacement;
+    const synonym = GEMINI_3_8_TAG_SYNONYMS[key];
+    if (synonym) {
+      mapped.push(`[${key}] → ${synonym}`);
+      return synonym;
+    }
+    if (name) {
+      directions.push(name);
+    }
+    return "";
+  });
+  return {
+    text: spoken.replace(REPEATED_SPACES_RE, " ").trim(),
+    directions: uniqueIgnoringCase(directions),
+    mapped: uniqueIgnoringCase(mapped),
+  };
+}
+
+function uniqueIgnoringCase(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = value.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
   });
 }
 
-function gemini38Content(text: string, style?: string, speaker?: string) {
+function describeTagConversions(
+  modelIdentifier: string,
+  scripts: readonly Gemini38Script[]
+): string[] {
+  const mapped = uniqueIgnoringCase(scripts.flatMap((script) => script.mapped));
+  const directions = uniqueIgnoringCase(
+    scripts.flatMap((script) => script.directions)
+  ).map((direction) => `[${direction}]`);
+  if (mapped.length === 0 && directions.length === 0) {
+    return [];
+  }
+  const parts = [
+    mapped.length > 0 && `mapped inline: ${mapped.join(", ")}`,
+    directions.length > 0 && `turned into style: ${directions.join(", ")}`,
+  ].filter(Boolean);
+  return [
+    `${modelIdentifier}: converted audio tags Gemini 3.8 does not voice (${parts.join("; ")}).`,
+  ];
+}
+
+function joinStyle(parts: readonly (string | undefined)[]): string | undefined {
+  return parts.filter(Boolean).join("; ") || undefined;
+}
+
+function gemini38Content(
+  modelId: string,
+  script: Gemini38Script,
+  instructions: readonly (string | undefined)[],
+  speaker?: string
+) {
+  if (script.text.length === 0) {
+    throw new NoSpeechGeneratedError(
+      `google/${modelId}: text is empty after removing delivery directions.`,
+      { model: modelId, provider: GOOGLE_PROVIDER_ID, reason: "empty_input" }
+    );
+  }
+  const style = joinStyle([...instructions, ...script.directions]);
   return {
     type: "text",
-    text: gemini38Text(text),
+    text: script.text,
     ...(style || speaker
       ? {
           annotations: [
@@ -533,6 +627,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.generateInteraction(options);
@@ -591,7 +686,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  private generateInteraction(options: {
+  private async generateInteraction(options: {
     modelId: string;
     text: string;
     instructions?: string;
@@ -600,15 +695,22 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }) {
+    const script = parseGemini38Text(options.text);
     const input = [
       {
         type: "user_input",
-        content: [gemini38Content(options.text, options.instructions)],
+        content: [
+          gemini38Content(options.modelId, script, [options.instructions]),
+        ],
       },
     ];
-    return this.postInteraction(options, input, [
+    const result = await this.postInteraction(options, input, [
       { voice: options.voice ?? "Kore" },
     ]);
+    const warnings = describeTagConversions(`google/${options.modelId}`, [
+      script,
+    ]);
+    return warnings.length > 0 ? { ...result, warnings } : result;
   }
 
   private async postInteraction(
@@ -723,6 +825,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.streamInteractions(options);
@@ -754,18 +857,26 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
+    warnings?: string[];
   }> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
 
     const voiceName = options.voice ?? "Kore";
+    const script = GEMINI_3_8_MODELS.has(options.modelId)
+      ? parseGemini38Text(options.text)
+      : undefined;
 
     const body: Record<string, unknown> = {
       model: options.modelId,
-      input: GEMINI_3_8_MODELS.has(options.modelId)
+      input: script
         ? [
             {
               type: "user_input",
-              content: [gemini38Content(options.text, options.instructions)],
+              content: [
+                gemini38Content(options.modelId, script, [
+                  options.instructions,
+                ]),
+              ],
             },
           ]
         : buildTtsPrompt(options.text, options.instructions),
@@ -817,9 +928,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     });
 
+    const warnings = script
+      ? describeTagConversions(`google/${options.modelId}`, [script])
+      : [];
     return {
       stream,
       mediaType: `audio/pcm;rate=${DEFAULT_GEMINI_SAMPLE_RATE}`,
+      ...(warnings.length > 0 && { warnings }),
     };
   }
 
@@ -900,19 +1015,23 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       const voiceToLabel = new Map<string, string>();
-      const content = options.turns.map((turn) => {
+      const scripts = options.turns.map((turn) => parseGemini38Text(turn.text));
+      const content = options.turns.map((turn, index) => {
         let speaker = voiceToLabel.get(turn.voice);
         if (!speaker) {
           speaker = `Speaker${voiceToLabel.size + 1}`;
           voiceToLabel.set(turn.voice, speaker);
         }
-        const style = [options.instructions, turn.instructions]
-          .filter(Boolean)
-          .join("; ");
-        return gemini38Content(turn.text, style || undefined, speaker);
+        return gemini38Content(
+          options.modelId,
+          scripts[index],
+          [options.instructions, turn.instructions],
+          speaker
+        );
       });
       if (
         voiceToLabel.size !== 2 ||
@@ -922,13 +1041,22 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           `google/${options.modelId}: native dialogue requires two prebuilt voices.`
         );
       }
-      return this.postInteraction(options, [{ type: "user_input", content }], {
-        mode: "conversational",
-        speakers: [...voiceToLabel].map(([voice, speaker]) => ({
-          speaker,
-          voice,
-        })),
-      });
+      const result = await this.postInteraction(
+        options,
+        [{ type: "user_input", content }],
+        {
+          mode: "conversational",
+          speakers: [...voiceToLabel].map(([voice, speaker]) => ({
+            speaker,
+            voice,
+          })),
+        }
+      );
+      const warnings = describeTagConversions(
+        `google/${options.modelId}`,
+        scripts
+      );
+      return warnings.length > 0 ? { ...result, warnings } : result;
     }
     const voiceToLabel = new Map<string, string>();
     const labelled: string[] = [];
