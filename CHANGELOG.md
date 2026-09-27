@@ -2,9 +2,8 @@
 
 ## 0.33.1
 
-- **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside the seven documented tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts using tags as freeform delivery cues failed. Every bracket tag is now sent in Gemini 3.8's inline syntax, lowercased, where it appears: `[skeptical]` → `<skeptical>`, `[genuinely surprised]` → `<genuinely surprised>`. The seven documented tags still map as before (`[laughs]` → `<laugh>`), and non-verbal synonyms map onto them: `[chuckles]`, `[chuckle]`, `[laugh]`, `[laughing]`, `[giggles]` → `<laugh>`; `[sigh]`, `[sighing]`, `[exhales]` → `<sigh>`; `[inhales]`, `[breathes]` → `<breath>`; `[pause]`, `[pauses]` → `<short pause>`; `[cough]`, `[gasp]`. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
-- One warning per request lists the synonym mappings. Documented and pass-through tags add no warning.
-- `SpeechProvider.stream()` and `generateDialogue()` results can carry `warnings`, which `streamSpeech` and `generateConversation` (native and native-split paths) now pass through to `result.warnings`.
+- **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside seven fixed tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Every bracket tag is now sent inline exactly as written: `[skeptical]` → `<skeptical>`, `[chuckles]` → `<chuckles>`. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
+- **Behavior change:** the seven 0.32 tags are no longer renamed. `[laughs]`, `[sighs]`, `[coughs]`, and `[gasps]` now send `<laughs>`, `<sighs>`, `<coughs>`, and `<gasps>`; write `[laugh]`, `[sigh]`, `[cough]`, or `[gasp]` for the previous output. `[breath]`, `[short pause]`, and `[long pause]` are unchanged.
 - Other providers are unchanged: ElevenLabs keeps its own tag handling and older Gemini models still strip tags.
 
 ## 0.33.0

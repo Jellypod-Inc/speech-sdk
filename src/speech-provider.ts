@@ -163,7 +163,6 @@ export interface SpeechProvider<
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
     timestamps?: WordTimestamp[];
-    warnings?: string[];
   }>;
 
   getStitchOptions?(
@@ -213,7 +212,6 @@ export interface SpeechProvider<
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
-    warnings?: string[];
   }>;
 
   /**

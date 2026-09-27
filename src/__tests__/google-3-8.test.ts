@@ -52,7 +52,7 @@ describe("Gemini 3.8 TTS", () => {
     expect(body.input[0].content).toEqual([
       {
         type: "text",
-        text: "Hello <laugh> world.",
+        text: "Hello <laughs> world.",
         annotations: [{ type: "speech_metadata", style: "warm and calm" }],
       },
     ]);

@@ -113,7 +113,6 @@ export async function streamSpeech<
   );
 
   const ttfbMs = Math.round(performance.now() - startTime);
-  const mergedWarnings = [...warnings, ...(result.warnings ?? [])];
 
   const metadata: SpeechMetadata = {
     latencyMs: ttfbMs,
@@ -129,6 +128,6 @@ export async function streamSpeech<
     mediaType: result.mediaType,
     metadata,
     providerMetadata: result.providerMetadata,
-    warnings: mergedWarnings.length > 0 ? mergedWarnings : undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

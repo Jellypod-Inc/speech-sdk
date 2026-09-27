@@ -23,7 +23,6 @@ describe.skipIf(!hasKeys)("Gemini 3.8 bracket tag conversion e2e", () => {
     const words = result.timestamps ?? [];
     expect(words.map((w) => w.text).join(" ")).not.toMatch(DIRECTION_WORDS);
     expect(words.length).toBeGreaterThan(5);
-    expect(result.warnings?.join("\n")).toContain("[chuckles] → <laugh>");
   });
 
   it("voices a two-voice dialogue without speaking its tags", {
@@ -52,6 +51,5 @@ describe.skipIf(!hasKeys)("Gemini 3.8 bracket tag conversion e2e", () => {
     const words = result.timestamps ?? [];
     expect(words.map((w) => w.text).join(" ")).not.toMatch(DIRECTION_WORDS);
     expect([...new Set(words.map((w) => w.turnIndex))]).toEqual([0, 1, 2]);
-    expect(result.warnings?.join("\n")).toContain("[chuckles] → <laugh>");
   });
 });

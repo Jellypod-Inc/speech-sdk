@@ -378,34 +378,9 @@ await generateSpeech({
 
 ### Gemini 3.8 tags
 
-Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) takes tags inline as `<tag>`. The SDK converts every bracket tag to that form, case-insensitively, and never rejects one.
+Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) reads tags inline in angle brackets. The SDK converts every bracket tag to that form exactly as written and never rejects one: `[chuckles]` becomes `<chuckles>`, and `'Wait, [excited] that changes everything.'` becomes `'Wait, <excited> that changes everything.'`. Google's [recommended vocal tags](https://ai.google.dev/gemini-api/docs/speech-generation) include `<laugh>`, `<chuckle>`, `<sigh>`, `<breath>`, `<gasp>`, `<short pause>`, and `<long pause>`. Google recommends putting sustained emotion or delivery in `instructions`, which the SDK sends as the turn's `speech_metadata.style`.
 
-Google documents seven inline tags:
-
-| Bracket | Sent as |
-| --- | --- |
-| `[laughs]` | `<laugh>` |
-| `[sighs]` | `<sigh>` |
-| `[coughs]` | `<cough>` |
-| `[gasps]` | `<gasp>` |
-| `[breath]` | `<breath>` |
-| `[short pause]` | `<short pause>` |
-| `[long pause]` | `<long pause>` |
-
-These non-verbal synonyms map onto the same tags:
-
-| Bracket | Sent as |
-| --- | --- |
-| `[laugh]`, `[chuckles]`, `[chuckle]`, `[laughing]`, `[giggles]` | `<laugh>` |
-| `[sigh]`, `[sighing]`, `[exhales]` | `<sigh>` |
-| `[cough]` | `<cough>` |
-| `[gasp]` | `<gasp>` |
-| `[inhales]`, `[breathes]` | `<breath>` |
-| `[pause]`, `[pauses]` | `<short pause>` |
-
-Any other tag passes through inline in lowercase, where it appears: `[Skeptical]` becomes `<skeptical>`, `'Wait, [excited] that changes everything.'` becomes `'Wait, <excited> that changes everything.'`. Gemini interprets it; the SDK doesn't move it into the style. Tags stay out of the timestamp transcript, so if Gemini reads one aloud, alignment fails with `TimestampValidationError` (`transcript_mismatch`).
-
-Synonym mappings are listed in one warning per request in `result.warnings`. Documented and pass-through tags add no warning. Older Gemini models still strip every bracket tag with a warning.
+Tags stay out of the timestamp transcript. If Gemini reads a tag aloud, alignment fails with `TimestampValidationError` (`transcript_mismatch`). Older Gemini models still strip every bracket tag with a warning.
 
 ## Pronunciations
 

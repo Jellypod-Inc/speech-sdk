@@ -14,7 +14,6 @@ const WORD_MS = 200;
 const GAP_MS = 300;
 const WHITESPACE = /\s+/;
 const INLINE_TAG = /<[^>]+>/g;
-const BRACKET = /[[\]]/;
 
 // Tags from three real two-host Jellypod scripts.
 const JELLYPOD_TAGS = [
@@ -110,106 +109,52 @@ function mockGoogle() {
 }
 
 describe("Gemini 3.8 bracket tags", () => {
-  it.each(JELLYPOD_TAGS)("sends [%s] as an inline tag", async (tag) => {
+  it.each(JELLYPOD_TAGS)("sends [%s] inline as written", async (tag) => {
     const { model, requests } = mockGoogle();
-    await generateSpeech({
+    const result = await generateSpeech({
       model,
       text: `[${tag}] Wait, [${tag}] that changes everything.`,
       voice: "Kore",
     });
-    const [item] = requests[0];
-    expect(item.text).not.toMatch(BRACKET);
-    const inline =
-      { laughs: "<laugh>", chuckles: "<laugh>", pauses: "<short pause>" }[
-        tag as string
-      ] ?? `<${tag}>`;
-    expect(item.text).toBe(
-      `${inline} Wait, ${inline} that changes everything.`
+    expect(requests[0][0].text).toBe(
+      `<${tag}> Wait, <${tag}> that changes everything.`
     );
+    expect(result.warnings).toBeUndefined();
   });
 
-  it.each([
-    ["chuckles", "<laugh>"],
-    ["Chuckle", "<laugh>"],
-    ["laughing", "<laugh>"],
-    ["giggles", "<laugh>"],
-    ["exhales", "<sigh>"],
-    ["sighing", "<sigh>"],
-    ["inhales", "<breath>"],
-    ["breathes", "<breath>"],
-    ["pause", "<short pause>"],
-    ["PAUSES", "<short pause>"],
-  ])("maps [%s] to %s", async (tag, inline) => {
+  it("keeps the caller's wording and case and leaves style to instructions", async () => {
     const { model, requests } = mockGoogle();
     await generateSpeech({
       model,
-      text: `That's wild. [${tag}] Really.`,
-      voice: "Kore",
-    });
-    expect(requests[0][0]).toEqual({
-      type: "text",
-      text: `That's wild. ${inline} Really.`,
-    });
-  });
-
-  it("keeps arbitrary tags in place and leaves the style to caller instructions", async () => {
-    const { model, requests } = mockGoogle();
-    await generateSpeech({
-      model,
-      text: "[Genuinely  Surprised] Wait, [excited] that changes everything.",
+      text: "[ Genuinely Surprised ] Wait, [Laughs] that changes everything.",
       instructions: "calm narrator",
       voice: "Kore",
     });
     expect(requests[0]).toEqual([
       {
         type: "text",
-        text: "<genuinely surprised> Wait, <excited> that changes everything.",
+        text: "<Genuinely Surprised> Wait, <Laughs> that changes everything.",
         annotations: [{ type: "speech_metadata", style: "calm narrator" }],
       },
     ]);
-  });
-
-  it("reports synonym mappings in one warning per request", async () => {
-    const { model } = mockGoogle();
-    const result = await generateSpeech({
-      model,
-      text: "[skeptical] Hmm. [Chuckles] Fine. [laughs] [chuckles] [pauses] Okay.",
-      voice: "Kore",
-    });
-    expect(result.warnings).toEqual([
-      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [chuckles] → <laugh>, [pauses] → <short pause>.",
-    ]);
-  });
-
-  it("adds no warning for documented or arbitrary tags", async () => {
-    const { model } = mockGoogle();
-    const result = await generateSpeech({
-      model,
-      text: "Hello [laughs] world. [skeptical] [short pause] Bye.",
-      voice: "Kore",
-    });
-    expect(result.warnings).toBeUndefined();
   });
 
   it("converts tags when streaming", async () => {
     const sse =
       'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
-    const result = await streamSpeech({
+    await streamSpeech({
       model: createGoogle({ apiKey: "key", fetch })(MODEL_ID),
       text: "[warmly] Hi there. [giggles]",
       voice: "Kore",
     });
     const body = JSON.parse(fetch.mock.calls[0][1].body);
     expect(body.input[0].content).toEqual([
-      { type: "text", text: "<warmly> Hi there. <laugh>" },
-    ]);
-    expect(result.warnings).toEqual([
-      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [giggles] → <laugh>.",
+      { type: "text", text: "<warmly> Hi there. <giggles>" },
     ]);
   });
 
-  it("sends inline tags in native dialogue and keeps one warning for the request", async () => {
+  it("sends inline tags in native dialogue", async () => {
     const { model, requests } = mockGoogle();
     const result = await generateConversation({
       model,
@@ -238,7 +183,7 @@ describe("Gemini 3.8 bracket tags", () => {
       },
       {
         type: "text",
-        text: "<laugh> Yes. <laugh> Wait, <excited> it was great.",
+        text: "<laughs> Yes. <chuckles> Wait, <excited> it was great.",
         annotations: [
           {
             type: "speech_metadata",
@@ -247,9 +192,6 @@ describe("Gemini 3.8 bracket tags", () => {
           },
         ],
       },
-    ]);
-    expect(result.warnings).toEqual([
-      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [chuckles] → <laugh>.",
     ]);
   });
 
@@ -314,7 +256,7 @@ describe("Gemini 3.8 bracket tags", () => {
       "great.",
     ]);
     expect(requests[0][1].text).toBe(
-      "<laugh> I did. Wait, <excited> it was great."
+      "<chuckles> I did. Wait, <excited> it was great."
     );
   });
 });

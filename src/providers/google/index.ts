@@ -207,91 +207,20 @@ const GEMINI_3_8_MODELS = new Set([
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
-// Gemini 3.8's documented inline tags; synonyms map onto them so natural cue words land on a tag the model is known to voice.
-const GEMINI_3_8_TAGS: Record<string, string> = {
-  laughs: "<laugh>",
-  sighs: "<sigh>",
-  coughs: "<cough>",
-  gasps: "<gasp>",
-  breath: "<breath>",
-  "short pause": "<short pause>",
-  "long pause": "<long pause>",
-};
-
-const GEMINI_3_8_TAG_SYNONYMS: Record<string, string> = {
-  laugh: "<laugh>",
-  chuckles: "<laugh>",
-  chuckle: "<laugh>",
-  laughing: "<laugh>",
-  giggles: "<laugh>",
-  sigh: "<sigh>",
-  sighing: "<sigh>",
-  exhales: "<sigh>",
-  cough: "<cough>",
-  gasp: "<gasp>",
-  inhales: "<breath>",
-  breathes: "<breath>",
-  pause: "<short pause>",
-  pauses: "<short pause>",
-};
-
 const BRACKET_TAG_RE = /\[([^\]]+)\]/g;
-const TAG_NAME_STRIP_RE = /[<>]/g;
-const TAG_WHITESPACE_RE = /\s+/g;
 
-interface Gemini38Script {
-  readonly mapped: readonly string[];
-  readonly text: string;
-}
-
-// Every bracket is sent in Gemini 3.8's inline <tag> syntax; tags outside the documented set pass through for the model to interpret.
-function parseGemini38Text(text: string): Gemini38Script {
-  const mapped: string[] = [];
-  const spoken = text.replace(BRACKET_TAG_RE, (tag, inner: string) => {
-    const key = inner
-      .replace(TAG_NAME_STRIP_RE, "")
-      .trim()
-      .replace(TAG_WHITESPACE_RE, " ")
-      .toLowerCase();
-    if (!key) {
-      return tag;
-    }
-    const supported = GEMINI_3_8_TAGS[key];
-    if (supported) {
-      return supported;
-    }
-    const synonym = GEMINI_3_8_TAG_SYNONYMS[key];
-    if (synonym) {
-      mapped.push(`[${key}] → ${synonym}`);
-      return synonym;
-    }
-    return `<${key}>`;
+// Gemini 3.8 reads tags inline as <tag>; any name passes through as written for the model to interpret.
+function gemini38Text(text: string): string {
+  return text.replace(BRACKET_TAG_RE, (tag, inner: string) => {
+    const name = inner.trim();
+    return name ? `<${name}>` : tag;
   });
-  return { text: spoken, mapped: [...new Set(mapped)] };
 }
 
-function describeTagConversions(
-  modelIdentifier: string,
-  scripts: readonly Gemini38Script[]
-): string[] {
-  const mapped = [...new Set(scripts.flatMap((script) => script.mapped))];
-  if (mapped.length === 0) {
-    return [];
-  }
-  return [
-    `${modelIdentifier}: mapped audio tags onto Gemini 3.8 inline tags: ${mapped.join(", ")}.`,
-  ];
-}
-
-function gemini38Content(
-  script: Gemini38Script,
-  instructions: readonly (string | undefined)[],
-  speaker?: string
-) {
-  const style = instructions.filter(Boolean).join("; ");
+function gemini38Content(text: string, style?: string, speaker?: string) {
   return {
     type: "text",
-    text: script.text,
+    text: gemini38Text(text),
     ...(style || speaker
       ? {
           annotations: [
@@ -594,7 +523,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     audioDurationMs?: number;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
-    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.generateInteraction(options);
@@ -653,7 +581,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  private async generateInteraction(options: {
+  private generateInteraction(options: {
     modelId: string;
     text: string;
     instructions?: string;
@@ -662,20 +590,15 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }) {
-    const script = parseGemini38Text(options.text);
     const input = [
       {
         type: "user_input",
-        content: [gemini38Content(script, [options.instructions])],
+        content: [gemini38Content(options.text, options.instructions)],
       },
     ];
-    const result = await this.postInteraction(options, input, [
+    return this.postInteraction(options, input, [
       { voice: options.voice ?? "Kore" },
     ]);
-    const warnings = describeTagConversions(`google/${options.modelId}`, [
-      script,
-    ]);
-    return warnings.length > 0 ? { ...result, warnings } : result;
   }
 
   private async postInteraction(
@@ -790,7 +713,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
-    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.streamInteractions(options);
@@ -822,22 +744,18 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
-    warnings?: string[];
   }> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
 
     const voiceName = options.voice ?? "Kore";
-    const script = GEMINI_3_8_MODELS.has(options.modelId)
-      ? parseGemini38Text(options.text)
-      : undefined;
 
     const body: Record<string, unknown> = {
       model: options.modelId,
-      input: script
+      input: GEMINI_3_8_MODELS.has(options.modelId)
         ? [
             {
               type: "user_input",
-              content: [gemini38Content(script, [options.instructions])],
+              content: [gemini38Content(options.text, options.instructions)],
             },
           ]
         : buildTtsPrompt(options.text, options.instructions),
@@ -889,13 +807,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       },
     });
 
-    const warnings = script
-      ? describeTagConversions(`google/${options.modelId}`, [script])
-      : [];
     return {
       stream,
       mediaType: `audio/pcm;rate=${DEFAULT_GEMINI_SAMPLE_RATE}`,
-      ...(warnings.length > 0 && { warnings }),
     };
   }
 
@@ -976,22 +890,19 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
-    warnings?: string[];
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       const voiceToLabel = new Map<string, string>();
-      const scripts = options.turns.map((turn) => parseGemini38Text(turn.text));
-      const content = options.turns.map((turn, index) => {
+      const content = options.turns.map((turn) => {
         let speaker = voiceToLabel.get(turn.voice);
         if (!speaker) {
           speaker = `Speaker${voiceToLabel.size + 1}`;
           voiceToLabel.set(turn.voice, speaker);
         }
-        return gemini38Content(
-          scripts[index],
-          [options.instructions, turn.instructions],
-          speaker
-        );
+        const style = [options.instructions, turn.instructions]
+          .filter(Boolean)
+          .join("; ");
+        return gemini38Content(turn.text, style || undefined, speaker);
       });
       if (
         voiceToLabel.size !== 2 ||
@@ -1001,22 +912,13 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           `google/${options.modelId}: native dialogue requires two prebuilt voices.`
         );
       }
-      const result = await this.postInteraction(
-        options,
-        [{ type: "user_input", content }],
-        {
-          mode: "conversational",
-          speakers: [...voiceToLabel].map(([voice, speaker]) => ({
-            speaker,
-            voice,
-          })),
-        }
-      );
-      const warnings = describeTagConversions(
-        `google/${options.modelId}`,
-        scripts
-      );
-      return warnings.length > 0 ? { ...result, warnings } : result;
+      return this.postInteraction(options, [{ type: "user_input", content }], {
+        mode: "conversational",
+        speakers: [...voiceToLabel].map(([voice, speaker]) => ({
+          speaker,
+          voice,
+        })),
+      });
     }
     const voiceToLabel = new Map<string, string>();
     const labelled: string[] = [];
