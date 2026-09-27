@@ -175,6 +175,7 @@ Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (
 Pass `splitTurns: true` (with `timestamps: true`) to also get one clip per input turn — for example to show each turn as its own take, caption it, or regenerate a single turn.
 
 ```ts
+import { generateConversation } from '@speech-sdk/core';
 import { createElevenLabs } from '@speech-sdk/core/providers';
 
 const result = await generateConversation({
