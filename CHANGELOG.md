@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.33.1
+
+- **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside seven fixed tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Every bracket tag is now sent inline with the caller's wording and case, trimmed of surrounding whitespace: `[skeptical]` → `<skeptical>`, `[chuckles]` → `<chuckles>`. An empty tag such as `[ ]` is dropped. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
+- **Behavior change:** the seven 0.32 tags are no longer renamed. `[laughs]`, `[sighs]`, `[coughs]`, and `[gasps]` now send `<laughs>`, `<sighs>`, `<coughs>`, and `<gasps>`; write `[laugh]`, `[sigh]`, `[cough]`, or `[gasp]` for the previous output. `[breath]`, `[short pause]`, and `[long pause]` are unchanged.
+- Other models are unchanged: ElevenLabs keeps its own tag handling, Gemini 2.5 models still strip tags with a warning, and Gemini 3.1 still receives bracket tags as written.
+
 ## 0.33.0
 
 - **Per-turn audio from `generateConversation`.** `splitTurns: true` (requires `timestamps: true`) adds `result.turns`: one entry per input turn with `turnIndex`, `audio` (same format as the conversation audio), `startMs`, `endMs`, and `timestamps` rebased to the slice. Slices cover the whole audio with no gaps or overlaps and are cut sample-accurately on decoded PCM. Each boundary is cut in the middle of the first silence (≥100 ms of 20 ms frames, each 40 dB below the 90th-percentile frame level) after turn N's last word, so a breath or laugh opening turn N+1 stays with that turn; with no silence in the gap the cut goes at its quietest frame. Joins the SDK made itself (stitch gaps, native-split block joins) are cut in the middle of the inserted gap. Works on the native, native-split, and stitch paths; `speed` and `output` apply to every slice.

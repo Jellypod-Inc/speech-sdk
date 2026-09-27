@@ -52,7 +52,7 @@ describe("Gemini 3.8 TTS", () => {
     expect(body.input[0].content).toEqual([
       {
         type: "text",
-        text: "Hello <laugh> world.",
+        text: "Hello <laughs> world.",
         annotations: [{ type: "speech_metadata", style: "warm and calm" }],
       },
     ]);
@@ -113,20 +113,6 @@ describe("Gemini 3.8 TTS", () => {
     if (path.kind === "stitch") {
       expect(path.reason).toBe("fallback-from-native-custom-voice");
     }
-  });
-
-  it("rejects unsupported directions rather than voicing them", async () => {
-    const provider = new GoogleSpeechProvider({
-      apiKey: "key",
-      fetch: vi.fn(),
-    });
-    await expect(
-      provider.generate({
-        modelId: "gemini-3.8-flash-tts",
-        text: "Hi [applause]",
-        voice: "Kore",
-      })
-    ).rejects.toThrow("Unsupported Gemini 3.8 audio tag");
   });
 
   it("keeps vocal tags out of the alignment transcript", () => {

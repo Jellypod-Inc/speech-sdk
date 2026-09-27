@@ -207,23 +207,15 @@ const GEMINI_3_8_MODELS = new Set([
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
-const GEMINI_3_8_TAGS: Record<string, string> = {
-  "[laughs]": "<laugh>",
-  "[sighs]": "<sigh>",
-  "[coughs]": "<cough>",
-  "[gasps]": "<gasp>",
-  "[breath]": "<breath>",
-  "[short pause]": "<short pause>",
-  "[long pause]": "<long pause>",
-};
+// Matches exactly the span textWithoutAudioTags strips, so provider text and the alignment transcript stay in step.
+const BRACKET_TAG_RE = /\[([^\]]+)\]/g;
+const TAG_DELIMITER_RE = /[[<>]/g;
 
+// Gemini 3.8 reads tags inline as <tag>; any name passes through for the model to interpret.
 function gemini38Text(text: string): string {
-  return text.replace(/\[[^\]]+\]/g, (tag) => {
-    const replacement = GEMINI_3_8_TAGS[tag.toLowerCase()];
-    if (!replacement) {
-      throw new SpeechSDKError(`Unsupported Gemini 3.8 audio tag: ${tag}`);
-    }
-    return replacement;
+  return text.replace(BRACKET_TAG_RE, (_tag, inner: string) => {
+    const name = inner.replace(TAG_DELIMITER_RE, "").trim();
+    return name ? `<${name}>` : "";
   });
 }
 

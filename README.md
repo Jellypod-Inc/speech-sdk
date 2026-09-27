@@ -376,6 +376,12 @@ await generateSpeech({
 });
 ```
 
+### Gemini 3.8 tags
+
+Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) reads tags inline in angle brackets. The SDK converts every bracket tag to that form with your wording and case, trimmed of surrounding whitespace, and never rejects one: `[chuckles]` becomes `<chuckles>`, and `'Wait, [excited] that changes everything.'` becomes `'Wait, <excited> that changes everything.'`. Google's [recommended vocal tags](https://ai.google.dev/gemini-api/docs/speech-generation) include `<laugh>`, `<chuckle>`, `<sigh>`, `<breath>`, `<gasp>`, `<short pause>`, and `<long pause>`. Google recommends putting sustained emotion or delivery in `instructions`, which the SDK sends as the turn's `speech_metadata.style`.
+
+Tags stay out of the timestamp transcript. If Gemini reads a tag aloud, alignment fails with `TimestampValidationError` (`transcript_mismatch`). Gemini 2.5 models strip every bracket tag with a warning; Gemini 3.1 receives bracket tags as written.
+
 ## Pronunciations
 
 Customize how specific words are pronounced. Rules are applied as text substitution before the request is sent to the provider; word timestamps are inverse-mapped on return so the substitution is invisible to the caller.
