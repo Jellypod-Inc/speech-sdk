@@ -56,7 +56,6 @@ import {
   type Voice,
 } from "./speech-provider.js";
 import type {
-  ConversationAttribution,
   ConversationMetadata,
   ConversationResult,
   ConversationResultWithTimestamps,
@@ -84,7 +83,6 @@ export type {
   GenerateConversationOptions,
 } from "./conversation/types.js";
 export type {
-  ConversationAttribution,
   ConversationMetadata,
   ConversationPathKind,
   ConversationResult,
@@ -358,27 +356,6 @@ function describeStitchReason<V extends Voice>(args: {
   return args.hasPerTurnSpeed ? "per-turn-speed" : "max-input-chars";
 }
 
-const ATTRIBUTION_RANK: Record<ConversationAttribution, number> = {
-  silence: 0,
-  text: 1,
-  proportional: 2,
-};
-
-function weakestAttribution(
-  values: readonly (ConversationAttribution | undefined)[]
-): ConversationAttribution | undefined {
-  let weakest: ConversationAttribution | undefined;
-  for (const value of values) {
-    if (
-      value &&
-      (weakest == null || ATTRIBUTION_RANK[value] > ATTRIBUTION_RANK[weakest])
-    ) {
-      weakest = value;
-    }
-  }
-  return weakest;
-}
-
 async function finishConversation(args: {
   readonly options: GenerateConversationOptions;
   readonly run: ConversationRun;
@@ -411,7 +388,6 @@ async function finishConversation(args: {
     "./conversation/split-turns.js"
   );
   const turns = await splitConversationTurns({
-    attribution: stretched.metadata.attribution,
     audio: stretched.audio.uint8Array,
     knownCutsSec,
     mediaType: stretched.audio.mediaType,
@@ -633,11 +609,7 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
-  const {
-    attribution,
-    timestamps: rawTimestamps,
-    warnings: attributionWarnings,
-  } = await resolveNativeDialogueTimestamps({
+  const rawTimestamps = await resolveNativeDialogueTimestamps({
     requestTimestamps,
     nativeTimestamps: result.timestamps,
     hasNativeTimestamps: hasNativeDialogueTimestamps,
@@ -683,7 +655,6 @@ async function runNative<V extends Voice>(args: {
     inputChars,
     ...(audioDurationMs != null && { audioDurationMs }),
     path: "native",
-    ...(attribution && { attribution }),
   };
 
   const preprocessingWarnings = substitutedTurns.flatMap(
@@ -692,7 +663,6 @@ async function runNative<V extends Voice>(args: {
   const mergedWarningList = [
     ...warnings,
     ...preprocessingWarnings,
-    ...attributionWarnings,
     ...(projection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),
@@ -837,26 +807,22 @@ async function runNativeSplit<V extends Voice>(args: {
         blockAudio,
         stitchOpts.mediaType
       );
-      const { attribution, timestamps, warnings } =
-        await resolveNativeDialogueTimestamps({
-          requestTimestamps,
-          nativeTimestamps: result.timestamps,
-          hasNativeTimestamps,
-          audio: blockAudio,
-          mediaType: stitchOpts.mediaType,
-          ttsModel,
-          resolved,
-          abortSignal: signal,
-          audioDurationMs: (segment.pcm.length / segment.sampleRate) * 1000,
-          substitutedTurnTexts: blockTurns.map((t) => t.canonicalText),
-          timestampProvider: options.timestampProvider,
-          pcmSegment: segment,
-        });
+      const timestamps = await resolveNativeDialogueTimestamps({
+        requestTimestamps,
+        nativeTimestamps: result.timestamps,
+        hasNativeTimestamps,
+        audio: blockAudio,
+        mediaType: stitchOpts.mediaType,
+        ttsModel,
+        resolved,
+        abortSignal: signal,
+        audioDurationMs: (segment.pcm.length / segment.sampleRate) * 1000,
+        substitutedTurnTexts: blockTurns.map((t) => t.canonicalText),
+        timestampProvider: options.timestampProvider,
+      });
       return {
-        attribution,
         segment,
         timestamps,
-        warnings,
         providerMetadata: result.providerMetadata,
       };
     },
@@ -924,18 +890,15 @@ async function runNativeSplit<V extends Voice>(args: {
   const audioDurationMs = Math.round((totalSamples / targetSampleRate) * 1000);
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
-  const attribution = weakestAttribution(perBlock.map((p) => p.attribution));
   const metadata: ConversationMetadata = {
     latencyMs: Math.round(performance.now() - start),
     inputChars,
     ...(audioDurationMs != null && { audioDurationMs }),
     path: "native-split",
-    ...(attribution && { attribution }),
   };
 
   const warnings = [
     ...substitutedTurns.flatMap((turn) => turn.warnings),
-    ...perBlock.flatMap((p) => p.warnings),
     ...(timestampProjection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),
@@ -1014,15 +977,9 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   audioDurationMs: number | undefined;
   substitutedTurnTexts: readonly string[];
   timestampProvider?: TimestampProvider;
-  // Already-decoded PCM for the same audio, when the caller has it, to skip a redundant decode.
-  pcmSegment?: Pcm16Segment;
-}): Promise<{
-  attribution?: ConversationAttribution;
-  timestamps: readonly ConversationWordTimestamp[] | undefined;
-  warnings: readonly string[];
-}> {
+}): Promise<readonly ConversationWordTimestamp[] | undefined> {
   if (!args.requestTimestamps) {
-    return { timestamps: undefined, warnings: [] };
+    return;
   }
 
   // Either use native flat timestamps, or derive via STT fallback.
@@ -1067,47 +1024,27 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     timestamps: flatTimestamps,
   });
 
-  const { detectSilenceGaps } = await import(
-    "./conversation/silence-detection.js"
-  );
   const { attributeTimestamps } = await import(
     "./conversation/attribute-timestamps.js"
   );
-
-  let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
-    [];
-  try {
-    const segment =
-      args.pcmSegment ??
-      (await (
-        await import("./audio-decode.js")
-      ).decodeAudioToPcm16(args.audio, args.mediaType));
-    const gaps = detectSilenceGaps(segment.pcm, {
-      sampleRate: segment.sampleRate,
-      minDurationMs: 150,
-    });
-    silenceGaps = gaps;
-  } catch {
-    // Decoder couldn't read the audio (e.g., compressed format we can't decode locally).
-    // Tier 1 will be skipped; dispatcher falls through to Tier 2/3.
-  }
-
-  const result = attributeTimestamps({
+  // Validated words cover the joined turn text exactly, so an exact partition always exists.
+  const attributed = attributeTimestamps({
     timestamps: flatTimestamps,
     turnTexts: args.substitutedTurnTexts,
-    silenceGaps,
   });
-
-  return {
-    ...(result.attribution && { attribution: result.attribution }),
-    timestamps: finalizeConversationTurnTimestamps({
-      audioDurationMs: args.audioDurationMs,
+  if (!attributed) {
+    throw new TimestampValidationError({
+      reason: "transcript_mismatch",
       source: args.ttsModel,
-      timestamps: result.timestamps,
-      turnTexts: args.substitutedTurnTexts,
-    }),
-    warnings: result.warnings,
-  };
+    });
+  }
+
+  return finalizeConversationTurnTimestamps({
+    audioDurationMs: args.audioDurationMs,
+    source: args.ttsModel,
+    timestamps: attributed,
+    turnTexts: args.substitutedTurnTexts,
+  });
 }
 
 async function buildNativeAudio(args: {

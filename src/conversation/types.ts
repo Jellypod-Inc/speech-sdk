@@ -39,7 +39,7 @@ export interface GenerateConversationOptions<
   readonly speed?: number;
   /**
    * Also return `turns`: one audio clip per input turn, cut at the silence after each turn's last word. Requires
-   * `timestamps: true`. Throws `TurnSplitError` when turn attribution can't be trusted.
+   * `timestamps: true`. Throws `TurnSplitError` when turn boundaries can't be trusted.
    */
   readonly splitTurns?: boolean;
   readonly timestampProvider?: TimestampProvider;

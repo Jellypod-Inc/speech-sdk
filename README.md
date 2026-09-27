@@ -168,7 +168,7 @@ const result = await generateConversation({
 
 Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `splitTurns`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
-`result.metadata.path` reports how the audio was rendered: `'native'`, `'native-split'` (native dialogue in several calls, stitched), or `'stitch'`. On the stitch path `metadata.stitchReason` says why (`'mixed-models'`, `'no-native-dialogue'`, `'single-speaker'`, `'too-many-voices'`, `'custom-voice'`, `'per-turn-provider-options'`, `'per-turn-speed'`, `'max-input-chars'`, `'native-limit-exceeded'`). With `timestamps: true` on the native paths, `metadata.attribution` reports how words were assigned to turns in the mixed audio: `'silence'` (the text match is confirmed by a silence at every turn boundary), `'text'` (text match only), or `'proportional'` (approximate). Match on these fields rather than on warning text.
+`result.metadata.path` reports how the audio was rendered: `'native'`, `'native-split'` (native dialogue in several calls, stitched), or `'stitch'`. On the stitch path `metadata.stitchReason` says why (`'mixed-models'`, `'no-native-dialogue'`, `'single-speaker'`, `'too-many-voices'`, `'custom-voice'`, `'per-turn-provider-options'`, `'per-turn-speed'`, `'max-input-chars'`, `'native-limit-exceeded'`). Match on these fields rather than on warning text.
 
 ### Per-turn audio
 
@@ -197,7 +197,7 @@ for (const turn of result.turns) {
 
 The slices cover the whole conversation audio in order, with no gaps or overlaps, and are cut sample-accurately from the decoded PCM. Each boundary is cut in the middle of the first silence (at least 100 ms of 20 ms frames, each 40 dB below the audio's 90th-percentile frame level) after turn N's last word and before turn N+1's first word, so a breath, laugh, or "hmm" opening turn N+1 stays with that turn. When the gap holds no such silence, the cut goes at its quietest frame. Where the SDK joined audio itself — the stitch path's inserted gaps and the joins between native-split blocks — it cuts in the middle of that gap.
 
-Splitting works on the native, native-split, and stitch paths. It throws `TurnSplitError` rather than cut on untrustworthy boundaries; `error.reason` is `'empty_turn'` (a turn has no attributed words), `'non_monotonic'` (word timings run backwards across a boundary), `'proportional_attribution'`, or `'undecodable_audio'` (the native model has no PCM/WAV mode; thrown before synthesis). Callers can catch it and fall back to voicing turns separately.
+Splitting works on the native, native-split, and stitch paths. It throws `TurnSplitError` rather than cut on untrustworthy boundaries; `error.reason` is `'empty_turn'` (a turn has no attributed words), `'non_monotonic'` (word timings run backwards across a boundary), or `'undecodable_audio'` (the native model has no PCM/WAV mode; thrown before synthesis). Callers can catch it and fall back to voicing turns separately.
 
 ## Timestamps
 

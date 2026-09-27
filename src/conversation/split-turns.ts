@@ -5,7 +5,6 @@ import {
 } from "../audio-output.js";
 import { wrapPcm16Mono } from "../audio-utils.js";
 import {
-  type ConversationAttribution,
   type ConversationTurnAudio,
   DefaultGeneratedAudioFile,
 } from "../speech-result.js";
@@ -23,15 +22,11 @@ interface TurnSpan {
   readonly lastEnd: number;
 }
 
-// Split only when every turn owns words and turn order matches time order; proportional attribution is a guess.
+// Split only when every turn owns words and turn order matches time order.
 export function assertTurnSplitAllowed(args: {
-  readonly attribution: ConversationAttribution | undefined;
   readonly timestamps: readonly ConversationWordTimestamp[];
   readonly turnCount: number;
 }): readonly TurnSpan[] {
-  if (args.attribution === "proportional") {
-    throw new TurnSplitError({ reason: "proportional_attribution" });
-  }
   const spans: (TurnSpan | undefined)[] = new Array(args.turnCount);
   let previous: ConversationWordTimestamp | undefined;
   for (const word of args.timestamps) {
@@ -192,7 +187,6 @@ function isDecodable(mediaType: string): boolean {
 }
 
 export async function splitConversationTurns(args: {
-  readonly attribution: ConversationAttribution | undefined;
   readonly audio: Uint8Array;
   readonly knownCutsSec?: ReadonlyMap<number, number>;
   readonly mediaType: string;

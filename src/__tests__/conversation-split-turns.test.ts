@@ -11,10 +11,7 @@ import {
 import { generateConversation } from "../generate-conversation.js";
 import type { SpeechProvider } from "../speech-provider.js";
 import type { ConversationTurnAudio } from "../speech-result.js";
-import type {
-  ConversationWordTimestamp,
-  WordTimestamp,
-} from "../timestamps.js";
+import type { WordTimestamp } from "../timestamps.js";
 
 const RATE = 24_000;
 const PCM_MEDIA_TYPE = `audio/pcm;rate=${RATE}`;
@@ -205,7 +202,6 @@ describe("generateConversation splitTurns", () => {
     });
 
     expect(result.metadata.path).toBe("native");
-    expect(result.metadata.attribution).toBe("silence");
     expect(result.turns.map((t) => t.turnIndex)).toEqual([0, 1]);
     // Turn 0 words end at 400 ms, turn 1 starts at 700 ms: cut at 550 ms.
     expect(result.turns[0].startMs).toBe(0);
@@ -266,39 +262,20 @@ describe("generateConversation splitTurns", () => {
     expect(cut).toBe(samples(570));
   });
 
-  it("refuses to split proportionally attributed words", async () => {
-    const { pcm, timestamps } = renderDialogue(TWO_TURNS);
-    const attributed: ConversationWordTimestamp[] = timestamps.map((w, i) => ({
-      ...w,
-      turnIndex: i < 2 ? 0 : 1,
-    }));
-    const error = await splitConversationTurns({
-      attribution: "proportional",
-      audio: bytesOf(pcm),
-      mediaType: PCM_MEDIA_TYPE,
-      output: undefined,
-      timestamps: attributed,
-      turnCount: 2,
-    }).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(TurnSplitError);
-    expect((error as TurnSplitError).reason).toBe("proportional_attribution");
-  });
-
   it("refuses a turn with no words and words running backwards", async () => {
     const pcm = tone(1000);
     const base = {
-      attribution: "text" as const,
       audio: bytesOf(pcm),
       mediaType: PCM_MEDIA_TYPE,
       output: undefined,
       turnCount: 2,
     };
-    await expect(
-      splitConversationTurns({
-        ...base,
-        timestamps: [{ text: "hi", start: 0, end: 0.2, turnIndex: 0 }],
-      })
-    ).rejects.toMatchObject({ reason: "empty_turn", turnIndex: 1 });
+    const emptyTurn = await splitConversationTurns({
+      ...base,
+      timestamps: [{ text: "hi", start: 0, end: 0.2, turnIndex: 0 }],
+    }).catch((e: unknown) => e);
+    expect(emptyTurn).toBeInstanceOf(TurnSplitError);
+    expect(emptyTurn).toMatchObject({ reason: "empty_turn", turnIndex: 1 });
     await expect(
       splitConversationTurns({
         ...base,
@@ -331,7 +308,6 @@ describe("generateConversation splitTurns", () => {
 
     expect(result.metadata.path).toBe("stitch");
     expect(result.metadata.stitchReason).toBe("mixed-models");
-    expect(result.metadata.attribution).toBeUndefined();
     // Turn 0 clip is 700 ms; the gap runs 700–1000 ms. A silence-only cut would land at 800 ms.
     expect(result.turns[0].endMs).toBeCloseTo(850, 6);
     expect(result.turns[1].timestamps[0].start).toBeCloseTo(0.15 + 0.1, 6);

@@ -47,7 +47,6 @@ export type {
   Voice,
 } from "./speech-provider.js";
 export type {
-  ConversationAttribution,
   ConversationMetadata,
   ConversationPathKind,
   ConversationResult,

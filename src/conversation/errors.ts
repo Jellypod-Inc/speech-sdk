@@ -43,14 +43,11 @@ export class StitchUnsupportedError extends SpeechSDKError {
 export type TurnSplitFailureReason =
   | "empty_turn"
   | "non_monotonic"
-  | "proportional_attribution"
   | "undecodable_audio";
 
 const TURN_SPLIT_MESSAGES: Record<TurnSplitFailureReason, string> = {
   empty_turn: "a turn has no attributed words",
   non_monotonic: "word timings run backwards across a turn boundary",
-  proportional_attribution:
-    "words were attributed to turns proportionally, so turn boundaries are approximate",
   undecodable_audio: "the conversation audio is not decodable PCM/WAV",
 };
 

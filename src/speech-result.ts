@@ -34,15 +34,7 @@ export type ConversationStitchReason =
   | "single-speaker"
   | "too-many-voices";
 
-/**
- * How words were assigned to turns in mixed dialogue audio: `silence` (text match confirmed by a
- * silence at every boundary), `text` (text match only), or `proportional` (approximate).
- */
-export type ConversationAttribution = "silence" | "text" | "proportional";
-
 export interface ConversationMetadata extends SpeechMetadata {
-  // Weakest tier across native dialogue calls. Unset on the stitch path (each turn is its own call) and without timestamps.
-  readonly attribution?: ConversationAttribution;
   readonly path: ConversationPathKind;
   // Populated on the stitch path (one generateSpeech call per turn). Undefined on the native dialogue
   // path, where per-turn boundaries don't exist as separate provider calls.
