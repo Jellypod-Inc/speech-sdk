@@ -14,7 +14,7 @@ function silencePcm16(ms: number, sampleRate: number): Int16Array {
   return new Int16Array(samples);
 }
 
-function rmsPcm16(pcm: Int16Array): number {
+export function rmsPcm16(pcm: Int16Array): number {
   if (pcm.length === 0) {
     return 0;
   }

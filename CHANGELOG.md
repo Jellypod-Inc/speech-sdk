@@ -6,6 +6,7 @@
 - **`TurnSplitError`** is thrown instead of cutting on untrustworthy boundaries: a turn with no words, word timings running backwards across a boundary, or native audio with no decodable mode (checked before synthesis). `reason` says which.
 - **Structured conversation metadata.** `metadata.path` (`'native' | 'native-split' | 'stitch'`) and `metadata.stitchReason` on the stitch path. The existing stitch-fallback warnings are unchanged, but callers no longer need to match their text.
 - **Native dialogue words are assigned to turns by exact text match.** Word timestamps are already validated against the joined turn text, so each word belongs to exactly one turn. The silence-anchored, fuzzy text-match, and proportional attribution tiers are removed, along with their warnings. The silence tier picked the longest gaps overall, which on dialogue models that pause longer inside a turn than between turns could assign words to the wrong turn and fail with `TimestampValidationError` (`transcript_mismatch`).
+- **Fix: raw PCM decoding honors a view's byte offset.** `decodeAudioToPcm16` read raw `audio/pcm` input from the start of the underlying `ArrayBuffer`, ignoring a `Uint8Array` view's `byteOffset`, so a subarray decoded the wrong samples.
 
 ## 0.32.0
 

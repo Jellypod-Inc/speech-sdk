@@ -2,14 +2,15 @@ import { decodeAudioToPcm16 } from "../audio-decode.js";
 import {
   type AudioOutput,
   applyOptionalOutputConversion,
+  isDecodableSourceMediaType,
 } from "../audio-output.js";
-import { wrapPcm16Mono } from "../audio-utils.js";
 import {
   type ConversationTurnAudio,
   DefaultGeneratedAudioFile,
 } from "../speech-result.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import { TurnSplitError } from "./errors.js";
+import { rmsPcm16 } from "./pcm-concat.js";
 
 const FRAME_MS = 20;
 const MIN_SILENCE_MS = 100;
@@ -47,28 +48,19 @@ export function assertTurnSplitAllowed(args: {
     };
     previous = word;
   }
-  const out: TurnSpan[] = [];
-  for (let turnIndex = 0; turnIndex < args.turnCount; turnIndex++) {
-    const span = spans[turnIndex];
+  return Array.from(spans, (span, turnIndex) => {
     if (!span) {
       throw new TurnSplitError({ reason: "empty_turn", turnIndex });
     }
-    out.push(span);
-  }
-  return out;
+    return span;
+  });
 }
 
 function frameRms(pcm: Int16Array, frameSamples: number): Float64Array {
   const frameCount = Math.ceil(pcm.length / frameSamples);
   const rms = new Float64Array(frameCount);
   for (let f = 0; f < frameCount; f++) {
-    const start = f * frameSamples;
-    const end = Math.min(pcm.length, start + frameSamples);
-    let sumSq = 0;
-    for (let i = start; i < end; i++) {
-      sumSq += pcm[i] * pcm[i];
-    }
-    rms[f] = Math.sqrt(sumSq / (end - start));
+    rms[f] = rmsPcm16(pcm.subarray(f * frameSamples, (f + 1) * frameSamples));
   }
   return rms;
 }
@@ -146,7 +138,7 @@ function cutInWindow(args: {
 
 // Returns one cut (sample index) per turn boundary. `knownCutsSec` pins boundaries the SDK stitched itself.
 export function planTurnCuts(args: {
-  readonly knownCutsSec?: ReadonlyMap<number, number>;
+  readonly knownCutsSec?: readonly (number | undefined)[];
   readonly pcm: Int16Array;
   readonly sampleRate: number;
   readonly spans: readonly TurnSpan[];
@@ -160,7 +152,7 @@ export function planTurnCuts(args: {
 
   const cuts: number[] = [];
   for (let b = 0; b < spans.length - 1; b++) {
-    const known = knownCutsSec?.get(b);
+    const known = knownCutsSec?.[b];
     const cut =
       known == null
         ? cutInWindow({
@@ -176,26 +168,21 @@ export function planTurnCuts(args: {
   return cuts;
 }
 
-function isDecodable(mediaType: string): boolean {
-  const lower = mediaType.toLowerCase();
-  return (
-    lower.startsWith("audio/wav") ||
-    lower.startsWith("audio/x-wav") ||
-    lower.startsWith("audio/pcm") ||
-    lower.startsWith("audio/x-pcm")
-  );
-}
-
 export async function splitConversationTurns(args: {
   readonly audio: Uint8Array;
-  readonly knownCutsSec?: ReadonlyMap<number, number>;
+  readonly knownCutsSec?: readonly (number | undefined)[];
   readonly mediaType: string;
   readonly output: AudioOutput | undefined;
   readonly timestamps: readonly ConversationWordTimestamp[];
   readonly turnCount: number;
-}): Promise<readonly ConversationTurnAudio[]> {
+}): Promise<{
+  // The decoded conversation audio, so the caller can encode it without decoding again.
+  readonly pcm: Int16Array;
+  readonly sampleRate: number;
+  readonly turns: readonly ConversationTurnAudio[];
+}> {
   const spans = assertTurnSplitAllowed(args);
-  if (!isDecodable(args.mediaType)) {
+  if (!isDecodableSourceMediaType(args.mediaType)) {
     throw new TurnSplitError({ reason: "undecodable_audio" });
   }
   const { pcm, sampleRate } = await decodeAudioToPcm16(
@@ -209,19 +196,15 @@ export async function splitConversationTurns(args: {
     spans,
   });
 
-  return await Promise.all(
+  const turns = await Promise.all(
     spans.map(async (_, turnIndex) => {
       const startSample = turnIndex === 0 ? 0 : cuts[turnIndex - 1];
       const endSample = cuts[turnIndex] ?? pcm.length;
       const slice = pcm.subarray(startSample, endSample);
-      const wav = await wrapPcm16Mono(
-        new Uint8Array(slice.buffer, slice.byteOffset, slice.byteLength),
-        sampleRate
-      );
       const converted = await applyOptionalOutputConversion({
-        audio: wav,
-        mediaType: "audio/wav",
-        output: args.output,
+        audio: new Uint8Array(slice.buffer, slice.byteOffset, slice.byteLength),
+        mediaType: `audio/pcm;rate=${sampleRate}`,
+        output: args.output ?? { format: "wav" },
       });
       const startSec = startSample / sampleRate;
       const durationSec = (endSample - startSample) / sampleRate;
@@ -243,4 +226,5 @@ export async function splitConversationTurns(args: {
       };
     })
   );
+  return { pcm, sampleRate, turns };
 }
