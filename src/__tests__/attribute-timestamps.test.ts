@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   attributeTimestamps,
+  exactTextPartition,
   tier1SilenceAnchored,
   tier2TextMatch,
 } from "../conversation/attribute-timestamps.js";
@@ -125,13 +126,13 @@ describe("tier2TextMatch", () => {
 });
 
 describe("tier1SilenceAnchored", () => {
-  it("partitions flat words by silence-bounded segments", () => {
+  it("confirms text-matched boundaries with the nearest silence gap", () => {
     const words = [
-      { text: "hello", start: 0.0, end: 0.4 },
-      { text: "world", start: 0.4, end: 0.8 },
+      { text: "hello", start: 0.0, end: 0.4, turnIndex: 0 },
+      { text: "world", start: 0.4, end: 0.8, turnIndex: 0 },
       // gap 0.8 - 1.5
-      { text: "another", start: 1.5, end: 2.0 },
-      { text: "turn", start: 2.0, end: 2.4 },
+      { text: "another", start: 1.5, end: 2.0, turnIndex: 1 },
+      { text: "turn", start: 2.0, end: 2.4, turnIndex: 1 },
     ];
     const gaps: SilenceGap[] = [{ startMs: 800, endMs: 1500, durationMs: 700 }];
     const result = tier1SilenceAnchored({
@@ -139,12 +140,35 @@ describe("tier1SilenceAnchored", () => {
       gaps,
       turnTexts: ["hello world", "another turn"],
     });
-    expect(result).toBeDefined();
+    expect(result?.map((w) => w.turnIndex)).toEqual([0, 0, 1, 1]);
+  });
+
+  it("picks the gap nearest each text boundary, not the longest gap", () => {
+    const words = [
+      { text: "one", start: 0.0, end: 0.2, turnIndex: 0 },
+      // long pause inside turn 0: 0.2 - 1.2
+      { text: "two", start: 1.2, end: 1.4, turnIndex: 0 },
+      // short pause between turns: 1.4 - 1.6
+      { text: "three", start: 1.6, end: 1.8, turnIndex: 1 },
+      { text: "four", start: 1.8, end: 2.0, turnIndex: 1 },
+    ];
+    const result = tier1SilenceAnchored({
+      timestamps: words,
+      gaps: [
+        { startMs: 200, endMs: 1200, durationMs: 1000 },
+        { startMs: 1400, endMs: 1600, durationMs: 200 },
+      ],
+      turnTexts: ["one two", "three four"],
+    });
     expect(result?.map((w) => w.turnIndex)).toEqual([0, 0, 1, 1]);
   });
 
   it("returns undefined when there are not enough candidate silence gaps", () => {
-    const words = [{ text: "x", start: 0, end: 0.1 }];
+    const words = [
+      { text: "one", start: 0, end: 0.1, turnIndex: 0 },
+      { text: "two", start: 0.1, end: 0.2, turnIndex: 1 },
+      { text: "three", start: 0.2, end: 0.3, turnIndex: 2 },
+    ];
     const result = tier1SilenceAnchored({
       timestamps: words,
       gaps: [],
@@ -153,11 +177,10 @@ describe("tier1SilenceAnchored", () => {
     expect(result).toBeUndefined();
   });
 
-  it("returns undefined when any partition would be empty", () => {
-    // All words start AFTER the silence gap → partition[0] would be empty.
+  it("returns undefined when a text-matched turn has no words", () => {
     const words = [
-      { text: "hello", start: 1.0, end: 1.4 },
-      { text: "world", start: 1.5, end: 1.8 },
+      { text: "hello", start: 1.0, end: 1.4, turnIndex: 1 },
+      { text: "world", start: 1.5, end: 1.8, turnIndex: 1 },
     ];
     const gaps: SilenceGap[] = [{ startMs: 100, endMs: 500, durationMs: 400 }];
     const result = tier1SilenceAnchored({
@@ -170,10 +193,10 @@ describe("tier1SilenceAnchored", () => {
 
   it("returns undefined when a silence split has an implausible token ratio", () => {
     const words = [
-      { text: "one", start: 0.0, end: 0.2 },
-      { text: "two", start: 0.2, end: 0.4 },
-      { text: "three", start: 0.4, end: 0.6 },
-      { text: "four", start: 2.0, end: 2.2 },
+      { text: "one", start: 0.0, end: 0.2, turnIndex: 0 },
+      { text: "two", start: 0.2, end: 0.4, turnIndex: 0 },
+      { text: "three", start: 0.4, end: 0.6, turnIndex: 0 },
+      { text: "four", start: 2.0, end: 2.2, turnIndex: 1 },
     ];
     const result = tier1SilenceAnchored({
       timestamps: words,
@@ -182,6 +205,40 @@ describe("tier1SilenceAnchored", () => {
         "one two three four five six seven eight nine ten",
         "eleven twelve",
       ],
+    });
+    expect(result).toBeUndefined();
+  });
+});
+
+describe("exactTextPartition", () => {
+  it("assigns each word to the turn whose canonical text contains it", () => {
+    const result = exactTextPartition({
+      timestamps: [
+        { text: "Hi,", start: 0, end: 0.2 },
+        { text: "there!", start: 0.2, end: 0.4 },
+        { text: "Oh", start: 0.6, end: 0.7 },
+        { text: "hey.", start: 0.7, end: 0.9 },
+      ],
+      turnTexts: ["Hi, there!", "Oh — hey."],
+    });
+    expect(result?.map((w) => w.turnIndex)).toEqual([0, 0, 1, 1]);
+  });
+
+  it("refuses words out of order with the turn text", () => {
+    const result = exactTextPartition({
+      timestamps: [
+        { text: "there", start: 0, end: 0.2 },
+        { text: "hi", start: 0.2, end: 0.4 },
+      ],
+      turnTexts: ["hi", "there"],
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("refuses a word that straddles a turn boundary", () => {
+    const result = exactTextPartition({
+      timestamps: [{ text: "hiyo", start: 0, end: 0.4 }],
+      turnTexts: ["hi", "yo"],
     });
     expect(result).toBeUndefined();
   });
@@ -202,6 +259,7 @@ describe("attributeTimestamps (dispatcher)", () => {
     });
     expect(result.timestamps?.map((w) => w.turnIndex)).toEqual([0, 0, 1, 1]);
     expect(result.warnings).toEqual([]);
+    expect(result.attribution).toBe("silence");
   });
 
   it("falls back to Tier 2 when silence detection is ambiguous — adds warning", () => {
@@ -216,6 +274,7 @@ describe("attributeTimestamps (dispatcher)", () => {
     });
     expect(result.timestamps?.length).toBe(2);
     expect(result.warnings.some((w) => w.includes("text-matching"))).toBe(true);
+    expect(result.attribution).toBe("text");
   });
 
   it("falls back to Tier 3 when Tier 2 budget is exceeded — strong warning", () => {
@@ -237,6 +296,7 @@ describe("attributeTimestamps (dispatcher)", () => {
     expect(
       result.warnings.some((w) => w.includes("proportional distribution"))
     ).toBe(true);
+    expect(result.attribution).toBe("proportional");
   });
 
   it("returns no timestamps when the observed word stream is empty", () => {

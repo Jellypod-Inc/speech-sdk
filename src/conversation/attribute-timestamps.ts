@@ -1,3 +1,5 @@
+import type { ConversationAttribution } from "../speech-result.js";
+import { canonicalizeTimestampText } from "../timestamp-finalization.js";
 import type {
   ConversationWordTimestamp,
   WordTimestamp,
@@ -225,9 +227,77 @@ const TIMESTAMPS_UNAVAILABLE_WARNING =
 const MIN_TIER1_TOKEN_RATIO = 0.35;
 const MAX_TIER1_TOKEN_RATIO = 2.5;
 
+// Exact attribution: every word's canonical text must sit inside exactly one turn's canonical text, in order.
+export function exactTextPartition(args: {
+  timestamps: readonly WordTimestamp[];
+  turnTexts: readonly string[];
+}): readonly ConversationWordTimestamp[] | undefined {
+  const turnChars = args.turnTexts.map((t) => [
+    ...canonicalizeTimestampText(t),
+  ]);
+  const joined = turnChars.flat();
+  const turnEnds: number[] = [];
+  let end = 0;
+  for (const chars of turnChars) {
+    end += chars.length;
+    turnEnds.push(end);
+  }
+
+  const out: ConversationWordTimestamp[] = [];
+  let position = 0;
+  let turnIndex = 0;
+  for (const word of args.timestamps) {
+    const chars = [...canonicalizeTimestampText(word.text)];
+    if (chars.length === 0) {
+      return;
+    }
+    for (const [offset, char] of chars.entries()) {
+      if (joined[position + offset] !== char) {
+        return;
+      }
+    }
+    while (turnIndex < turnEnds.length && position >= turnEnds[turnIndex]) {
+      turnIndex++;
+    }
+    if (position + chars.length > (turnEnds[turnIndex] ?? 0)) {
+      return;
+    }
+    out.push({ text: word.text, start: word.start, end: word.end, turnIndex });
+    position += chars.length;
+  }
+  return position === joined.length ? out : undefined;
+}
+
+function turnBoundaryPoints(
+  words: readonly ConversationWordTimestamp[],
+  turnCount: number
+): number[] | undefined {
+  const firstStart: (number | undefined)[] = new Array(turnCount);
+  const lastEnd: (number | undefined)[] = new Array(turnCount);
+  for (const w of words) {
+    firstStart[w.turnIndex] ??= w.start;
+    lastEnd[w.turnIndex] = w.end;
+  }
+  const points: number[] = [];
+  for (let b = 0; b < turnCount - 1; b++) {
+    const left = lastEnd[b];
+    const right = firstStart[b + 1];
+    if (left == null || right == null) {
+      return;
+    }
+    points.push((left + right) / 2);
+  }
+  return points;
+}
+
+function gapMidpointSec(gap: SilenceGap): number {
+  return (gap.startMs + gap.endMs) / 2 / 1000;
+}
+
+// Snaps each text-matched turn boundary to its nearest silence gap, then re-partitions words by those gaps.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: silence-anchored partition is a single algorithm — splitting hurts readability more than the score helps
 export function tier1SilenceAnchored(args: {
-  timestamps: readonly WordTimestamp[];
+  timestamps: readonly ConversationWordTimestamp[];
   gaps: readonly SilenceGap[];
   turnTexts: readonly string[];
 }): readonly ConversationWordTimestamp[] | undefined {
@@ -239,25 +309,35 @@ export function tier1SilenceAnchored(args: {
   if (timestamps.length === 0) {
     return;
   }
+  const textBoundaries = turnBoundaryPoints(timestamps, turnCount);
+  if (!textBoundaries) {
+    return;
+  }
 
   const firstWordStartSec = timestamps[0]?.start ?? 0;
   const lastWordEndSec = timestamps.at(-1)?.end ?? 0;
-  const candidateGaps = gaps.filter((g) => {
-    const midpointSec = (g.startMs + g.endMs) / 2 / 1000;
-    return midpointSec > firstWordStartSec && midpointSec < lastWordEndSec;
-  });
-  if (candidateGaps.length < turnCount - 1) {
-    return;
-  }
-  const selectedGaps = [...candidateGaps]
-    .sort((a, b) => b.durationMs - a.durationMs)
-    .slice(0, turnCount - 1)
-    .sort((a, b) => a.startMs - b.startMs);
+  const candidateMidpoints = gaps
+    .map(gapMidpointSec)
+    .filter((m) => m > firstWordStartSec && m < lastWordEndSec)
+    .sort((a, b) => a - b);
 
-  // Boundary times in seconds (midpoint of each gap).
-  const boundariesSec = selectedGaps.map(
-    (g) => (g.startMs + g.endMs) / 2 / 1000
-  );
+  const boundariesSec: number[] = [];
+  for (const point of textBoundaries) {
+    const previous = boundariesSec.at(-1) ?? Number.NEGATIVE_INFINITY;
+    let nearest: number | undefined;
+    for (const m of candidateMidpoints) {
+      if (
+        m > previous &&
+        (nearest == null || Math.abs(m - point) < Math.abs(nearest - point))
+      ) {
+        nearest = m;
+      }
+    }
+    if (nearest == null) {
+      return;
+    }
+    boundariesSec.push(nearest);
+  }
 
   // Partition words by which segment each word's midpoint falls into.
   const partitions: WordTimestamp[][] = Array.from(
@@ -295,13 +375,23 @@ export function tier1SilenceAnchored(args: {
   const out: ConversationWordTimestamp[] = [];
   for (let i = 0; i < partitions.length; i++) {
     for (const w of partitions[i] ?? []) {
-      out.push({ ...w, turnIndex: i });
+      out.push({ text: w.text, start: w.start, end: w.end, turnIndex: i });
     }
   }
   return out;
 }
 
+function sameTurnIndices(
+  a: readonly ConversationWordTimestamp[],
+  b: readonly ConversationWordTimestamp[]
+): boolean {
+  return (
+    a.length === b.length && a.every((w, i) => w.turnIndex === b[i]?.turnIndex)
+  );
+}
+
 export interface AttributeTimestampsResult {
+  readonly attribution?: ConversationAttribution;
   readonly timestamps?: readonly ConversationWordTimestamp[];
   readonly warnings: readonly string[];
 }
@@ -320,33 +410,38 @@ export function attributeTimestamps(args: {
     };
   }
 
-  // Tier 1: silence-anchored partitioning.
-  const tier1 = tier1SilenceAnchored({
-    timestamps: observed,
-    gaps: silenceGaps,
-    turnTexts,
-  });
-  if (tier1) {
-    return { timestamps: tier1, warnings: [] };
-  }
+  const exact = exactTextPartition({ timestamps: observed, turnTexts });
+  const fuzzy = exact
+    ? undefined
+    : tier2TextMatch({ timestamps: observed, turnTexts });
+  const textMatched = exact ?? (fuzzy?.budgetExceeded ? undefined : fuzzy);
 
-  // Tier 2: improved text-match.
-  const tier2 = tier2TextMatch({ timestamps: observed, turnTexts });
-  if (!tier2.budgetExceeded) {
+  if (textMatched) {
+    const textTimestamps = exact ?? fuzzy?.timestamps ?? [];
+    const anchored = tier1SilenceAnchored({
+      timestamps: textTimestamps,
+      gaps: silenceGaps,
+      turnTexts,
+    });
+    // An exact text match is ground truth: silence may confirm it, never move a word across turns.
+    if (anchored && !(exact && !sameTurnIndices(anchored, exact))) {
+      return { attribution: "silence", timestamps: anchored, warnings: [] };
+    }
     return {
-      timestamps: tier2.timestamps,
+      attribution: "text",
+      timestamps: textTimestamps,
       warnings: [
-        `${FALLBACK_TEXT_MATCH_WARNING}; ${tier2.mismatches} word(s) tolerated as mismatches.`,
+        `${FALLBACK_TEXT_MATCH_WARNING}; ${fuzzy?.mismatches ?? 0} word(s) tolerated as mismatches.`,
       ],
     };
   }
 
-  // Tier 3: proportional distribution.
   const expectedTokensPerTurn = turnTexts.map(
     (t) => t.split(WHITESPACE_SPLIT_RE).filter((s) => s.length > 0).length
   );
   const tier3 = distributeWordsAcrossTurns(observed, expectedTokensPerTurn);
   return {
+    attribution: "proportional",
     timestamps: tier3,
     warnings: [FALLBACK_PROPORTIONAL_WARNING],
   };

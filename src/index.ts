@@ -12,6 +12,8 @@ export {
   ConversationInputError,
   DialogueConstraintError,
   StitchUnsupportedError,
+  TurnSplitError,
+  type TurnSplitFailureReason,
 } from "./conversation/errors.js";
 export type {
   DesignedVoice,

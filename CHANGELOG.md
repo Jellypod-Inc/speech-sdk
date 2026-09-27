@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.33.0
+
+- **Per-turn audio from `generateConversation`.** `splitTurns: true` (requires `timestamps: true`) adds `result.turns`: one entry per input turn with `turnIndex`, `audio` (same format as the conversation audio), `startMs`, `endMs`, and `timestamps` rebased to the slice. Slices cover the whole audio with no gaps or overlaps and are cut sample-accurately on decoded PCM. Each boundary is cut in the middle of the first silence (≥100 ms of 20 ms frames, each 40 dB below the 90th-percentile frame level) after turn N's last word, so a breath or laugh opening turn N+1 stays with that turn; with no silence in the gap the cut goes at its quietest frame. Joins the SDK made itself (stitch gaps, native-split block joins) are cut in the middle of the inserted gap. Works on the native, native-split, and stitch paths; `speed` and `output` apply to every slice.
+- **`TurnSplitError`** is thrown instead of cutting on untrustworthy boundaries: a turn with no words, word timings running backwards across a boundary, proportional attribution, or native audio with no decodable mode (checked before synthesis). `reason` says which.
+- **Structured conversation metadata.** `metadata.path` (`'native' | 'native-split' | 'stitch'`), `metadata.stitchReason` on the stitch path, and `metadata.attribution` (`'silence' | 'text' | 'proportional'`) on the native paths when timestamps are requested. The existing warnings are unchanged, but callers no longer need to match their text.
+- **More reliable turn attribution for native dialogue.** Words are first matched exactly, in order, against the normalized turn texts; the fuzzy token-budget match is now only the fallback. The silence tier now confirms each text-matched boundary with the silence gap nearest to it, instead of taking the N−1 longest gaps overall — dialogue models often pause longer inside a turn than between turns, which made the old tier fall through on most multi-turn runs. An exact text match is never overridden by silence.
+
 ## 0.32.0
 
 - Complete Gemini 3.8 Flash and Flash-Lite TTS support through structured Interactions requests. Spoken text remains verbatim; `instructions` becomes non-spoken turn style. Prebuilt and persistent custom voices work for single-speaker generation, while two prebuilt voices use native dialogue and custom-voice dialogue uses local stitching. Unary WAV is preserved, and progressive streaming returns raw 24 kHz PCM.

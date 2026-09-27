@@ -96,7 +96,9 @@ function countUniqueVoices(turns: readonly ConversationTurn<Voice>[]): number {
   return new Set(turns.map((t) => keyOf(t.voice))).size;
 }
 
-function modelSupportsNativeDialogue(resolved: ResolvedModel<Voice>): boolean {
+export function modelSupportsNativeDialogue(
+  resolved: ResolvedModel<Voice>
+): boolean {
   const { provider, modelId } = resolved;
   return Boolean(
     provider.generateDialogue && provider.dialogueCapabilities?.(modelId)

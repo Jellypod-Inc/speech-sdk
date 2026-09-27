@@ -14,6 +14,12 @@ export function validateConversationInput(
     );
   }
 
+  if (options.splitTurns && options.timestamps !== true) {
+    throw new ConversationInputError(
+      "splitTurns requires timestamps: true — turn boundaries come from word timestamps."
+    );
+  }
+
   // Model placement must be all-or-nothing — partial mix hides which model actually ran where.
   const hasTopLevel = options.model != null;
 

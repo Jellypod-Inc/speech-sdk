@@ -14,8 +14,9 @@ import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
 import {
-  concatPcmToWav,
+  concatPcmToWavWithRanges,
   dbfsToInt16Rms,
+  gapMidpointsSec,
   normalizeRms,
   stitchTargetRate,
 } from "./pcm-concat.js";
@@ -61,6 +62,8 @@ interface StitchOutput {
     | undefined
   )[];
   readonly timestamps?: readonly ConversationWordTimestamp[];
+  // Middle of each inserted gap, in seconds of the stitched audio — one per turn boundary.
+  readonly turnCutsSec: readonly number[];
   readonly warnings: readonly string[];
 }
 
@@ -131,10 +134,10 @@ export async function runStitch<V extends Voice>(
   );
 
   const targetSampleRate = stitchTargetRate(leveledSegments);
-  const audio = await concatPcmToWav(leveledSegments, {
-    gapMs: input.gapMs,
-    targetSampleRate,
-  });
+  const { wav: audio, ranges } = await concatPcmToWavWithRanges(
+    leveledSegments,
+    { gapMs: input.gapMs, targetSampleRate }
+  );
 
   const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
     audio,
@@ -203,6 +206,7 @@ export async function runStitch<V extends Voice>(
     metadataPerTurn,
     providerMetadataPerTurn,
     timestamps,
+    turnCutsSec: gapMidpointsSec(ranges, targetSampleRate),
     warnings,
   };
 }
