@@ -207,13 +207,15 @@ const GEMINI_3_8_MODELS = new Set([
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
+// Matches exactly the span textWithoutAudioTags strips, so provider text and the alignment transcript stay in step.
 const BRACKET_TAG_RE = /\[([^\]]+)\]/g;
+const TAG_DELIMITER_RE = /[[<>]/g;
 
-// Gemini 3.8 reads tags inline as <tag>; any name passes through as written for the model to interpret.
+// Gemini 3.8 reads tags inline as <tag>; any name passes through for the model to interpret.
 function gemini38Text(text: string): string {
-  return text.replace(BRACKET_TAG_RE, (tag, inner: string) => {
-    const name = inner.trim();
-    return name ? `<${name}>` : tag;
+  return text.replace(BRACKET_TAG_RE, (_tag, inner: string) => {
+    const name = inner.replace(TAG_DELIMITER_RE, "").trim();
+    return name ? `<${name}>` : "";
   });
 }
 

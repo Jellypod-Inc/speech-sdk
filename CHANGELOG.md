@@ -2,9 +2,9 @@
 
 ## 0.33.1
 
-- **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside seven fixed tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Every bracket tag is now sent inline exactly as written: `[skeptical]` → `<skeptical>`, `[chuckles]` → `<chuckles>`. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
+- **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside seven fixed tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Every bracket tag is now sent inline with the caller's wording and case, trimmed of surrounding whitespace: `[skeptical]` → `<skeptical>`, `[chuckles]` → `<chuckles>`. An empty tag such as `[ ]` is dropped. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
 - **Behavior change:** the seven 0.32 tags are no longer renamed. `[laughs]`, `[sighs]`, `[coughs]`, and `[gasps]` now send `<laughs>`, `<sighs>`, `<coughs>`, and `<gasps>`; write `[laugh]`, `[sigh]`, `[cough]`, or `[gasp]` for the previous output. `[breath]`, `[short pause]`, and `[long pause]` are unchanged.
-- Other providers are unchanged: ElevenLabs keeps its own tag handling and older Gemini models still strip tags.
+- Other models are unchanged: ElevenLabs keeps its own tag handling, Gemini 2.5 models still strip tags with a warning, and Gemini 3.1 still receives bracket tags as written.
 
 ## 0.33.0
 

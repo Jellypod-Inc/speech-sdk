@@ -139,15 +139,27 @@ describe("Gemini 3.8 bracket tags", () => {
     ]);
   });
 
+  it("drops empty tags and strips stray delimiters from tag names", async () => {
+    const { model, requests } = mockGoogle();
+    await generateSpeech({
+      model,
+      text: "Hi [ ] there [[laugh]] and [<sigh>] bye.",
+      voice: "Kore",
+    });
+    expect(requests[0][0].text).toBe("Hi  there <laugh>] and <sigh> bye.");
+  });
+
   it("converts tags when streaming", async () => {
     const sse =
       'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
-    await streamSpeech({
+    const result = await streamSpeech({
       model: createGoogle({ apiKey: "key", fetch })(MODEL_ID),
       text: "[warmly] Hi there. [giggles]",
       voice: "Kore",
     });
+    const reader = result.audio.getReader();
+    expect((await reader.read()).value).toEqual(new Uint8Array(4));
     const body = JSON.parse(fetch.mock.calls[0][1].body);
     expect(body.input[0].content).toEqual([
       { type: "text", text: "<warmly> Hi there. <giggles>" },
