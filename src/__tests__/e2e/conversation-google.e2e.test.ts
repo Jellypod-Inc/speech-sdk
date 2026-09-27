@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decodeAudioToPcm16 } from "../../audio-decode.js";
 import { createElevenLabs } from "../../providers/elevenlabs/index.js";
 import { createGoogle } from "../../providers/google/index.js";
+import { canonicalizeTimestampText } from "../../timestamp-finalization.js";
 import { generateConversation, maybeSaveResult } from "./_save-audio.js";
 
 describe("Google Gemini native dialogue e2e", () => {
@@ -67,6 +68,8 @@ describe.skipIf(!hasNativeAttributionKeys)(
   }
 );
 
+const AUDIO_TAG = /\[[^\]]*\]/g;
+
 const hasSplitTurnsKeys =
   !!process.env.GOOGLE_API_KEY && !!process.env.ELEVENLABS_API_KEY;
 
@@ -120,6 +123,12 @@ describe.skipIf(!hasSplitTurnsKeys)(
         }
         expect(turn.audio.mediaType).toBe("audio/wav");
         expect(turn.timestamps.length).toBeGreaterThan(0);
+        // Each clip carries exactly its own turn's words (audio tags aren't spoken words).
+        expect(
+          canonicalizeTimestampText(
+            turn.timestamps.map((w) => w.text).join(" ")
+          )
+        ).toBe(canonicalizeTimestampText(turns[i].text.replace(AUDIO_TAG, "")));
 
         const clip = await decodeAudioToPcm16(
           turn.audio.uint8Array,
