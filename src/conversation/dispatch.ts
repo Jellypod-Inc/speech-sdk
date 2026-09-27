@@ -59,24 +59,16 @@ export function chooseConversationPath(input: {
     (r) => r.provider === first.provider && r.modelId === first.modelId
   );
 
-  let stitchFallbackReason: StitchFallbackReason | undefined;
-
-  if (allSame && !forceStitch) {
-    if (countUniqueVoices(turns) <= 1) {
-      // A single speaker is just sequential speech — render per-turn via stitch, never native dialogue.
-      if (modelSupportsNativeDialogue(first)) {
-        stitchFallbackReason = "fallback-from-native-voice-count";
-      }
-    } else {
-      const native = tryNativeDialoguePath({ first, turns, sampleRateHint });
-      if (native) {
-        if ("path" in native) {
-          return native.path;
-        }
-        stitchFallbackReason = native.fallbackReason;
-      }
-    }
+  const native = allSame
+    ? nativeEligibility({ first, turns, sampleRateHint })
+    : undefined;
+  if (native && "path" in native && !forceStitch) {
+    return native.path;
   }
+  const ineligibleReason =
+    native && "fallbackReason" in native ? native.fallbackReason : undefined;
+  // A forced stitch never warns about native fallback, but its public reason still names why native couldn't run.
+  const stitchFallbackReason = forceStitch ? undefined : ineligibleReason;
 
   const stitchOptionsPerTurn = resolvedPerTurn.map((r) => {
     const opts = r.provider.getStitchOptions?.(r.modelId, {
@@ -96,11 +88,29 @@ export function chooseConversationPath(input: {
     stitchOptionsPerTurn,
     stitchReason: describeStitchReason({
       allSame,
-      fallbackReason: stitchFallbackReason,
+      fallbackReason: ineligibleReason,
       first,
       forceStitch,
     }),
   };
+}
+
+// The native path when these turns can render as native dialogue, why they can't, or undefined without native dialogue.
+function nativeEligibility(args: {
+  first: ResolvedModel<Voice>;
+  turns: readonly ConversationTurn<Voice>[];
+  sampleRateHint: number | undefined;
+}):
+  | { path: ConversationPath }
+  | { fallbackReason: StitchFallbackReason }
+  | undefined {
+  if (countUniqueVoices(args.turns) <= 1) {
+    // A single speaker is just sequential speech — render per-turn via stitch, never native dialogue.
+    return modelSupportsNativeDialogue(args.first)
+      ? { fallbackReason: "fallback-from-native-voice-count" }
+      : undefined;
+  }
+  return tryNativeDialoguePath(args);
 }
 
 function describeStitchReason(args: {

@@ -175,6 +175,8 @@ Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (
 Pass `splitTurns: true` (with `timestamps: true`) to also get one clip per input turn — for example to show each turn as its own take, caption it, or regenerate a single turn.
 
 ```ts
+import { createElevenLabs } from '@speech-sdk/core/providers';
+
 const result = await generateConversation({
   model: 'google/gemini-3.8-flash-tts',
   turns: [
@@ -182,6 +184,8 @@ const result = await generateConversation({
     { voice: 'Puck', text: 'I absolutely did.' },
   ],
   timestamps: true,
+  // Gemini returns no word timings, so align them with a timestamp provider.
+  timestampProvider: createElevenLabs().forcedAlignment(),
   splitTurns: true,
   output: { format: 'wav' },
 });
@@ -197,7 +201,7 @@ for (const turn of result.turns) {
 
 The slices cover the whole conversation audio in order, with no gaps or overlaps, and are cut sample-accurately from the decoded PCM. Each boundary is cut in the middle of the first silence (at least 100 ms of 20 ms frames, each 40 dB below the audio's 90th-percentile frame level) after turn N's last word and before turn N+1's first word, so a breath, laugh, or "hmm" opening turn N+1 stays with that turn. When the gap holds no such silence, the cut goes at its quietest frame. Where the SDK joined audio itself — the stitch path's inserted gaps and the joins between native-split blocks — it cuts in the middle of that gap.
 
-Splitting works on the native, native-split, and stitch paths. It throws `TurnSplitError` rather than cut on untrustworthy boundaries; `error.reason` is `'empty_turn'` (a turn has no attributed words), `'non_monotonic'` (word timings run backwards across a boundary), or `'undecodable_audio'` (the native model has no PCM/WAV mode; thrown before synthesis). Callers can catch it and fall back to voicing turns separately.
+Splitting works on the native, native-split, and stitch paths. It throws `TurnSplitError` rather than cut on untrustworthy boundaries; `error.reason` is `'empty_turn'` (a turn has no attributed words), `'non_monotonic'` (a word overlaps the previous one or belongs to an earlier turn), or `'undecodable_audio'` (the native model has no PCM/WAV mode; thrown before synthesis). Callers can catch it and fall back to voicing turns separately.
 
 ## Timestamps
 

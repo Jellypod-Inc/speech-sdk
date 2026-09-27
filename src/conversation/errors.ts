@@ -47,7 +47,8 @@ export type TurnSplitFailureReason =
 
 const TURN_SPLIT_MESSAGES: Record<TurnSplitFailureReason, string> = {
   empty_turn: "a turn has no attributed words",
-  non_monotonic: "word timings run backwards across a turn boundary",
+  non_monotonic:
+    "words are out of order: a word overlaps the previous one or belongs to an earlier turn",
   undecodable_audio: "the conversation audio is not decodable PCM/WAV",
 };
 

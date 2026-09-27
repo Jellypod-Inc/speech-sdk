@@ -113,13 +113,9 @@ function cutInWindow(args: {
     runStart = -1;
   }
 
-  let lo = firstFrame;
-  let hi = endFrame;
-  if (hi <= lo) {
-    // Window narrower than a whole frame: consider the frames it overlaps.
-    lo = Math.floor(startSample / frameSamples);
-    hi = Math.min(rms.length, Math.ceil(endSample / frameSamples));
-  }
+  // Every frame the window touches, including partial frames at either edge.
+  const lo = Math.floor(startSample / frameSamples);
+  const hi = Math.min(rms.length, Math.ceil(endSample / frameSamples));
   if (hi <= lo) {
     return Math.round((startSample + endSample) / 2);
   }

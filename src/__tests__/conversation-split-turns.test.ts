@@ -262,6 +262,20 @@ describe("generateConversation splitTurns", () => {
     expect(cut).toBe(samples(570));
   });
 
+  it("considers the partial frame at the end of the gap for the quietest cut", () => {
+    // The only quiet frame (600–620 ms) straddles turn 1's first word at 610 ms.
+    const pcm = concat(tone(500), tone(100, 3000), tone(20, 400), tone(500));
+    const [cut] = planTurnCuts({
+      pcm,
+      sampleRate: RATE,
+      spans: [
+        { firstStart: 0, lastEnd: 0.5 },
+        { firstStart: 0.61, lastEnd: 1.12 },
+      ],
+    });
+    expect(cut).toBe(samples(610));
+  });
+
   it("refuses a turn with no words and words running backwards", async () => {
     const pcm = tone(1000);
     const base = {
@@ -423,6 +437,35 @@ describe("generateConversation splitTurns", () => {
         splitTurns: true,
       })
     ).rejects.toBeInstanceOf(ConversationInputError);
+  });
+
+  it("names the split error, not output conversion, when native audio can't be decoded", async () => {
+    const provider = nativeProvider({ decodable: false });
+    await expect(
+      generateConversation({
+        model: { provider, modelId: "m" },
+        turns: TWO_TURNS,
+        timestamps: true,
+        splitTurns: true,
+        output: { format: "wav" },
+      })
+    ).rejects.toMatchObject({ reason: "undecodable_audio" });
+  });
+
+  it("reports single-speaker, not the forced reason, when native dialogue was ineligible anyway", async () => {
+    const result = await generateConversation({
+      model: { provider: nativeProvider(), modelId: "m" },
+      turns: [
+        { voice: "a", text: "hello there", speed: 1.25 },
+        { voice: "a", text: "hi back" },
+      ],
+      timestamps: true,
+      splitTurns: true,
+    });
+    expect(result.metadata.stitchReason).toBe("single-speaker");
+    expect(result.warnings ?? []).not.toContainEqual(
+      expect.stringContaining("single speaker")
+    );
   });
 
   it("throws before synthesis when native audio has no decodable mode", async () => {

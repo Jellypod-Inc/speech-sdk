@@ -461,13 +461,13 @@ function resolveNativeStitchOptions<V extends Voice>(
   if (stitchOpts) {
     return { stitchOpts, warnings: [] };
   }
+  if (options.splitTurns) {
+    throw new TurnSplitError({ reason: "undecodable_audio" });
+  }
   if (options.output) {
     throw new OutputConversionUnsupportedError(
       `${resolved.provider.id}/${resolved.modelId}`
     );
-  }
-  if (options.splitTurns) {
-    throw new TurnSplitError({ reason: "undecodable_audio" });
   }
   return {
     stitchOpts,
