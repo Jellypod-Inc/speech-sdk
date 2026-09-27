@@ -110,9 +110,7 @@ function mockGoogle() {
 }
 
 describe("Gemini 3.8 bracket tags", () => {
-  it.each(
-    JELLYPOD_TAGS
-  )("voices [%s] without sending a bracket", async (tag) => {
+  it.each(JELLYPOD_TAGS)("sends [%s] as an inline tag", async (tag) => {
     const { model, requests } = mockGoogle();
     await generateSpeech({
       model,
@@ -121,8 +119,13 @@ describe("Gemini 3.8 bracket tags", () => {
     });
     const [item] = requests[0];
     expect(item.text).not.toMatch(BRACKET);
-    expect(item.text).toContain("Wait, ");
-    expect(item.text).toContain("that changes everything.");
+    const inline =
+      { laughs: "<laugh>", chuckles: "<laugh>", pauses: "<short pause>" }[
+        tag as string
+      ] ?? `<${tag}>`;
+    expect(item.text).toBe(
+      `${inline} Wait, ${inline} that changes everything.`
+    );
   });
 
   it.each([
@@ -149,62 +152,46 @@ describe("Gemini 3.8 bracket tags", () => {
     });
   });
 
-  it("turns a leading direction into the turn's style after caller instructions", async () => {
+  it("keeps arbitrary tags in place and leaves the style to caller instructions", async () => {
     const { model, requests } = mockGoogle();
     await generateSpeech({
       model,
-      text: "[skeptical] You really think so?",
+      text: "[Genuinely  Surprised] Wait, [excited] that changes everything.",
       instructions: "calm narrator",
-      voice: "Kore",
-    });
-    expect(requests[0][0]).toEqual({
-      type: "text",
-      text: "You really think so?",
-      annotations: [
-        { type: "speech_metadata", style: "calm narrator; skeptical" },
-      ],
-    });
-  });
-
-  it("merges a mid-turn direction into the style of the same content item", async () => {
-    const { model, requests } = mockGoogle();
-    await generateSpeech({
-      model,
-      text: "[curious] Wait, [excited] that changes everything.",
       voice: "Kore",
     });
     expect(requests[0]).toEqual([
       {
         type: "text",
-        text: "Wait, that changes everything.",
-        annotations: [{ type: "speech_metadata", style: "curious; excited" }],
+        text: "<genuinely surprised> Wait, <excited> that changes everything.",
+        annotations: [{ type: "speech_metadata", style: "calm narrator" }],
       },
     ]);
   });
 
-  it("reports conversions in one warning per request", async () => {
+  it("reports synonym mappings in one warning per request", async () => {
     const { model } = mockGoogle();
     const result = await generateSpeech({
       model,
-      text: "[skeptical] Hmm. [Chuckles] Fine. [laughs] [Skeptical] [chuckles] [pauses] Okay.",
+      text: "[skeptical] Hmm. [Chuckles] Fine. [laughs] [chuckles] [pauses] Okay.",
       voice: "Kore",
     });
     expect(result.warnings).toEqual([
-      "google/gemini-3.8-flash-tts: converted audio tags Gemini 3.8 does not voice (mapped inline: [chuckles] → <laugh>, [pauses] → <short pause>; turned into style: [skeptical]).",
+      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [chuckles] → <laugh>, [pauses] → <short pause>.",
     ]);
   });
 
-  it("adds no warning when only supported tags are used", async () => {
+  it("adds no warning for documented or arbitrary tags", async () => {
     const { model } = mockGoogle();
     const result = await generateSpeech({
       model,
-      text: "Hello [laughs] world. [short pause] Bye.",
+      text: "Hello [laughs] world. [skeptical] [short pause] Bye.",
       voice: "Kore",
     });
     expect(result.warnings).toBeUndefined();
   });
 
-  it("converts tags when streaming and reports the warning", async () => {
+  it("converts tags when streaming", async () => {
     const sse =
       'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
@@ -215,32 +202,14 @@ describe("Gemini 3.8 bracket tags", () => {
     });
     const body = JSON.parse(fetch.mock.calls[0][1].body);
     expect(body.input[0].content).toEqual([
-      {
-        type: "text",
-        text: "Hi there. <laugh>",
-        annotations: [{ type: "speech_metadata", style: "warmly" }],
-      },
+      { type: "text", text: "<warmly> Hi there. <laugh>" },
     ]);
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings?.[0]).toContain("[giggles] → <laugh>");
-    expect(result.warnings?.[0]).toContain("turned into style: [warmly]");
+    expect(result.warnings).toEqual([
+      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [giggles] → <laugh>.",
+    ]);
   });
 
-  it("rejects a turn that holds only directions instead of sending empty text", async () => {
-    const provider = new GoogleSpeechProvider({
-      apiKey: "key",
-      fetch: vi.fn(),
-    });
-    await expect(
-      provider.generate({
-        modelId: MODEL_ID,
-        text: "[skeptical]",
-        voice: "Kore",
-      })
-    ).rejects.toMatchObject({ reason: "empty_input" });
-  });
-
-  it("styles native dialogue turns and keeps one warning for the request", async () => {
+  it("sends inline tags in native dialogue and keeps one warning for the request", async () => {
     const { model, requests } = mockGoogle();
     const result = await generateConversation({
       model,
@@ -258,29 +227,29 @@ describe("Gemini 3.8 bracket tags", () => {
     expect(requests[0]).toEqual([
       {
         type: "text",
-        text: "You tried it?",
+        text: "<skeptical> You tried it?",
         annotations: [
           {
             type: "speech_metadata",
             speaker: "Speaker1",
-            style: "podcast banter; skeptical",
+            style: "podcast banter",
           },
         ],
       },
       {
         type: "text",
-        text: "<laugh> Yes. <laugh> Wait, it was great.",
+        text: "<laugh> Yes. <laugh> Wait, <excited> it was great.",
         annotations: [
           {
             type: "speech_metadata",
             speaker: "Speaker2",
-            style: "podcast banter; upbeat; excited",
+            style: "podcast banter; upbeat",
           },
         ],
       },
     ]);
     expect(result.warnings).toEqual([
-      "google/gemini-3.8-flash-tts: converted audio tags Gemini 3.8 does not voice (mapped inline: [chuckles] → <laugh>; turned into style: [skeptical], [excited]).",
+      "google/gemini-3.8-flash-tts: mapped audio tags onto Gemini 3.8 inline tags: [chuckles] → <laugh>.",
     ]);
   });
 
@@ -344,8 +313,8 @@ describe("Gemini 3.8 bracket tags", () => {
       "was",
       "great.",
     ]);
-    expect(result.warnings?.join("\n")).toContain(
-      "turned into style: [skeptical], [excited], [matter-of-fact], [genuinely surprised]"
+    expect(requests[0][1].text).toBe(
+      "<laugh> I did. Wait, <excited> it was great."
     );
   });
 });

@@ -6,11 +6,11 @@ import { generateConversation, generateSpeech } from "./_save-audio.js";
 const hasKeys = !!process.env.GOOGLE_API_KEY && !!process.env.OPENAI_API_KEY;
 const DIRECTION_WORDS = /\b(skeptical|chuckles?|excited)\b/i;
 
-// Whisper transcribes what was actually spoken, so a voiced direction word fails alignment with transcript_mismatch.
+// Whisper transcribes what was actually spoken, so an inline tag Gemini reads aloud fails alignment with transcript_mismatch.
 describe.skipIf(!hasKeys)("Gemini 3.8 bracket tag conversion e2e", () => {
   const google = createGoogle({ fallbackSTT: createOpenAI().stt() });
 
-  it("voices a single-speaker line without speaking its directions", {
+  it("voices a single-speaker line without speaking its tags", {
     timeout: 120_000,
   }, async () => {
     const result = await generateSpeech({
@@ -26,7 +26,7 @@ describe.skipIf(!hasKeys)("Gemini 3.8 bracket tag conversion e2e", () => {
     expect(result.warnings?.join("\n")).toContain("[chuckles] → <laugh>");
   });
 
-  it("voices a two-voice dialogue without speaking its directions", {
+  it("voices a two-voice dialogue without speaking its tags", {
     timeout: 180_000,
   }, async () => {
     const turns = [
@@ -52,8 +52,6 @@ describe.skipIf(!hasKeys)("Gemini 3.8 bracket tag conversion e2e", () => {
     const words = result.timestamps ?? [];
     expect(words.map((w) => w.text).join(" ")).not.toMatch(DIRECTION_WORDS);
     expect([...new Set(words.map((w) => w.turnIndex))]).toEqual([0, 1, 2]);
-    expect(result.warnings?.join("\n")).toContain(
-      "turned into style: [skeptical], [excited]"
-    );
+    expect(result.warnings?.join("\n")).toContain("[chuckles] → <laugh>");
   });
 });

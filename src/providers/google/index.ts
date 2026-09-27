@@ -207,7 +207,7 @@ const GEMINI_3_8_MODELS = new Set([
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
-// Gemini 3.8 voices only these inline tags; the synonyms below map onto them so script writers can use natural cue words.
+// Gemini 3.8's documented inline tags; synonyms map onto them so natural cue words land on a tag the model is known to voice.
 const GEMINI_3_8_TAGS: Record<string, string> = {
   laughs: "<laugh>",
   sighs: "<sigh>",
@@ -236,22 +236,26 @@ const GEMINI_3_8_TAG_SYNONYMS: Record<string, string> = {
 };
 
 const BRACKET_TAG_RE = /\[([^\]]+)\]/g;
+const TAG_NAME_STRIP_RE = /[<>]/g;
 const TAG_WHITESPACE_RE = /\s+/g;
-const REPEATED_SPACES_RE = /[ \t]{2,}/g;
 
 interface Gemini38Script {
-  readonly directions: readonly string[];
   readonly mapped: readonly string[];
   readonly text: string;
 }
 
-// Any other bracket is a delivery direction: it leaves the spoken text and becomes speech_metadata.style, so it is never voiced.
+// Every bracket is sent in Gemini 3.8's inline <tag> syntax; tags outside the documented set pass through for the model to interpret.
 function parseGemini38Text(text: string): Gemini38Script {
-  const directions: string[] = [];
   const mapped: string[] = [];
-  const spoken = text.replace(BRACKET_TAG_RE, (_tag, inner: string) => {
-    const name = inner.trim().replace(TAG_WHITESPACE_RE, " ");
-    const key = name.toLowerCase();
+  const spoken = text.replace(BRACKET_TAG_RE, (tag, inner: string) => {
+    const key = inner
+      .replace(TAG_NAME_STRIP_RE, "")
+      .trim()
+      .replace(TAG_WHITESPACE_RE, " ")
+      .toLowerCase();
+    if (!key) {
+      return tag;
+    }
     const supported = GEMINI_3_8_TAGS[key];
     if (supported) {
       return supported;
@@ -261,67 +265,30 @@ function parseGemini38Text(text: string): Gemini38Script {
       mapped.push(`[${key}] → ${synonym}`);
       return synonym;
     }
-    if (name) {
-      directions.push(name);
-    }
-    return "";
+    return `<${key}>`;
   });
-  return {
-    text: spoken.replace(REPEATED_SPACES_RE, " ").trim(),
-    directions: uniqueIgnoringCase(directions),
-    mapped: uniqueIgnoringCase(mapped),
-  };
-}
-
-function uniqueIgnoringCase(values: readonly string[]): string[] {
-  const seen = new Set<string>();
-  return values.filter((value) => {
-    const key = value.toLowerCase();
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
+  return { text: spoken, mapped: [...new Set(mapped)] };
 }
 
 function describeTagConversions(
   modelIdentifier: string,
   scripts: readonly Gemini38Script[]
 ): string[] {
-  const mapped = uniqueIgnoringCase(scripts.flatMap((script) => script.mapped));
-  const directions = uniqueIgnoringCase(
-    scripts.flatMap((script) => script.directions)
-  ).map((direction) => `[${direction}]`);
-  if (mapped.length === 0 && directions.length === 0) {
+  const mapped = [...new Set(scripts.flatMap((script) => script.mapped))];
+  if (mapped.length === 0) {
     return [];
   }
-  const parts = [
-    mapped.length > 0 && `mapped inline: ${mapped.join(", ")}`,
-    directions.length > 0 && `turned into style: ${directions.join(", ")}`,
-  ].filter(Boolean);
   return [
-    `${modelIdentifier}: converted audio tags Gemini 3.8 does not voice (${parts.join("; ")}).`,
+    `${modelIdentifier}: mapped audio tags onto Gemini 3.8 inline tags: ${mapped.join(", ")}.`,
   ];
 }
 
-function joinStyle(parts: readonly (string | undefined)[]): string | undefined {
-  return parts.filter(Boolean).join("; ") || undefined;
-}
-
 function gemini38Content(
-  modelId: string,
   script: Gemini38Script,
   instructions: readonly (string | undefined)[],
   speaker?: string
 ) {
-  if (script.text.length === 0) {
-    throw new NoSpeechGeneratedError(
-      `google/${modelId}: text is empty after removing delivery directions.`,
-      { model: modelId, provider: GOOGLE_PROVIDER_ID, reason: "empty_input" }
-    );
-  }
-  const style = joinStyle([...instructions, ...script.directions]);
+  const style = instructions.filter(Boolean).join("; ");
   return {
     type: "text",
     text: script.text,
@@ -699,9 +666,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     const input = [
       {
         type: "user_input",
-        content: [
-          gemini38Content(options.modelId, script, [options.instructions]),
-        ],
+        content: [gemini38Content(script, [options.instructions])],
       },
     ];
     const result = await this.postInteraction(options, input, [
@@ -872,11 +837,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         ? [
             {
               type: "user_input",
-              content: [
-                gemini38Content(options.modelId, script, [
-                  options.instructions,
-                ]),
-              ],
+              content: [gemini38Content(script, [options.instructions])],
             },
           ]
         : buildTtsPrompt(options.text, options.instructions),
@@ -1027,7 +988,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           voiceToLabel.set(turn.voice, speaker);
         }
         return gemini38Content(
-          options.modelId,
           scripts[index],
           [options.instructions, turn.instructions],
           speaker
