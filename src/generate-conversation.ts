@@ -2,17 +2,20 @@ import pRetry from "p-retry";
 import {
   applySpeedToAudio,
   isSpeedActive,
+  outputAfterSpeed,
   scaleTimestamps,
   validateSpeed,
 } from "./apply-speed.js";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
+  type AudioOutput,
   applyOptionalOutputConversion,
   sampleRateHintFrom,
   validateOutput,
 } from "./audio-output.js";
 import { mapWithConcurrency, resolveMaxConcurrency } from "./concurrency.js";
 import { chooseConversationPath } from "./conversation/dispatch.js";
+import { TurnSplitError } from "./conversation/errors.js";
 import type { Pcm16Segment } from "./conversation/pcm-concat.js";
 import type {
   ConversationTurn,
@@ -32,7 +35,6 @@ import {
   validateInstructionSupport,
 } from "./instructions.js";
 import { debug } from "./logger.js";
-import type { SpeechMetadata } from "./metadata.js";
 import {
   inverseAlignWithQuality,
   PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING,
@@ -53,6 +55,7 @@ import type {
   ConversationMetadata,
   ConversationResult,
   ConversationResultWithTimestamps,
+  ConversationResultWithTurns,
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import { resolveMaxInputChars } from "./text-chunker.js";
@@ -67,6 +70,8 @@ export {
   ConversationInputError,
   DialogueConstraintError,
   StitchUnsupportedError,
+  TurnSplitError,
+  type TurnSplitFailureReason,
 } from "./conversation/errors.js";
 export type {
   ConversationTurn,
@@ -74,8 +79,12 @@ export type {
 } from "./conversation/types.js";
 export type {
   ConversationMetadata,
+  ConversationPathKind,
   ConversationResult,
   ConversationResultWithTimestamps,
+  ConversationResultWithTurns,
+  ConversationStitchReason,
+  ConversationTurnAudio,
 } from "./speech-result.js";
 
 const DEFAULT_GAP_MS = 300;
@@ -110,6 +119,18 @@ function describeConversationModels(
   ].join(", ");
 }
 
+export function generateConversation<
+  V extends Voice = Voice,
+  M extends string | ResolvedModel<V> | undefined =
+    | string
+    | ResolvedModel<V>
+    | undefined,
+>(
+  options: GenerateConversationOptions<V, M> & {
+    timestamps: true;
+    splitTurns: true;
+  }
+): Promise<ConversationResultWithTurns>;
 export function generateConversation<
   V extends Voice = Voice,
   M extends string | ResolvedModel<V> | undefined =
@@ -183,13 +204,17 @@ export async function generateConversation<
     );
   }
 
-  const forceStitch =
-    hasPerTurnSpeed ||
-    needsConversationStitchForMaxInputChars({
-      resolvedPerTurn,
-      turns: options.turns,
-      userMaxInputChars: options.maxInputChars,
-    });
+  const needsMaxInputCharsStitch = needsConversationStitchForMaxInputChars({
+    resolvedPerTurn,
+    turns: options.turns,
+    userMaxInputChars: options.maxInputChars,
+  });
+  let forceStitch: "per-turn-speed" | "max-input-chars" | undefined;
+  if (hasPerTurnSpeed) {
+    forceStitch = "per-turn-speed";
+  } else if (needsMaxInputCharsStitch) {
+    forceStitch = "max-input-chars";
+  }
 
   const path = chooseConversationPath({
     forceStitch,
@@ -199,14 +224,13 @@ export async function generateConversation<
   });
 
   if (path.kind === "native") {
-    return await applySpeedToConversationResult({
-      result: await runNativeDispatch({
+    return await finishConversation({
+      run: await runNativeDispatch({
         options,
         resolved: path.resolved,
         blocks: path.blocks,
       }),
-      speed: options.speed,
-      output: options.output,
+      options,
     });
   }
 
@@ -222,7 +246,6 @@ export async function generateConversation<
     maxConcurrency: resolveMaxConcurrency(options.maxConcurrency),
     maxInputChars: options.maxInputChars,
     maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
-    output: options.output,
     volumeDbfs: options.volumeDbfs,
     abortSignal: options.abortSignal,
     headers: options.headers,
@@ -230,8 +253,6 @@ export async function generateConversation<
     timestamps: options.timestamps ?? false,
     timestampProvider: options.timestampProvider,
     pronunciations: options.pronunciations,
-    // Defer output conversion to applySpeedToConversationResult to avoid encoding twice.
-    deferOutputConversion: isSpeedActive(options.speed),
   });
 
   if (stitched.audio.length === 0) {
@@ -248,6 +269,8 @@ export async function generateConversation<
       audioDurationMs: stitched.metadata.audioDurationMs,
     }),
     perTurn: stitched.metadataPerTurn,
+    path: "stitch",
+    stitchReason: path.stitchReason,
   };
 
   let fallbackWarning: string | undefined;
@@ -266,20 +289,93 @@ export async function generateConversation<
     ? [fallbackWarning, ...stitched.warnings]
     : stitched.warnings;
 
-  return await applySpeedToConversationResult({
-    result: {
-      audio: new DefaultGeneratedAudioFile({
-        data: stitched.audio,
-        mediaType: stitched.mediaType,
-      }),
-      metadata,
-      providerMetadata: { turns: stitched.providerMetadataPerTurn },
-      warnings: combinedWarnings.length > 0 ? [...combinedWarnings] : undefined,
-      timestamps: stitched.timestamps,
+  return await finishConversation({
+    run: {
+      result: {
+        audio: new DefaultGeneratedAudioFile({
+          data: stitched.audio,
+          mediaType: stitched.mediaType,
+        }),
+        metadata,
+        providerMetadata: { turns: stitched.providerMetadataPerTurn },
+        warnings:
+          combinedWarnings.length > 0 ? [...combinedWarnings] : undefined,
+        timestamps: stitched.timestamps,
+      },
+      knownCutsSec: stitched.turnCutsSec,
     },
-    speed: options.speed,
-    output: options.output,
+    options,
   });
+}
+
+interface ConversationRun {
+  // Per turn boundary: cut time (seconds) at a gap the SDK inserted itself, or undefined.
+  readonly knownCutsSec?: readonly (number | undefined)[];
+  // Decodable wav/pcm (or the provider's own audio on a native model without a decodable mode).
+  readonly result: ConversationResult;
+}
+
+// Runners return decodable audio; the requested output format is encoded exactly once, here.
+async function finishConversation(args: {
+  readonly options: GenerateConversationOptions;
+  readonly run: ConversationRun;
+}): Promise<ConversationResult> {
+  const { options, run } = args;
+  const speed = isSpeedActive(options.speed) ? options.speed : 1;
+  const output =
+    speed === 1 ? options.output : outputAfterSpeed(options.output);
+  const result = await applySpeedToConversationResult({
+    result: run.result,
+    speed: options.speed,
+  });
+  if (!options.splitTurns) {
+    return await encodeConversationAudio(result, output);
+  }
+
+  const { splitConversationTurns } = await import(
+    "./conversation/split-turns.js"
+  );
+  const split = await splitConversationTurns({
+    audio: result.audio.uint8Array,
+    knownCutsSec: run.knownCutsSec?.map((sec) =>
+      sec == null ? sec : sec / speed
+    ),
+    mediaType: result.audio.mediaType,
+    output,
+    timestamps: result.timestamps ?? [],
+    turnCount: options.turns.length,
+  });
+  const encoded = await encodeConversationAudio(result, output, {
+    audio: new Uint8Array(
+      split.pcm.buffer,
+      split.pcm.byteOffset,
+      split.pcm.byteLength
+    ),
+    mediaType: `audio/pcm;rate=${split.sampleRate}`,
+  });
+  return { ...encoded, turns: split.turns };
+}
+
+async function encodeConversationAudio(
+  result: ConversationResult,
+  output: AudioOutput | undefined,
+  // Same audio already decoded, when the caller has it, to skip a second decode.
+  source: { audio: Uint8Array; mediaType: string } = {
+    audio: result.audio.uint8Array,
+    mediaType: result.audio.mediaType,
+  }
+): Promise<ConversationResult> {
+  if (!output) {
+    return result;
+  }
+  const converted = await applyOptionalOutputConversion({ ...source, output });
+  return {
+    ...result,
+    audio: new DefaultGeneratedAudioFile({
+      data: converted.audio,
+      mediaType: converted.mediaType,
+    }),
+  };
 }
 
 function needsConversationStitchForMaxInputChars<V extends Voice>(args: {
@@ -354,11 +450,38 @@ function finalizeConversationTurnTimestamps(args: {
   return projected;
 }
 
+// Force decodable PCM/WAV via getStitchOptions for normalization; if unavailable, emit the provider's mixed audio and warn.
+function resolveNativeStitchOptions<V extends Voice>(
+  options: GenerateConversationOptions<V>,
+  resolved: ResolvedModel<V>
+): { stitchOpts: StitchTurnOptions | undefined; warnings: string[] } {
+  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId, {
+    sampleRate: sampleRateHintFrom(options.output),
+  });
+  if (stitchOpts) {
+    return { stitchOpts, warnings: [] };
+  }
+  if (options.splitTurns) {
+    throw new TurnSplitError({ reason: "undecodable_audio" });
+  }
+  if (options.output) {
+    throw new OutputConversionUnsupportedError(
+      `${resolved.provider.id}/${resolved.modelId}`
+    );
+  }
+  return {
+    stitchOpts,
+    warnings: [
+      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization (no decodable PCM/WAV mode).`,
+    ],
+  };
+}
+
 async function runNative<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
   resolved: ResolvedModel<V>;
   maxRetries: number;
-}): Promise<ConversationResult> {
+}): Promise<ConversationRun> {
   const { options, resolved, maxRetries } = args;
   const start = performance.now();
 
@@ -372,22 +495,10 @@ async function runNative<V extends Voice>(args: {
     resolved.provider
   );
 
-  // Force decodable PCM/WAV via getStitchOptions for normalization; if unavailable, emit the provider's mixed audio and warn.
-  const stitchOpts = resolved.provider.getStitchOptions?.(resolved.modelId, {
-    sampleRate: sampleRateHintFrom(options.output),
-  });
-  const warnings: string[] = [];
-  if (!stitchOpts) {
-    warnings.push(
-      `${resolved.provider.id}/${resolved.modelId}: native dialogue path returns the provider's mixed audio without volume normalization (no decodable PCM/WAV mode).`
-    );
-  }
-
-  if (options.output && !stitchOpts) {
-    throw new OutputConversionUnsupportedError(
-      `${resolved.provider.id}/${resolved.modelId}`
-    );
-  }
+  const { stitchOpts, warnings } = resolveNativeStitchOptions(
+    options,
+    resolved
+  );
 
   // Stitch options must win — caller-supplied response_format would break the decoder.
   const dialogueProviderOptions = stitchOpts
@@ -466,20 +577,19 @@ async function runNative<V extends Voice>(args: {
   );
   const audioDurationMs = computedDuration ?? result.audioDurationMs;
 
-  const { timestamps: rawTimestamps, warnings: attributionWarnings } =
-    await resolveNativeDialogueTimestamps({
-      requestTimestamps,
-      nativeTimestamps: result.timestamps,
-      hasNativeTimestamps: hasNativeDialogueTimestamps,
-      audio: audio.uint8Array,
-      mediaType: outputMediaType,
-      ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
-      resolved,
-      abortSignal: options.abortSignal,
-      audioDurationMs,
-      substitutedTurnTexts: substitutedTurns.map((t) => t.canonicalText),
-      timestampProvider: options.timestampProvider,
-    });
+  const rawTimestamps = await resolveNativeDialogueTimestamps({
+    requestTimestamps,
+    nativeTimestamps: result.timestamps,
+    hasNativeTimestamps: hasNativeDialogueTimestamps,
+    audio: audio.uint8Array,
+    mediaType: outputMediaType,
+    ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+    resolved,
+    abortSignal: options.abortSignal,
+    audioDurationMs,
+    substitutedTurnTexts: substitutedTurns.map((t) => t.canonicalText),
+    timestampProvider: options.timestampProvider,
+  });
 
   const projection = ruleMap
     ? inverseAlignDialogueTimestamps(rawTimestamps, substitutedTurns)
@@ -491,28 +601,13 @@ async function runNative<V extends Voice>(args: {
     turnTexts: substitutedTurns.map((turn) => turn.originalText),
   });
 
-  // Defer output conversion to applySpeedToConversationResult when top-level speed
-  // is active — otherwise we'd encode here and re-encode in the stretch step.
-  const deferOutput = isSpeedActive(options.speed);
-  const converted = await applyOptionalOutputConversion({
-    audio: audio.uint8Array,
-    mediaType: outputMediaType,
-    output: deferOutput ? undefined : options.output,
-  });
-  const finalAudio =
-    options.output && !deferOutput
-      ? new DefaultGeneratedAudioFile({
-          data: converted.audio,
-          mediaType: converted.mediaType,
-        })
-      : audio;
-
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
 
-  const metadata: SpeechMetadata = {
+  const metadata: ConversationMetadata = {
     latencyMs,
     inputChars,
     ...(audioDurationMs != null && { audioDurationMs }),
+    path: "native",
   };
 
   const preprocessingWarnings = substitutedTurns.flatMap(
@@ -521,7 +616,6 @@ async function runNative<V extends Voice>(args: {
   const mergedWarningList = [
     ...warnings,
     ...preprocessingWarnings,
-    ...attributionWarnings,
     ...(projection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),
@@ -530,11 +624,13 @@ async function runNative<V extends Voice>(args: {
     mergedWarningList.length > 0 ? mergedWarningList : undefined;
 
   return {
-    audio: finalAudio,
-    metadata,
-    providerMetadata: result.providerMetadata,
-    warnings: mergedWarnings,
-    timestamps,
+    result: {
+      audio,
+      metadata,
+      providerMetadata: result.providerMetadata,
+      warnings: mergedWarnings,
+      timestamps,
+    },
   };
 }
 
@@ -542,7 +638,7 @@ async function runNativeDispatch<V extends Voice>(args: {
   options: GenerateConversationOptions<V>;
   resolved: ResolvedModel<V>;
   blocks: readonly (readonly number[])[] | undefined;
-}): Promise<ConversationResult> {
+}): Promise<ConversationRun> {
   const { options, resolved, blocks } = args;
   if (
     options.timestamps &&
@@ -575,7 +671,7 @@ async function runNativeSplit<V extends Voice>(args: {
   gapMs: number;
   maxConcurrency: number;
   maxRetries: number;
-}): Promise<ConversationResult> {
+}): Promise<ConversationRun> {
   const { options, resolved, blocks, gapMs, maxConcurrency, maxRetries } = args;
   const start = performance.now();
 
@@ -664,7 +760,7 @@ async function runNativeSplit<V extends Voice>(args: {
         blockAudio,
         stitchOpts.mediaType
       );
-      const { timestamps, warnings } = await resolveNativeDialogueTimestamps({
+      const timestamps = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: result.timestamps,
         hasNativeTimestamps,
@@ -676,20 +772,23 @@ async function runNativeSplit<V extends Voice>(args: {
         audioDurationMs: (segment.pcm.length / segment.sampleRate) * 1000,
         substitutedTurnTexts: blockTurns.map((t) => t.canonicalText),
         timestampProvider: options.timestampProvider,
-        pcmSegment: segment,
       });
       return {
         segment,
         timestamps,
-        warnings,
         providerMetadata: result.providerMetadata,
       };
     },
     { signal: options.abortSignal }
   );
 
-  const { concatPcmToWav, dbfsToInt16Rms, normalizeRms, stitchTargetRate } =
-    await import("./conversation/pcm-concat.js");
+  const {
+    concatPcmToWavWithRanges,
+    dbfsToInt16Rms,
+    gapMidpointsSec,
+    normalizeRms,
+    stitchTargetRate,
+  } = await import("./conversation/pcm-concat.js");
 
   const segments = perBlock.map((p) => p.segment);
   const leveled = normalizeRms(
@@ -697,7 +796,21 @@ async function runNativeSplit<V extends Voice>(args: {
     options.volumeDbfs == null ? undefined : dbfsToInt16Rms(options.volumeDbfs)
   );
   const targetSampleRate = stitchTargetRate(leveled);
-  const wav = await concatPcmToWav(leveled, { gapMs, targetSampleRate });
+  const { wav, ranges } = await concatPcmToWavWithRanges(leveled, {
+    gapMs,
+    targetSampleRate,
+  });
+  // Block joins are the only boundaries the SDK cut itself; boundaries inside a block stay undefined.
+  const knownCutsSec: (number | undefined)[] = [];
+  for (const [b, cutSec] of gapMidpointsSec(
+    ranges,
+    targetSampleRate
+  ).entries()) {
+    const lastTurn = blocks[b].at(-1);
+    if (lastTurn != null) {
+      knownCutsSec[lastTurn] = cutSec;
+    }
+  }
 
   const timestampProjection = requestTimestamps
     ? composeBlockTimestamps({
@@ -710,15 +823,9 @@ async function runNativeSplit<V extends Voice>(args: {
     : { estimatedBoundaries: false, timestamps: undefined };
   const timestamps = timestampProjection.timestamps;
 
-  const deferOutput = isSpeedActive(options.speed);
-  const converted = await applyOptionalOutputConversion({
-    audio: wav,
-    mediaType: "audio/wav",
-    output: deferOutput ? undefined : options.output,
-  });
   const finalAudio = new DefaultGeneratedAudioFile({
-    data: converted.audio,
-    mediaType: converted.mediaType,
+    data: wav,
+    mediaType: "audio/wav",
   });
 
   // Derive duration from the PCM sample counts (resampled to the stitch rate plus gaps)
@@ -734,26 +841,29 @@ async function runNativeSplit<V extends Voice>(args: {
   const audioDurationMs = Math.round((totalSamples / targetSampleRate) * 1000);
 
   const inputChars = options.turns.reduce((n, t) => n + t.text.length, 0);
-  const metadata: SpeechMetadata = {
+  const metadata: ConversationMetadata = {
     latencyMs: Math.round(performance.now() - start),
     inputChars,
     ...(audioDurationMs != null && { audioDurationMs }),
+    path: "native-split",
   };
 
   const warnings = [
     ...substitutedTurns.flatMap((turn) => turn.warnings),
-    ...perBlock.flatMap((p) => p.warnings),
     ...(timestampProjection.estimatedBoundaries
       ? [PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING]
       : []),
   ];
 
   return {
-    audio: finalAudio,
-    metadata,
-    providerMetadata: { blocks: perBlock.map((p) => p.providerMetadata) },
-    warnings: warnings.length > 0 ? [...warnings] : undefined,
-    timestamps,
+    result: {
+      audio: finalAudio,
+      metadata,
+      providerMetadata: { blocks: perBlock.map((p) => p.providerMetadata) },
+      warnings: warnings.length > 0 ? [...warnings] : undefined,
+      timestamps,
+    },
+    knownCutsSec,
   };
 }
 
@@ -818,14 +928,9 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   audioDurationMs: number | undefined;
   substitutedTurnTexts: readonly string[];
   timestampProvider?: TimestampProvider;
-  // Already-decoded PCM for the same audio, when the caller has it, to skip a redundant decode.
-  pcmSegment?: Pcm16Segment;
-}): Promise<{
-  timestamps: readonly ConversationWordTimestamp[] | undefined;
-  warnings: readonly string[];
-}> {
+}): Promise<readonly ConversationWordTimestamp[] | undefined> {
   if (!args.requestTimestamps) {
-    return { timestamps: undefined, warnings: [] };
+    return;
   }
 
   // Either use native flat timestamps, or derive via STT fallback.
@@ -870,46 +975,27 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
     timestamps: flatTimestamps,
   });
 
-  const { detectSilenceGaps } = await import(
-    "./conversation/silence-detection.js"
-  );
   const { attributeTimestamps } = await import(
     "./conversation/attribute-timestamps.js"
   );
-
-  let silenceGaps: readonly import("./conversation/silence-detection.js").SilenceGap[] =
-    [];
-  try {
-    const segment =
-      args.pcmSegment ??
-      (await (
-        await import("./audio-decode.js")
-      ).decodeAudioToPcm16(args.audio, args.mediaType));
-    const gaps = detectSilenceGaps(segment.pcm, {
-      sampleRate: segment.sampleRate,
-      minDurationMs: 150,
-    });
-    silenceGaps = gaps;
-  } catch {
-    // Decoder couldn't read the audio (e.g., compressed format we can't decode locally).
-    // Tier 1 will be skipped; dispatcher falls through to Tier 2/3.
-  }
-
-  const result = attributeTimestamps({
+  // Validated words cover the joined turn text exactly, so an exact partition always exists.
+  const attributed = attributeTimestamps({
     timestamps: flatTimestamps,
     turnTexts: args.substitutedTurnTexts,
-    silenceGaps,
   });
-
-  return {
-    timestamps: finalizeConversationTurnTimestamps({
-      audioDurationMs: args.audioDurationMs,
+  if (!attributed) {
+    throw new TimestampValidationError({
+      reason: "transcript_mismatch",
       source: args.ttsModel,
-      timestamps: result.timestamps,
-      turnTexts: args.substitutedTurnTexts,
-    }),
-    warnings: result.warnings,
-  };
+    });
+  }
+
+  return finalizeConversationTurnTimestamps({
+    audioDurationMs: args.audioDurationMs,
+    source: args.ttsModel,
+    timestamps: attributed,
+    turnTexts: args.substitutedTurnTexts,
+  });
 }
 
 async function buildNativeAudio(args: {
@@ -990,9 +1076,8 @@ function buildSubstitutedTurns<V extends Voice>(
 async function applySpeedToConversationResult(args: {
   readonly result: ConversationResult;
   readonly speed: number | undefined;
-  readonly output: GenerateConversationOptions["output"];
 }): Promise<ConversationResult> {
-  const { result, speed, output } = args;
+  const { result, speed } = args;
   if (!isSpeedActive(speed)) {
     return result;
   }
@@ -1001,7 +1086,8 @@ async function applySpeedToConversationResult(args: {
     audio: result.audio.uint8Array,
     mediaType: result.audio.mediaType,
     speed,
-    output,
+    // finishConversation encodes the requested format once, after any split.
+    output: { format: "wav" },
   });
   const newAudio = new DefaultGeneratedAudioFile({
     data: stretched.audio,

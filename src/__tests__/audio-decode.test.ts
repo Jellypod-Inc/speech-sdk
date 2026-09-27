@@ -46,3 +46,15 @@ describe("decodeAudioToPcm16 rate requirement", () => {
     expect(result.pcm.length).toBe(1000);
   });
 });
+
+describe("decodeAudioToPcm16 raw PCM views", () => {
+  it("reads a view at a non-zero byte offset, not the start of its buffer", async () => {
+    const pcm = new Int16Array([0, 100, -100, 1234, -1234, 5, 6, 7]);
+    const view = pcm.subarray(3, 7);
+    const decoded = await decodeAudioToPcm16(
+      new Uint8Array(view.buffer, view.byteOffset, view.byteLength),
+      "audio/pcm;rate=24000"
+    );
+    expect(Array.from(decoded.pcm)).toEqual([1234, -1234, 5, 6]);
+  });
+});

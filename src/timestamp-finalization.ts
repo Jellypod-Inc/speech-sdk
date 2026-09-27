@@ -25,7 +25,7 @@ export type TimestampRejectionReason =
   | "invalid_timing"
   | "transcript_mismatch";
 
-function canonicalize(text: string): string {
+export function canonicalizeTimestampText(text: string): string {
   return (
     text.normalize("NFC").toLowerCase().match(CANONICAL_CHARACTERS) ?? []
   ).join("");
@@ -56,7 +56,7 @@ export function tokenizeTimestampSource(text: string): readonly SourceToken[] {
 
   return ranges.map(({ start, end }) => {
     const tokenText = text.slice(start, end);
-    return { canonical: canonicalize(tokenText), text: tokenText };
+    return { canonical: canonicalizeTimestampText(tokenText), text: tokenText };
   });
 }
 
@@ -109,7 +109,9 @@ export function finalizeTimestamps(args: {
   }
   if (
     args.timestamps.some(({ text }) => !LEXICAL_CHARACTER.test(text)) ||
-    args.timestamps.some(({ text }) => canonicalize(text).length === 0)
+    args.timestamps.some(
+      ({ text }) => canonicalizeTimestampText(text).length === 0
+    )
   ) {
     return { ok: false, reason: "transcript_mismatch" };
   }
@@ -121,7 +123,7 @@ export function finalizeTimestamps(args: {
     .map(({ canonical }) => canonical)
     .join("");
   const providerCanonical = args.timestamps
-    .map(({ text }) => canonicalize(text))
+    .map(({ text }) => canonicalizeTimestampText(text))
     .join("");
   if (sourceCanonical !== providerCanonical) {
     return { ok: false, reason: "transcript_mismatch" };
@@ -130,7 +132,7 @@ export function finalizeTimestamps(args: {
   const providerBoundaries = new Map<number, number>();
   let providerOffset = 0;
   for (const [index, timestamp] of args.timestamps.entries()) {
-    providerOffset += [...canonicalize(timestamp.text)].length;
+    providerOffset += [...canonicalizeTimestampText(timestamp.text)].length;
     providerBoundaries.set(providerOffset, index);
   }
 

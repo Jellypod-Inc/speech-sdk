@@ -79,7 +79,7 @@ export function mediaTypeForOutput(output: ResolvedAudioOutput): string {
   return `audio/pcm;rate=${output.sampleRate ?? 24_000}`;
 }
 
-function isDecodableSourceMediaType(mediaType: string): boolean {
+export function isDecodableSourceMediaType(mediaType: string): boolean {
   const lower = mediaType.toLowerCase();
   return (
     lower.startsWith("audio/wav") ||

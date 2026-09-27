@@ -37,6 +37,11 @@ export interface GenerateConversationOptions<
   readonly providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   readonly speed?: number;
+  /**
+   * Also return `turns`: one audio clip per input turn, cut at the silence after each turn's last word. Requires
+   * `timestamps: true`. Throws `TurnSplitError` when turn boundaries can't be trusted.
+   */
+  readonly splitTurns?: boolean;
   readonly timestampProvider?: TimestampProvider;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];

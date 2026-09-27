@@ -47,8 +47,13 @@ export type {
   Voice,
 } from "./speech-provider.js";
 export type {
+  ConversationMetadata,
+  ConversationPathKind,
   ConversationResult,
   ConversationResultWithTimestamps,
+  ConversationResultWithTurns,
+  ConversationStitchReason,
+  ConversationTurnAudio,
   GeneratedAudioFile,
   SpeechResult,
   SpeechResultWithTimestamps,

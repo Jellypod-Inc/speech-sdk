@@ -4,6 +4,7 @@ import type {
   StitchTurnOptions,
   Voice,
 } from "../speech-provider.js";
+import type { ConversationStitchReason } from "../speech-result.js";
 import { StitchUnsupportedError } from "./errors.js";
 import type { ConversationTurn } from "./types.js";
 import { newVoiceKeyer } from "./validate.js";
@@ -28,15 +29,28 @@ export type ConversationPath =
       kind: "stitch";
       reason?: StitchFallbackReason;
       stitchOptionsPerTurn: readonly StitchTurnOptions[];
+      stitchReason: ConversationStitchReason;
     };
 
+const FALLBACK_STITCH_REASONS: Record<
+  StitchFallbackReason,
+  ConversationStitchReason
+> = {
+  "fallback-from-native": "per-turn-provider-options",
+  "fallback-from-native-custom-voice": "custom-voice",
+  "fallback-from-native-oversized": "native-limit-exceeded",
+  "fallback-from-native-voice-count": "single-speaker",
+  "fallback-from-native-voice-count-exceeded": "too-many-voices",
+};
+
 export function chooseConversationPath(input: {
-  forceStitch?: boolean;
+  // Why the caller requires stitch even when native dialogue would qualify.
+  forceStitch?: "per-turn-speed" | "max-input-chars";
   resolvedPerTurn: readonly ResolvedModel<Voice>[];
   turns: readonly ConversationTurn<Voice>[];
   output?: AudioOutput;
 }): ConversationPath {
-  const { forceStitch = false, resolvedPerTurn, turns, output } = input;
+  const { forceStitch, resolvedPerTurn, turns, output } = input;
   const sampleRateHint = sampleRateHintFrom(output);
 
   // Compare by provider instance reference so two factories with different apiKey/baseURL/fetch configs aren't silently merged.
@@ -45,24 +59,16 @@ export function chooseConversationPath(input: {
     (r) => r.provider === first.provider && r.modelId === first.modelId
   );
 
-  let stitchFallbackReason: StitchFallbackReason | undefined;
-
-  if (allSame && !forceStitch) {
-    if (countUniqueVoices(turns) <= 1) {
-      // A single speaker is just sequential speech — render per-turn via stitch, never native dialogue.
-      if (modelSupportsNativeDialogue(first)) {
-        stitchFallbackReason = "fallback-from-native-voice-count";
-      }
-    } else {
-      const native = tryNativeDialoguePath({ first, turns, sampleRateHint });
-      if (native) {
-        if ("path" in native) {
-          return native.path;
-        }
-        stitchFallbackReason = native.fallbackReason;
-      }
-    }
+  const native = allSame
+    ? nativeEligibility({ first, turns, sampleRateHint })
+    : undefined;
+  if (native && "path" in native && !forceStitch) {
+    return native.path;
   }
+  const ineligibleReason =
+    native && "fallbackReason" in native ? native.fallbackReason : undefined;
+  // A forced stitch never warns about native fallback, but its public reason still names why native couldn't run.
+  const stitchFallbackReason = forceStitch ? undefined : ineligibleReason;
 
   const stitchOptionsPerTurn = resolvedPerTurn.map((r) => {
     const opts = r.provider.getStitchOptions?.(r.modelId, {
@@ -80,7 +86,49 @@ export function chooseConversationPath(input: {
     kind: "stitch",
     ...(stitchFallbackReason && { reason: stitchFallbackReason }),
     stitchOptionsPerTurn,
+    stitchReason: describeStitchReason({
+      allSame,
+      fallbackReason: ineligibleReason,
+      first,
+      forceStitch,
+    }),
   };
+}
+
+// The native path when these turns can render as native dialogue, why they can't, or undefined without native dialogue.
+function nativeEligibility(args: {
+  first: ResolvedModel<Voice>;
+  turns: readonly ConversationTurn<Voice>[];
+  sampleRateHint: number | undefined;
+}):
+  | { path: ConversationPath }
+  | { fallbackReason: StitchFallbackReason }
+  | undefined {
+  if (countUniqueVoices(args.turns) <= 1) {
+    // A single speaker is just sequential speech — render per-turn via stitch, never native dialogue.
+    return modelSupportsNativeDialogue(args.first)
+      ? { fallbackReason: "fallback-from-native-voice-count" }
+      : undefined;
+  }
+  return tryNativeDialoguePath(args);
+}
+
+function describeStitchReason(args: {
+  allSame: boolean;
+  fallbackReason: StitchFallbackReason | undefined;
+  first: ResolvedModel<Voice>;
+  forceStitch: "per-turn-speed" | "max-input-chars" | undefined;
+}): ConversationStitchReason {
+  if (args.fallbackReason) {
+    return FALLBACK_STITCH_REASONS[args.fallbackReason];
+  }
+  if (!args.allSame) {
+    return "mixed-models";
+  }
+  if (!modelSupportsNativeDialogue(args.first)) {
+    return "no-native-dialogue";
+  }
+  return args.forceStitch ?? "no-native-dialogue";
 }
 
 interface DialogueCaps {

@@ -14,7 +14,7 @@ function silencePcm16(ms: number, sampleRate: number): Int16Array {
   return new Int16Array(samples);
 }
 
-function rmsPcm16(pcm: Int16Array): number {
+export function rmsPcm16(pcm: Int16Array): number {
   if (pcm.length === 0) {
     return 0;
   }
@@ -104,6 +104,19 @@ export async function concatPcmToWav(
   segments: readonly Pcm16Segment[],
   options: { gapMs: number; targetSampleRate: number }
 ): Promise<Uint8Array> {
+  return (await concatPcmToWavWithRanges(segments, options)).wav;
+}
+
+export interface ConcatenatedWav {
+  // Where each input segment landed in the merged audio, in target-rate samples.
+  readonly ranges: readonly { readonly start: number; readonly end: number }[];
+  readonly wav: Uint8Array;
+}
+
+export async function concatPcmToWavWithRanges(
+  segments: readonly Pcm16Segment[],
+  options: { gapMs: number; targetSampleRate: number }
+): Promise<ConcatenatedWav> {
   const { gapMs, targetSampleRate } = options;
 
   const gap = silencePcm16(gapMs, targetSampleRate);
@@ -112,15 +125,19 @@ export async function concatPcmToWav(
   );
 
   const resampled: Int16Array[] = [];
+  const ranges: { start: number; end: number }[] = [];
+  let cursor = 0;
   for (let i = 0; i < resampledSegments.length; i++) {
     resampled.push(resampledSegments[i]);
+    ranges.push({ start: cursor, end: cursor + resampledSegments[i].length });
+    cursor += resampledSegments[i].length;
     if (i < resampledSegments.length - 1 && gap.length > 0) {
       resampled.push(gap);
+      cursor += gap.length;
     }
   }
 
-  const totalSamples = resampled.reduce((n, a) => n + a.length, 0);
-  const merged = new Int16Array(totalSamples);
+  const merged = new Int16Array(cursor);
   let off = 0;
   for (const a of resampled) {
     merged.set(a, off);
@@ -132,5 +149,20 @@ export async function concatPcmToWav(
     merged.byteOffset,
     merged.byteLength
   );
-  return await wrapPcm16Mono(mergedBytes, targetSampleRate);
+  return {
+    ranges,
+    wav: await wrapPcm16Mono(mergedBytes, targetSampleRate),
+  };
+}
+
+// Cut in the middle of each inserted gap, in seconds of the merged audio.
+export function gapMidpointsSec(
+  ranges: ConcatenatedWav["ranges"],
+  sampleRate: number
+): number[] {
+  const cuts: number[] = [];
+  for (let i = 0; i < ranges.length - 1; i++) {
+    cuts.push((ranges[i].end + ranges[i + 1].start) / 2 / sampleRate);
+  }
+  return cuts;
 }

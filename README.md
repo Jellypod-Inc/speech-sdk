@@ -166,7 +166,43 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `splitTurns`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+
+`result.metadata.path` reports how the audio was rendered: `'native'`, `'native-split'` (native dialogue in several calls, stitched), or `'stitch'`. On the stitch path `metadata.stitchReason` says why (`'mixed-models'`, `'no-native-dialogue'`, `'single-speaker'`, `'too-many-voices'`, `'custom-voice'`, `'per-turn-provider-options'`, `'per-turn-speed'`, `'max-input-chars'`, `'native-limit-exceeded'`). Match on these fields rather than on warning text.
+
+### Per-turn audio
+
+Pass `splitTurns: true` (with `timestamps: true`) to also get one clip per input turn — for example to show each turn as its own take, caption it, or regenerate a single turn.
+
+```ts
+import { generateConversation } from '@speech-sdk/core';
+import { createElevenLabs } from '@speech-sdk/core/providers';
+
+const result = await generateConversation({
+  model: 'google/gemini-3.8-flash-tts',
+  turns: [
+    { voice: 'Kore', text: '[laughs] You did not.' },
+    { voice: 'Puck', text: 'I absolutely did.' },
+  ],
+  timestamps: true,
+  // Gemini returns no word timings, so align them with a timestamp provider.
+  timestampProvider: createElevenLabs().forcedAlignment(),
+  splitTurns: true,
+  output: { format: 'wav' },
+});
+
+for (const turn of result.turns) {
+  turn.turnIndex;   // index into turns[]
+  turn.audio;       // GeneratedAudioFile, same format as result.audio
+  turn.startMs;     // where the slice starts in result.audio
+  turn.endMs;
+  turn.timestamps;  // WordTimestamp[] in seconds from the start of this slice
+}
+```
+
+The slices cover the whole conversation audio in order, with no gaps or overlaps, and are cut sample-accurately from the decoded PCM. Each boundary is cut in the middle of the first silence (at least 100 ms of 20 ms frames, each 40 dB below the audio's 90th-percentile frame level) after turn N's last word and before turn N+1's first word, so a breath, laugh, or "hmm" opening turn N+1 stays with that turn. When the gap holds no such silence, the cut goes at its quietest frame. Where the SDK joined audio itself — the stitch path's inserted gaps and the joins between native-split blocks — it cuts in the middle of that gap.
+
+Splitting works on the native, native-split, and stitch paths. It throws `TurnSplitError` rather than cut on untrustworthy boundaries; `error.reason` is `'empty_turn'` (a turn has no attributed words), `'non_monotonic'` (a word overlaps the previous one or belongs to an earlier turn), or `'undecodable_audio'` (the native model has no PCM/WAV mode; thrown before synthesis). Callers can catch it and fall back to voicing turns separately.
 
 ## Timestamps
 
@@ -579,6 +615,7 @@ ElevenLabs Terms-of-Service content blocks use the canonical code `content_polic
 | `TimestampValidationError` | Requested timestamps are empty, structurally invalid, or do not exactly cover the synthesized text |
 | `TimestampKeyMissingError` | A legacy configured `fallbackSTT` is missing its API key |
 | `ConversationInputError` / `DialogueConstraintError` / `StitchUnsupportedError` | `generateConversation` validation / native caps / stitch incompatibility |
+| `TurnSplitError` | `splitTurns: true` but turn boundaries can't be trusted or the audio can't be decoded — `reason` says which |
 | `InstructionsUnsupportedError` | Non-empty delivery instructions were supplied to a direct model without the `instructions` capability |
 | `SpeechSDKError` | Base class |
 
