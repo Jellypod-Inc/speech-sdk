@@ -35,6 +35,7 @@ function timedScribeWords(
       end != null &&
       Number.isFinite(start) &&
       Number.isFinite(end) &&
+      start >= 0 &&
       end > start
     ) {
       timed.push({ text, start, end });

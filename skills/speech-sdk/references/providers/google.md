@@ -35,7 +35,7 @@ Gemini returns raw PCM. `mediaType` is `audio/L16;rate=24000`, bytes are passed 
 
 `gemini-3.1-flash-tts-preview` streams for real via Gemini's `/interactions` endpoint (`stream: true`), emitting raw 16-bit mono PCM chunks at 24 kHz (`mediaType` `audio/pcm;rate=24000`). Wrap in WAV yourself if you need a container.
 
-The 3.8 models also stream two-speaker dialogue: `streamConversation` sends the same `/interactions` request as buffered 3.8 dialogue with `stream: true` and returns 24 kHz PCM.
+The 3.8 models (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) also stream two-speaker dialogue: `streamConversation` sends the same `/interactions` request as buffered 3.8 dialogue with `stream: true` and returns 24 kHz PCM.
 
 The 2.5 models have no progressive streaming endpoint — `streamSpeech` still works, but the full clip is buffered server-side and delivered as a single WAV chunk (`audio/wav`).
 

@@ -45,7 +45,8 @@ export interface GenerateConversationOptions<
   readonly splitTurns?: boolean;
   /**
    * Splice out any audio tag the voice read aloud, before stitching, alignment and turn splitting. On by default
-   * whenever tags reach the model and a transcriber is at hand (see `generateSpeech`). `false` turns it off.
+   * whenever tags reach the model, a transcriber is at hand and the model has a decodable PCM/WAV mode (see
+   * `generateSpeech`). `false` turns it off.
    */
   readonly spokenTagCheck?: TranscriptionProvider | false;
   readonly timestampProvider?: TimestampProvider;

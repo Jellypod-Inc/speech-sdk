@@ -51,36 +51,86 @@ export function tagPhrases(text: string): string[][] {
     .filter((phrase) => phrase.length > 0);
 }
 
-// Heard tokens the script accounts for, by longest common subsequence: heard token index to expected index.
+interface Slot {
+  // Index into the script's expected words; absent for a tag's word.
+  readonly expected?: number;
+  readonly skeleton: string;
+}
+
+// A script word outweighs a tag word, so a word both could explain goes to the script.
+const SCRIPT_MATCH_WEIGHT = 2;
+const TAG_MATCH_WEIGHT = 1;
+
+// Heard tokens the script accounts for (heard index to expected index), by a weighted longest common subsequence
+// over the script with each tag's words in place. A tag slot only positions the match, so in "[happy] happy" the
+// second heard "happy" is the script's and the first is the spoken tag.
 function matchTokens(
   heard: readonly Token[],
-  expected: readonly string[]
+  slots: readonly Slot[]
 ): Map<number, number> {
-  const cols = expected.length + 1;
-  const lengths = new Uint32Array((heard.length + 1) * cols);
+  const cols = slots.length + 1;
+  const score = new Uint32Array((heard.length + 1) * cols);
+  const weight = (i: number, j: number) => {
+    if (heard[i].skeleton !== slots[j].skeleton) {
+      return 0;
+    }
+    return slots[j].expected == null ? TAG_MATCH_WEIGHT : SCRIPT_MATCH_WEIGHT;
+  };
   for (let i = heard.length - 1; i >= 0; i--) {
-    for (let j = expected.length - 1; j >= 0; j--) {
-      lengths[i * cols + j] =
-        heard[i].skeleton === expected[j]
-          ? lengths[(i + 1) * cols + j + 1] + 1
-          : Math.max(lengths[(i + 1) * cols + j], lengths[i * cols + j + 1]);
+    for (let j = slots.length - 1; j >= 0; j--) {
+      const w = weight(i, j);
+      score[i * cols + j] = Math.max(
+        score[(i + 1) * cols + j],
+        score[i * cols + j + 1],
+        w > 0 ? score[(i + 1) * cols + j + 1] + w : 0
+      );
     }
   }
   const matched = new Map<number, number>();
   let i = 0;
   let j = 0;
-  while (i < heard.length && j < expected.length) {
-    if (heard[i].skeleton === expected[j]) {
-      matched.set(i, j);
+  while (i < heard.length && j < slots.length) {
+    const w = weight(i, j);
+    if (w > 0 && score[i * cols + j] === score[(i + 1) * cols + j + 1] + w) {
+      const expected = slots[j].expected;
+      if (expected != null) {
+        matched.set(i, expected);
+      }
       i++;
       j++;
-    } else if (lengths[(i + 1) * cols + j] >= lengths[i * cols + j + 1]) {
+    } else if (score[(i + 1) * cols + j] >= score[i * cols + j + 1]) {
       i++;
     } else {
       j++;
     }
   }
   return matched;
+}
+
+const TAG_RE = /\[[^\]]+\]/g;
+
+// The script's expected words with each tag's words placed where the tag sits.
+function scriptSlots(text: string, expected: readonly string[]): Slot[] {
+  const tagsBefore = new Map<number, string[]>();
+  for (const match of text.matchAll(TAG_RE)) {
+    const at = wordSkeletons(
+      textWithoutAudioTags(text.slice(0, match.index))
+    ).length;
+    tagsBefore.set(at, [
+      ...(tagsBefore.get(at) ?? []),
+      ...wordSkeletons(match[0]),
+    ]);
+  }
+  const slots: Slot[] = [];
+  for (let k = 0; k <= expected.length; k++) {
+    for (const skeleton of tagsBefore.get(k) ?? []) {
+      slots.push({ skeleton });
+    }
+    if (k < expected.length) {
+      slots.push({ expected: k, skeleton: expected[k] });
+    }
+  }
+  return slots;
 }
 
 function isSpokenPhraseAt(
@@ -240,7 +290,7 @@ function analyzeHeard(input: {
       expectedToken.push(index);
     }
   }
-  const matches = matchTokens(tokens, expected);
+  const matches = matchTokens(tokens, scriptSlots(text, expected));
   const cut = tagTokens(tokens, matches, phrases);
   return {
     scriptTimestamps: input.withTimestamps
@@ -469,6 +519,9 @@ export async function checkSpokenTagsInAudio(input: {
     const { decodeAudioToPcm16 } = await import("./audio-decode.js");
     decoded = await decodeAudioToPcm16(input.audio, input.mediaType);
   } catch (error) {
+    if (input.abortSignal?.aborted) {
+      throw error;
+    }
     return { report: spokenTagFailure(error), spans: [] };
   }
   const checked = await checkSpokenTags({

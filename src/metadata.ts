@@ -1,6 +1,6 @@
 import type { TimestampsSource } from "./timestamps.js";
 
-/** What the spoken-tag check did. Set only when `spokenTagCheck` is passed. */
+/** What the spoken-tag check did. Present when tags reached the model, or whenever `spokenTagCheck` is passed. */
 export interface SpokenTagReport {
   // True when a transcription ran; false when the text had no tags the model received, or the check failed.
   readonly checked: boolean;

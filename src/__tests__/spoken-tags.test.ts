@@ -108,6 +108,26 @@ describe("spokenTagSpans", () => {
   });
 });
 
+describe("spokenTagSpans tag positions", () => {
+  it("cuts the voiced tag, not the script word it repeats", () => {
+    const text = "[happy] happy days.";
+    const spans = spokenTagSpans({
+      duration: 3,
+      heard: heard(
+        ["Happy.", 0.2, 0.7],
+        ["Happy", 1.1, 1.5],
+        ["days.", 1.6, 2]
+      ),
+      phrases: tagPhrases(text),
+      text,
+    });
+
+    expect(spans).toHaveLength(1);
+    expect(spans[0]?.startSeconds).toBeCloseTo(0.12, 6);
+    expect(spans[0]?.endSeconds).toBeCloseTo(0.9, 6);
+  });
+});
+
 describe("removePcm16Spans", () => {
   it("removes exactly the span's frames and fades each side of the join", () => {
     const pcm = constantPcm(1);
@@ -177,6 +197,8 @@ describe("generateSpeech spokenTagCheck", () => {
     expect(
       await decodedSeconds(result.audio.uint8Array, result.audio.mediaType)
     ).toBeCloseTo(8, 3);
+    // Checked audio comes back as WAV even when nothing was cut.
+    expect(result.audio.mediaType).toBe("audio/wav");
     expect(result.metadata.spokenTags).toEqual({
       checked: false,
       failed: "scribe down",
@@ -490,5 +512,42 @@ describe("spoken-tag check regressions", () => {
     });
 
     expect(result.metadata.spokenTags?.spans).toBe(1);
+  });
+});
+
+describe("spoken-tag check on chunked speech", () => {
+  it("checks every tagged chunk and sums the reports", async () => {
+    const chunkText = "Alpha beta. [curious] Gamma delta.";
+    const stt = transcriber(
+      heard(
+        ["Alpha", 0, 0.3],
+        ["beta.", 0.4, 0.8],
+        ["Curious.", 1.2, 1.8],
+        ["Gamma", 2.4, 2.8],
+        ["delta.", 2.9, 3.3]
+      )
+    );
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(4)), modelId: "m" },
+      voice: "v",
+      text: `${chunkText} ${chunkText}`,
+      maxInputChars: chunkText.length + 1,
+      spokenTagCheck: stt,
+    });
+
+    expect(stt.transcribe).toHaveBeenCalledTimes(2);
+    expect(result.metadata.chunks).toHaveLength(2);
+    for (const chunk of result.metadata.chunks ?? []) {
+      expect(chunk.spokenTags).toMatchObject({ checked: true, spans: 1 });
+      expect(chunk.spokenTags?.removedSeconds).toBeCloseTo(1.1, 3);
+    }
+    expect(result.metadata.spokenTags).toMatchObject({
+      checked: true,
+      spans: 2,
+    });
+    expect(result.metadata.spokenTags?.removedSeconds).toBeCloseTo(2.2, 3);
+    expect(
+      await decodedSeconds(result.audio.uint8Array, result.audio.mediaType)
+    ).toBeCloseTo(5.8, 3);
   });
 });

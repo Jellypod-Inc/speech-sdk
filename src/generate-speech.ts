@@ -431,12 +431,14 @@ async function generateProviderSpeech<V extends Voice>(args: {
   return { ...result, retryCount: attempts - 1 };
 }
 
+function isWavMediaType(mediaType: string): boolean {
+  const lower = mediaType.toLowerCase();
+  return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav");
+}
+
 // WAV carries its own header; anything else is decoded as the stitch format the provider was asked for.
 function decodableMediaType(resultType: string, stitchType: string): string {
-  const lower = resultType.toLowerCase();
-  return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav")
-    ? resultType
-    : stitchType;
+  return isWavMediaType(resultType) ? resultType : stitchType;
 }
 
 // Asked before any check is planned, so a throw (e.g. UnsupportedSampleRateError for an output that is fine natively) means "not decodable", not a failed request.
@@ -455,7 +457,8 @@ function hasDecodableMode(
   }
 }
 
-// The spoken-tag check on an unchunked request: fails open to the provider's audio, and re-encodes only when it cuts.
+// The spoken-tag check on an unchunked request. Checked audio comes back as WAV, like chunked audio, whether or not
+// anything was cut; if it can't be decoded, the provider's audio is returned as it came.
 async function checkUnchunkedSpeech(args: {
   abortSignal: AbortSignal | undefined;
   alignment: boolean;
@@ -487,27 +490,27 @@ async function checkUnchunkedSpeech(args: {
       text: args.text,
       withTimestamps: args.listener.withTimestamps,
     });
-  const spliced = segment != null && spans.length > 0;
-  const audio = spliced
+  if (!segment) {
+    return { ...result, audio: original, spokenTags: report };
+  }
+  const spliced = spans.length > 0;
+  const rewrap = spliced || !isWavMediaType(originalType);
+  const audio = rewrap
     ? await pcm16ToWav(segment.pcm, segment.sampleRate)
     : original;
-  const mediaType = spliced ? "audio/wav" : originalType;
-  const durationSeconds = segment
-    ? segment.pcm.length / segment.sampleRate
-    : undefined;
+  const mediaType = rewrap ? "audio/wav" : originalType;
+  const durationSeconds = segment.pcm.length / segment.sampleRate;
   return {
     ...result,
     audio,
     mediaType,
     spokenTags: report,
-    ...(spliced &&
-      durationSeconds != null && {
-        audioDurationMs: Math.round(durationSeconds * 1000),
-        timestamps: shiftTimestamps(result.timestamps, spans),
-      }),
+    ...(spliced && {
+      audioDurationMs: Math.round(durationSeconds * 1000),
+      timestamps: shiftTimestamps(result.timestamps, spans),
+    }),
     ...(args.alignment &&
-      scriptTimestamps &&
-      durationSeconds != null && {
+      scriptTimestamps && {
         alignmentChunks: [
           {
             audio: () => Promise.resolve(audio),

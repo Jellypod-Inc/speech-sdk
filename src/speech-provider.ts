@@ -218,8 +218,8 @@ export interface SpeechProvider<
   }>;
 
   /**
-   * Stream native multi-speaker dialogue as it is generated. Same options as `generateDialogue`; only called for
-   * models whose `dialogueCapabilities` declare `streaming`.
+   * Stream native multi-speaker dialogue as it is generated. Same options as `generateDialogue` except buffered-only
+   * ones such as `includeTimestamps`; only called for models whose `dialogueCapabilities` declare `streaming`.
    */
   streamDialogue?(options: {
     modelId: string;

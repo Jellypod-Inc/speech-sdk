@@ -148,15 +148,19 @@ export async function streamConversation<
   const { abortSignal, headers } = options;
   validateTurnTexts(options.turns, "streamConversation");
   rejectBufferedOnlyOptions(options);
-  const totalChars = totalTurnChars(options.turns);
 
   const resolved = resolveModel(options.model, {
     apiKey: options.apiKey,
   }) as ResolvedModel<V>;
+  const ruleMap = options.pronunciations?.rules?.length
+    ? mergeRules(options.pronunciations.rules)
+    : null;
+  const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
+  // The budget applies to the text actually sent, after pronunciation substitution.
   const streamDialogue = streamableDialogue(
     resolved,
     options.turns,
-    totalChars
+    totalTurnChars(prepared)
   );
   for (const turn of options.turns) {
     validateInstructionSupport(
@@ -165,10 +169,6 @@ export async function streamConversation<
     );
   }
 
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
-    : null;
-  const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
   for (const [index, turn] of prepared.entries()) {
     if (turn.text.trim().length === 0) {
       throw new NoSpeechGeneratedError(
@@ -202,7 +202,7 @@ export async function streamConversation<
   const metadata: SpeechMetadata = {
     latencyMs: ttfbMs,
     ttfbMs,
-    inputChars: totalChars,
+    inputChars: totalTurnChars(options.turns),
   };
   const warnings = prepared.flatMap((turn) => turn.warnings);
 

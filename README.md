@@ -171,7 +171,7 @@ It sends the same single request as `generateConversation` renders natively, wit
 
 - **One request, so it must fit native dialogue:** exactly two prebuilt voices, and no more than the model's dialogue character budget (2,500 characters of turn text for Gemini). Otherwise it throws `DialogueConstraintError`. Use `generateConversation()` for longer conversations, which splits them into blocks.
 - **No fallback.** A model that can't stream dialogue throws `StreamingNotSupportedError`; fall back to `generateConversation()` yourself if you want buffered audio.
-- **Buffered-only options are rejected**, not ignored: `timestamps`, `splitTurns`, `output`, `speed`, `volumeDbfs`, `gapMs`, and per-turn `model`, `providerOptions` or `speed` throw `ConversationInputError`.
+- **Buffered-only options are rejected**, not ignored: `gapMs`, `maxConcurrency`, `maxInputChars`, `output`, `speed`, `splitTurns`, `spokenTagCheck`, `timestampProvider`, `timestamps`, `volumeDbfs`, and per-turn `model`, `providerOptions` or `speed` throw `ConversationInputError`.
 
 ## Conversations
 
@@ -438,7 +438,7 @@ With none of those, the audio is returned as synthesized and `metadata.spokenTag
 - **One call for timestamps where possible.** When the transcriber is also your aligner (a transcribing `timestampProvider`, or `fallbackSTT`) and it heard every script word as written, its word timings become the timestamps and forced alignment is skipped. If it wrote something differently (`"1962"` heard as "nineteen sixty-two", an unusual name), forced alignment runs on the clean chunk as usual. Chunks without tags are aligned exactly as before, with no transcription call.
 - **Order.** The check runs on each chunk after synthesis and decoding, and before chunk stitching, forced alignment, `speed`, `output` encoding, and conversation turn splitting, so all of those see clean audio. On native dialogue the whole dialogue request is checked against every turn's tags before `splitTurns` cuts it, so a tag spoken between turns can't end up in a turn clip.
 - **Native timestamps** are shifted back by the length of each cut; timings inside a cut collapse to its start.
-- **Cost.** One transcription call per chunk that contains tags. Chunks without tags, and models that have tags stripped, make no call. A tagged request that will be checked is decoded to PCM like a chunked one, so output is encoded locally.
+- **Cost.** One transcription call per chunk that contains tags. Chunks without tags, and models that have tags stripped, make no call. A tagged request that will be checked is synthesized as PCM and comes back as WAV, like a chunked one, unless you pass `output` to choose another format.
 - **Fails open.** A transcription, decoding, or splicing error returns the chunk unchanged and records `failed` in the report. Only an abort is rethrown. The check never fails or retries synthesis.
 - **Report.** `metadata.spokenTags` is `{ checked, removedSeconds, spans, failed? }`, summed over chunks; each `metadata.chunks[i]` carries its own. Conversations sum over turns (see `metadata.perTurn`) or dialogue blocks. It is present when tags reached the model, or whenever you pass `spokenTagCheck`. Models without a decodable PCM/WAV mode skip the check with `failed` set.
 - `streamSpeech` doesn't support it: streamed audio has already reached the caller before it could be checked.
