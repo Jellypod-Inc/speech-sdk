@@ -401,7 +401,7 @@ result.metadata.spokenTags;
 **What it listens with.** The first transcriber the request already has, so it never adds a vendor you didn't configure:
 
 1. `spokenTagCheck`, if you pass one (`elevenlabs.transcription()` or any `TranscriptionProvider`).
-2. A `timestampProvider` that can also transcribe. `elevenlabs.forcedAlignment()` does, via Scribe v2 on the same key.
+2. A `timestampProvider` that implements the optional `transcribe` method. `elevenlabs.forcedAlignment()` does, via Scribe v2 on the same key.
 3. The model's `fallbackSTT`.
 4. The model's own speech-to-text: ElevenLabs models use Scribe with their own key, so `elevenlabs/eleven_v3` is checked with no configuration.
 
@@ -601,6 +601,8 @@ interface TimestampProvider {
     mediaType: string;
     text: string;
   }): Promise<readonly WordTimestamp[]>;
+  // Optional: also used for the spoken-tag check.
+  transcribe?(input: { abortSignal?: AbortSignal; audio: Uint8Array; mediaType: string }): Promise<readonly WordTimestamp[]>;
 }
 
 interface TranscriptionProvider {

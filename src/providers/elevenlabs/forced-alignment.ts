@@ -71,15 +71,18 @@ export class ElevenLabsForcedAlignmentProvider
   private readonly fetchFn: typeof globalThis.fetch;
   private readonly scribe: ElevenLabsTranscriptionProvider;
 
-  constructor(config: {
-    apiKey?: string;
-    baseURL?: string;
-    fetch?: typeof globalThis.fetch;
-  }) {
+  constructor(
+    config: {
+      apiKey?: string;
+      baseURL?: string;
+      fetch?: typeof globalThis.fetch;
+    },
+    scribe = new ElevenLabsTranscriptionProvider(config)
+  ) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.elevenlabs.io";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
-    this.scribe = new ElevenLabsTranscriptionProvider(config);
+    this.scribe = scribe;
   }
 
   transcribe(options: {

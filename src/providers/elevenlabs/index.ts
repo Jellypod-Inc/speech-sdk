@@ -778,8 +778,11 @@ export class ElevenLabsSpeechProvider
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
-  const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(config);
   const transcriptionProvider = new ElevenLabsTranscriptionProvider(config);
+  const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(
+    config,
+    transcriptionProvider
+  );
   const fallbackSTT = config.fallbackSTT;
 
   const factory = (modelId?: string): ResolvedModel<string> => ({
@@ -790,8 +793,7 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   });
 
   return Object.assign(factory, {
-    forcedAlignment: (): TimestampProvider & TranscriptionProvider =>
-      forcedAlignmentProvider,
+    forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
     // Scribe v2 speech-to-text, for `spokenTagCheck`.
     transcription: (): TranscriptionProvider => transcriptionProvider,
   });

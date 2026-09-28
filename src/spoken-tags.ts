@@ -1,11 +1,12 @@
 import type { DecodedPcm16 } from "./audio-decode.js";
 import { detectAudioTags, textWithoutAudioTags } from "./audio-tags.js";
+import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import { debug } from "./logger.js";
 import type { SpokenTagReport } from "./metadata.js";
 import type { ResolvedModel } from "./speech-provider.js";
-import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import {
   canonicalizeTimestampText,
+  finalizeTimestamps,
   tokenizeTimestampSource,
 } from "./timestamp-finalization.js";
 import type { TimestampProvider } from "./timestamp-provider.js";
@@ -170,46 +171,42 @@ function spansOf(
   return spans;
 }
 
-// Script word timings read off the heard words the alignment matched; undefined unless every script word was heard as itself.
+// Script word timings read off the matched heard words, when every script word was heard as written and they validate.
 function scriptTimings(args: {
   readonly expectedToken: readonly number[];
   readonly heard: readonly WordTimestamp[];
   readonly matches: ReadonlyMap<number, number>;
+  readonly scriptText: string;
   readonly scriptTokens: readonly { readonly text: string }[];
   readonly tokens: readonly Token[];
-}): WordTimestamp[] | undefined {
+}): readonly WordTimestamp[] | undefined {
   const { expectedToken, heard, matches, scriptTokens, tokens } = args;
+  // Each expected word matches at most once, so a full count means every script word was heard.
+  if (matches.size !== expectedToken.length) {
+    return;
+  }
   const firstWord: number[] = [];
   const lastWord: number[] = [];
-  const matchedCount = new Array<number>(scriptTokens.length).fill(0);
   for (const [heardIndex, expectedIndex] of matches) {
     const scriptIndex = expectedToken[expectedIndex];
-    const word = tokens[heardIndex].word;
-    firstWord[scriptIndex] ??= word;
-    lastWord[scriptIndex] = word;
-    matchedCount[scriptIndex]++;
-  }
-  const expectedCount = new Array<number>(scriptTokens.length).fill(0);
-  for (const scriptIndex of expectedToken) {
-    expectedCount[scriptIndex]++;
+    firstWord[scriptIndex] ??= tokens[heardIndex].word;
+    lastWord[scriptIndex] = tokens[heardIndex].word;
   }
   const timings: WordTimestamp[] = [];
   for (const [index, { text }] of scriptTokens.entries()) {
     const first = firstWord[index];
     const last = lastWord[index];
     // A heard word shared by two script words ("well known" heard as "well-known") has no boundary to split at.
-    const sharesPreviousWord = index > 0 && first === lastWord[index - 1];
-    if (
-      first == null ||
-      last == null ||
-      matchedCount[index] !== expectedCount[index] ||
-      sharesPreviousWord
-    ) {
+    if (first == null || last == null || first === lastWord[index - 1]) {
       return;
     }
     timings.push({ text, start: heard[first].start, end: heard[last].end });
   }
-  return timings;
+  const finalized = finalizeTimestamps({
+    text: args.scriptText,
+    timestamps: timings,
+  });
+  return finalized.ok ? finalized.timestamps : undefined;
 }
 
 interface HeardAnalysis {
@@ -223,6 +220,7 @@ function analyzeHeard(input: {
   readonly heard: readonly WordTimestamp[];
   readonly phrases: readonly (readonly string[])[];
   readonly text: string;
+  readonly withTimestamps?: boolean;
 }): HeardAnalysis {
   const { heard, text, phrases, duration } = input;
   if (heard.length === 0) {
@@ -232,7 +230,8 @@ function analyzeHeard(input: {
     wordSkeletons(word.text).map((skeleton) => ({ skeleton, word: index }))
   );
   // Backchannel words (|mhm|) stay expected: a listener may voice them in the same audio.
-  const scriptTokens = tokenizeTimestampSource(textWithoutAudioTags(text));
+  const scriptText = textWithoutAudioTags(text);
+  const scriptTokens = tokenizeTimestampSource(scriptText);
   const expected: string[] = [];
   const expectedToken: number[] = [];
   for (const [index, { text: tokenText }] of scriptTokens.entries()) {
@@ -244,13 +243,16 @@ function analyzeHeard(input: {
   const matches = matchTokens(tokens, expected);
   const cut = tagTokens(tokens, matches, phrases);
   return {
-    scriptTimestamps: scriptTimings({
-      expectedToken,
-      heard,
-      matches,
-      scriptTokens,
-      tokens,
-    }),
+    scriptTimestamps: input.withTimestamps
+      ? scriptTimings({
+          expectedToken,
+          heard,
+          matches,
+          scriptText,
+          scriptTokens,
+          tokens,
+        })
+      : undefined,
     spans: spansOf(heard, tagWords(tokens, cut), duration),
   };
 }
@@ -272,7 +274,7 @@ function frameAt(seconds: number, sampleRate: number, frameCount: number) {
   return Math.min(Math.max(Math.round(seconds * sampleRate), 0), frameCount);
 }
 
-function fadePiece(
+function fadeInPlace(
   piece: Int16Array,
   fadeFrames: number,
   fadeIn: boolean,
@@ -316,10 +318,14 @@ export function removePcm16Spans(
   );
   let offset = 0;
   for (const [index, { start, end }] of kept.entries()) {
-    const piece = pcm.slice(start, end);
-    fadePiece(piece, fadeFrames, index > 0, index < kept.length - 1);
-    out.set(piece, offset);
-    offset += piece.length;
+    out.set(pcm.subarray(start, end), offset);
+    fadeInPlace(
+      out.subarray(offset, offset + end - start),
+      fadeFrames,
+      index > 0,
+      index < kept.length - 1
+    );
+    offset += end - start;
   }
   return out;
 }
@@ -347,30 +353,19 @@ export function shiftTimestamps<T extends WordTimestamp>(
   }));
 }
 
-export const SPOKEN_TAGS_NOT_CHECKED: SpokenTagReport = {
-  checked: false,
-  removedSeconds: 0,
-  spans: 0,
-};
+function notChecked(failed?: string): SpokenTagReport {
+  return {
+    checked: false,
+    removedSeconds: 0,
+    spans: 0,
+    ...(failed && { failed }),
+  };
+}
 
 function spokenTagFailure(error: unknown): SpokenTagReport {
   const failed = error instanceof Error ? error.message : String(error);
   debug(`spoken tags: check failed, keeping audio (${failed}).`);
-  return { ...SPOKEN_TAGS_NOT_CHECKED, failed };
-}
-
-export function noDecodableModeReport(
-  modelIdentifier: string
-): SpokenTagReport {
-  return {
-    ...SPOKEN_TAGS_NOT_CHECKED,
-    failed: `${modelIdentifier} has no decodable PCM/WAV mode to splice.`,
-  };
-}
-
-/** Whether the text a model receives carries any tag the voice could read aloud. */
-export function hasCheckableTags(providerText: string): boolean {
-  return tagPhrases(providerText).length > 0;
+  return notChecked(failed);
 }
 
 export async function pcm16ToWav(
@@ -403,11 +398,13 @@ export async function checkSpokenTags(input: {
   readonly provider: TranscriptionProvider;
   readonly sampleRate: number;
   readonly text: string;
+  // Also read script word timings off the transcription, for a listener that stands in for the aligner.
+  readonly withTimestamps?: boolean;
 }): Promise<SpokenTagCheckResult> {
   const { pcm, sampleRate } = input;
   const phrases = tagPhrases(input.text);
   if (phrases.length === 0) {
-    return { pcm, report: SPOKEN_TAGS_NOT_CHECKED, spans: [] };
+    return { pcm, report: notChecked(), spans: [] };
   }
   try {
     const heard = await input.provider.transcribe({
@@ -420,6 +417,7 @@ export async function checkSpokenTags(input: {
       heard,
       phrases,
       text: input.text,
+      withTimestamps: input.withTimestamps,
     });
     if (spans.length === 0) {
       return {
@@ -451,7 +449,7 @@ export async function checkSpokenTags(input: {
 
 /**
  * `checkSpokenTags` on encoded audio: decodes it first, failing open on a decode error too. `segment` is the
- * decoded (and possibly spliced) PCM, absent when the text had no tags or decoding failed.
+ * decoded (and possibly spliced) PCM, absent when decoding failed.
  */
 export async function checkSpokenTagsInAudio(input: {
   readonly abortSignal?: AbortSignal;
@@ -459,15 +457,13 @@ export async function checkSpokenTagsInAudio(input: {
   readonly mediaType: string;
   readonly provider: TranscriptionProvider;
   readonly text: string;
+  readonly withTimestamps?: boolean;
 }): Promise<{
   readonly report: SpokenTagReport;
   readonly scriptTimestamps?: readonly WordTimestamp[];
   readonly segment?: DecodedPcm16;
   readonly spans: readonly AudioSpan[];
 }> {
-  if (!hasCheckableTags(input.text)) {
-    return { report: SPOKEN_TAGS_NOT_CHECKED, spans: [] };
-  }
   let decoded: DecodedPcm16;
   try {
     const { decodeAudioToPcm16 } = await import("./audio-decode.js");
@@ -481,6 +477,7 @@ export async function checkSpokenTagsInAudio(input: {
     provider: input.provider,
     sampleRate: decoded.sampleRate,
     text: input.text,
+    withTimestamps: input.withTimestamps,
   });
   return {
     report: checked.report,
@@ -508,74 +505,95 @@ export function mergeSpokenTagReports(
   };
 }
 
-/** How the SDK will hear a request's audio, or `false` when the caller turned the check off. */
+/** How the check will hear a request's audio. */
 export interface SpokenTagListener {
   readonly provider: TranscriptionProvider;
-  // The listener is the same service the request would align timestamps with, so its word timings can stand in.
-  readonly standsInForAligner: boolean;
+  // Read script word timings off the transcription: the listener is the request's aligner and timestamps are on.
+  readonly withTimestamps: boolean;
 }
 
-function canTranscribe(value: unknown): value is TranscriptionProvider {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "transcribe" in value &&
-    typeof value.transcribe === "function"
-  );
+function transcribes(
+  provider: TimestampProvider | undefined
+): provider is TimestampProvider & TranscriptionProvider {
+  return typeof provider?.transcribe === "function";
 }
 
-function sttListener(stt: ResolvedSTTModel): TranscriptionProvider {
-  return {
-    transcribe: async ({ abortSignal, audio, mediaType }) =>
-      (
-        await stt.provider.transcribe({
-          modelId: stt.modelId,
-          audio,
-          mediaType,
-          abortSignal,
-        })
-      ).timestamps,
-  };
-}
-
-/**
- * The first transcriber the request already has: an explicit `spokenTagCheck`, a `timestampProvider` that can
- * transcribe, the model's `fallbackSTT`, then the model's own speech-to-text. Never adds a vendor the caller did
- * not configure; undefined when there is none.
- */
-export function resolveSpokenTagListener(args: {
-  readonly option: TranscriptionProvider | false | undefined;
+// The first transcriber the request already has, in the order the aligner is chosen, then the model's own. Never adds a vendor.
+function resolveListener(args: {
+  readonly option: TranscriptionProvider | undefined;
   readonly resolved: ResolvedModel;
   readonly timestampProvider?: TimestampProvider;
-}): SpokenTagListener | false | undefined {
+}): { provider: TranscriptionProvider; isAligner: boolean } | undefined {
   const { option, resolved, timestampProvider } = args;
-  if (option === false) {
-    return false;
-  }
   if (option) {
     return {
       provider: option,
-      standsInForAligner:
-        canTranscribe(timestampProvider) && option === timestampProvider,
+      isAligner: transcribes(timestampProvider) && option === timestampProvider,
     };
   }
-  if (canTranscribe(timestampProvider)) {
-    return { provider: timestampProvider, standsInForAligner: true };
+  if (transcribes(timestampProvider)) {
+    return { provider: timestampProvider, isAligner: true };
   }
-  if (resolved.fallbackSTT) {
+  const stt = resolved.fallbackSTT;
+  if (stt) {
     return {
-      provider: sttListener(resolved.fallbackSTT),
-      standsInForAligner: timestampProvider == null,
+      provider: {
+        transcribe: ({ abortSignal, audio, mediaType }) =>
+          deriveTimestampsViaSTT({
+            ttsModel: `${resolved.provider.id}/${resolved.modelId}`,
+            audio,
+            mediaType,
+            timestampFallback: stt,
+            abortSignal,
+          }),
+      },
+      isAligner: timestampProvider == null,
     };
   }
   if (resolved.transcription) {
-    return { provider: resolved.transcription, standsInForAligner: false };
+    return { provider: resolved.transcription, isAligner: false };
   }
   return;
 }
 
-export const NO_LISTENER_REPORT: SpokenTagReport = {
-  ...SPOKEN_TAGS_NOT_CHECKED,
-  failed:
-    "no transcription provider: pass spokenTagCheck, or a timestampProvider that can transcribe.",
-};
+/**
+ * Whether and how to check a request: only when tags reach the model, a transcriber is at hand and the audio can be
+ * decoded. Otherwise `report` says why not, without a call; an explicit provider always reports, the automatic
+ * check stays silent on untagged text.
+ */
+export function planSpokenTagCheck(args: {
+  readonly decodable: boolean;
+  readonly option: TranscriptionProvider | false | undefined;
+  readonly providerText: string;
+  readonly resolved: ResolvedModel;
+  readonly timestampProvider?: TimestampProvider;
+  readonly timestamps: boolean;
+}): { listener?: SpokenTagListener; report?: SpokenTagReport } {
+  if (args.option === false) {
+    return {};
+  }
+  if (tagPhrases(args.providerText).length === 0) {
+    return args.option ? { report: notChecked() } : {};
+  }
+  const listener = resolveListener({ ...args, option: args.option });
+  if (!listener) {
+    return {
+      report: notChecked(
+        "no transcription provider: pass spokenTagCheck, or a timestampProvider that can transcribe."
+      ),
+    };
+  }
+  if (!args.decodable) {
+    return {
+      report: notChecked(
+        `${args.resolved.provider.id}/${args.resolved.modelId} has no decodable PCM/WAV mode to splice.`
+      ),
+    };
+  }
+  return {
+    listener: {
+      provider: listener.provider,
+      withTimestamps: args.timestamps && listener.isAligner,
+    },
+  };
+}

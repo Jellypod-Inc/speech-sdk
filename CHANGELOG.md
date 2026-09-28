@@ -9,7 +9,7 @@
 - **Fails open:** a transcription, decode, or splice error keeps the chunk unchanged and records `failed`. Only an abort is rethrown; synthesis is never failed or retried because of the check.
 - `metadata.spokenTags` (`{ checked, removedSeconds, spans, failed? }`) reports the result, summed over chunks, turns, or dialogue blocks; `metadata.chunks[i].spokenTags` reports each chunk.
 - `createElevenLabs().transcription()`: a `TranscriptionProvider` on ElevenLabs Scribe v2 (`POST /v1/speech-to-text`, `tag_audio_events=false`) that returns timed words only.
-- New exported types `TranscriptionProvider` and `SpokenTagReport`; `ResolvedModel` gains an optional `transcription`. `ProviderErrorStage` gains `"transcription"`.
+- New exported types `TranscriptionProvider` and `SpokenTagReport`; `TimestampProvider` gains an optional `transcribe`, and `ResolvedModel` an optional `transcription`. `ProviderErrorStage` gains `"transcription"`.
 
 ## 0.33.1
 

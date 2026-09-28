@@ -63,13 +63,9 @@ import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import {
   type AudioSpan,
   checkSpokenTagsInAudio,
-  hasCheckableTags,
   mergeSpokenTagReports,
-  NO_LISTENER_REPORT,
-  noDecodableModeReport,
   pcm16ToWav,
-  resolveSpokenTagListener,
-  SPOKEN_TAGS_NOT_CHECKED,
+  planSpokenTagCheck,
   shiftTimestamps,
 } from "./spoken-tags.js";
 import { resolveMaxInputChars } from "./text-chunker.js";
@@ -609,7 +605,7 @@ async function runNative<V extends Voice>(args: {
   const rawTimestamps = await resolveNativeDialogueTimestamps({
     requestTimestamps,
     nativeTimestamps: checked.nativeTimestamps,
-    preAligned: checked.preAligned,
+    scriptTimestamps: checked.scriptTimestamps,
     hasNativeTimestamps: hasNativeDialogueTimestamps,
     audio: audio.uint8Array,
     mediaType: outputMediaType,
@@ -799,15 +795,16 @@ async function runNativeSplit<V extends Voice>(args: {
       const segment =
         checked.segment ??
         (await decodeAudioToPcm16(rawBlockAudio, stitchOpts.mediaType));
-      const spliced = checked.spans.length > 0;
-      const blockAudio = spliced
+      // Only an aligner reads the block's bytes, so re-encode a spliced block only when timestamps are on.
+      const reencode = checked.spans.length > 0 && requestTimestamps;
+      const blockAudio = reencode
         ? await pcm16ToWav(segment.pcm, segment.sampleRate)
         : rawBlockAudio;
-      const blockMediaType = spliced ? "audio/wav" : stitchOpts.mediaType;
+      const blockMediaType = reencode ? "audio/wav" : stitchOpts.mediaType;
       const timestamps = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: checked.nativeTimestamps,
-        preAligned: checked.preAligned,
+        scriptTimestamps: checked.scriptTimestamps,
         hasNativeTimestamps,
         audio: blockAudio,
         mediaType: blockMediaType,
@@ -973,8 +970,8 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   audioDurationMs: number | undefined;
-  // Word timings the spoken-tag check's transcription already produced, used instead of an alignment call when they fit.
-  preAligned?: readonly WordTimestamp[];
+  // Validated word timings the spoken-tag check's transcription already produced, used instead of an alignment call.
+  scriptTimestamps?: readonly WordTimestamp[];
   substitutedTurnTexts: readonly string[];
   timestampProvider?: TimestampProvider;
 }): Promise<readonly ConversationWordTimestamp[] | undefined> {
@@ -993,11 +990,8 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       });
     }
     flatTimestamps = args.nativeTimestamps;
-  } else if (
-    args.preAligned &&
-    finalizeTimestamps({ text: joinedText, timestamps: args.preAligned }).ok
-  ) {
-    flatTimestamps = args.preAligned;
+  } else if (args.scriptTimestamps) {
+    flatTimestamps = args.scriptTimestamps;
   } else if (args.timestampProvider) {
     flatTimestamps = await deriveTimestampsViaProvider({
       audio: args.audio,
@@ -1101,38 +1095,24 @@ async function checkDialogueSpokenTags(args: {
   turns: readonly PreparedConversationTurn[];
 }): Promise<{
   nativeTimestamps: readonly WordTimestamp[] | undefined;
-  preAligned?: readonly WordTimestamp[];
   report?: SpokenTagReport;
+  scriptTimestamps?: readonly WordTimestamp[];
   segment?: DecodedPcm16;
   spans: readonly AudioSpan[];
 }> {
-  const unchanged = { nativeTimestamps: args.nativeTimestamps, spans: [] };
-  const listener = resolveSpokenTagListener({
+  const text = args.turns.map((t) => t.text).join(" ");
+  const { listener, report } = planSpokenTagCheck({
+    decodable: args.mediaType != null,
     option: args.options.spokenTagCheck,
+    providerText: text,
     resolved: args.resolved,
     timestampProvider: args.options.timestampProvider,
+    timestamps: args.options.timestamps ?? false,
   });
-  if (listener === false) {
-    return unchanged;
+  if (!(listener && args.mediaType)) {
+    return { nativeTimestamps: args.nativeTimestamps, report, spans: [] };
   }
-  const text = args.turns.map((t) => t.text).join(" ");
-  if (!hasCheckableTags(text)) {
-    return args.options.spokenTagCheck
-      ? { ...unchanged, report: SPOKEN_TAGS_NOT_CHECKED }
-      : unchanged;
-  }
-  if (!listener) {
-    return { ...unchanged, report: NO_LISTENER_REPORT };
-  }
-  if (!args.mediaType) {
-    return {
-      ...unchanged,
-      report: noDecodableModeReport(
-        `${args.resolved.provider.id}/${args.resolved.modelId}`
-      ),
-    };
-  }
-  const { scriptTimestamps, ...checked } = await checkSpokenTagsInAudio({
+  const checked = await checkSpokenTagsInAudio({
     abortSignal: args.signal,
     audio: new DefaultGeneratedAudioFile({
       data: args.audio,
@@ -1141,11 +1121,11 @@ async function checkDialogueSpokenTags(args: {
     mediaType: args.mediaType,
     provider: listener.provider,
     text,
+    withTimestamps: listener.withTimestamps,
   });
   return {
     ...checked,
     nativeTimestamps: shiftTimestamps(args.nativeTimestamps, checked.spans),
-    ...(listener.standsInForAligner && { preAligned: scriptTimestamps }),
   };
 }
 

@@ -41,12 +41,8 @@ import type {
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import {
   checkSpokenTags,
-  hasCheckableTags,
   mergeSpokenTagReports,
-  NO_LISTENER_REPORT,
-  noDecodableModeReport,
-  resolveSpokenTagListener,
-  SPOKEN_TAGS_NOT_CHECKED,
+  planSpokenTagCheck,
   type SpokenTagListener,
   shiftTimestamps,
 } from "./spoken-tags.js";
@@ -61,12 +57,10 @@ import {
   type AlignmentAudioChunk,
   prepareTimestampAlignment,
 } from "./timestamp-alignment.js";
-import type { TimestampProvider } from "./timestamp-provider.js";
 import {
   concatTimestampsWithOffsets,
   type WordTimestamp,
 } from "./timestamps.js";
-import type { TranscriptionProvider } from "./transcription-provider.js";
 import type { GenerateSpeechOptions } from "./types.js";
 
 type ProviderGenerateResult = Awaited<ReturnType<SpeechProvider["generate"]>>;
@@ -170,11 +164,15 @@ export async function generateSpeech<
   });
 
   const spokenTagPlan = planSpokenTagCheck({
-    resolved,
+    decodable:
+      resolved.provider.getStitchOptions?.(resolved.modelId, {
+        sampleRate: sampleRateHintFrom(options.output),
+      }) != null,
     option: options.spokenTagCheck,
-    timestampProvider: options.timestampProvider,
     providerText: textToSend,
-    output: options.output,
+    resolved,
+    timestampProvider: options.timestampProvider,
+    timestamps,
   });
 
   const { providerOptions, stitchOptions } =
@@ -506,6 +504,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
             provider: args.spokenTagListener.provider,
             sampleRate: decoded.sampleRate,
             text,
+            withTimestamps: args.spokenTagListener.withTimestamps,
           })
         : undefined;
       const segment = checked ? { ...decoded, pcm: checked.pcm } : decoded;
@@ -518,10 +517,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           : result,
         segment,
         spokenTags: checked?.report,
-        // Only a listener that is also the aligner may stand in for it.
-        scriptTimestamps: args.spokenTagListener?.standsInForAligner
-          ? checked?.scriptTimestamps
-          : undefined,
+        scriptTimestamps: checked?.scriptTimestamps,
         text,
         durationSeconds: segment.pcm.length / segment.sampleRate,
       };
@@ -584,7 +580,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
             ),
           durationSeconds: chunkSeconds,
           mediaType: "audio/wav",
-          ...(scriptTimestamps && { preAligned: scriptTimestamps }),
+          ...(scriptTimestamps && { scriptTimestamps }),
           text: textWithoutAudioTags(text),
         })
       )
@@ -602,44 +598,6 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     spokenTags: mergeSpokenTagReports(chunks.map((c) => c.spokenTags)),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
-}
-
-// Checks only when the model receives tags and returns audio the SDK can decode; otherwise reports why not, without a call.
-// Checks only when the model receives tags, a transcriber is at hand and the audio can be decoded; otherwise reports why not, without a call.
-function planSpokenTagCheck(args: {
-  resolved: ResolvedModel;
-  option: TranscriptionProvider | false | undefined;
-  timestampProvider: TimestampProvider | undefined;
-  providerText: string;
-  output: AudioOutput | undefined;
-}): { listener?: SpokenTagListener; report?: SpokenTagReport } {
-  const listener = resolveSpokenTagListener({
-    option: args.option,
-    resolved: args.resolved,
-    timestampProvider: args.timestampProvider,
-  });
-  if (listener === false) {
-    return {};
-  }
-  if (!hasCheckableTags(args.providerText)) {
-    // An explicit provider always reports; the automatic check stays silent on untagged text.
-    return args.option ? { report: SPOKEN_TAGS_NOT_CHECKED } : {};
-  }
-  if (!listener) {
-    return { report: NO_LISTENER_REPORT };
-  }
-  const decodable = args.resolved.provider.getStitchOptions?.(
-    args.resolved.modelId,
-    { sampleRate: sampleRateHintFrom(args.output) }
-  );
-  if (!decodable) {
-    return {
-      report: noDecodableModeReport(
-        `${args.resolved.provider.id}/${args.resolved.modelId}`
-      ),
-    };
-  }
-  return { listener };
 }
 
 function mergeChunkTimestamps(
