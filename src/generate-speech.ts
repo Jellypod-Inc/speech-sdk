@@ -45,6 +45,7 @@ import {
   planSpokenTagCheck,
   type SpokenTagListener,
   shiftTimestamps,
+  spokenTagFailure,
 } from "./spoken-tags.js";
 import {
   resolveMaxInputChars,
@@ -164,10 +165,18 @@ export async function generateSpeech<
   });
 
   const spokenTagPlan = planSpokenTagCheck({
-    decodable:
-      resolved.provider.getStitchOptions?.(resolved.modelId, {
-        sampleRate: sampleRateHintFrom(options.output),
-      }) != null,
+    decodable: () => {
+      try {
+        return (
+          resolved.provider.getStitchOptions?.(resolved.modelId, {
+            sampleRate: sampleRateHintFrom(options.output),
+          }) != null
+        );
+      } catch {
+        // e.g. UnsupportedSampleRateError: the output is fine natively, just not as PCM, so skip the check.
+        return false;
+      }
+    },
     option: options.spokenTagCheck,
     providerText: textToSend,
     resolved,
@@ -203,8 +212,11 @@ export async function generateSpeech<
   let maxConcurrency: number | undefined;
   // The spoken-tag check splices decoded PCM, which the chunked path already produces, even for a single chunk.
   if (shouldChunk || spokenTagPlan.listener) {
-    maxConcurrency = resolveMaxConcurrency(options.maxConcurrency);
-    result = await generateChunkedSpeech({
+    maxConcurrency = shouldChunk
+      ? resolveMaxConcurrency(options.maxConcurrency)
+      : 1;
+    result = await generateCheckedOrChunkedSpeech({
+      failOpenOnDecode: !shouldChunk,
       resolved,
       modelIdentifier,
       textChunks,
@@ -295,7 +307,7 @@ export async function generateSpeech<
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
     ...(result.retryCount != null && { retryCount: result.retryCount }),
-    ...(result.chunks && { chunks: result.chunks }),
+    ...(result.chunks && result.chunks.length > 0 && { chunks: result.chunks }),
     ...(spokenTags && { spokenTags }),
     ...(publicAlignment.source != null && {
       timestampsSource: publicAlignment.source,
@@ -422,6 +434,45 @@ async function generateProviderSpeech<V extends Voice>(args: {
   return { ...result, retryCount: attempts - 1 };
 }
 
+class UndecodedChunkError extends Error {
+  readonly mediaType: string;
+  readonly result: RetriedGenerateResult;
+
+  constructor(
+    result: RetriedGenerateResult,
+    mediaType: string,
+    cause: unknown
+  ) {
+    super("spoken-tag check: chunk audio could not be decoded", { cause });
+    this.mediaType = mediaType;
+    this.result = result;
+  }
+}
+
+// A single chunk routed here only for the spoken-tag check fails open on a decode error: the provider's audio is returned as synthesized.
+async function generateCheckedOrChunkedSpeech<V extends Voice>(
+  args: Parameters<typeof generateChunkedSpeech<V>>[0] & {
+    failOpenOnDecode: boolean;
+  }
+): ReturnType<typeof generateChunkedSpeech<V>> {
+  try {
+    return await generateChunkedSpeech(args);
+  } catch (error) {
+    if (!(error instanceof UndecodedChunkError)) {
+      throw error;
+    }
+    if (!args.failOpenOnDecode) {
+      throw error.cause;
+    }
+    return {
+      ...error.result,
+      mediaType: error.mediaType,
+      chunks: [],
+      spokenTags: spokenTagFailure(error.cause),
+    };
+  }
+}
+
 async function generateChunkedSpeech<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   modelIdentifier: string;
@@ -495,7 +546,12 @@ async function generateChunkedSpeech<V extends Voice>(args: {
         resultMediaType.startsWith("audio/x-wav")
           ? result.mediaType
           : stitchOptions.mediaType;
-      const decoded = await decodeAudioToPcm16(audio, decodeMediaType);
+      let decoded: Awaited<ReturnType<typeof decodeAudioToPcm16>>;
+      try {
+        decoded = await decodeAudioToPcm16(audio, decodeMediaType);
+      } catch (error) {
+        throw new UndecodedChunkError(result, decodeMediaType, error);
+      }
       // Runs before stitching and alignment so everything downstream sees clean audio; native timings shift back by each cut.
       const checked = args.spokenTagListener
         ? await checkSpokenTags({

@@ -412,3 +412,86 @@ describe("automatic spoken-tag check", () => {
     });
   });
 });
+
+describe("spoken-tag check regressions", () => {
+  it("never asks for a PCM mode when there's nothing to check", async () => {
+    const provider: SpeechProvider = {
+      ...taggedProvider(constantPcm(1)),
+      getStitchOptions: () => {
+        throw new Error("no PCM at 44100 Hz");
+      },
+      resolveOutputFormat: () => ({
+        providerOptions: {},
+        expectedMediaType: "audio/mpeg",
+      }),
+      generate: vi.fn(() =>
+        Promise.resolve({
+          audio: new Uint8Array([1, 2, 3]),
+          mediaType: "audio/mpeg",
+        })
+      ),
+    };
+
+    const untagged = await generateSpeech({
+      model: { provider, modelId: "m" },
+      voice: "v",
+      text: "No tags here.",
+      output: { format: "mp3", sampleRate: 44_100 },
+    });
+    expect(untagged.audio.mediaType).toBe("audio/mpeg");
+
+    const tagged = await generateSpeech({
+      model: { provider, modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      spokenTagCheck: transcriber(HEARD),
+      output: { format: "mp3", sampleRate: 44_100 },
+    });
+    expect(tagged.audio.mediaType).toBe("audio/mpeg");
+    expect(tagged.metadata.spokenTags?.failed).toContain(
+      "no decodable PCM/WAV mode"
+    );
+  });
+
+  it("returns the provider's audio when a checked single chunk can't be decoded", async () => {
+    const provider: SpeechProvider = {
+      ...taggedProvider(constantPcm(1)),
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: "audio/wav",
+      }),
+      generate: vi.fn(() =>
+        Promise.resolve({
+          audio: new Uint8Array([1, 2, 3, 4]),
+          mediaType: "audio/wav",
+        })
+      ),
+    };
+    const stt = transcriber(HEARD);
+
+    const result = await generateSpeech({
+      model: { provider, modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      spokenTagCheck: stt,
+    });
+
+    expect(stt.transcribe).not.toHaveBeenCalled();
+    expect([...result.audio.uint8Array]).toEqual([1, 2, 3, 4]);
+    expect(result.metadata.spokenTags?.checked).toBe(false);
+    expect(result.metadata.spokenTags?.failed).toBeDefined();
+    expect(result.metadata.chunks).toBeUndefined();
+  });
+
+  it("ignores maxConcurrency on a single checked chunk, as on any unchunked request", async () => {
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(8)), modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      maxConcurrency: 0,
+      spokenTagCheck: transcriber(HEARD),
+    });
+
+    expect(result.metadata.spokenTags?.spans).toBe(1);
+  });
+});

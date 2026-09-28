@@ -1102,7 +1102,7 @@ async function checkDialogueSpokenTags(args: {
 }> {
   const text = args.turns.map((t) => t.text).join(" ");
   const { listener, report } = planSpokenTagCheck({
-    decodable: args.mediaType != null,
+    decodable: () => args.mediaType != null,
     option: args.options.spokenTagCheck,
     providerText: text,
     resolved: args.resolved,
