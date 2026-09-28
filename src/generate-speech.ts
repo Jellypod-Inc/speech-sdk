@@ -8,6 +8,7 @@ import { computeAudioDuration } from "./audio-duration.js";
 import {
   type AudioOutput,
   applyOptionalOutputConversion,
+  sampleRateHintFrom,
   validateOutput,
 } from "./audio-output.js";
 import { textWithoutAudioTags } from "./audio-tags.js";
@@ -38,7 +39,14 @@ import type {
   SpeechResultWithTimestamps,
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
-import { hasCheckableTags } from "./spoken-tags.js";
+import {
+  checkSpokenTags,
+  hasCheckableTags,
+  mergeSpokenTagReports,
+  noDecodableModeReport,
+  SPOKEN_TAGS_NOT_CHECKED,
+  shiftTimestamps,
+} from "./spoken-tags.js";
 import {
   resolveMaxInputChars,
   splitTextByMaxChars,
@@ -278,15 +286,14 @@ export async function generateSpeech<
     abortSignal,
   });
 
+  const spokenTags = result.spokenTags ?? spokenTagPlan.report;
   const metadata: SpeechMetadata = {
     latencyMs,
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
     ...(result.retryCount != null && { retryCount: result.retryCount }),
     ...(result.chunks && { chunks: result.chunks }),
-    ...((result.spokenTags ?? spokenTagPlan.report) && {
-      spokenTags: result.spokenTags ?? spokenTagPlan.report,
-    }),
+    ...(spokenTags && { spokenTags }),
     ...(publicAlignment.source != null && {
       timestampsSource: publicAlignment.source,
     }),
@@ -448,9 +455,6 @@ async function generateChunkedSpeech<V extends Voice>(args: {
   const { decodeAudioToPcm16 } = await import("./audio-decode.js");
   const { concatPcmToWav } = await import("./conversation/pcm-concat.js");
   const { wrapPcm16Mono } = await import("./audio-utils.js");
-  const spokenTags = args.spokenTagCheck
-    ? await import("./spoken-tags.js")
-    : undefined;
 
   const perChunk = await mapWithConcurrency(
     args.textChunks,
@@ -489,33 +493,26 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           ? result.mediaType
           : stitchOptions.mediaType;
       const decoded = await decodeAudioToPcm16(audio, decodeMediaType);
-      if (!(spokenTags && args.spokenTagCheck)) {
-        return {
-          result,
-          segment: decoded,
-          text,
-          durationSeconds: decoded.pcm.length / decoded.sampleRate,
-        };
-      }
       // Runs before stitching and alignment so everything downstream sees clean audio; native timings shift back by each cut.
-      const checked = await spokenTags.checkSpokenTags({
-        abortSignal: signal,
-        pcm: decoded.pcm,
-        provider: args.spokenTagCheck,
-        sampleRate: decoded.sampleRate,
-        text,
-      });
-      const segment = { ...decoded, pcm: checked.pcm };
+      const checked = args.spokenTagCheck
+        ? await checkSpokenTags({
+            abortSignal: signal,
+            pcm: decoded.pcm,
+            provider: args.spokenTagCheck,
+            sampleRate: decoded.sampleRate,
+            text,
+          })
+        : undefined;
+      const segment = checked ? { ...decoded, pcm: checked.pcm } : decoded;
       return {
-        result: {
-          ...result,
-          timestamps: spokenTags.shiftTimestamps(
-            result.timestamps,
-            checked.spans
-          ),
-        },
+        result: checked
+          ? {
+              ...result,
+              timestamps: shiftTimestamps(result.timestamps, checked.spans),
+            }
+          : result,
         segment,
-        spokenTags: checked.report,
+        spokenTags: checked?.report,
         text,
         durationSeconds: segment.pcm.length / segment.sampleRate,
       };
@@ -585,11 +582,7 @@ async function generateChunkedSpeech<V extends Voice>(args: {
     retryCount: chunks.reduce((total, chunk) => total + chunk.retryCount, 0),
     chunks,
     timestamps: mergeChunkTimestamps(perChunk),
-    ...(spokenTags && {
-      spokenTags: spokenTags.mergeSpokenTagReports(
-        chunks.flatMap((c) => (c.spokenTags ? [c.spokenTags] : []))
-      ),
-    }),
+    spokenTags: mergeSpokenTagReports(chunks.map((c) => c.spokenTags)),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
@@ -604,28 +597,18 @@ function planSpokenTagCheck(args: {
   if (!args.provider) {
     return {};
   }
-  const notChecked = {
-    checked: false,
-    removedSeconds: 0,
-    spans: 0,
-  } as const;
   if (!hasCheckableTags(args.providerText)) {
-    return { report: notChecked };
+    return { report: SPOKEN_TAGS_NOT_CHECKED };
   }
-  const sampleRate =
-    args.output != null && "sampleRate" in args.output
-      ? args.output.sampleRate
-      : undefined;
   const decodable = args.resolved.provider.getStitchOptions?.(
     args.resolved.modelId,
-    { sampleRate }
+    { sampleRate: sampleRateHintFrom(args.output) }
   );
   if (!decodable) {
     return {
-      report: {
-        ...notChecked,
-        failed: `${args.resolved.provider.id}/${args.resolved.modelId} has no decodable PCM/WAV mode to splice.`,
-      },
+      report: noDecodableModeReport(
+        `${args.resolved.provider.id}/${args.resolved.modelId}`
+      ),
     };
   }
   return { provider: args.provider };

@@ -6,9 +6,9 @@ import {
 } from "../../provider-utils.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import type { TranscriptionProvider } from "../../transcription-provider.js";
-import { audioExtension } from "./forced-alignment.js";
+import { speechFileForm } from "./speech-file-form.js";
 
-export const SCRIBE_MODEL_ID = "scribe_v2";
+const SCRIBE_MODEL_ID = "scribe_v2";
 
 const scribeWordSchema = z.object({
   end: z.number().nullish(),
@@ -21,7 +21,7 @@ const scribeResponseSchema = z.object({
   words: z.array(scribeWordSchema).default([]),
 });
 
-export function timedScribeWords(
+function timedScribeWords(
   words: readonly z.infer<typeof scribeWordSchema>[]
 ): WordTimestamp[] {
   const timed: WordTimestamp[] = [];
@@ -63,12 +63,7 @@ export class ElevenLabsTranscriptionProvider implements TranscriptionProvider {
     audio: Uint8Array;
     mediaType: string;
   }): Promise<WordTimestamp[]> {
-    const form = new FormData();
-    form.append(
-      "file",
-      new Blob([options.audio.slice()], { type: options.mediaType }),
-      `speech.${audioExtension(options.mediaType)}`
-    );
+    const form = speechFileForm(options.audio, options.mediaType);
     form.append("model_id", SCRIBE_MODEL_ID);
     form.append("tag_audio_events", "false");
 

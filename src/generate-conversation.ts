@@ -6,7 +6,7 @@ import {
   scaleTimestamps,
   validateSpeed,
 } from "./apply-speed.js";
-import type { decodeAudioToPcm16 } from "./audio-decode.js";
+import type { DecodedPcm16 } from "./audio-decode.js";
 import { computeAudioDuration } from "./audio-duration.js";
 import {
   type AudioOutput,
@@ -61,12 +61,14 @@ import type {
 } from "./speech-result.js";
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import {
-  checkSpokenTags,
+  type AudioSpan,
+  checkSpokenTagsInAudio,
   hasCheckableTags,
   mergeSpokenTagReports,
+  noDecodableModeReport,
+  pcm16ToWav,
   SPOKEN_TAGS_NOT_CHECKED,
   shiftTimestamps,
-  spokenTagFailure,
 } from "./spoken-tags.js";
 import { resolveMaxInputChars } from "./text-chunker.js";
 import { preprocessSpeechText } from "./text-preprocessing.js";
@@ -280,13 +282,9 @@ export async function generateConversation<
       audioDurationMs: stitched.metadata.audioDurationMs,
     }),
     perTurn: stitched.metadataPerTurn,
-    ...(options.spokenTagCheck && {
-      spokenTags: mergeSpokenTagReports(
-        stitched.metadataPerTurn.flatMap((m) =>
-          m.spokenTags ? [m.spokenTags] : []
-        )
-      ),
-    }),
+    spokenTags: mergeSpokenTagReports(
+      stitched.metadataPerTurn.map((m) => m.spokenTags)
+    ),
     path: "stitch",
     stitchReason: path.stitchReason,
   };
@@ -594,7 +592,8 @@ async function runNative<V extends Voice>(args: {
   });
 
   const { audio, outputMediaType } = await buildNativeAudio({
-    result: checked.audio ?? result,
+    result,
+    segment: checked.segment,
     stitchOpts,
     volumeDbfs: options.volumeDbfs,
   });
@@ -794,9 +793,14 @@ async function runNativeSplit<V extends Voice>(args: {
         signal,
         turns: blockTurns,
       });
-      const blockAudio = checked.audio?.audio ?? rawBlockAudio;
-      const blockMediaType = checked.audio?.mediaType ?? stitchOpts.mediaType;
-      const segment = await decodeAudioToPcm16(blockAudio, blockMediaType);
+      const segment =
+        checked.segment ??
+        (await decodeAudioToPcm16(rawBlockAudio, stitchOpts.mediaType));
+      const spliced = checked.spans.length > 0;
+      const blockAudio = spliced
+        ? await pcm16ToWav(segment.pcm, segment.sampleRate)
+        : rawBlockAudio;
+      const blockMediaType = spliced ? "audio/wav" : stitchOpts.mediaType;
       const timestamps = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: checked.nativeTimestamps,
@@ -883,11 +887,7 @@ async function runNativeSplit<V extends Voice>(args: {
     latencyMs: Math.round(performance.now() - start),
     inputChars,
     ...(audioDurationMs != null && { audioDurationMs }),
-    ...(options.spokenTagCheck && {
-      spokenTags: mergeSpokenTagReports(
-        perBlock.flatMap((p) => (p.spokenTags ? [p.spokenTags] : []))
-      ),
-    }),
+    spokenTags: mergeSpokenTagReports(perBlock.map((p) => p.spokenTags)),
     path: "native-split",
   };
 
@@ -1045,9 +1045,9 @@ async function buildNativeAudio(args: {
   result: {
     audio: string | Uint8Array;
     mediaType: string;
-    // Already re-encoded by the spoken-tag check, so its own mediaType is exact.
-    spliced?: boolean;
   };
+  // The same audio already decoded (and possibly spliced) by the spoken-tag check.
+  segment: DecodedPcm16 | undefined;
   stitchOpts: StitchTurnOptions | undefined;
   volumeDbfs: number | undefined;
 }): Promise<{ audio: DefaultGeneratedAudioFile; outputMediaType: string }> {
@@ -1056,14 +1056,17 @@ async function buildNativeAudio(args: {
   let outputMediaType = args.stitchOpts?.mediaType ?? args.result.mediaType;
 
   if (args.stitchOpts) {
-    const { adjustVolume } = await import("./volume-adjust.js");
-    audioBytes = await adjustVolume({
-      audio: args.result.audio as Uint8Array,
-      mediaType: args.result.spliced
-        ? args.result.mediaType
-        : args.stitchOpts.mediaType,
-      volumeDbfs: args.volumeDbfs ?? -20,
-    });
+    const { adjustVolume, normalizeVolumeToWav } = await import(
+      "./volume-adjust.js"
+    );
+    const volumeDbfs = args.volumeDbfs ?? -20;
+    audioBytes = args.segment
+      ? await normalizeVolumeToWav(args.segment, volumeDbfs)
+      : await adjustVolume({
+          audio: args.result.audio as Uint8Array,
+          mediaType: args.stitchOpts.mediaType,
+          volumeDbfs,
+        });
     outputMediaType = "audio/wav";
   }
 
@@ -1085,71 +1088,40 @@ async function checkDialogueSpokenTags(args: {
   signal: AbortSignal | undefined;
   turns: readonly PreparedConversationTurn[];
 }): Promise<{
-  audio?: { audio: Uint8Array; mediaType: string; spliced: true };
   nativeTimestamps: readonly WordTimestamp[] | undefined;
   report?: SpokenTagReport;
+  segment?: DecodedPcm16;
+  spans: readonly AudioSpan[];
 }> {
   const provider = args.options.spokenTagCheck;
-  const unchanged = { nativeTimestamps: args.nativeTimestamps };
+  const unchanged = { nativeTimestamps: args.nativeTimestamps, spans: [] };
   if (!provider) {
     return unchanged;
   }
   const text = args.turns.map((t) => t.text).join(" ");
-  if (!hasCheckableTags(text)) {
-    return { ...unchanged, report: SPOKEN_TAGS_NOT_CHECKED };
-  }
   if (!args.mediaType) {
     return {
       ...unchanged,
-      report: spokenTagFailure(
-        `${args.resolved.provider.id}/${args.resolved.modelId} has no decodable PCM/WAV mode to splice.`
-      ),
+      report: hasCheckableTags(text)
+        ? noDecodableModeReport(
+            `${args.resolved.provider.id}/${args.resolved.modelId}`
+          )
+        : SPOKEN_TAGS_NOT_CHECKED,
     };
   }
-  let decoded: Awaited<ReturnType<typeof decodeAudioToPcm16>>;
-  try {
-    const { decodeAudioToPcm16: decode } = await import("./audio-decode.js");
-    decoded = await decode(
-      new DefaultGeneratedAudioFile({
-        data: args.audio,
-        mediaType: args.mediaType,
-      }).uint8Array,
-      args.mediaType
-    );
-  } catch (error) {
-    return {
-      ...unchanged,
-      report: spokenTagFailure(
-        error instanceof Error ? error.message : String(error)
-      ),
-    };
-  }
-  const checked = await checkSpokenTags({
+  const checked = await checkSpokenTagsInAudio({
     abortSignal: args.signal,
-    pcm: decoded.pcm,
+    audio: new DefaultGeneratedAudioFile({
+      data: args.audio,
+      mediaType: args.mediaType,
+    }).uint8Array,
+    mediaType: args.mediaType,
     provider,
-    sampleRate: decoded.sampleRate,
     text,
   });
-  if (checked.spans.length === 0) {
-    return { ...unchanged, report: checked.report };
-  }
-  const { wrapPcm16Mono } = await import("./audio-utils.js");
   return {
-    audio: {
-      audio: await wrapPcm16Mono(
-        new Uint8Array(
-          checked.pcm.buffer,
-          checked.pcm.byteOffset,
-          checked.pcm.byteLength
-        ),
-        decoded.sampleRate
-      ),
-      mediaType: "audio/wav",
-      spliced: true,
-    },
+    ...checked,
     nativeTimestamps: shiftTimestamps(args.nativeTimestamps, checked.spans),
-    report: checked.report,
   };
 }
 

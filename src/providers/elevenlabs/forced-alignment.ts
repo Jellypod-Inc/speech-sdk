@@ -8,6 +8,7 @@ import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import { alignmentToWordTimestamps } from "./alignment.js";
+import { speechFileForm } from "./speech-file-form.js";
 
 const LEXICAL_CHARACTER = /[\p{L}\p{N}]/u;
 
@@ -59,24 +60,6 @@ function resolveForcedAlignmentTimestamps(
   return characters.length > 0 ? characters : words;
 }
 
-export function audioExtension(mediaType: string): string {
-  const base = mediaType.split(";")[0]?.toLowerCase();
-  switch (base) {
-    case "audio/wav":
-    case "audio/x-wav":
-      return "wav";
-    case "audio/flac":
-      return "flac";
-    case "audio/ogg":
-    case "audio/opus":
-      return "ogg";
-    case "audio/webm":
-      return "webm";
-    default:
-      return "mp3";
-  }
-}
-
 export class ElevenLabsForcedAlignmentProvider implements TimestampProvider {
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
@@ -99,12 +82,7 @@ export class ElevenLabsForcedAlignmentProvider implements TimestampProvider {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }) {
-    const form = new FormData();
-    form.append(
-      "file",
-      new Blob([options.audio.slice()], { type: options.mediaType }),
-      `speech.${audioExtension(options.mediaType)}`
-    );
+    const form = speechFileForm(options.audio, options.mediaType);
     form.append("text", options.text);
 
     const response = await this.fetchFn(`${this.baseURL}/v1/forced-alignment`, {

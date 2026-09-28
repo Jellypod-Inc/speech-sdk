@@ -1,6 +1,8 @@
+import type { DecodedPcm16 } from "./audio-decode.js";
 import { detectAudioTags, textWithoutAudioTags } from "./audio-tags.js";
 import { debug } from "./logger.js";
 import type { SpokenTagReport } from "./metadata.js";
+import { canonicalizeTimestampText } from "./timestamp-finalization.js";
 import type { WordTimestamp } from "./timestamps.js";
 import type { TranscriptionProvider } from "./transcription-provider.js";
 
@@ -11,8 +13,7 @@ const EDGE_PAD_SECONDS = 0.08;
 // Long enough to hide the step a splice leaves, short enough to stay inside the silence the cut is placed in.
 const SPLICE_FADE_SECONDS = 0.004;
 
-const WORD = /[\p{L}\p{N}'‘’]+/gu;
-const APOSTROPHE = /['‘’]/g;
+const WORD = /[\p{L}\p{M}\p{N}'‘’]+/gu;
 
 export interface AudioSpan {
   readonly endSeconds: number;
@@ -24,11 +25,11 @@ interface Token {
   readonly word: number;
 }
 
-/** Lowercased words with apostrophes dropped; everything else non-alphanumeric separates. */
-export function wordSkeletons(text: string): string[] {
+// Words compared as the timestamp validator compares them, apostrophes dropped; anything else non-alphanumeric separates.
+function wordSkeletons(text: string): string[] {
   const skeletons: string[] = [];
   for (const match of text.matchAll(WORD)) {
-    const skeleton = match[0].replace(APOSTROPHE, "").toLowerCase();
+    const skeleton = canonicalizeTimestampText(match[0]);
     if (skeleton) {
       skeletons.push(skeleton);
     }
@@ -243,10 +244,7 @@ export function removePcm16Spans(
 }
 
 /** Where a moment of the original audio lands once the spans are removed; moments inside a span collapse to its start. */
-export function shiftTime(
-  seconds: number,
-  spans: readonly AudioSpan[]
-): number {
+function shiftTime(seconds: number, spans: readonly AudioSpan[]): number {
   let shifted = seconds;
   for (const span of spans) {
     shifted -= Math.max(
@@ -261,10 +259,7 @@ export function shiftTimestamps<T extends WordTimestamp>(
   timestamps: readonly T[] | undefined,
   spans: readonly AudioSpan[]
 ): T[] | undefined {
-  if (!timestamps || spans.length === 0) {
-    return timestamps ? [...timestamps] : undefined;
-  }
-  return timestamps.map((timestamp) => ({
+  return timestamps?.map((timestamp) => ({
     ...timestamp,
     start: shiftTime(timestamp.start, spans),
     end: shiftTime(timestamp.end, spans),
@@ -277,8 +272,19 @@ export const SPOKEN_TAGS_NOT_CHECKED: SpokenTagReport = {
   spans: 0,
 };
 
-export function spokenTagFailure(failed: string): SpokenTagReport {
+function spokenTagFailure(error: unknown): SpokenTagReport {
+  const failed = error instanceof Error ? error.message : String(error);
+  debug(`spoken tags: check failed, keeping audio (${failed}).`);
   return { ...SPOKEN_TAGS_NOT_CHECKED, failed };
+}
+
+export function noDecodableModeReport(
+  modelIdentifier: string
+): SpokenTagReport {
+  return {
+    ...SPOKEN_TAGS_NOT_CHECKED,
+    failed: `${modelIdentifier} has no decodable PCM/WAV mode to splice.`,
+  };
 }
 
 /** Whether the text a model receives carries any tag the voice could read aloud. */
@@ -286,7 +292,19 @@ export function hasCheckableTags(providerText: string): boolean {
   return tagPhrases(providerText).length > 0;
 }
 
-export interface SpokenTagCheckResult {
+export async function pcm16ToWav(
+  pcm: Int16Array,
+  sampleRate: number
+): Promise<Uint8Array> {
+  // Lazy so callers that never check don't load the encoder.
+  const { wrapPcm16Mono } = await import("./audio-utils.js");
+  return await wrapPcm16Mono(
+    new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength),
+    sampleRate
+  );
+}
+
+interface SpokenTagCheckResult {
   readonly pcm: Int16Array;
   readonly report: SpokenTagReport;
   readonly spans: readonly AudioSpan[];
@@ -309,15 +327,9 @@ export async function checkSpokenTags(input: {
     return { pcm, report: SPOKEN_TAGS_NOT_CHECKED, spans: [] };
   }
   try {
-    // Lazy so callers that never check don't load the encoder.
-    const { wrapPcm16Mono } = await import("./audio-utils.js");
-    const audio = await wrapPcm16Mono(
-      new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength),
-      sampleRate
-    );
     const heard = await input.provider.transcribe({
       abortSignal: input.abortSignal,
-      audio,
+      audio: await pcm16ToWav(pcm, sampleRate),
       mediaType: "audio/wav",
     });
     const spans = spokenTagSpans({
@@ -348,16 +360,57 @@ export async function checkSpokenTags(input: {
     if (input.abortSignal?.aborted) {
       throw error;
     }
-    const failed = error instanceof Error ? error.message : String(error);
-    debug(`spoken tags: check failed, keeping audio (${failed}).`);
-    return { pcm, report: spokenTagFailure(failed), spans: [] };
+    return { pcm, report: spokenTagFailure(error), spans: [] };
   }
 }
 
-/** Sums several chunks' reports into one. */
+/**
+ * `checkSpokenTags` on encoded audio: decodes it first, failing open on a decode error too. `segment` is the
+ * decoded (and possibly spliced) PCM, absent when the text had no tags or decoding failed.
+ */
+export async function checkSpokenTagsInAudio(input: {
+  readonly abortSignal?: AbortSignal;
+  readonly audio: Uint8Array;
+  readonly mediaType: string;
+  readonly provider: TranscriptionProvider;
+  readonly text: string;
+}): Promise<{
+  readonly report: SpokenTagReport;
+  readonly segment?: DecodedPcm16;
+  readonly spans: readonly AudioSpan[];
+}> {
+  if (!hasCheckableTags(input.text)) {
+    return { report: SPOKEN_TAGS_NOT_CHECKED, spans: [] };
+  }
+  let decoded: DecodedPcm16;
+  try {
+    const { decodeAudioToPcm16 } = await import("./audio-decode.js");
+    decoded = await decodeAudioToPcm16(input.audio, input.mediaType);
+  } catch (error) {
+    return { report: spokenTagFailure(error), spans: [] };
+  }
+  const checked = await checkSpokenTags({
+    abortSignal: input.abortSignal,
+    pcm: decoded.pcm,
+    provider: input.provider,
+    sampleRate: decoded.sampleRate,
+    text: input.text,
+  });
+  return {
+    report: checked.report,
+    segment: { ...decoded, pcm: checked.pcm },
+    spans: checked.spans,
+  };
+}
+
+/** Sums several chunks' reports into one; undefined when none was reported. */
 export function mergeSpokenTagReports(
-  reports: readonly SpokenTagReport[]
-): SpokenTagReport {
+  entries: readonly (SpokenTagReport | undefined)[]
+): SpokenTagReport | undefined {
+  const reports = entries.filter((r) => r != null);
+  if (reports.length === 0) {
+    return;
+  }
   const failures = reports.flatMap((r) => (r.failed ? [r.failed] : []));
   const removed = reports.reduce((sum, r) => sum + r.removedSeconds, 0);
   return {
