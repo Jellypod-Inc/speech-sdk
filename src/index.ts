@@ -56,6 +56,7 @@ export type {
   Pronunciation,
   PronunciationsInput,
 } from "./pronunciations/types.js";
+export { streamConversation } from "./stream-conversation.js";
 export { streamSpeech } from "./stream-speech.js";
 export { timestampsToTurns } from "./turns.js";
 export type { GenerateSpeechOptions } from "./types.js";

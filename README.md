@@ -147,6 +147,32 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 > [!NOTE]
 > Retries apply only until response headers arrive; mid-stream errors propagate to the consumer. Calling `streamSpeech()` on a non-streaming model throws `StreamingNotSupportedError`.
 
+### Streaming a conversation
+
+`streamConversation()` streams native two-speaker dialogue, so playback can start before the whole conversation has been generated. Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) supports it.
+
+```ts
+import { streamConversation } from '@speech-sdk/core';
+import { createGoogle } from '@speech-sdk/core/providers';
+
+const google = createGoogle();
+
+const { audio, mediaType } = await streamConversation({
+  model: google('gemini-3.8-flash-tts'),
+  turns: [
+    { text: 'Did you see the results?', voice: 'Kore' },
+    { text: '[laughs] I did.', voice: 'Puck', instructions: 'dry and amused' },
+  ],
+});
+// mediaType: 'audio/pcm;rate=24000'
+```
+
+It sends the same single request as `generateConversation` renders natively, with streaming on, and supports `instructions` (conversation-wide and per turn), `pronunciations`, `providerOptions`, `maxRetries`, `abortSignal` and `headers`. Retries work as for `streamSpeech()`.
+
+- **One request, so it must fit native dialogue:** exactly two prebuilt voices, and no more than the model's dialogue character budget (2,500 characters of turn text for Gemini). Otherwise it throws `DialogueConstraintError`. Use `generateConversation()` for longer conversations, which splits them into blocks.
+- **No fallback.** A model that can't stream dialogue throws `StreamingNotSupportedError`; fall back to `generateConversation()` yourself if you want buffered audio.
+- **Buffered-only options are rejected**, not ignored: `gapMs`, `maxConcurrency`, `maxInputChars`, `output`, `speed`, `splitTurns`, `spokenTagCheck`, `timestampProvider`, `timestamps`, `volumeDbfs`, and per-turn `model`, `providerOptions` or `speed` throw `ConversationInputError`.
+
 ## Conversations
 
 `generateConversation()` produces a single multi-voice clip from an ordered array of turns. The path is chosen by what the turns are:
@@ -166,7 +192,7 @@ const result = await generateConversation({
 });
 ```
 
-Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `splitTurns`, `timestampProvider`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
+Options: `gapMs` (default 300), `volumeDbfs` (default `-20`), `maxConcurrency` (default 6), `maxRetries` (default 2), `instructions`, `timestamps`, `splitTurns`, `timestampProvider`, `spokenTagCheck`, `apiKey`, `providerOptions`, `abortSignal`, `headers`. Per-turn overrides: `model`, `instructions`, `providerOptions` (stitch path only — throws `ConversationInputError` on native). Top-level and per-turn instructions are combined for stitched turns; native dialogue keeps them semantically separate. Native-dialogue models enforce their own voice-count and character limits; violations throw `DialogueConstraintError`.
 
 `result.metadata.path` reports how the audio was rendered: `'native'`, `'native-split'` (native dialogue in several calls, stitched), or `'stitch'`. On the stitch path `metadata.stitchReason` says why (`'mixed-models'`, `'no-native-dialogue'`, `'single-speaker'`, `'too-many-voices'`, `'custom-voice'`, `'per-turn-provider-options'`, `'per-turn-speed'`, `'max-input-chars'`, `'native-limit-exceeded'`). Match on these fields rather than on warning text.
 
@@ -376,6 +402,49 @@ await generateSpeech({
 });
 ```
 
+### Spoken-tag check
+
+A voice that supports tags sometimes reads one aloud: `'...a daring dream. [curious] In 1962...'` comes back with the narrator saying "curious". Forced alignment only places the script's own words, so it can't see that extra word and leaves an unexplained gap in the timings. The SDK checks for this automatically whenever tags reach the model:
+
+```ts
+import { generateSpeech } from '@speech-sdk/core';
+import { createElevenLabs } from '@speech-sdk/core/providers';
+
+const elevenlabs = createElevenLabs();
+
+const result = await generateSpeech({
+  model: 'google/gemini-3.1-flash-tts-preview',
+  voice: 'Kore',
+  text: 'It was a daring dream. [curious] In 1962, Britain and France signed.',
+  timestamps: true,
+  timestampProvider: elevenlabs.forcedAlignment(), // also listens for spoken tags
+});
+
+result.metadata.spokenTags;
+// { checked: true, removedSeconds: 1.02, spans: 1 }
+```
+
+**What it listens with.** The first transcriber the request already has, so it never adds a vendor you didn't configure:
+
+1. `spokenTagCheck`, if you pass one (`elevenlabs.transcription()` or any `TranscriptionProvider`).
+2. A `timestampProvider` that implements the optional `transcribe` method. `elevenlabs.forcedAlignment()` does, via Scribe v2 on the same key.
+3. The model's `fallbackSTT`.
+4. The model's own speech-to-text: ElevenLabs models use Scribe with their own key, so `elevenlabs/eleven_v3` is checked with no configuration.
+
+With none of those, the audio is returned as synthesized and `metadata.spokenTags.failed` says why. Pass `spokenTagCheck: false` to turn the check off.
+
+**What it does.** Each synthesized chunk whose text still carries a tag when it reaches the model is transcribed. Heard words the script doesn't account for and that spell a tag are spliced out of the chunk's PCM, from the middle of the pause before to the middle of the pause after, with a 4 ms fade on each side of the join. A word the script itself says is kept: in `'Engineers were curious. [curious]'` only the extra "curious" goes. Single tag words shorter than 4 letters are only cut as part of a whole tag phrase.
+
+- **One call for timestamps where possible.** When the transcriber is also your aligner (a transcribing `timestampProvider`, or `fallbackSTT`) and it heard every script word as written, its word timings become the timestamps and forced alignment is skipped. If it wrote something differently (`"1962"` heard as "nineteen sixty-two", an unusual name), forced alignment runs on the clean chunk as usual. Chunks without tags are aligned exactly as before, with no transcription call.
+- **Order.** The check runs on each chunk after synthesis and decoding, and before chunk stitching, forced alignment, `speed`, `output` encoding, and conversation turn splitting, so all of those see clean audio. On native dialogue the whole dialogue request is checked against every turn's tags before `splitTurns` cuts it, so a tag spoken between turns can't end up in a turn clip.
+- **Native timestamps** are shifted back by the length of each cut; timings inside a cut collapse to its start.
+- **Cost.** One transcription call per chunk that contains tags. Chunks without tags, and models that have tags stripped, make no call. A tagged request that will be checked is synthesized as PCM and comes back as WAV, like a chunked one, unless you pass `output` to choose another format.
+- **Fails open.** A transcription, decoding, or splicing error returns the chunk unchanged and records `failed` in the report. Only an abort is rethrown. The check never fails or retries synthesis.
+- **Report.** `metadata.spokenTags` is `{ checked, removedSeconds, spans, failed? }`, summed over chunks; each `metadata.chunks[i]` carries its own. Conversations sum over turns (see `metadata.perTurn`) or dialogue blocks. It is present when tags reached the model, or whenever you pass `spokenTagCheck`. Models without a decodable PCM/WAV mode skip the check with `failed` set.
+- `streamSpeech` doesn't support it: streamed audio has already reached the caller before it could be checked.
+
+A `TranscriptionProvider` is `transcribe({ audio, mediaType, abortSignal }) → { text, start, end }[]`, in seconds.
+
 ### Gemini 3.8 tags
 
 Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) reads tags inline in angle brackets. The SDK converts every bracket tag to that form with your wording and case, trimmed of surrounding whitespace, and never rejects one: `[chuckles]` becomes `<chuckles>`, and `'Wait, [excited] that changes everything.'` becomes `'Wait, <excited> that changes everything.'`. Google's [recommended vocal tags](https://ai.google.dev/gemini-api/docs/speech-generation) include `<laugh>`, `<chuckle>`, `<sigh>`, `<breath>`, `<gasp>`, `<short pause>`, and `<long pause>`. Google recommends putting sustained emotion or delivery in `instructions`, which the SDK sends as the turn's `speech_metadata.style`.
@@ -537,6 +606,7 @@ generateSpeech({
   volumeDbfs?: number,                    // ≤ 0
   timestamps?: boolean,
   timestampProvider?: TimestampProvider, // direct derivation or invalid-native fallback
+  spokenTagCheck?: TranscriptionProvider | false, // automatic when tags reach the model; false turns it off
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,
@@ -556,6 +626,16 @@ interface TimestampProvider {
     audio: Uint8Array;
     mediaType: string;
     text: string;
+  }): Promise<readonly WordTimestamp[]>;
+  // Optional: also used for the spoken-tag check.
+  transcribe?(input: { abortSignal?: AbortSignal; audio: Uint8Array; mediaType: string }): Promise<readonly WordTimestamp[]>;
+}
+
+interface TranscriptionProvider {
+  transcribe(input: {
+    abortSignal?: AbortSignal;
+    audio: Uint8Array;
+    mediaType: string;
   }): Promise<readonly WordTimestamp[]>;
 }
 

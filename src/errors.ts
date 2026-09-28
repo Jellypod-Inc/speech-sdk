@@ -35,7 +35,7 @@ export class ApiError extends SpeechSDKError {
   }
 }
 
-export type ProviderErrorStage = "alignment" | "synthesis";
+export type ProviderErrorStage = "alignment" | "synthesis" | "transcription";
 
 export interface SpeechSdkProviderErrorOptions {
   readonly cause?: unknown;
@@ -242,9 +242,9 @@ function copyProviderError(
 }
 
 export class StreamingNotSupportedError extends SpeechSDKError {
-  constructor(model: string) {
+  constructor(model: string, alternative = "generateSpeech()") {
     super(
-      `Streaming is not supported by ${model}. Use generateSpeech() instead.`
+      `Streaming is not supported by ${model}. Use ${alternative} instead.`
     );
     this.name = "StreamingNotSupportedError";
   }

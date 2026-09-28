@@ -137,9 +137,11 @@ interface DialogueCaps {
 }
 
 // Native dialogue needs 2+ distinct voices; a single voice is always routed to stitch, so providers declare only maxVoices.
-const NATIVE_DIALOGUE_MIN_VOICES = 2;
+export const NATIVE_DIALOGUE_MIN_VOICES = 2;
 
-function countUniqueVoices(turns: readonly ConversationTurn<Voice>[]): number {
+export function countUniqueVoices(
+  turns: readonly Pick<ConversationTurn<Voice>, "voice">[]
+): number {
   const keyOf = newVoiceKeyer();
   return new Set(turns.map((t) => keyOf(t.voice))).size;
 }
@@ -217,7 +219,7 @@ function planNativeBlocks(args: {
   const { provider, modelId, caps, turns, sampleRateHint } = args;
 
   const max = caps.maxTotalChars;
-  const total = turns.reduce((n, t) => n + t.text.length, 0);
+  const total = totalTurnChars(turns);
   if (max == null || total <= max) {
     return "single";
   }
@@ -275,4 +277,11 @@ function partitionTurnsByChars(args: {
   }
 
   return blocks.length > 1 ? blocks : undefined;
+}
+
+// The text a native dialogue call's character budget counts.
+export function totalTurnChars(
+  turns: readonly Pick<ConversationTurn<Voice>, "text">[]
+): number {
+  return turns.reduce((n, t) => n + t.text.length, 0);
 }

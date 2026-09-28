@@ -35,6 +35,8 @@ export interface AlignmentAudioChunk {
   audio(): Promise<Uint8Array>;
   readonly durationSeconds: number;
   readonly mediaType: string;
+  // Validated timings the aligner's own service already returned for this chunk (the spoken-tag check), used instead of a second call.
+  readonly scriptTimestamps?: readonly WordTimestamp[];
   readonly text: string;
 }
 
@@ -190,12 +192,13 @@ async function alignPerChunk(args: {
     args.chunks,
     args.maxConcurrency,
     async (chunk, _i, signal) =>
-      await args.aligner.align({
+      chunk.scriptTimestamps ??
+      (await args.aligner.align({
         abortSignal: signal,
         audio: await chunk.audio(),
         mediaType: chunk.mediaType,
         text: chunk.text,
-      }),
+      })),
     { signal: args.abortSignal }
   );
   return concatTimestampsWithOffsets(
