@@ -106,9 +106,7 @@ describe("spokenTagSpans", () => {
 
     expect(spans).toEqual([{ startSeconds: 1, endSeconds: 2.2 }]);
   });
-});
 
-describe("spokenTagSpans tag positions", () => {
   it("cuts the voiced tag, not the script word it repeats", () => {
     const text = "[happy] happy days.";
     const spans = spokenTagSpans({
@@ -146,6 +144,41 @@ describe("removePcm16Spans", () => {
 });
 
 describe("generateSpeech spokenTagCheck", () => {
+  it("checks every tagged chunk and sums the reports", async () => {
+    const chunkText = "Alpha beta. [curious] Gamma delta.";
+    const stt = transcriber(
+      heard(
+        ["Alpha", 0, 0.3],
+        ["beta.", 0.4, 0.8],
+        ["Curious.", 1.2, 1.8],
+        ["Gamma", 2.4, 2.8],
+        ["delta.", 2.9, 3.3]
+      )
+    );
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(4)), modelId: "m" },
+      voice: "v",
+      text: `${chunkText} ${chunkText}`,
+      maxInputChars: chunkText.length + 1,
+      spokenTagCheck: stt,
+    });
+
+    expect(stt.transcribe).toHaveBeenCalledTimes(2);
+    expect(result.metadata.chunks).toHaveLength(2);
+    for (const chunk of result.metadata.chunks ?? []) {
+      expect(chunk.spokenTags).toMatchObject({ checked: true, spans: 1 });
+      expect(chunk.spokenTags?.removedSeconds).toBeCloseTo(1.1, 3);
+    }
+    expect(result.metadata.spokenTags).toMatchObject({
+      checked: true,
+      spans: 2,
+    });
+    expect(result.metadata.spokenTags?.removedSeconds).toBeCloseTo(2.2, 3);
+    expect(
+      await decodedSeconds(result.audio.uint8Array, result.audio.mediaType)
+    ).toBeCloseTo(5.8, 3);
+  });
+
   it("splices a spoken tag out of the audio and reports it", async () => {
     const provider = transcriber(HEARD);
     const result = await generateSpeech({
@@ -512,42 +545,5 @@ describe("spoken-tag check regressions", () => {
     });
 
     expect(result.metadata.spokenTags?.spans).toBe(1);
-  });
-});
-
-describe("spoken-tag check on chunked speech", () => {
-  it("checks every tagged chunk and sums the reports", async () => {
-    const chunkText = "Alpha beta. [curious] Gamma delta.";
-    const stt = transcriber(
-      heard(
-        ["Alpha", 0, 0.3],
-        ["beta.", 0.4, 0.8],
-        ["Curious.", 1.2, 1.8],
-        ["Gamma", 2.4, 2.8],
-        ["delta.", 2.9, 3.3]
-      )
-    );
-    const result = await generateSpeech({
-      model: { provider: taggedProvider(constantPcm(4)), modelId: "m" },
-      voice: "v",
-      text: `${chunkText} ${chunkText}`,
-      maxInputChars: chunkText.length + 1,
-      spokenTagCheck: stt,
-    });
-
-    expect(stt.transcribe).toHaveBeenCalledTimes(2);
-    expect(result.metadata.chunks).toHaveLength(2);
-    for (const chunk of result.metadata.chunks ?? []) {
-      expect(chunk.spokenTags).toMatchObject({ checked: true, spans: 1 });
-      expect(chunk.spokenTags?.removedSeconds).toBeCloseTo(1.1, 3);
-    }
-    expect(result.metadata.spokenTags).toMatchObject({
-      checked: true,
-      spans: 2,
-    });
-    expect(result.metadata.spokenTags?.removedSeconds).toBeCloseTo(2.2, 3);
-    expect(
-      await decodedSeconds(result.audio.uint8Array, result.audio.mediaType)
-    ).toBeCloseTo(5.8, 3);
   });
 });

@@ -1,5 +1,9 @@
 import type { DecodedPcm16 } from "./audio-decode.js";
-import { detectAudioTags, textWithoutAudioTags } from "./audio-tags.js";
+import {
+  detectAudioTags,
+  splitAtAudioTags,
+  textWithoutAudioTags,
+} from "./audio-tags.js";
 import { deriveTimestampsViaSTT } from "./derive-timestamps.js";
 import { debug } from "./logger.js";
 import type { SpokenTagReport } from "./metadata.js";
@@ -55,11 +59,9 @@ interface Slot {
   // Index into the script's expected words; absent for a tag's word.
   readonly expected?: number;
   readonly skeleton: string;
+  // A script word (2) outweighs a tag word (1), so a word both could explain goes to the script.
+  readonly weight: number;
 }
-
-// A script word outweighs a tag word, so a word both could explain goes to the script.
-const SCRIPT_MATCH_WEIGHT = 2;
-const TAG_MATCH_WEIGHT = 1;
 
 // Heard tokens the script accounts for (heard index to expected index), by a weighted longest common subsequence
 // over the script with each tag's words in place. A tag slot only positions the match, so in "[happy] happy" the
@@ -70,12 +72,8 @@ function matchTokens(
 ): Map<number, number> {
   const cols = slots.length + 1;
   const score = new Uint32Array((heard.length + 1) * cols);
-  const weight = (i: number, j: number) => {
-    if (heard[i].skeleton !== slots[j].skeleton) {
-      return 0;
-    }
-    return slots[j].expected == null ? TAG_MATCH_WEIGHT : SCRIPT_MATCH_WEIGHT;
-  };
+  const weight = (i: number, j: number) =>
+    heard[i].skeleton === slots[j].skeleton ? slots[j].weight : 0;
   for (let i = heard.length - 1; i >= 0; i--) {
     for (let j = slots.length - 1; j >= 0; j--) {
       const w = weight(i, j);
@@ -107,30 +105,27 @@ function matchTokens(
   return matched;
 }
 
-const TAG_RE = /\[[^\]]+\]/g;
-
-// The script's expected words with each tag's words placed where the tag sits.
+// The script's expected words with each tag's words in place, in one pass over the text.
 function scriptSlots(text: string, expected: readonly string[]): Slot[] {
-  const tagsBefore = new Map<number, string[]>();
-  for (const match of text.matchAll(TAG_RE)) {
-    const at = wordSkeletons(
-      textWithoutAudioTags(text.slice(0, match.index))
-    ).length;
-    tagsBefore.set(at, [
-      ...(tagsBefore.get(at) ?? []),
-      ...wordSkeletons(match[0]),
-    ]);
-  }
   const slots: Slot[] = [];
-  for (let k = 0; k <= expected.length; k++) {
-    for (const skeleton of tagsBefore.get(k) ?? []) {
-      slots.push({ skeleton });
-    }
-    if (k < expected.length) {
-      slots.push({ expected: k, skeleton: expected[k] });
+  let k = 0;
+  for (const [index, piece] of splitAtAudioTags(text).entries()) {
+    for (const skeleton of wordSkeletons(piece)) {
+      slots.push(
+        index % 2 === 1
+          ? { skeleton, weight: 1 }
+          : { expected: k++, skeleton, weight: 2 }
+      );
     }
   }
-  return slots;
+  // A tag glued inside a word ("foo[x]bar") merges its neighbours in the script; place no tags rather than guess.
+  return k === expected.length
+    ? slots
+    : expected.map((skeleton, index) => ({
+        expected: index,
+        skeleton,
+        weight: 2,
+      }));
 }
 
 function isSpokenPhraseAt(

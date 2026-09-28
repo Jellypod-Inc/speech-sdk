@@ -1,4 +1,5 @@
 import { decodeAudioToPcm16 } from "../audio-decode.js";
+import { decodableMediaType } from "../audio-output.js";
 import { mapWithConcurrency } from "../concurrency.js";
 import { TimestampValidationError, withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
@@ -107,15 +108,9 @@ export async function runStitch<V extends Voice>(
         throw withTurnIndex(err, i);
       }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
-      const resultMediaType = result.audio.mediaType.toLowerCase();
-      const decodeMediaType =
-        resultMediaType.startsWith("audio/wav") ||
-        resultMediaType.startsWith("audio/x-wav")
-          ? result.audio.mediaType
-          : stitchOpts.mediaType;
       const segment = await decodeAudioToPcm16(
         result.audio.uint8Array,
-        decodeMediaType
+        decodableMediaType(result.audio.mediaType, stitchOpts.mediaType)
       );
       return { result, segment };
     },

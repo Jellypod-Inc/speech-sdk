@@ -89,9 +89,17 @@ export function isDecodableSourceMediaType(mediaType: string): boolean {
   );
 }
 
-function isWavSource(mediaType: string): boolean {
+export function isWavMediaType(mediaType: string): boolean {
   const lower = mediaType.toLowerCase();
   return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav");
+}
+
+// WAV carries its own header; anything else is decoded as the stitch format the provider was asked for.
+export function decodableMediaType(
+  resultType: string,
+  stitchType: string
+): string {
+  return isWavMediaType(resultType) ? resultType : stitchType;
 }
 
 function isMp3Source(mediaType: string): boolean {
@@ -123,7 +131,7 @@ export async function convertDecodableAudioToOutput(args: {
 }): Promise<{ readonly audio: Uint8Array; readonly mediaType: string }> {
   const { audio, mediaType, output } = args;
 
-  if (output.format === "wav" && isWavSource(mediaType)) {
+  if (output.format === "wav" && isWavMediaType(mediaType)) {
     return { audio, mediaType: "audio/wav" };
   }
   if (output.format === "mp3" && isMp3Source(mediaType)) {

@@ -41,7 +41,7 @@ describe("Gemini 3.8 streamed dialogue e2e", () => {
       }
       return {
         bytes,
-        first,
+        firstDone: first.done,
         firstChunkMs,
         mediaType,
         streamedMs: performance.now() - start,
@@ -58,7 +58,7 @@ describe("Gemini 3.8 streamed dialogue e2e", () => {
     );
     expect(buffered.result.metadata.path).toBe("native");
     expect(streamed.mediaType).toBe("audio/pcm;rate=24000");
-    expect(streamed.first.done).toBe(false);
+    expect(streamed.firstDone).toBe(false);
     expect(streamed.bytes).toBeGreaterThan(24_000);
     expect(streamed.firstChunkMs).toBeLessThan(buffered.ms);
   }, 180_000);

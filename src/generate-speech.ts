@@ -8,6 +8,7 @@ import { computeAudioDuration } from "./audio-duration.js";
 import {
   type AudioOutput,
   applyOptionalOutputConversion,
+  decodableMediaType,
   sampleRateHintFrom,
   validateOutput,
 } from "./audio-output.js";
@@ -431,16 +432,6 @@ async function generateProviderSpeech<V extends Voice>(args: {
   return { ...result, retryCount: attempts - 1 };
 }
 
-function isWavMediaType(mediaType: string): boolean {
-  const lower = mediaType.toLowerCase();
-  return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav");
-}
-
-// WAV carries its own header; anything else is decoded as the stitch format the provider was asked for.
-function decodableMediaType(resultType: string, stitchType: string): string {
-  return isWavMediaType(resultType) ? resultType : stitchType;
-}
-
 // Asked before any check is planned, so a throw (e.g. UnsupportedSampleRateError for an output that is fine natively) means "not decodable", not a failed request.
 function hasDecodableMode(
   resolved: ResolvedModel,
@@ -477,15 +468,12 @@ async function checkUnchunkedSpeech(args: {
     data: result.audio,
     mediaType: result.mediaType,
   }).uint8Array;
-  const originalType = decodableMediaType(
-    result.mediaType,
-    args.stitchMediaType
-  );
+  const decodeType = decodableMediaType(result.mediaType, args.stitchMediaType);
   const { report, scriptTimestamps, segment, spans } =
     await checkSpokenTagsInAudio({
       abortSignal: args.abortSignal,
       audio: original,
-      mediaType: originalType,
+      mediaType: decodeType,
       provider: args.listener.provider,
       text: args.text,
       withTimestamps: args.listener.withTimestamps,
@@ -494,11 +482,8 @@ async function checkUnchunkedSpeech(args: {
     return { ...result, audio: original, spokenTags: report };
   }
   const spliced = spans.length > 0;
-  const rewrap = spliced || !isWavMediaType(originalType);
-  const audio = rewrap
-    ? await pcm16ToWav(segment.pcm, segment.sampleRate)
-    : original;
-  const mediaType = rewrap ? "audio/wav" : originalType;
+  const audio = await pcm16ToWav(segment.pcm, segment.sampleRate);
+  const mediaType = "audio/wav";
   const durationSeconds = segment.pcm.length / segment.sampleRate;
   return {
     ...result,

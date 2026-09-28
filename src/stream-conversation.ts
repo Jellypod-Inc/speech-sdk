@@ -92,10 +92,10 @@ function rejectBufferedOnlyOptions(options: {
 }
 
 // The provider's streamDialogue, once the turns fit its native dialogue limits.
+// Takes the prepared turns: the budget applies to the text actually sent, after pronunciation substitution.
 function streamableDialogue<V extends Voice>(
   resolved: ResolvedModel<V>,
-  turns: readonly StreamConversationTurn<V>[],
-  totalChars: number
+  turns: readonly StreamConversationTurn<V>[]
 ): NonNullable<ResolvedModel<V>["provider"]["streamDialogue"]> {
   const { provider, modelId } = resolved;
   const caps = provider.dialogueCapabilities?.(modelId);
@@ -127,6 +127,7 @@ function streamableDialogue<V extends Voice>(
   ) {
     throw constraint("prebuilt voices", "a custom voice");
   }
+  const totalChars = totalTurnChars(turns);
   if (caps.maxTotalChars != null && totalChars > caps.maxTotalChars) {
     throw constraint(
       `at most ${caps.maxTotalChars} characters when streamed (use generateConversation for longer conversations)`,
@@ -156,12 +157,7 @@ export async function streamConversation<
     ? mergeRules(options.pronunciations.rules)
     : null;
   const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
-  // The budget applies to the text actually sent, after pronunciation substitution.
-  const streamDialogue = streamableDialogue(
-    resolved,
-    options.turns,
-    totalTurnChars(prepared)
-  );
+  const streamDialogue = streamableDialogue(resolved, prepared);
   for (const turn of options.turns) {
     validateInstructionSupport(
       resolved,
