@@ -362,7 +362,7 @@ function notChecked(failed?: string): SpokenTagReport {
   };
 }
 
-export function spokenTagFailure(error: unknown): SpokenTagReport {
+function spokenTagFailure(error: unknown): SpokenTagReport {
   const failed = error instanceof Error ? error.message : String(error);
   debug(`spoken tags: check failed, keeping audio (${failed}).`);
   return notChecked(failed);
@@ -562,8 +562,7 @@ function resolveListener(args: {
  * check stays silent on untagged text.
  */
 export function planSpokenTagCheck(args: {
-  // Evaluated only once a check is on the table, since asking can throw for an output the provider can't decode.
-  readonly decodable: () => boolean;
+  readonly decodable: boolean;
   readonly option: TranscriptionProvider | false | undefined;
   readonly providerText: string;
   readonly resolved: ResolvedModel;
@@ -584,7 +583,7 @@ export function planSpokenTagCheck(args: {
       ),
     };
   }
-  if (!args.decodable()) {
+  if (!args.decodable) {
     return {
       report: notChecked(
         `${args.resolved.provider.id}/${args.resolved.modelId} has no decodable PCM/WAV mode to splice.`

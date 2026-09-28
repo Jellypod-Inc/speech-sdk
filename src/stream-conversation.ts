@@ -1,13 +1,19 @@
 import pRetry from "p-retry";
 import {
+  countUniqueVoices,
+  NATIVE_DIALOGUE_MIN_VOICES,
+  totalTurnChars,
+} from "./conversation/dispatch.js";
+import {
   ConversationInputError,
   DialogueConstraintError,
 } from "./conversation/errors.js";
+import { buildSubstitutedTurns } from "./conversation/prepare-turns.js";
+import { validateTurnTexts } from "./conversation/validate.js";
 import {
   NoSpeechGeneratedError,
   StreamingNotSupportedError,
 } from "./errors.js";
-import { buildSubstitutedTurns } from "./generate-conversation.js";
 import {
   combineInstructions,
   nonEmptyInstructions,
@@ -64,18 +70,19 @@ const BUFFERED_ONLY_TURN_OPTIONS = [
   "speed",
 ] as const;
 
-function rejectBufferedOnlyOptions(options: object): void {
+function rejectBufferedOnlyOptions(options: {
+  readonly turns: readonly object[];
+}): void {
   for (const name of BUFFERED_ONLY_OPTIONS) {
-    if (name in options && Reflect.get(options, name) !== undefined) {
+    if (Reflect.get(options, name) !== undefined) {
       throw new ConversationInputError(
         `streamConversation does not support ${name}; use generateConversation.`
       );
     }
   }
-  const turns: readonly object[] = Reflect.get(options, "turns") ?? [];
-  for (const [index, turn] of turns.entries()) {
+  for (const [index, turn] of options.turns.entries()) {
     for (const name of BUFFERED_ONLY_TURN_OPTIONS) {
-      if (name in turn && Reflect.get(turn, name) !== undefined) {
+      if (Reflect.get(turn, name) !== undefined) {
         throw new ConversationInputError(
           `streamConversation does not support turns[${index}].${name}; set it at the top level or use generateConversation.`
         );
@@ -87,7 +94,8 @@ function rejectBufferedOnlyOptions(options: object): void {
 // The provider's streamDialogue, once the turns fit its native dialogue limits.
 function streamableDialogue<V extends Voice>(
   resolved: ResolvedModel<V>,
-  turns: readonly StreamConversationTurn<V>[]
+  turns: readonly StreamConversationTurn<V>[],
+  totalChars: number
 ): NonNullable<ResolvedModel<V>["provider"]["streamDialogue"]> {
   const { provider, modelId } = resolved;
   const caps = provider.dialogueCapabilities?.(modelId);
@@ -104,11 +112,11 @@ function streamableDialogue<V extends Voice>(
       rule,
       observed,
     });
-  const voices = new Set(turns.map((turn) => turn.voice));
-  if (voices.size < 2 || voices.size > caps.maxVoices) {
+  const voices = countUniqueVoices(turns);
+  if (voices < NATIVE_DIALOGUE_MIN_VOICES || voices > caps.maxVoices) {
     throw constraint(
-      `2 to ${caps.maxVoices} distinct voices`,
-      `${voices.size}`
+      `${NATIVE_DIALOGUE_MIN_VOICES} to ${caps.maxVoices} distinct voices`,
+      `${voices}`
     );
   }
   if (
@@ -119,7 +127,6 @@ function streamableDialogue<V extends Voice>(
   ) {
     throw constraint("prebuilt voices", "a custom voice");
   }
-  const totalChars = turns.reduce((n, turn) => n + turn.text.length, 0);
   if (caps.maxTotalChars != null && totalChars > caps.maxTotalChars) {
     throw constraint(
       `at most ${caps.maxTotalChars} characters when streamed (use generateConversation for longer conversations)`,
@@ -139,24 +146,18 @@ export async function streamConversation<
   M extends string | ResolvedModel<V> = string | ResolvedModel<V>,
 >(options: StreamConversationOptions<V, M>): Promise<StreamSpeechResult> {
   const { abortSignal, headers } = options;
-  if (options.turns.length === 0) {
-    throw new ConversationInputError(
-      "streamConversation requires at least one turn."
-    );
-  }
-  for (const [index, turn] of options.turns.entries()) {
-    if (turn.text.trim().length === 0) {
-      throw new ConversationInputError(
-        `turns[${index}].text must not be empty.`
-      );
-    }
-  }
+  validateTurnTexts(options.turns, "streamConversation");
   rejectBufferedOnlyOptions(options);
+  const totalChars = totalTurnChars(options.turns);
 
   const resolved = resolveModel(options.model, {
     apiKey: options.apiKey,
   }) as ResolvedModel<V>;
-  const streamDialogue = streamableDialogue(resolved, options.turns);
+  const streamDialogue = streamableDialogue(
+    resolved,
+    options.turns,
+    totalChars
+  );
   for (const turn of options.turns) {
     validateInstructionSupport(
       resolved,
@@ -168,11 +169,10 @@ export async function streamConversation<
     ? mergeRules(options.pronunciations.rules)
     : null;
   const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
-  const modelIdentifier = `${resolved.provider.id}/${resolved.modelId}`;
   for (const [index, turn] of prepared.entries()) {
     if (turn.text.trim().length === 0) {
       throw new NoSpeechGeneratedError(
-        `turns[${index}] is empty after removing unsupported audio tags for ${modelIdentifier}.`,
+        `turns[${index}] is empty after removing unsupported audio tags for ${resolved.provider.id}/${resolved.modelId}.`,
         {
           model: resolved.modelId,
           provider: resolved.provider.id,
@@ -189,11 +189,7 @@ export async function streamConversation<
     () =>
       streamDialogue({
         modelId: resolved.modelId,
-        turns: prepared.map((turn) => ({
-          voice: turn.voice,
-          text: turn.text,
-          ...(turn.instructions && { instructions: turn.instructions }),
-        })),
+        turns: prepared,
         ...(instructions && { instructions }),
         providerOptions: options.providerOptions,
         abortSignal,
@@ -206,7 +202,7 @@ export async function streamConversation<
   const metadata: SpeechMetadata = {
     latencyMs: ttfbMs,
     ttfbMs,
-    inputChars: options.turns.reduce((n, turn) => n + turn.text.length, 0),
+    inputChars: totalChars,
   };
   const warnings = prepared.flatMap((turn) => turn.warnings);
 

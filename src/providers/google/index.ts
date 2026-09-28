@@ -10,7 +10,6 @@ import {
   NoSpeechGeneratedError,
   type NoSpeechReason,
   SpeechSDKError,
-  StreamingNotSupportedError,
 } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -645,31 +644,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     input: unknown,
     speechConfig: unknown
   ) {
-    const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
-    const response = await this.fetchFn(`${this.baseURL}/interactions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-        "X-User-Agent": SDK_USER_AGENT,
-        ...options.headers,
-      },
-      body: JSON.stringify({
-        model: options.modelId,
-        input,
-        response_format: { type: "audio" },
-        generation_config: {
-          speech_config: speechConfig,
-          ...options.providerOptions,
-        },
-      }),
-      signal: options.abortSignal,
-    });
-    await handleErrorResponse(response, {
-      provider: this.id,
-      model: options.modelId,
-      stage: "synthesis",
-    });
+    const response = await this.fetchInteraction(
+      options,
+      input,
+      speechConfig,
+      false
+    );
     const json: unknown = await response.json();
     const interaction = z
       .object({
@@ -792,7 +772,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     ]);
   }
 
-  private async postInteractionStream(
+  // One /interactions request shape for buffered and streamed audio; only `stream` differs.
+  private async fetchInteraction(
     options: {
       modelId: string;
       providerOptions?: Record<string, unknown>;
@@ -800,13 +781,10 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       headers?: Record<string, string>;
     },
     input: unknown,
-    speechConfig: unknown
-  ): Promise<{
-    stream: ReadableStream<Uint8Array>;
-    mediaType: string;
-  }> {
+    speechConfig: unknown,
+    stream: boolean
+  ): Promise<Response> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
-
     const response = await this.fetchFn(`${this.baseURL}/interactions`, {
       method: "POST",
       headers: {
@@ -826,17 +804,37 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           speech_config: speechConfig,
           ...options.providerOptions,
         },
-        stream: true,
+        ...(stream && { stream: true }),
       }),
       signal: options.abortSignal,
     });
-
     await handleErrorResponse(response, {
       provider: this.id,
       model: options.modelId,
       stage: "synthesis",
     });
+    return response;
+  }
 
+  private async postInteractionStream(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    input: unknown,
+    speechConfig: unknown
+  ): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
+    const response = await this.fetchInteraction(
+      options,
+      input,
+      speechConfig,
+      true
+    );
     if (!response.body) {
       throw new Error(`google/${options.modelId}: response has no body`);
     }
@@ -960,12 +958,6 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
   }> {
-    if (!GEMINI_3_8_MODELS.has(options.modelId)) {
-      throw new StreamingNotSupportedError(
-        `google/${options.modelId} dialogue`,
-        "generateConversation()"
-      );
-    }
     const { input, speechConfig } = this.gemini38Dialogue(options);
     return await this.postInteractionStream(options, input, speechConfig);
   }

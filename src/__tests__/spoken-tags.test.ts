@@ -144,9 +144,6 @@ describe("generateSpeech spokenTagCheck", () => {
       removedSeconds: 1.3,
       spans: 1,
     });
-    expect(result.metadata.chunks?.[0]?.spokenTags).toEqual(
-      result.metadata.spokenTags
-    );
   });
 
   it("makes no transcription call when the text has no tags", async () => {

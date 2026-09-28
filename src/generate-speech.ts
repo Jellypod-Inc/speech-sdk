@@ -41,11 +41,12 @@ import type {
 import { DefaultGeneratedAudioFile } from "./speech-result.js";
 import {
   checkSpokenTags,
+  checkSpokenTagsInAudio,
   mergeSpokenTagReports,
+  pcm16ToWav,
   planSpokenTagCheck,
   type SpokenTagListener,
   shiftTimestamps,
-  spokenTagFailure,
 } from "./spoken-tags.js";
 import {
   resolveMaxInputChars,
@@ -165,18 +166,7 @@ export async function generateSpeech<
   });
 
   const spokenTagPlan = planSpokenTagCheck({
-    decodable: () => {
-      try {
-        return (
-          resolved.provider.getStitchOptions?.(resolved.modelId, {
-            sampleRate: sampleRateHintFrom(options.output),
-          }) != null
-        );
-      } catch {
-        // e.g. UnsupportedSampleRateError: the output is fine natively, just not as PCM, so skip the check.
-        return false;
-      }
-    },
+    decodable: hasDecodableMode(resolved, options.output),
     option: options.spokenTagCheck,
     providerText: textToSend,
     resolved,
@@ -210,13 +200,9 @@ export async function generateSpeech<
   };
   // Resolved only when chunking — maxConcurrency governs chunked synthesis and per-chunk alignment, and stays unvalidated (documented as ignored) on paths that never fan out.
   let maxConcurrency: number | undefined;
-  // The spoken-tag check splices decoded PCM, which the chunked path already produces, even for a single chunk.
-  if (shouldChunk || spokenTagPlan.listener) {
-    maxConcurrency = shouldChunk
-      ? resolveMaxConcurrency(options.maxConcurrency)
-      : 1;
-    result = await generateCheckedOrChunkedSpeech({
-      failOpenOnDecode: !shouldChunk,
+  if (shouldChunk) {
+    maxConcurrency = resolveMaxConcurrency(options.maxConcurrency);
+    result = await generateChunkedSpeech({
       resolved,
       modelIdentifier,
       textChunks,
@@ -235,7 +221,7 @@ export async function generateSpeech<
       spokenTagListener: spokenTagPlan.listener,
     });
   } else {
-    result = await generateProviderSpeech({
+    const synthesized = await generateProviderSpeech({
       resolved,
       text: textToSend,
       instructions,
@@ -250,6 +236,17 @@ export async function generateSpeech<
       pronunciations: options.pronunciations,
       speed,
     });
+    result =
+      spokenTagPlan.listener && stitchOptions
+        ? await checkUnchunkedSpeech({
+            abortSignal,
+            alignment: timestamps,
+            listener: spokenTagPlan.listener,
+            result: synthesized,
+            stitchMediaType: stitchOptions.mediaType,
+            text: textToSend,
+          })
+        : synthesized;
   }
 
   const latencyMs = Math.round(performance.now() - startTime);
@@ -307,7 +304,7 @@ export async function generateSpeech<
     inputChars: options.text.length,
     ...(audioDurationMs != null && { audioDurationMs }),
     ...(result.retryCount != null && { retryCount: result.retryCount }),
-    ...(result.chunks && result.chunks.length > 0 && { chunks: result.chunks }),
+    ...(result.chunks && { chunks: result.chunks }),
     ...(spokenTags && { spokenTags }),
     ...(publicAlignment.source != null && {
       timestampsSource: publicAlignment.source,
@@ -434,43 +431,94 @@ async function generateProviderSpeech<V extends Voice>(args: {
   return { ...result, retryCount: attempts - 1 };
 }
 
-class UndecodedChunkError extends Error {
-  readonly mediaType: string;
-  readonly result: RetriedGenerateResult;
+// WAV carries its own header; anything else is decoded as the stitch format the provider was asked for.
+function decodableMediaType(resultType: string, stitchType: string): string {
+  const lower = resultType.toLowerCase();
+  return lower.startsWith("audio/wav") || lower.startsWith("audio/x-wav")
+    ? resultType
+    : stitchType;
+}
 
-  constructor(
-    result: RetriedGenerateResult,
-    mediaType: string,
-    cause: unknown
-  ) {
-    super("spoken-tag check: chunk audio could not be decoded", { cause });
-    this.mediaType = mediaType;
-    this.result = result;
+// Asked before any check is planned, so a throw (e.g. UnsupportedSampleRateError for an output that is fine natively) means "not decodable", not a failed request.
+function hasDecodableMode(
+  resolved: ResolvedModel,
+  output: AudioOutput | undefined
+): boolean {
+  try {
+    return (
+      resolved.provider.getStitchOptions?.(resolved.modelId, {
+        sampleRate: sampleRateHintFrom(output),
+      }) != null
+    );
+  } catch {
+    return false;
   }
 }
 
-// A single chunk routed here only for the spoken-tag check fails open on a decode error: the provider's audio is returned as synthesized.
-async function generateCheckedOrChunkedSpeech<V extends Voice>(
-  args: Parameters<typeof generateChunkedSpeech<V>>[0] & {
-    failOpenOnDecode: boolean;
+// The spoken-tag check on an unchunked request: fails open to the provider's audio, and re-encodes only when it cuts.
+async function checkUnchunkedSpeech(args: {
+  abortSignal: AbortSignal | undefined;
+  alignment: boolean;
+  listener: SpokenTagListener;
+  result: RetriedGenerateResult;
+  stitchMediaType: string;
+  text: string;
+}): Promise<
+  RetriedGenerateResult & {
+    alignmentChunks?: readonly AlignmentAudioChunk[];
+    spokenTags: SpokenTagReport;
   }
-): ReturnType<typeof generateChunkedSpeech<V>> {
-  try {
-    return await generateChunkedSpeech(args);
-  } catch (error) {
-    if (!(error instanceof UndecodedChunkError)) {
-      throw error;
-    }
-    if (!args.failOpenOnDecode) {
-      throw error.cause;
-    }
-    return {
-      ...error.result,
-      mediaType: error.mediaType,
-      chunks: [],
-      spokenTags: spokenTagFailure(error.cause),
-    };
-  }
+> {
+  const { result } = args;
+  const original = new DefaultGeneratedAudioFile({
+    data: result.audio,
+    mediaType: result.mediaType,
+  }).uint8Array;
+  const originalType = decodableMediaType(
+    result.mediaType,
+    args.stitchMediaType
+  );
+  const { report, scriptTimestamps, segment, spans } =
+    await checkSpokenTagsInAudio({
+      abortSignal: args.abortSignal,
+      audio: original,
+      mediaType: originalType,
+      provider: args.listener.provider,
+      text: args.text,
+      withTimestamps: args.listener.withTimestamps,
+    });
+  const spliced = segment != null && spans.length > 0;
+  const audio = spliced
+    ? await pcm16ToWav(segment.pcm, segment.sampleRate)
+    : original;
+  const mediaType = spliced ? "audio/wav" : originalType;
+  const durationSeconds = segment
+    ? segment.pcm.length / segment.sampleRate
+    : undefined;
+  return {
+    ...result,
+    audio,
+    mediaType,
+    spokenTags: report,
+    ...(spliced &&
+      durationSeconds != null && {
+        audioDurationMs: Math.round(durationSeconds * 1000),
+        timestamps: shiftTimestamps(result.timestamps, spans),
+      }),
+    ...(args.alignment &&
+      scriptTimestamps &&
+      durationSeconds != null && {
+        alignmentChunks: [
+          {
+            audio: () => Promise.resolve(audio),
+            durationSeconds,
+            mediaType,
+            scriptTimestamps,
+            text: textWithoutAudioTags(args.text),
+          },
+        ],
+      }),
+  };
 }
 
 async function generateChunkedSpeech<V extends Voice>(args: {
@@ -540,18 +588,10 @@ async function generateChunkedSpeech<V extends Voice>(args: {
           }
         );
       }
-      const resultMediaType = result.mediaType.toLowerCase();
-      const decodeMediaType =
-        resultMediaType.startsWith("audio/wav") ||
-        resultMediaType.startsWith("audio/x-wav")
-          ? result.mediaType
-          : stitchOptions.mediaType;
-      let decoded: Awaited<ReturnType<typeof decodeAudioToPcm16>>;
-      try {
-        decoded = await decodeAudioToPcm16(audio, decodeMediaType);
-      } catch (error) {
-        throw new UndecodedChunkError(result, decodeMediaType, error);
-      }
+      const decoded = await decodeAudioToPcm16(
+        audio,
+        decodableMediaType(result.mediaType, stitchOptions.mediaType)
+      );
       // Runs before stitching and alignment so everything downstream sees clean audio; native timings shift back by each cut.
       const checked = args.spokenTagListener
         ? await checkSpokenTags({
