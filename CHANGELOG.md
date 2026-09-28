@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.34.0
+## 0.34.0-alpha.0
 
 - **`streamConversation()`: streamed two-speaker dialogue.** Native dialogue audio arrives as a `ReadableStream` while it is generated, so playback can start before the take is finished. Gemini 3.8 is the first provider: the request is built by the same code as the buffered 3.8 dialogue, with `stream: true`, and returns 24 kHz PCM. Supports conversation-wide and per-turn `instructions`, `pronunciations`, and retries until response headers arrive, like `streamSpeech()`. It checks the same native dialogue limits as `generateConversation` before sending (two prebuilt voices, the 2,500-character budget) and throws `DialogueConstraintError` rather than splitting; models that can't stream dialogue throw `StreamingNotSupportedError` with no silent fallback. `timestamps`, `splitTurns`, `output`, `speed` and other buffered-only options throw `ConversationInputError`.
 - Providers can implement `streamDialogue()` and declare `streaming` in `dialogueCapabilities()`.
