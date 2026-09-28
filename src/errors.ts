@@ -35,7 +35,7 @@ export class ApiError extends SpeechSDKError {
   }
 }
 
-export type ProviderErrorStage = "alignment" | "synthesis";
+export type ProviderErrorStage = "alignment" | "synthesis" | "transcription";
 
 export interface SpeechSdkProviderErrorOptions {
   readonly cause?: unknown;

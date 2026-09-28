@@ -2,6 +2,7 @@ import type { AudioOutput } from "../audio-output.js";
 import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
+import type { TranscriptionProvider } from "../transcription-provider.js";
 
 export interface ConversationTurn<V extends Voice = Voice> {
   /** Non-spoken delivery direction for this turn. */
@@ -42,6 +43,8 @@ export interface GenerateConversationOptions<
    * `timestamps: true`. Throws `TurnSplitError` when turn boundaries can't be trusted.
    */
   readonly splitTurns?: boolean;
+  // Transcribe each synthesized chunk (or native dialogue request) that carries audio tags and splice out any tag the voice read aloud, before stitching, alignment and turn splitting. Fails open.
+  readonly spokenTagCheck?: TranscriptionProvider;
   readonly timestampProvider?: TimestampProvider;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];

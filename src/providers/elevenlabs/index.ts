@@ -31,11 +31,13 @@ import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
+import type { TranscriptionProvider } from "../../transcription-provider.js";
 import {
   alignmentToWordTimestamps,
   elevenLabsAlignmentSchema,
 } from "./alignment.js";
 import { ElevenLabsForcedAlignmentProvider } from "./forced-alignment.js";
+import { ElevenLabsTranscriptionProvider } from "./transcription.js";
 
 const withTimestampsResponseSchema = z.object({
   audio_base64: z.string().optional(),
@@ -777,6 +779,7 @@ export class ElevenLabsSpeechProvider
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
   const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(config);
+  const transcriptionProvider = new ElevenLabsTranscriptionProvider(config);
   const fallbackSTT = config.fallbackSTT;
 
   const factory = (modelId?: string): ResolvedModel<string> => ({
@@ -787,6 +790,8 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
 
   return Object.assign(factory, {
     forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
+    // Scribe v2 speech-to-text, for `spokenTagCheck`.
+    transcription: (): TranscriptionProvider => transcriptionProvider,
   });
 }
 

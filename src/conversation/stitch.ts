@@ -9,6 +9,7 @@ import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
+import type { TranscriptionProvider } from "../transcription-provider.js";
 import {
   concatPcmToWavWithRanges,
   dbfsToInt16Rms,
@@ -29,6 +30,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly maxRetries: number;
   readonly pronunciations?: PronunciationsInput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
+  readonly spokenTagCheck?: TranscriptionProvider;
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
     mediaType: string;
@@ -99,6 +101,7 @@ export async function runStitch<V extends Voice>(
           maxInputChars: input.maxInputChars,
           maxConcurrency: chunkConcurrency,
           speed: turn.speed,
+          spokenTagCheck: input.spokenTagCheck,
         });
       } catch (err) {
         throw withTurnIndex(err, i);

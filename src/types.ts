@@ -2,6 +2,7 @@ import type { AudioOutput } from "./audio-output.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { TimestampProvider } from "./timestamp-provider.js";
+import type { TranscriptionProvider } from "./transcription-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
@@ -20,7 +21,7 @@ export type {
   DesignVoiceOptions,
   VoiceDesignPreview,
 } from "./design-voice.js";
-export type { SpeechMetadata } from "./metadata.js";
+export type { SpeechMetadata, SpokenTagReport } from "./metadata.js";
 export type {
   Pronunciation,
   PronunciationsInput,
@@ -70,6 +71,7 @@ export type {
   TimestampsSource,
   WordTimestamp,
 } from "./timestamps.js";
+export type { TranscriptionProvider } from "./transcription-provider.js";
 export type { TurnTimestamp } from "./turns.js";
 
 export interface GenerateSpeechOptions<
@@ -93,6 +95,8 @@ export interface GenerateSpeechOptions<
   providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;
+  // Transcribe each synthesized chunk that carries audio tags and splice out any tag the voice read aloud. Costs one transcription call per tagged chunk; fails open.
+  spokenTagCheck?: TranscriptionProvider;
   /** The exact spoken transcript expected in the generated audio. */
   text: string;
   timestampProvider?: TimestampProvider;

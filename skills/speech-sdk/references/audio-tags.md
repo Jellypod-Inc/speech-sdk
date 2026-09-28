@@ -30,3 +30,7 @@ result.warnings
 ```
 
 `result.warnings` is `undefined` when there are none.
+
+## Spoken tags
+
+A tag-capable voice sometimes reads a tag aloud. Pass `spokenTagCheck: createElevenLabs().transcription()` to `generateSpeech` or `generateConversation` and the SDK transcribes each tagged chunk, splices out any tag words it hears that the script doesn't say, and reports `metadata.spokenTags`. One Scribe call per tagged chunk; any failure keeps the audio unchanged. Not available on `streamSpeech`.

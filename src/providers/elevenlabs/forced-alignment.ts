@@ -59,7 +59,7 @@ function resolveForcedAlignmentTimestamps(
   return characters.length > 0 ? characters : words;
 }
 
-function audioExtension(mediaType: string): string {
+export function audioExtension(mediaType: string): string {
   const base = mediaType.split(";")[0]?.toLowerCase();
   switch (base) {
     case "audio/wav":

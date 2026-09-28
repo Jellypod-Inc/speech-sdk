@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.34.0
+
+- **Spoken-tag check.** New `spokenTagCheck?: TranscriptionProvider` option on `generateSpeech` and `generateConversation` catches a voice reading an audio tag aloud (`[curious]` spoken as "curious"), which forced alignment can't see and which left an unexplained gap in the timings. Each synthesized chunk whose model-bound text carries tags is transcribed; heard words the script doesn't account for that spell a tag are spliced out of the chunk's PCM (midpoint of the pause either side, 4 ms fade at each join) before chunk stitching, forced alignment, `speed`, output encoding, and turn splitting. Native dialogue is checked as a whole, against every turn's tags, before `splitTurns` cuts it. Native provider timestamps shift back by each cut. A script word that equals a tag word is kept.
+- **Cost:** one transcription call per tagged chunk; no call for chunks without tags or for models that have tags stripped. With the option set, a single-chunk `generateSpeech` is decoded to PCM like a chunked one.
+- **Fails open:** a transcription, decode, or splice error keeps the chunk unchanged and records `failed`. Only an abort is rethrown; synthesis is never failed or retried because of the check.
+- `metadata.spokenTags` (`{ checked, removedSeconds, spans, failed? }`) reports the result, summed over chunks, turns, or dialogue blocks; `metadata.chunks[i].spokenTags` reports each chunk.
+- `createElevenLabs().transcription()`: a `TranscriptionProvider` on ElevenLabs Scribe v2 (`POST /v1/speech-to-text`, `tag_audio_events=false`) that returns timed words only.
+- New exported types `TranscriptionProvider` and `SpokenTagReport`. `ProviderErrorStage` gains `"transcription"`.
+
 ## 0.33.1
 
 - **Gemini 3.8 accepts any bracket tag.** Since 0.32.0, any bracket outside seven fixed tags threw `SpeechSDKError` ("Unsupported Gemini 3.8 audio tag") on single-speaker generation, streaming, and native dialogue, so scripts that use tags as freeform delivery cues failed. Every bracket tag is now sent inline with the caller's wording and case, trimmed of surrounding whitespace: `[skeptical]` → `<skeptical>`, `[chuckles]` → `<chuckles>`. An empty tag such as `[ ]` is dropped. Tags stay out of timestamp alignment, and turn indexes, `ConversationWordTimestamp.turnIndex`, and `splitTurns` output are unchanged.
