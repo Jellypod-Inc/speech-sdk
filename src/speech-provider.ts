@@ -129,6 +129,8 @@ export interface SpeechProvider<
     | {
         maxVoices: number;
         maxTotalChars?: number;
+        // The model can stream native dialogue via `streamDialogue`.
+        streaming?: boolean;
       }
     | undefined;
 
@@ -210,6 +212,23 @@ export interface SpeechProvider<
     headers?: Record<string, string>;
   }): Promise<{
     audioDurationMs?: number;
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }>;
+
+  /**
+   * Stream native multi-speaker dialogue as it is generated. Same options as `generateDialogue`; only called for
+   * models whose `dialogueCapabilities` declare `streaming`.
+   */
+  streamDialogue?(options: {
+    modelId: string;
+    turns: readonly { voice: TVoice; text: string; instructions?: string }[];
+    instructions?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;

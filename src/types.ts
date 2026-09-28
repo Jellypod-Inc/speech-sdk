@@ -64,6 +64,10 @@ export type {
   SpeechToTextProvider,
   STTModelInfo,
 } from "./speech-to-text-provider.js";
+export type {
+  StreamConversationOptions,
+  StreamConversationTurn,
+} from "./stream-conversation.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { TimestampProvider } from "./timestamp-provider.js";
 export type {

@@ -147,6 +147,32 @@ return new Response(audio, { headers: { 'Content-Type': mediaType } });
 > [!NOTE]
 > Retries apply only until response headers arrive; mid-stream errors propagate to the consumer. Calling `streamSpeech()` on a non-streaming model throws `StreamingNotSupportedError`.
 
+### Streaming a conversation
+
+`streamConversation()` streams native two-speaker dialogue, so playback can start before the whole conversation has been generated. Gemini 3.8 (`gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) supports it.
+
+```ts
+import { streamConversation } from '@speech-sdk/core';
+import { createGoogle } from '@speech-sdk/core/providers';
+
+const google = createGoogle();
+
+const { audio, mediaType } = await streamConversation({
+  model: google('gemini-3.8-flash-tts'),
+  turns: [
+    { text: 'Did you see the results?', voice: 'Kore' },
+    { text: '[laughs] I did.', voice: 'Puck', instructions: 'dry and amused' },
+  ],
+});
+// mediaType: 'audio/pcm;rate=24000'
+```
+
+It sends the same single request as `generateConversation` renders natively, with streaming on, and supports `instructions` (conversation-wide and per turn), `pronunciations`, `providerOptions`, `maxRetries`, `abortSignal` and `headers`. Retries work as for `streamSpeech()`.
+
+- **One request, so it must fit native dialogue:** exactly two prebuilt voices, and no more than the model's dialogue character budget (2,500 characters of turn text for Gemini). Otherwise it throws `DialogueConstraintError`. Use `generateConversation()` for longer conversations, which splits them into blocks.
+- **No fallback.** A model that can't stream dialogue throws `StreamingNotSupportedError`; fall back to `generateConversation()` yourself if you want buffered audio.
+- **Buffered-only options are rejected**, not ignored: `timestamps`, `splitTurns`, `output`, `speed`, `volumeDbfs`, `gapMs`, and per-turn `model`, `providerOptions` or `speed` throw `ConversationInputError`.
+
 ## Conversations
 
 `generateConversation()` produces a single multi-voice clip from an ordered array of turns. The path is chosen by what the turns are:

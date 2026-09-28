@@ -1129,7 +1129,7 @@ async function checkDialogueSpokenTags(args: {
   };
 }
 
-interface PreparedConversationTurn<V extends Voice = Voice> {
+export interface PreparedConversationTurn<V extends Voice = Voice> {
   readonly canonicalText: string;
   readonly edits: readonly Edit[];
   readonly instructions?: string;
@@ -1139,7 +1139,7 @@ interface PreparedConversationTurn<V extends Voice = Voice> {
   readonly warnings: readonly string[];
 }
 
-function buildSubstitutedTurns<V extends Voice>(
+export function buildSubstitutedTurns<V extends Voice>(
   turns: readonly ConversationTurn<V>[],
   resolved: ResolvedModel<V>,
   ruleMap: Map<string, Pronunciation> | null

@@ -10,6 +10,7 @@ import {
   NoSpeechGeneratedError,
   type NoSpeechReason,
   SpeechSDKError,
+  StreamingNotSupportedError,
 } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -234,6 +235,37 @@ function gemini38Content(text: string, style?: string, speaker?: string) {
           ],
         }
       : {}),
+  };
+}
+
+// One content item per turn, tagged with its speaker and style; buffered and streamed dialogue share it so the two can't drift.
+function gemini38DialogueRequest(options: {
+  modelId: string;
+  turns: readonly { voice: string; text: string; instructions?: string }[];
+  instructions?: string;
+}): { input: unknown; speechConfig: unknown; voices: string[] } {
+  const voiceToLabel = new Map<string, string>();
+  const content = options.turns.map((turn) => {
+    let speaker = voiceToLabel.get(turn.voice);
+    if (!speaker) {
+      speaker = `Speaker${voiceToLabel.size + 1}`;
+      voiceToLabel.set(turn.voice, speaker);
+    }
+    const style = [options.instructions, turn.instructions]
+      .filter(Boolean)
+      .join("; ");
+    return gemini38Content(turn.text, style || undefined, speaker);
+  });
+  return {
+    input: [{ type: "user_input", content }],
+    speechConfig: {
+      mode: "conversational",
+      speakers: [...voiceToLabel].map(([voice, speaker]) => ({
+        speaker,
+        voice,
+      })),
+    },
+    voices: [...voiceToLabel.keys()],
   };
 }
 
@@ -735,7 +767,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }
 
   // Real-time TTS streaming is served by /interactions with stream:true (Gemini 3.1+); chunks are raw 16-bit mono PCM @ 24kHz.
-  private async streamInteractions(options: {
+  private streamInteractions(options: {
     modelId: string;
     text: string;
     instructions?: string;
@@ -747,27 +779,33 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
   }> {
+    const input = GEMINI_3_8_MODELS.has(options.modelId)
+      ? [
+          {
+            type: "user_input",
+            content: [gemini38Content(options.text, options.instructions)],
+          },
+        ]
+      : buildTtsPrompt(options.text, options.instructions);
+    return this.postInteractionStream(options, input, [
+      { voice: options.voice ?? "Kore" },
+    ]);
+  }
+
+  private async postInteractionStream(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    input: unknown,
+    speechConfig: unknown
+  ): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
     const apiKey = resolveApiKey(this.apiKey, "GOOGLE_API_KEY", "Google");
-
-    const voiceName = options.voice ?? "Kore";
-
-    const body: Record<string, unknown> = {
-      model: options.modelId,
-      input: GEMINI_3_8_MODELS.has(options.modelId)
-        ? [
-            {
-              type: "user_input",
-              content: [gemini38Content(options.text, options.instructions)],
-            },
-          ]
-        : buildTtsPrompt(options.text, options.instructions),
-      response_format: { type: "audio" },
-      generation_config: {
-        speech_config: [{ voice: voiceName }],
-        ...options.providerOptions,
-      },
-      stream: true,
-    };
 
     const response = await this.fetchFn(`${this.baseURL}/interactions`, {
       method: "POST",
@@ -780,7 +818,16 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         "X-User-Agent": SDK_USER_AGENT,
         ...options.headers,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: options.modelId,
+        input,
+        response_format: { type: "audio" },
+        generation_config: {
+          speech_config: speechConfig,
+          ...options.providerOptions,
+        },
+        stream: true,
+      }),
       signal: options.abortSignal,
     });
 
@@ -869,7 +916,11 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       // and audio dominates — so a conservative per-call text budget avoids server-side truncation on long dialogue.
       // Kept well under the window because generation latency climbs with output length; conversations beyond this
       // are split into parallel native-dialogue blocks and stitched, which is faster than one long call.
-      return { maxVoices: 2, maxTotalChars: 2500 };
+      return {
+        maxVoices: 2,
+        maxTotalChars: 2500,
+        streaming: GEMINI_3_8_MODELS.has(modelId),
+      };
     }
     return;
   }
@@ -879,6 +930,44 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       !GEMINI_3_8_MODELS.has(modelId) ||
       voices.every((voice) => !CUSTOM_VOICE_ID_RE.test(voice))
     );
+  }
+
+  private gemini38Dialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string; instructions?: string }[];
+    instructions?: string;
+  }) {
+    const request = gemini38DialogueRequest(options);
+    if (
+      request.voices.length !== 2 ||
+      !this.acceptsDialogueVoices(options.modelId, request.voices)
+    ) {
+      throw new SpeechSDKError(
+        `google/${options.modelId}: native dialogue requires two prebuilt voices.`
+      );
+    }
+    return request;
+  }
+
+  async streamDialogue(options: {
+    modelId: string;
+    turns: readonly { voice: string; text: string; instructions?: string }[];
+    instructions?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+  }> {
+    if (!GEMINI_3_8_MODELS.has(options.modelId)) {
+      throw new StreamingNotSupportedError(
+        `google/${options.modelId} dialogue`,
+        "generateConversation()"
+      );
+    }
+    const { input, speechConfig } = this.gemini38Dialogue(options);
+    return await this.postInteractionStream(options, input, speechConfig);
   }
 
   async generateDialogue(options: {
@@ -894,33 +983,8 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     providerMetadata?: Record<string, unknown>;
   }> {
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
-      const voiceToLabel = new Map<string, string>();
-      const content = options.turns.map((turn) => {
-        let speaker = voiceToLabel.get(turn.voice);
-        if (!speaker) {
-          speaker = `Speaker${voiceToLabel.size + 1}`;
-          voiceToLabel.set(turn.voice, speaker);
-        }
-        const style = [options.instructions, turn.instructions]
-          .filter(Boolean)
-          .join("; ");
-        return gemini38Content(turn.text, style || undefined, speaker);
-      });
-      if (
-        voiceToLabel.size !== 2 ||
-        !this.acceptsDialogueVoices(options.modelId, [...voiceToLabel.keys()])
-      ) {
-        throw new SpeechSDKError(
-          `google/${options.modelId}: native dialogue requires two prebuilt voices.`
-        );
-      }
-      return this.postInteraction(options, [{ type: "user_input", content }], {
-        mode: "conversational",
-        speakers: [...voiceToLabel].map(([voice, speaker]) => ({
-          speaker,
-          voice,
-        })),
-      });
+      const { input, speechConfig } = this.gemini38Dialogue(options);
+      return this.postInteraction(options, input, speechConfig);
     }
     const voiceToLabel = new Map<string, string>();
     const labelled: string[] = [];

@@ -84,3 +84,7 @@ try {
 ```
 
 See `providers/<name>.md` for which models within a provider support streaming.
+
+## Streaming a conversation
+
+`streamConversation({ model, turns, instructions?, pronunciations?, providerOptions?, maxRetries?, abortSignal?, headers? })` streams native two-speaker dialogue as one provider request and returns the same `{ audio, mediaType, metadata }` shape as `streamSpeech`. Only models whose native dialogue can stream support it (Gemini 3.8 today); others throw `StreamingNotSupportedError`, with no fallback. The conversation must fit native dialogue: two prebuilt voices and the model's dialogue character budget (2,500 for Gemini), else `DialogueConstraintError`; use `generateConversation` for longer ones. `timestamps`, `splitTurns`, `output`, `speed` and other buffered-only options throw `ConversationInputError`.
