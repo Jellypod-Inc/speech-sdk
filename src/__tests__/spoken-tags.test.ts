@@ -13,6 +13,7 @@ import type { WordTimestamp } from "../timestamps.js";
 import type { TranscriptionProvider } from "../transcription-provider.js";
 
 const RATE = 1000;
+const OUTPUT_FORMAT = /output_format=pcm_(\d+)/;
 const TEXT =
   "was a daring dream. [curious] In 1962, Britain signed. [thoughtfully] Engineers were curious.";
 
@@ -286,5 +287,128 @@ describe("createElevenLabs().transcription()", () => {
       { text: "Hi", start: 0, end: 0.2 },
       { text: "there", start: 0.8, end: 1.1 },
     ]);
+  });
+});
+
+function listeningAligner(words: readonly WordTimestamp[]) {
+  return {
+    align: vi.fn(({ text }: { text: string }) =>
+      Promise.resolve(
+        text.split(" ").map((word, i) => ({
+          text: word,
+          start: i * 0.5,
+          end: i * 0.5 + 0.4,
+        }))
+      )
+    ),
+    transcribe: vi.fn(() => Promise.resolve(words)),
+  };
+}
+
+describe("automatic spoken-tag check", () => {
+  it("runs through a timestampProvider that can transcribe, and reuses its timings instead of aligning", async () => {
+    const aligner = listeningAligner(HEARD);
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(8)), modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      timestamps: true,
+      timestampProvider: aligner,
+    });
+
+    expect(aligner.transcribe).toHaveBeenCalledOnce();
+    expect(aligner.align).not.toHaveBeenCalled();
+    expect(result.metadata.spokenTags).toMatchObject({
+      checked: true,
+      spans: 1,
+    });
+    expect(result.metadata.timestampsSource).toBe("aligned");
+    // "In" was heard at 3.4s; the 1.3s cut before it moves it to 2.1s.
+    expect(result.timestamps.find((w) => w.text === "In")?.start).toBeCloseTo(
+      2.1,
+      3
+    );
+  });
+
+  it("falls back to forced alignment when the transcription doesn't spell the script", async () => {
+    const aligner = listeningAligner(
+      HEARD.flatMap((word) =>
+        word.text === "1962,"
+          ? heard(["nineteen", 3.6, 4], ["sixty-two,", 4, 4.4])
+          : [word]
+      )
+    );
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(8)), modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      timestamps: true,
+      timestampProvider: aligner,
+    });
+
+    expect(aligner.transcribe).toHaveBeenCalledOnce();
+    expect(aligner.align).toHaveBeenCalledOnce();
+    expect(result.metadata.spokenTags?.spans).toBe(1);
+  });
+
+  it("reports when there is nothing to listen with, and leaves the audio as the provider returned it", async () => {
+    const provider = taggedProvider(constantPcm(1));
+    const result = await generateSpeech({
+      model: { provider, modelId: "m" },
+      voice: "v",
+      text: TEXT,
+    });
+
+    expect(result.metadata.spokenTags).toMatchObject({ checked: false });
+    expect(result.metadata.spokenTags?.failed).toContain(
+      "no transcription provider"
+    );
+    expect(result.audio.mediaType).toBe(`audio/pcm;rate=${RATE}`);
+  });
+
+  it("stays off with spokenTagCheck: false", async () => {
+    const aligner = listeningAligner(HEARD);
+    const result = await generateSpeech({
+      model: { provider: taggedProvider(constantPcm(8)), modelId: "m" },
+      voice: "v",
+      text: TEXT,
+      timestamps: true,
+      timestampProvider: aligner,
+      spokenTagCheck: false,
+    });
+
+    expect(aligner.transcribe).not.toHaveBeenCalled();
+    expect(aligner.align).toHaveBeenCalledOnce();
+    expect(result.metadata.spokenTags).toBeUndefined();
+  });
+
+  it("uses an ElevenLabs model's own Scribe with no configuration", async () => {
+    const fetchFn = vi.fn((url: string) => {
+      if (url.includes("/v1/speech-to-text")) {
+        return Promise.resolve(
+          Response.json({
+            words: HEARD.map((w) => ({ ...w, type: "word" })),
+          })
+        );
+      }
+      const rate = Number(url.match(OUTPUT_FORMAT)?.[1] ?? 24_000);
+      const pcm = new Int16Array(rate * 8).fill(1000);
+      return Promise.resolve(new Response(pcm.buffer));
+    });
+    const elevenlabs = createElevenLabs({ apiKey: "k", fetch: fetchFn });
+
+    const result = await generateSpeech({
+      model: elevenlabs("eleven_v3"),
+      voice: "v",
+      text: TEXT,
+    });
+
+    expect(
+      fetchFn.mock.calls.filter(([url]) => url.includes("/v1/speech-to-text"))
+    ).toHaveLength(1);
+    expect(result.metadata.spokenTags).toMatchObject({
+      checked: true,
+      spans: 1,
+    });
   });
 });

@@ -30,7 +30,7 @@ interface StitchInput<V extends Voice = Voice> {
   readonly maxRetries: number;
   readonly pronunciations?: PronunciationsInput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
-  readonly spokenTagCheck?: TranscriptionProvider;
+  readonly spokenTagCheck?: TranscriptionProvider | false;
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
     mediaType: string;

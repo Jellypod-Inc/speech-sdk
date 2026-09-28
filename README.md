@@ -378,7 +378,7 @@ await generateSpeech({
 
 ### Spoken-tag check
 
-A voice that supports tags sometimes reads one aloud: `'...a daring dream. [curious] In 1962...'` comes back with the narrator saying "curious". Forced alignment can't see that extra word, so it leaves an unexplained gap in the timings. Pass `spokenTagCheck` to catch it:
+A voice that supports tags sometimes reads one aloud: `'...a daring dream. [curious] In 1962...'` comes back with the narrator saying "curious". Forced alignment only places the script's own words, so it can't see that extra word and leaves an unexplained gap in the timings. The SDK checks for this automatically whenever tags reach the model:
 
 ```ts
 import { generateSpeech } from '@speech-sdk/core';
@@ -387,28 +387,37 @@ import { createElevenLabs } from '@speech-sdk/core/providers';
 const elevenlabs = createElevenLabs();
 
 const result = await generateSpeech({
-  model: elevenlabs('eleven_v3'),
-  voice: 'JBFqnCBsd6RMkjVDRZzb',
+  model: 'google/gemini-3.1-flash-tts-preview',
+  voice: 'Kore',
   text: 'It was a daring dream. [curious] In 1962, Britain and France signed.',
   timestamps: true,
-  timestampProvider: elevenlabs.forcedAlignment(),
-  spokenTagCheck: elevenlabs.transcription(),
+  timestampProvider: elevenlabs.forcedAlignment(), // also listens for spoken tags
 });
 
 result.metadata.spokenTags;
 // { checked: true, removedSeconds: 1.02, spans: 1 }
 ```
 
-For each synthesized chunk whose text still carries a tag when it reaches the model, the SDK transcribes the chunk's audio (`elevenlabs.transcription()` calls Scribe v2 with audio events off). Heard words the script doesn't account for and that spell a tag are spliced out of the chunk's PCM, from the middle of the pause before to the middle of the pause after, with a 4 ms fade on each side of the join. A word the script itself says is kept: in `'Engineers were curious. [curious]'` only the extra "curious" goes. Single tag words shorter than 4 letters are only cut as part of a whole tag phrase.
+**What it listens with.** The first transcriber the request already has, so it never adds a vendor you didn't configure:
 
+1. `spokenTagCheck`, if you pass one (`elevenlabs.transcription()` or any `TranscriptionProvider`).
+2. A `timestampProvider` that can also transcribe. `elevenlabs.forcedAlignment()` does, via Scribe v2 on the same key.
+3. The model's `fallbackSTT`.
+4. The model's own speech-to-text: ElevenLabs models use Scribe with their own key, so `elevenlabs/eleven_v3` is checked with no configuration.
+
+With none of those, the audio is returned as synthesized and `metadata.spokenTags.failed` says why. Pass `spokenTagCheck: false` to turn the check off.
+
+**What it does.** Each synthesized chunk whose text still carries a tag when it reaches the model is transcribed. Heard words the script doesn't account for and that spell a tag are spliced out of the chunk's PCM, from the middle of the pause before to the middle of the pause after, with a 4 ms fade on each side of the join. A word the script itself says is kept: in `'Engineers were curious. [curious]'` only the extra "curious" goes. Single tag words shorter than 4 letters are only cut as part of a whole tag phrase.
+
+- **One call for timestamps where possible.** When the transcriber is also your aligner (a transcribing `timestampProvider`, or `fallbackSTT`) and it heard every script word as written, its word timings become the timestamps and forced alignment is skipped. If it wrote something differently (`"1962"` heard as "nineteen sixty-two", an unusual name), forced alignment runs on the clean chunk as usual. Chunks without tags are aligned exactly as before, with no transcription call.
 - **Order.** The check runs on each chunk after synthesis and decoding, and before chunk stitching, forced alignment, `speed`, `output` encoding, and conversation turn splitting, so all of those see clean audio. On native dialogue the whole dialogue request is checked against every turn's tags before `splitTurns` cuts it, so a tag spoken between turns can't end up in a turn clip.
-- **Native timestamps** are shifted back by the length of each cut; timings inside a cut collapse to its start. A `timestampProvider` aligns the clean chunk directly.
-- **Cost.** One transcription call per chunk that contains tags. Chunks without tags, and models that have tags stripped, make no call. With the option set, a single-chunk request is decoded to PCM like a chunked one, so output is encoded locally.
+- **Native timestamps** are shifted back by the length of each cut; timings inside a cut collapse to its start.
+- **Cost.** One transcription call per chunk that contains tags. Chunks without tags, and models that have tags stripped, make no call. A tagged request that will be checked is decoded to PCM like a chunked one, so output is encoded locally.
 - **Fails open.** A transcription, decoding, or splicing error returns the chunk unchanged and records `failed` in the report. Only an abort is rethrown. The check never fails or retries synthesis.
-- **Report.** `metadata.spokenTags` is `{ checked, removedSeconds, spans, failed? }`, summed over chunks; each `metadata.chunks[i]` carries its own. Conversations sum over turns (see `metadata.perTurn`) or dialogue blocks. It is present only when `spokenTagCheck` is passed. Models without a decodable PCM/WAV mode skip the check with `failed` set.
+- **Report.** `metadata.spokenTags` is `{ checked, removedSeconds, spans, failed? }`, summed over chunks; each `metadata.chunks[i]` carries its own. Conversations sum over turns (see `metadata.perTurn`) or dialogue blocks. It is present when tags reached the model, or whenever you pass `spokenTagCheck`. Models without a decodable PCM/WAV mode skip the check with `failed` set.
 - `streamSpeech` doesn't support it: streamed audio has already reached the caller before it could be checked.
 
-Any object implementing `TranscriptionProvider` (`transcribe({ audio, mediaType, abortSignal }) → { text, start, end }[]` in seconds) can be passed.
+A `TranscriptionProvider` is `transcribe({ audio, mediaType, abortSignal }) → { text, start, end }[]`, in seconds.
 
 ### Gemini 3.8 tags
 
@@ -571,7 +580,7 @@ generateSpeech({
   volumeDbfs?: number,                    // ≤ 0
   timestamps?: boolean,
   timestampProvider?: TimestampProvider, // direct derivation or invalid-native fallback
-  spokenTagCheck?: TranscriptionProvider, // splice out tags the voice read aloud
+  spokenTagCheck?: TranscriptionProvider | false, // automatic when tags reach the model; false turns it off
   maxRetries?: number,                    // default 2
   abortSignal?: AbortSignal,
   headers?: Record<string, string>,

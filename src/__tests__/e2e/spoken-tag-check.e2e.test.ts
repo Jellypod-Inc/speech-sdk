@@ -85,14 +85,14 @@ describe("ElevenLabs spoken-tag check e2e", () => {
     );
   });
 
-  it("runs on eleven_v3 with real tags, before forced alignment", async () => {
+  it("checks eleven_v3 with real tags automatically, before forced alignment", async () => {
     const result = await generateSpeech({
       model: elevenlabs("eleven_v3"),
       voice: VOICE,
       text: TAGGED,
       timestamps: true,
+      // No spokenTagCheck: the transcribing aligner turns the check on by itself.
       timestampProvider: elevenlabs.forcedAlignment(),
-      spokenTagCheck: scribe,
       output: { format: "wav" },
     });
 

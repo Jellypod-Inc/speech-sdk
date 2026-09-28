@@ -786,10 +786,12 @@ export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
     provider,
     modelId: modelId ?? provider.defaultModel,
     ...(fallbackSTT && { fallbackSTT }),
+    transcription: transcriptionProvider,
   });
 
   return Object.assign(factory, {
-    forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
+    forcedAlignment: (): TimestampProvider & TranscriptionProvider =>
+      forcedAlignmentProvider,
     // Scribe v2 speech-to-text, for `spokenTagCheck`.
     transcription: (): TranscriptionProvider => transcriptionProvider,
   });

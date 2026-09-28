@@ -43,8 +43,11 @@ export interface GenerateConversationOptions<
    * `timestamps: true`. Throws `TurnSplitError` when turn boundaries can't be trusted.
    */
   readonly splitTurns?: boolean;
-  // Transcribe each synthesized chunk (or native dialogue request) that carries audio tags and splice out any tag the voice read aloud, before stitching, alignment and turn splitting. Fails open.
-  readonly spokenTagCheck?: TranscriptionProvider;
+  /**
+   * Splice out any audio tag the voice read aloud, before stitching, alignment and turn splitting. On by default
+   * whenever tags reach the model and a transcriber is at hand (see `generateSpeech`). `false` turns it off.
+   */
+  readonly spokenTagCheck?: TranscriptionProvider | false;
   readonly timestampProvider?: TimestampProvider;
   readonly timestamps?: boolean;
   readonly turns: readonly ConversationTurn<V>[];

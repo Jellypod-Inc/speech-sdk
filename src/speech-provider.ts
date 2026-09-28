@@ -1,6 +1,7 @@
 import { UnsupportedSampleRateError } from "./errors.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
+import type { TranscriptionProvider } from "./transcription-provider.js";
 
 export type Voice = string;
 
@@ -228,6 +229,8 @@ export interface ResolvedModel<TVoice extends Voice = Voice> {
   fallbackSTT?: ResolvedSTTModel;
   modelId: string;
   provider: SpeechProvider<string, TVoice>;
+  // The provider's own speech-to-text, used for the spoken-tag check when the caller configured no other.
+  transcription?: TranscriptionProvider;
 }
 
 export function modelDeclaresNativeTimestamps(

@@ -7,8 +7,10 @@ import {
 import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
+import type { TranscriptionProvider } from "../../transcription-provider.js";
 import { alignmentToWordTimestamps } from "./alignment.js";
 import { speechFileForm } from "./speech-file-form.js";
+import { ElevenLabsTranscriptionProvider } from "./transcription.js";
 
 const LEXICAL_CHARACTER = /[\p{L}\p{N}]/u;
 
@@ -60,10 +62,14 @@ function resolveForcedAlignmentTimestamps(
   return characters.length > 0 ? characters : words;
 }
 
-export class ElevenLabsForcedAlignmentProvider implements TimestampProvider {
+// Also transcribes via Scribe, so a request that aligns with ElevenLabs can check for spoken tags with the same key.
+export class ElevenLabsForcedAlignmentProvider
+  implements TimestampProvider, TranscriptionProvider
+{
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
+  private readonly scribe: ElevenLabsTranscriptionProvider;
 
   constructor(config: {
     apiKey?: string;
@@ -73,6 +79,15 @@ export class ElevenLabsForcedAlignmentProvider implements TimestampProvider {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.elevenlabs.io";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+    this.scribe = new ElevenLabsTranscriptionProvider(config);
+  }
+
+  transcribe(options: {
+    abortSignal?: AbortSignal;
+    audio: Uint8Array;
+    mediaType: string;
+  }): Promise<WordTimestamp[]> {
+    return this.scribe.transcribe(options);
   }
 
   async align(options: {

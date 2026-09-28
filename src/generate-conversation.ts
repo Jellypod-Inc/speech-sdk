@@ -65,8 +65,10 @@ import {
   checkSpokenTagsInAudio,
   hasCheckableTags,
   mergeSpokenTagReports,
+  NO_LISTENER_REPORT,
   noDecodableModeReport,
   pcm16ToWav,
+  resolveSpokenTagListener,
   SPOKEN_TAGS_NOT_CHECKED,
   shiftTimestamps,
 } from "./spoken-tags.js";
@@ -607,6 +609,7 @@ async function runNative<V extends Voice>(args: {
   const rawTimestamps = await resolveNativeDialogueTimestamps({
     requestTimestamps,
     nativeTimestamps: checked.nativeTimestamps,
+    preAligned: checked.preAligned,
     hasNativeTimestamps: hasNativeDialogueTimestamps,
     audio: audio.uint8Array,
     mediaType: outputMediaType,
@@ -804,6 +807,7 @@ async function runNativeSplit<V extends Voice>(args: {
       const timestamps = await resolveNativeDialogueTimestamps({
         requestTimestamps,
         nativeTimestamps: checked.nativeTimestamps,
+        preAligned: checked.preAligned,
         hasNativeTimestamps,
         audio: blockAudio,
         mediaType: blockMediaType,
@@ -969,6 +973,8 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   resolved: ResolvedModel<V>;
   abortSignal: AbortSignal | undefined;
   audioDurationMs: number | undefined;
+  // Word timings the spoken-tag check's transcription already produced, used instead of an alignment call when they fit.
+  preAligned?: readonly WordTimestamp[];
   substitutedTurnTexts: readonly string[];
   timestampProvider?: TimestampProvider;
 }): Promise<readonly ConversationWordTimestamp[] | undefined> {
@@ -977,6 +983,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   }
 
   // Either use native flat timestamps, or derive via STT fallback.
+  const joinedText = args.substitutedTurnTexts.join(" ");
   let flatTimestamps: readonly WordTimestamp[];
   if (args.hasNativeTimestamps) {
     if (!args.nativeTimestamps || args.nativeTimestamps.length === 0) {
@@ -986,11 +993,16 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       });
     }
     flatTimestamps = args.nativeTimestamps;
+  } else if (
+    args.preAligned &&
+    finalizeTimestamps({ text: joinedText, timestamps: args.preAligned }).ok
+  ) {
+    flatTimestamps = args.preAligned;
   } else if (args.timestampProvider) {
     flatTimestamps = await deriveTimestampsViaProvider({
       audio: args.audio,
       mediaType: args.mediaType,
-      text: args.substitutedTurnTexts.join(" "),
+      text: joinedText,
       provider: args.timestampProvider,
       abortSignal: args.abortSignal,
     });
@@ -1005,7 +1017,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
       mediaType: args.mediaType,
       // Combined turn text matching the stitched audio, in turn order, so a
       // fallback can force-align; turnIndex attribution happens downstream.
-      text: args.substitutedTurnTexts.join(" "),
+      text: joinedText,
       timestampFallback: fallback,
       abortSignal: args.abortSignal,
     });
@@ -1014,7 +1026,7 @@ async function resolveNativeDialogueTimestamps<V extends Voice>(args: {
   flatTimestamps = requireValidTimestamps({
     audioDurationMs: args.audioDurationMs,
     source: args.ttsModel,
-    text: args.substitutedTurnTexts.join(" "),
+    text: joinedText,
     timestamps: flatTimestamps,
   });
 
@@ -1089,39 +1101,51 @@ async function checkDialogueSpokenTags(args: {
   turns: readonly PreparedConversationTurn[];
 }): Promise<{
   nativeTimestamps: readonly WordTimestamp[] | undefined;
+  preAligned?: readonly WordTimestamp[];
   report?: SpokenTagReport;
   segment?: DecodedPcm16;
   spans: readonly AudioSpan[];
 }> {
-  const provider = args.options.spokenTagCheck;
   const unchanged = { nativeTimestamps: args.nativeTimestamps, spans: [] };
-  if (!provider) {
+  const listener = resolveSpokenTagListener({
+    option: args.options.spokenTagCheck,
+    resolved: args.resolved,
+    timestampProvider: args.options.timestampProvider,
+  });
+  if (listener === false) {
     return unchanged;
   }
   const text = args.turns.map((t) => t.text).join(" ");
+  if (!hasCheckableTags(text)) {
+    return args.options.spokenTagCheck
+      ? { ...unchanged, report: SPOKEN_TAGS_NOT_CHECKED }
+      : unchanged;
+  }
+  if (!listener) {
+    return { ...unchanged, report: NO_LISTENER_REPORT };
+  }
   if (!args.mediaType) {
     return {
       ...unchanged,
-      report: hasCheckableTags(text)
-        ? noDecodableModeReport(
-            `${args.resolved.provider.id}/${args.resolved.modelId}`
-          )
-        : SPOKEN_TAGS_NOT_CHECKED,
+      report: noDecodableModeReport(
+        `${args.resolved.provider.id}/${args.resolved.modelId}`
+      ),
     };
   }
-  const checked = await checkSpokenTagsInAudio({
+  const { scriptTimestamps, ...checked } = await checkSpokenTagsInAudio({
     abortSignal: args.signal,
     audio: new DefaultGeneratedAudioFile({
       data: args.audio,
       mediaType: args.mediaType,
     }).uint8Array,
     mediaType: args.mediaType,
-    provider,
+    provider: listener.provider,
     text,
   });
   return {
     ...checked,
     nativeTimestamps: shiftTimestamps(args.nativeTimestamps, checked.spans),
+    ...(listener.standsInForAligner && { preAligned: scriptTimestamps }),
   };
 }
 

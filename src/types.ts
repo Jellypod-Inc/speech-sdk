@@ -95,8 +95,12 @@ export interface GenerateSpeechOptions<
   providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;
-  // Transcribe each synthesized chunk that carries audio tags and splice out any tag the voice read aloud. Costs one transcription call per tagged chunk; fails open.
-  spokenTagCheck?: TranscriptionProvider;
+  /**
+   * Splice out any audio tag the voice read aloud. On by default whenever tags reach the model: it listens with this
+   * provider, else a `timestampProvider` that can transcribe, else the model's `fallbackSTT` or own speech-to-text.
+   * One transcription per tagged chunk; fails open. `false` turns it off.
+   */
+  spokenTagCheck?: TranscriptionProvider | false;
   /** The exact spoken transcript expected in the generated audio. */
   text: string;
   timestampProvider?: TimestampProvider;
