@@ -169,7 +169,7 @@ const { audio, mediaType } = await streamConversation({
 
 It sends the same single request as `generateConversation` renders natively, with streaming on, and supports `instructions` (conversation-wide and per turn), `pronunciations`, `providerOptions`, `maxRetries`, `abortSignal` and `headers`. Retries work as for `streamSpeech()`.
 
-- **One request, so it must fit native dialogue:** exactly two prebuilt voices, and no more than the model's dialogue character budget (2,500 characters of turn text for Gemini). Otherwise it throws `DialogueConstraintError`. Use `generateConversation()` for longer conversations, which splits them into blocks.
+- **One request, so it must fit native dialogue:** exactly two prebuilt voices, and no more than the model's dialogue character budget (8,000 characters of turn text for Gemini 3.8). Otherwise it throws `DialogueConstraintError`. Use `generateConversation()` for longer conversations, which splits them into blocks.
 - **No fallback.** A model that can't stream dialogue throws `StreamingNotSupportedError`; fall back to `generateConversation()` yourself if you want buffered audio.
 - **Buffered-only options are rejected**, not ignored: `gapMs`, `maxConcurrency`, `maxInputChars`, `output`, `speed`, `splitTurns`, `spokenTagCheck`, `timestampProvider`, `timestamps`, `volumeDbfs`, and per-turn `model`, `providerOptions` or `speed` throw `ConversationInputError`.
 

@@ -123,8 +123,8 @@ describe("streamConversation", () => {
       streamConversation({
         model: googleWith(fetch)("gemini-3.8-flash-tts"),
         turns: [
-          { text: "a ".repeat(1300), voice: "Kore" },
-          { text: "b ".repeat(1300), voice: "Puck" },
+          { text: "a ".repeat(2100), voice: "Kore" },
+          { text: "b ".repeat(2100), voice: "Puck" },
         ],
       })
     ).rejects.toBeInstanceOf(DialogueConstraintError);

@@ -394,6 +394,14 @@ const GOOGLE_GEMINI_3_1_LANGUAGES = [
   "vi",
 ] as const;
 
+const DEFAULT_GOOGLE_DIALOGUE_MAX_TOTAL_CHARS = 2500;
+
+// Gemini 3.8 rendered 20k chars (~18 min) of two-speaker dialogue in one call without truncation; 8000 keeps a wide margin.
+const GOOGLE_DIALOGUE_MAX_TOTAL_CHARS: Readonly<Record<string, number>> = {
+  "gemini-3.8-flash-tts": 8000,
+  "gemini-3.8-flash-lite-tts": 8000,
+};
+
 export const GOOGLE_MODELS: readonly ModelInfo[] = [
   {
     id: "gemini-3.8-flash-tts",
@@ -910,13 +918,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   dialogueCapabilities(modelId: string) {
     if (this.models.some((m) => m.id === modelId)) {
       // Gemini multi-speaker TTS supports at most 2 unique voices (API validator: "enabled_voices must equal 2").
-      // maxTotalChars: Gemini TTS sessions share a 32k-token window between input text and generated audio tokens,
-      // and audio dominates — so a conservative per-call text budget avoids server-side truncation on long dialogue.
-      // Kept well under the window because generation latency climbs with output length; conversations beyond this
-      // are split into parallel native-dialogue blocks and stitched, which is faster than one long call.
+      // The 2500 default is unmeasured for pre-3.8 models and kept as a conservative budget.
       return {
         maxVoices: 2,
-        maxTotalChars: 2500,
+        maxTotalChars:
+          GOOGLE_DIALOGUE_MAX_TOTAL_CHARS[modelId] ??
+          DEFAULT_GOOGLE_DIALOGUE_MAX_TOTAL_CHARS,
         streaming: GEMINI_3_8_MODELS.has(modelId),
       };
     }
