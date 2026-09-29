@@ -5,7 +5,7 @@ import { generateConversation } from "../generate-conversation.js";
 import { createGoogle } from "../providers/google/index.js";
 import { streamConversation } from "../stream-conversation.js";
 
-const AT_MOST_2500 = /at most 2500 characters/;
+const AT_MOST_8000 = /at most 8000 characters/;
 const GEMINI_3_8 = "gemini-3.8-flash-tts";
 const GEMINI_3_8_LITE = "gemini-3.8-flash-lite-tts";
 const GEMINI_2_5 = "gemini-2.5-flash-preview-tts";
@@ -43,16 +43,20 @@ const turnsOfChars = (lengths: readonly number[]) =>
 
 describe("getDialogueLimits", () => {
   it("resolves limits per Google model from a string or a resolved model", () => {
-    for (const model of [GEMINI_3_8, GEMINI_3_8_LITE, GEMINI_2_5]) {
+    for (const [model, maxTotalChars, streaming] of [
+      [GEMINI_3_8, 8000, true],
+      [GEMINI_3_8_LITE, 8000, true],
+      [GEMINI_2_5, 2500, false],
+    ] as const) {
       expect(getDialogueLimits(`google/${model}`)).toEqual({
         maxVoices: 2,
-        maxTotalChars: 2500,
-        streaming: model !== GEMINI_2_5,
+        maxTotalChars,
+        streaming,
       });
     }
     expect(
       getDialogueLimits(createGoogle({ apiKey: "k" })(GEMINI_3_8))
-    ).toEqual({ maxVoices: 2, maxTotalChars: 2500, streaming: true });
+    ).toEqual({ maxVoices: 2, maxTotalChars: 8000, streaming: true });
   });
 
   it("returns undefined for models without native dialogue", () => {
@@ -64,8 +68,8 @@ describe("Google native dialogue limit", () => {
   const pcm = new Uint8Array(new Int16Array(2400).fill(6000).buffer);
   const audio = wrapPcmAsWav(pcm, 24_000);
 
-  async function blocksFor(lengths: readonly number[]) {
-    const model = createGoogle({ apiKey: "k" })(GEMINI_3_8);
+  async function blocksFor(lengths: readonly number[], modelId = GEMINI_3_8) {
+    const model = createGoogle({ apiKey: "k" })(modelId);
     const generateDialogue = vi
       .spyOn(model.provider, "generateDialogue" as never)
       .mockResolvedValue({
@@ -80,12 +84,17 @@ describe("Google native dialogue limit", () => {
     return generateDialogue.mock.calls.length;
   }
 
-  it("keeps a conversation at the limit in one native call", async () => {
-    expect(await blocksFor([1250, 1250])).toBe(1);
+  it("keeps a 3.8 conversation at the limit in one native call", async () => {
+    expect(await blocksFor([4000, 4000])).toBe(1);
   });
 
-  it("splits a conversation one character over the limit into parallel blocks", async () => {
-    expect(await blocksFor([1250, 1250, 1, 1])).toBe(2);
+  it("splits a 3.8 conversation one character over the limit into parallel blocks", async () => {
+    expect(await blocksFor([4000, 4000, 1, 1])).toBe(2);
+  });
+
+  it("still splits a pre-3.8 conversation at 2500", async () => {
+    expect(await blocksFor([1250, 1250], GEMINI_2_5)).toBe(1);
+    expect(await blocksFor([1250, 1250, 1, 1], GEMINI_2_5)).toBe(2);
   });
 });
 
@@ -94,9 +103,9 @@ describe("streamConversation limit", () => {
     const model = createGoogle({ apiKey: "k", fetch: vi.fn() })(GEMINI_3_8);
     const promise = streamConversation({
       model,
-      turns: turnsOfChars([1250, 1250, 1]),
+      turns: turnsOfChars([4000, 4000, 1]),
     });
     await expect(promise).rejects.toBeInstanceOf(DialogueConstraintError);
-    await expect(promise).rejects.toThrow(AT_MOST_2500);
+    await expect(promise).rejects.toThrow(AT_MOST_8000);
   });
 });
