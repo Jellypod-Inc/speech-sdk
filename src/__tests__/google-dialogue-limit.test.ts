@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { DialogueConstraintError } from "../conversation/errors.js";
-import { getDialogueLimits } from "../dialogue-limits.js";
 import { generateConversation } from "../generate-conversation.js";
 import { createGoogle } from "../providers/google/index.js";
 import { streamConversation } from "../stream-conversation.js";
@@ -41,26 +40,20 @@ const turnsOfChars = (lengths: readonly number[]) =>
     text: "x".repeat(n),
   }));
 
-describe("getDialogueLimits", () => {
-  it("resolves limits per Google model from a string or a resolved model", () => {
+describe("Google dialogueCapabilities", () => {
+  it("resolves maxTotalChars per model", () => {
     for (const [model, maxTotalChars, streaming] of [
       [GEMINI_3_8, 8000, true],
       [GEMINI_3_8_LITE, 8000, true],
       [GEMINI_2_5, 2500, false],
     ] as const) {
-      expect(getDialogueLimits(`google/${model}`)).toEqual({
+      const { provider } = createGoogle({ apiKey: "k" })(model);
+      expect(provider.dialogueCapabilities?.(model)).toEqual({
         maxVoices: 2,
         maxTotalChars,
         streaming,
       });
     }
-    expect(
-      getDialogueLimits(createGoogle({ apiKey: "k" })(GEMINI_3_8))
-    ).toEqual({ maxVoices: 2, maxTotalChars: 8000, streaming: true });
-  });
-
-  it("returns undefined for models without native dialogue", () => {
-    expect(getDialogueLimits("openai/tts-1")).toBeUndefined();
   });
 });
 

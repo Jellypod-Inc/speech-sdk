@@ -21,8 +21,6 @@ export type {
   VoiceDesignPreview,
 } from "./design-voice.js";
 export { designVoice } from "./design-voice.js";
-export type { DialogueLimits } from "./dialogue-limits.js";
-export { getDialogueLimits } from "./dialogue-limits.js";
 export type {
   ProviderErrorStage,
   SpeechSdkProviderErrorOptions,
