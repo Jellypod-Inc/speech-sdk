@@ -115,6 +115,33 @@ describe("ElevenLabs e2e", () => {
     expect(result.metadata.ttfbMs).toBeUndefined();
   });
 
+  describe.each([
+    "eleven_v4",
+    "eleven_v4_turbo",
+  ] as const)("v4 endpoints: %s", (modelId) => {
+    it("returns word timestamps from /with-timestamps", async () => {
+      const result = await generateSpeech({
+        model: `elevenlabs/${modelId}`,
+        text: TEST_TEXT,
+        voice: VOICE,
+        timestamps: true,
+      });
+
+      expect(result.audio.uint8Array.byteLength).toBeGreaterThan(0);
+      expect(result.timestamps?.length).toBeGreaterThan(0);
+    });
+
+    it("streams audio via streamSpeech", async () => {
+      const result = await streamSpeech({
+        model: `elevenlabs/${modelId}`,
+        text: TEST_TEXT,
+        voice: VOICE,
+      });
+      const bytes = await collectStreamAndSave(result);
+      expect(bytes.byteLength).toBeGreaterThan(0);
+    });
+  });
+
   describe("timestamps (native /with-timestamps)", () => {
     it("returns word timestamps on the timestamps:on", async () => {
       const result = await generateSpeech({

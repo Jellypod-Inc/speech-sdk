@@ -3,6 +3,7 @@
 ## 0.36.0
 
 - **ElevenLabs `eleven_v4` and `eleven_v4_turbo`.** Both accept 10,000 characters per request, 90+ languages, and inline audio tags (passed through as written). `eleven_v4` also dispatches `generateConversation` to native dialogue (`/v1/text-to-dialogue`) like `eleven_v3`; `eleven_v4_turbo` only offers dialogue over ElevenLabs' WebSocket API, so its conversations use the stitch path. The default ElevenLabs model is unchanged.
+- **Fix: ElevenLabs native dialogue returns timestamps.** `generateConversation({ timestamps: true })` on `eleven_v3` (and now `eleven_v4`) threw `TimestampValidationError` (`empty`), because the dialogue request never asked for alignment. It now calls `/v1/text-to-dialogue/with-timestamps` when timestamps are on and builds words per voice segment, so turns that ElevenLabs aligns back to back don't merge into one word. Requests without timestamps still use `/v1/text-to-dialogue`.
 
 ## 0.35.0
 

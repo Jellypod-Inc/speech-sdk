@@ -66,6 +66,54 @@ function resolveElevenLabsTimestamps(
   return alignment ? alignmentToWordTimestamps(alignment) : undefined;
 }
 
+const dialogueWithTimestampsResponseSchema =
+  withTimestampsResponseSchema.extend({
+    voice_segments: z
+      .array(
+        z.object({
+          character_start_index: z.number(),
+          character_end_index: z.number(),
+        })
+      )
+      .optional(),
+  });
+
+// Dialogue alignment can run turns together with no whitespace, so words are built per voice segment.
+function resolveElevenLabsDialogueTimestamps(
+  payload: z.infer<typeof dialogueWithTimestampsResponseSchema>,
+  text: string
+): WordTimestamp[] | undefined {
+  const { alignment, voice_segments: segments } = payload;
+  if (alignment && segments && segments.length > 0) {
+    const timestamps = [...segments]
+      .sort((a, b) => a.character_start_index - b.character_start_index)
+      .flatMap((segment) =>
+        alignmentToWordTimestamps({
+          characters: alignment.characters.slice(
+            segment.character_start_index,
+            segment.character_end_index
+          ),
+          character_start_times_seconds:
+            alignment.character_start_times_seconds.slice(
+              segment.character_start_index,
+              segment.character_end_index
+            ),
+          character_end_times_seconds:
+            alignment.character_end_times_seconds.slice(
+              segment.character_start_index,
+              segment.character_end_index
+            ),
+        })
+      );
+    if (
+      finalizeTimestamps({ text: textWithoutAudioTags(text), timestamps }).ok
+    ) {
+      return timestamps;
+    }
+  }
+  return resolveElevenLabsTimestamps(payload, text);
+}
+
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
@@ -702,10 +750,12 @@ export class ElevenLabsSpeechProvider
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
     if (!ELEVENLABS_DIALOGUE_MODELS.has(options.modelId)) {
       throw new SpeechSDKError(
@@ -727,7 +777,10 @@ export class ElevenLabsSpeechProvider
       queryParams.set("output_format", String(output_format));
     }
     const qs = queryParams.toString();
-    const url = `${this.baseURL}/v1/text-to-dialogue${qs ? `?${qs}` : ""}`;
+    const path = options.includeTimestamps
+      ? "/v1/text-to-dialogue/with-timestamps"
+      : "/v1/text-to-dialogue";
+    const url = `${this.baseURL}${path}${qs ? `?${qs}` : ""}`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -751,13 +804,34 @@ export class ElevenLabsSpeechProvider
       stage: "synthesis",
     });
 
+    const requestId = response.headers.get("request-id");
+
+    if (options.includeTimestamps) {
+      const payload = dialogueWithTimestampsResponseSchema.parse(
+        await response.json()
+      );
+      if (!payload.audio_base64) {
+        throw missingAudioError(options.modelId, requestId, payload);
+      }
+      return {
+        audio: base64ToUint8Array(payload.audio_base64),
+        mediaType: elevenLabsFormatToMediaType(
+          output_format == null ? undefined : String(output_format)
+        ),
+        providerMetadata: requestId ? { requestId } : undefined,
+        timestamps: resolveElevenLabsDialogueTimestamps(
+          payload,
+          options.turns.map((t) => t.text).join(" ")
+        ),
+      };
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     // ElevenLabs returns bare "audio/pcm" for pcm_<rate> requests; derive from requested output_format.
     const mediaType =
       output_format == null
         ? (response.headers.get("content-type") ?? "audio/mpeg")
         : elevenLabsFormatToMediaType(String(output_format));
-    const requestId = response.headers.get("request-id");
 
     return {
       audio: new Uint8Array(arrayBuffer),
