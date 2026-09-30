@@ -45,7 +45,7 @@ import {
   inverseAlignWithQuality,
   PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING,
 } from "./pronunciations/inverse-align.js";
-import { mergeRules } from "./pronunciations/merge.js";
+import { mergeRulesForModel } from "./pronunciations/merge.js";
 import type { Pronunciation } from "./pronunciations/types.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -538,12 +538,7 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules, {
-        provider: resolved.provider.id,
-        model: resolved.modelId,
-      })
-    : null;
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
 
   const substitutedTurns = buildSubstitutedTurns(
     options.turns,
@@ -736,12 +731,7 @@ async function runNativeSplit<V extends Voice>(args: {
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = requestTimestamps && hasNativeTimestamps;
 
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules, {
-        provider: resolved.provider.id,
-        model: resolved.modelId,
-      })
-    : null;
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
   const substitutedTurns = buildSubstitutedTurns(
     options.turns,
     resolved,

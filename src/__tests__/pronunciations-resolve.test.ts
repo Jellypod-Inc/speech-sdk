@@ -6,6 +6,9 @@ import {
   ruleMapKey,
   substitute,
 } from "../pronunciations/index.js";
+import { targetReadsIpa } from "../pronunciations/ipa-models.js";
+import { resolveModel, SUPPORTED_PROVIDER_IDS } from "../resolve-provider.js";
+import { FEATURES, hasFeature } from "../speech-provider.js";
 
 const OPENAI = { provider: "openai", model: "tts-1" } as const;
 const GEMINI_38 = {
@@ -161,7 +164,7 @@ describe("resolvePronunciations", () => {
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
     ];
     const [resolved] = resolvePronunciations("a gif", rules, GEMINI_38);
-    expect(substitute("a gif", mergeRules(rules, GEMINI_38)).text).toBe(
+    expect(substitute("a gif", mergeRules(rules, { useIpa: true })).text).toBe(
       `a ${resolved?.replacement}`
     );
   });
@@ -196,6 +199,15 @@ const VOCAB = [
 ];
 const SEPARATORS = [" ", "  ", "'", "-", ".", ",", "", "\n"];
 
+function appliedKeys(
+  text: string,
+  ruleMap: ReturnType<typeof mergeRules>
+): string[] {
+  return [
+    ...new Set(substitute(text, ruleMap).edits.map((edit) => edit.ruleKey)),
+  ].sort();
+}
+
 describe("resolvePronunciations property", () => {
   it("resolves exactly the rule keys substitute edits with", () => {
     const random = seededRandom(20_260_930);
@@ -224,24 +236,26 @@ describe("resolvePronunciations property", () => {
       }
 
       const target = random() < 0.5 ? OPENAI : GEMINI_38;
-      const expected = [
-        ...new Set(
-          substitute(text, mergeRules(rules, target)).edits.map(
-            (edit) => edit.ruleKey
-          )
-        ),
-      ].sort();
-      expect(keys(text, rules, target)).toEqual(expected);
+      const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
+      expect(keys(text, rules, target)).toEqual(appliedKeys(text, ruleMap));
+    }
+  });
+});
 
-      if (target === OPENAI) {
-        const untargeted = [
-          ...new Set(
-            substitute(text, mergeRules(rules)).edits.map(
-              (edit) => edit.ruleKey
-            )
-          ),
-        ].sort();
-        expect(keys(text, rules, target)).toEqual(untargeted);
+describe("IPA_PRONUNCIATION_MODELS", () => {
+  it("matches every registered model's ipa-pronunciation feature", () => {
+    for (const providerId of SUPPORTED_PROVIDER_IDS) {
+      const { provider } = resolveModel(`${providerId}/any`);
+      if (provider.defaultModel) {
+        expect(targetReadsIpa({ provider: providerId })).toBe(
+          targetReadsIpa({ provider: providerId, model: provider.defaultModel })
+        );
+      }
+      for (const model of provider.models ?? []) {
+        expect(
+          targetReadsIpa({ provider: providerId, model: model.id }),
+          `${providerId}/${model.id}`
+        ).toBe(hasFeature(model, FEATURES.IPA_PRONUNCIATION));
       }
     }
   });

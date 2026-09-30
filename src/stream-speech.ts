@@ -6,7 +6,7 @@ import {
 } from "./errors.js";
 import { validateInstructionSupport } from "./instructions.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { mergeRules } from "./pronunciations/merge.js";
+import { mergeRulesForModel } from "./pronunciations/merge.js";
 import { substitute } from "./pronunciations/substitute.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import { resolveModel } from "./resolve-provider.js";
@@ -89,11 +89,8 @@ export async function streamSpeech<
   }
 
   let textToSend = processedText;
-  if (options.pronunciations?.rules?.length) {
-    const ruleMap = mergeRules(options.pronunciations.rules, {
-      provider: resolved.provider.id,
-      model: resolved.modelId,
-    });
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
+  if (ruleMap) {
     textToSend = substitute(processedText, ruleMap).text;
   }
 

@@ -1,9 +1,9 @@
-import { readsIpa } from "./ipa-models.js";
+import { modelReadsIpa, type ResolvedModel } from "../speech-provider.js";
 import type {
   MergedPronunciation,
   PronunciationForm,
   PronunciationInputRule,
-  PronunciationTarget,
+  PronunciationsInput,
 } from "./types.js";
 
 // A case-sensitive rule for an already-lowercase word can collide with a case-insensitive rule for the same word in one merge call; Map.set's last-write-wins is fine here.
@@ -43,12 +43,11 @@ function normalizeRule(
   };
 }
 
-/** Without a `target`, rules resolve to their respelling. */
+/** Rules resolve to `ipa` only when `useIpa` is set and the rule has one; otherwise to their respelling. */
 export function mergeRules(
   rules: readonly PronunciationInputRule[],
-  target?: PronunciationTarget
+  { useIpa = false }: { useIpa?: boolean } = {}
 ): Map<string, MergedPronunciation> {
-  const useIpa = readsIpa(target);
   const map = new Map<string, MergedPronunciation>();
   for (const rule of rules) {
     const normalized = normalizeRule(rule, useIpa);
@@ -58,4 +57,16 @@ export function mergeRules(
     map.set(ruleMapKey(normalized.word, normalized.caseSensitive), normalized);
   }
   return map;
+}
+
+export function mergeRulesForModel(
+  pronunciations: PronunciationsInput | undefined,
+  resolved: ResolvedModel
+): Map<string, MergedPronunciation> | null {
+  if (!pronunciations?.rules?.length) {
+    return null;
+  }
+  return mergeRules(pronunciations.rules, {
+    useIpa: modelReadsIpa(resolved),
+  });
 }

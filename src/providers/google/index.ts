@@ -19,6 +19,7 @@ import {
 } from "../../provider-utils.js";
 import { SENTENCE_TERMINATOR_RE } from "../../sentence-boundaries.js";
 import {
+  FEATURES,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -30,6 +31,7 @@ import { parseSseBase64Stream } from "../../sse-stream.js";
 import {
   GEMINI_3_8_MODELS,
   GOOGLE_DEFAULT_MODEL,
+  GOOGLE_IPA_PRONUNCIATION_MODELS,
   GOOGLE_PROVIDER_ID,
 } from "./models.js";
 
@@ -401,7 +403,7 @@ const GOOGLE_DIALOGUE_MAX_TOTAL_CHARS: Readonly<Record<string, number>> = {
   "gemini-3.8-flash-lite-tts": 8000,
 };
 
-export const GOOGLE_MODELS: readonly ModelInfo[] = [
+const GOOGLE_MODEL_CATALOG: readonly ModelInfo[] = [
   {
     id: "gemini-3.8-flash-tts",
     releaseDate: "2026-07-01",
@@ -450,6 +452,16 @@ export const GOOGLE_MODELS: readonly ModelInfo[] = [
     maxInputChars: GEMINI_TTS_TEXT_CHAR_BUDGET,
   },
 ] as const;
+
+export const GOOGLE_MODELS: readonly ModelInfo[] = GOOGLE_MODEL_CATALOG.map(
+  (model) =>
+    GOOGLE_IPA_PRONUNCIATION_MODELS.has(model.id)
+      ? {
+          ...model,
+          features: [...model.features, FEATURES.IPA_PRONUNCIATION],
+        }
+      : model
+);
 
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = GOOGLE_PROVIDER_ID;

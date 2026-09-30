@@ -1,3 +1,4 @@
+import { targetReadsIpa } from "./ipa-models.js";
 import { mergeRules } from "./merge.js";
 import { substitute } from "./substitute.js";
 import type {
@@ -15,29 +16,11 @@ export function resolvePronunciations(
   rules: readonly PronunciationInputRule[],
   target: PronunciationTarget
 ): ResolvedPronunciation[] {
-  const ruleMap = mergeRules(rules, target);
+  const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
   const { edits } = substitute(text, ruleMap);
-  const appliedKeys = [...new Set(edits.map((edit) => edit.ruleKey))].sort(
-    (a, b) => {
-      if (a === b) {
-        return 0;
-      }
-      return a < b ? -1 : 1;
-    }
-  );
-
-  const resolved: ResolvedPronunciation[] = [];
-  for (const ruleKey of appliedKeys) {
+  const appliedKeys = [...new Set(edits.map((edit) => edit.ruleKey))].sort();
+  return appliedKeys.flatMap((ruleKey) => {
     const rule = ruleMap.get(ruleKey);
-    if (rule) {
-      resolved.push({
-        ruleKey,
-        word: rule.word,
-        caseSensitive: rule.caseSensitive,
-        replacement: rule.replacement,
-        form: rule.form,
-      });
-    }
-  }
-  return resolved;
+    return rule ? [{ ruleKey, ...rule }] : [];
+  });
 }

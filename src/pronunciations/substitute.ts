@@ -1,3 +1,4 @@
+import { ruleMapKey } from "./merge.js";
 import type { Edit, Pronunciation } from "./types.js";
 
 // `\W` treats non-ASCII letters as non-word, falsely reporting word boundaries inside "café" / "señor".
@@ -36,10 +37,6 @@ function findMatch(
   return;
 }
 
-function ruleKeyFor(rule: Pronunciation): string {
-  return rule.caseSensitive ? rule.word : rule.word.toLowerCase();
-}
-
 export function substitute(
   text: string,
   ruleMap: Map<string, Pronunciation>
@@ -73,7 +70,7 @@ export function substitute(
         originalRange: [i, i + matched.word.length],
         replacementRange: [outLen, outLen + matched.replacement.length],
         originalWord: text.slice(i, i + matched.word.length),
-        ruleKey: ruleKeyFor(matched),
+        ruleKey: ruleMapKey(matched.word, matched.caseSensitive ?? false),
       });
       outLen += matched.replacement.length;
       i += matched.word.length;

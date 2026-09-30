@@ -26,21 +26,17 @@ export interface PronunciationTarget {
   readonly provider: string;
 }
 
-export interface ResolvedPronunciation {
+export interface MergedPronunciation {
   readonly caseSensitive: boolean;
   readonly form: PronunciationForm;
   /** Exactly what synthesis substitutes for this model. */
   readonly replacement: string;
-  /** As `ruleMapKey` produces it. */
-  readonly ruleKey: string;
   readonly word: string;
 }
 
-export interface MergedPronunciation {
-  readonly caseSensitive: boolean;
-  readonly form: PronunciationForm;
-  readonly replacement: string;
-  readonly word: string;
+export interface ResolvedPronunciation extends MergedPronunciation {
+  /** As `ruleMapKey` produces it. */
+  readonly ruleKey: string;
 }
 
 export interface Edit {

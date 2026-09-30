@@ -35,6 +35,7 @@ export const FEATURES = {
   VOICE_DESIGN: "voice-design",
   OPEN_SOURCE: "open-source",
   TIMESTAMPS: "timestamps",
+  IPA_PRONUNCIATION: "ipa-pronunciation",
 } as const;
 
 /**
@@ -259,6 +260,13 @@ export function modelDeclaresNativeTimestamps(
     (m) => m.id === resolved.modelId
   );
   return modelInfo != null && hasFeature(modelInfo, FEATURES.TIMESTAMPS);
+}
+
+export function modelReadsIpa(resolved: ResolvedModel): boolean {
+  const modelInfo = resolved.provider.models?.find(
+    (m) => m.id === resolved.modelId
+  );
+  return modelInfo != null && hasFeature(modelInfo, FEATURES.IPA_PRONUNCIATION);
 }
 
 export function modelMaxInputChars(

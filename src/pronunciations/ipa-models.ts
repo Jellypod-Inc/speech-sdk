@@ -5,22 +5,20 @@ import {
 } from "../providers/google/models.js";
 import type { PronunciationTarget } from "./types.js";
 
-interface IpaSupport {
-  readonly defaultModel: string;
-  readonly models: ReadonlySet<string>;
-}
-
-const IPA_SUPPORT: Readonly<Record<string, IpaSupport>> = {
+// Mirrors each provider's FEATURES.IPA_PRONUNCIATION declarations without importing provider code, so the resolver stays browser-safe.
+export const IPA_PRONUNCIATION_MODELS: Readonly<
+  Record<string, { defaultModel: string; models: ReadonlySet<string> }>
+> = {
   [GOOGLE_PROVIDER_ID]: {
     defaultModel: GOOGLE_DEFAULT_MODEL,
     models: GOOGLE_IPA_PRONUNCIATION_MODELS,
   },
 };
 
-export function readsIpa(target: PronunciationTarget | undefined): boolean {
-  if (target === undefined || !Object.hasOwn(IPA_SUPPORT, target.provider)) {
+export function targetReadsIpa(target: PronunciationTarget): boolean {
+  if (!Object.hasOwn(IPA_PRONUNCIATION_MODELS, target.provider)) {
     return false;
   }
-  const support = IPA_SUPPORT[target.provider];
+  const support = IPA_PRONUNCIATION_MODELS[target.provider];
   return support.models.has(target.model ?? support.defaultModel);
 }
