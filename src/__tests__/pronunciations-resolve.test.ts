@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { textWithoutAudioTags } from "../audio-tags.js";
 import {
   mergeRules,
   type PronunciationRule,
@@ -164,8 +165,18 @@ describe("resolvePronunciations", () => {
       { word: "LLM", replacement: "el el em", respelling: null },
       { word: "GPU", respelling: undefined },
       { word: null, respelling: "nothing" },
+      null,
+      undefined,
+      { word: "GIF", respelling: "  ", replacement: "jif" },
     ] as unknown as PronunciationRule[];
-    expect(resolvePronunciations("LLM on a GPU", untyped, OPENAI)).toEqual([
+    expect(resolvePronunciations("LLM on a GPU GIF", untyped, OPENAI)).toEqual([
+      {
+        ruleKey: "gif",
+        word: "GIF",
+        caseSensitive: false,
+        replacement: "jif",
+        form: "respelling",
+      },
       {
         ruleKey: "llm",
         word: "LLM",
@@ -174,6 +185,15 @@ describe("resolvePronunciations", () => {
         form: "respelling",
       },
     ]);
+  });
+
+  it("matches the text synthesis substitutes: audio tags removed, whitespace collapsed", () => {
+    const rules: PronunciationRule[] = [
+      { word: "laughs", respelling: "laffs" },
+      { word: "New York", respelling: "noo YORK" },
+    ];
+    expect(keys("[laughs] hi", rules)).toEqual([]);
+    expect(keys("New  York", rules)).toEqual(["new york"]);
   });
 
   it("reports the replacement synthesis substitutes", () => {
@@ -214,14 +234,18 @@ const VOCAB = [
   "_",
   "1",
 ];
-const SEPARATORS = [" ", "  ", "'", "-", ".", ",", "", "\n"];
+const SEPARATORS = [" ", "  ", "'", "-", ".", ",", "", "\n", " [tag] ", "["];
 
 function appliedKeys(
   text: string,
   ruleMap: ReturnType<typeof mergeRules>
 ): string[] {
   return [
-    ...new Set(substitute(text, ruleMap).edits.map((edit) => edit.ruleKey)),
+    ...new Set(
+      substitute(textWithoutAudioTags(text), ruleMap).edits.map(
+        (edit) => edit.ruleKey
+      )
+    ),
   ].sort();
 }
 

@@ -15,15 +15,18 @@ function trimmedString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-// Untyped callers can pass non-string fields, e.g. `respelling: null` beside a legacy `replacement`; those read as blank.
-function toRule(input: PronunciationInputRule) {
+// Untyped callers can pass non-object entries or non-string fields, e.g. `respelling: null` beside a legacy `replacement`; those read as blank.
+function toRule(input: PronunciationInputRule | null | undefined) {
+  if (typeof input !== "object" || input === null) {
+    return { word: "", respelling: "", ipa: "", caseSensitive: false };
+  }
   const respelling =
-    "respelling" in input && typeof input.respelling === "string"
-      ? input.respelling
-      : "replacement" in input && input.replacement;
+    "respelling" in input ? trimmedString(input.respelling) : "";
   return {
     word: trimmedString(input.word),
-    respelling: trimmedString(respelling),
+    respelling:
+      respelling ||
+      ("replacement" in input ? trimmedString(input.replacement) : ""),
     ipa: "ipa" in input ? trimmedString(input.ipa) : "",
     caseSensitive: input.caseSensitive ?? false,
   };

@@ -1,3 +1,4 @@
+import { textWithoutAudioTags } from "../audio-tags.js";
 import { targetReadsIpa } from "./ipa-models.js";
 import { mergeRules } from "./merge.js";
 import { substitute } from "./substitute.js";
@@ -9,7 +10,10 @@ import type {
 
 /**
  * Returns each rule synthesis applies to `text` for `target`, once, sorted by `ruleKey`, with the exact replacement
- * it substitutes. Pure: uses the same merge and longest-first matching as synthesis.
+ * it substitutes. Pure: uses the same audio-tag removal, merge and longest-first matching as synthesis.
+ *
+ * `target` is looked up among the SDK's built-in providers. A custom provider whose models declare
+ * `FEATURES.IPA_PRONUNCIATION` is resolved as if it read respellings.
  */
 export function resolvePronunciations(
   text: string,
@@ -17,7 +21,7 @@ export function resolvePronunciations(
   target: PronunciationTarget
 ): ResolvedPronunciation[] {
   const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
-  const { edits } = substitute(text, ruleMap);
+  const { edits } = substitute(textWithoutAudioTags(text), ruleMap);
   const appliedKeys = [...new Set(edits.map((edit) => edit.ruleKey))].sort();
   return appliedKeys.flatMap((ruleKey) => {
     const rule = ruleMap.get(ruleKey);
