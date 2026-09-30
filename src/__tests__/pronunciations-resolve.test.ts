@@ -159,10 +159,11 @@ describe("resolvePronunciations", () => {
     ]);
   });
 
-  it("tolerates untyped rules with a missing or null respelling", () => {
+  it("skips non-string fields from untyped callers instead of throwing", () => {
     const untyped = [
       { word: "LLM", replacement: "el el em", respelling: null },
       { word: "GPU", respelling: undefined },
+      { word: null, respelling: "nothing" },
     ] as unknown as PronunciationRule[];
     expect(resolvePronunciations("LLM on a GPU", untyped, OPENAI)).toEqual([
       {

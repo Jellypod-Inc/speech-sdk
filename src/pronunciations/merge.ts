@@ -15,39 +15,36 @@ function trimmedString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-// Checks values, not keys: untyped callers can pass `respelling: null` alongside a legacy `replacement`.
-function chooseReplacement(
-  rule: PronunciationInputRule,
-  useIpa: boolean
-): { form: PronunciationForm; replacement: string } {
-  const ipa = "ipa" in rule ? trimmedString(rule.ipa) : "";
-  if (useIpa && ipa.length > 0) {
-    return { form: "ipa", replacement: ipa };
-  }
-  const respelling = "respelling" in rule ? rule.respelling : undefined;
-  const replacement = "replacement" in rule ? rule.replacement : undefined;
+// Untyped callers can pass non-string fields, e.g. `respelling: null` beside a legacy `replacement`; those read as blank.
+function toRule(input: PronunciationInputRule) {
+  const respelling =
+    "respelling" in input && typeof input.respelling === "string"
+      ? input.respelling
+      : "replacement" in input && input.replacement;
   return {
-    form: "respelling",
-    replacement: trimmedString(
-      typeof respelling === "string" ? respelling : replacement
-    ),
+    word: trimmedString(input.word),
+    respelling: trimmedString(respelling),
+    ipa: "ipa" in input ? trimmedString(input.ipa) : "",
+    caseSensitive: input.caseSensitive ?? false,
   };
 }
 
 // Ends only — internal whitespace is significant, so "New York" -> "noo YORK" keeps matching.
 function normalizeRule(
-  rule: PronunciationInputRule,
+  input: PronunciationInputRule,
   useIpa: boolean
 ): MergedPronunciation | undefined {
-  const word = rule.word.trim();
-  const { form, replacement } = chooseReplacement(rule, useIpa);
-  if (word.length === 0 || replacement.length === 0) {
+  const rule = toRule(input);
+  const form: PronunciationForm =
+    useIpa && rule.ipa.length > 0 ? "ipa" : "respelling";
+  const replacement = form === "ipa" ? rule.ipa : rule.respelling;
+  if (rule.word.length === 0 || replacement.length === 0) {
     return;
   }
   return {
-    word,
+    word: rule.word,
     replacement,
-    caseSensitive: rule.caseSensitive ?? false,
+    caseSensitive: rule.caseSensitive,
     form,
   };
 }
