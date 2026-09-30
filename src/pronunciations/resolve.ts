@@ -1,12 +1,22 @@
 import { textWithoutAudioTags } from "../audio-tags.js";
-import { targetReadsIpa } from "./ipa-models.js";
-import { mergeRules } from "./merge.js";
+import { ipaFormatterFor, targetReadsIpa } from "./ipa-models.js";
+import { mergeMatchableRules, mergeRules } from "./merge.js";
 import { substitute } from "./substitute.js";
 import type {
+  Pronunciation,
   PronunciationInputRule,
   PronunciationTarget,
   ResolvedPronunciation,
 } from "./types.js";
+
+// The one matcher behind resolvePronunciations and matchPronunciations: synthesis's audio-tag removal and longest-first substitution.
+function matchedRuleKeys(
+  text: string,
+  ruleMap: Map<string, Pronunciation>
+): string[] {
+  const { edits } = substitute(textWithoutAudioTags(text), ruleMap);
+  return [...new Set(edits.map((edit) => edit.ruleKey))].sort();
+}
 
 /**
  * Returns each rule synthesis applies to `text` for `target`, once, sorted by `ruleKey`, with the exact replacement
@@ -20,11 +30,24 @@ export function resolvePronunciations(
   rules: readonly PronunciationInputRule[],
   target: PronunciationTarget
 ): ResolvedPronunciation[] {
-  const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
-  const { edits } = substitute(textWithoutAudioTags(text), ruleMap);
-  const appliedKeys = [...new Set(edits.map((edit) => edit.ruleKey))].sort();
-  return appliedKeys.flatMap((ruleKey) => {
+  const ruleMap = mergeRules(rules, {
+    useIpa: targetReadsIpa(target),
+    formatIpa: ipaFormatterFor(target.provider),
+  });
+  return matchedRuleKeys(text, ruleMap).flatMap((ruleKey) => {
     const rule = ruleMap.get(ruleKey);
     return rule ? [{ ruleKey, ...rule }] : [];
   });
+}
+
+/**
+ * Returns the `ruleMapKey` of every rule substitution would apply to `text`, once, sorted, for any target: the same
+ * merge, word-boundary, case and longest-first matching as `resolvePronunciations`, never inside audio tags. A rule
+ * counts when it has a `respelling` or an `ipa`, whichever form a model would receive.
+ */
+export function matchPronunciations(
+  text: string,
+  rules: readonly PronunciationInputRule[]
+): string[] {
+  return matchedRuleKeys(text, mergeMatchableRules(rules));
 }

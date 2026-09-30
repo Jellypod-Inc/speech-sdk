@@ -50,7 +50,7 @@ describe("generateSpeech with pronunciations", () => {
     const googleFeatures = (id: string) =>
       GOOGLE_MODELS.find((m) => m.id === id)?.features.map(String) ?? [];
     const cases = [
-      { providerId: "google", modelId: "gemini-3.8-flash-tts", sent: "dʒɪf" },
+      { providerId: "google", modelId: "gemini-3.8-flash-tts", sent: "/dʒɪf/" },
       {
         providerId: "google",
         modelId: "gemini-2.5-flash-preview-tts",
@@ -79,6 +79,29 @@ describe("generateSpeech with pronunciations", () => {
         model: modelId,
       });
       expect(resolved?.replacement).toBe(sent);
+      expect(generateSpy.mock.calls[0][0].text).toBe(`a ${sent}`);
+    }
+  });
+
+  it("sends Gemini 3.8 IPA between slashes, once, and custom IPA providers' IPA as written", async () => {
+    const cases = [
+      { providerId: "google", ipa: "dʒɪf", sent: "/dʒɪf/" },
+      { providerId: "google", ipa: "/dʒɪf/", sent: "/dʒɪf/" },
+      { providerId: "custom", ipa: "dʒɪf", sent: "dʒɪf" },
+    ];
+    for (const { providerId, ipa, sent } of cases) {
+      const generateSpy = vi.fn().mockResolvedValue({
+        audio: new Uint8Array([1]),
+        mediaType: "audio/wav",
+      });
+      await generateSpeech({
+        model: fakeModel(generateSpy, providerId, "gemini-3.8-flash-tts", [
+          "ipa-pronunciation",
+        ]),
+        voice: "v1",
+        text: "a gif",
+        pronunciations: { rules: [{ word: "gif", respelling: "jif", ipa }] },
+      });
       expect(generateSpy.mock.calls[0][0].text).toBe(`a ${sent}`);
     }
   });

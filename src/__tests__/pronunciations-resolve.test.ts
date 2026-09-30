@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { textWithoutAudioTags } from "../audio-tags.js";
 import {
+  matchPronunciations,
   mergeRules,
   type PronunciationRule,
+  type PronunciationTarget,
   resolvePronunciations,
   ruleMapKey,
   substitute,
+  targetReadsIpa as targetReadsIpaExport,
 } from "../pronunciations/index.js";
-import { targetReadsIpa } from "../pronunciations/ipa-models.js";
+import {
+  ipaFormatterFor,
+  targetReadsIpa,
+} from "../pronunciations/ipa-models.js";
+import { mergeRulesForModel } from "../pronunciations/merge.js";
 import { resolveModel, SUPPORTED_PROVIDER_IDS } from "../resolve-provider.js";
 import { FEATURES, hasFeature } from "../speech-provider.js";
 
@@ -20,7 +27,7 @@ const GEMINI_38 = {
 function keys(
   text: string,
   rules: readonly PronunciationRule[],
-  target = OPENAI
+  target: PronunciationTarget = OPENAI
 ) {
   return resolvePronunciations(text, rules, target).map((r) => r.ruleKey);
 }
@@ -81,7 +88,7 @@ describe("resolvePronunciations", () => {
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
     ];
     expect(resolvePronunciations("a gif", rules, GEMINI_38)[0]).toMatchObject({
-      replacement: "dʒɪf",
+      replacement: "/dʒɪf/",
       form: "ipa",
     });
     expect(
@@ -201,9 +208,126 @@ describe("resolvePronunciations", () => {
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
     ];
     const [resolved] = resolvePronunciations("a gif", rules, GEMINI_38);
-    expect(substitute("a gif", mergeRules(rules, { useIpa: true })).text).toBe(
+    const google = resolveModel("google/gemini-3.8-flash-tts");
+    const ruleMap = mergeRulesForModel({ rules }, google);
+    expect(ruleMap && substitute("a gif", ruleMap).text).toBe(
       `a ${resolved?.replacement}`
     );
+  });
+
+  it("wraps Gemini IPA in slashes unless the caller already did", () => {
+    const resolveIpa = (ipa: string) =>
+      resolvePronunciations(
+        "a gif",
+        [{ word: "gif", respelling: "jif", ipa }],
+        GEMINI_38
+      )[0]?.replacement;
+    expect(resolveIpa("dʒɪf")).toBe("/dʒɪf/");
+    expect(resolveIpa("/dʒɪf/")).toBe("/dʒɪf/");
+    expect(resolveIpa(" /dʒɪf/ ")).toBe("/dʒɪf/");
+    expect(resolveIpa("/dʒɪf")).toBe("//dʒɪf/");
+    expect(resolveIpa("/")).toBe("///");
+  });
+
+  it("sends no IPA when the model is null (unknown)", () => {
+    const rules: PronunciationRule[] = [
+      { word: "gif", respelling: "jif", ipa: "dʒɪf" },
+    ];
+    expect(
+      resolvePronunciations("a gif", rules, {
+        provider: "google",
+        model: null,
+      })[0]
+    ).toMatchObject({ replacement: "jif", form: "respelling" });
+  });
+});
+
+describe("targetReadsIpa", () => {
+  it("is exported from the pronunciations entry point", () => {
+    expect(targetReadsIpaExport).toBe(targetReadsIpa);
+  });
+
+  it("reads IPA only on IPA models, with an omitted model meaning the provider default", () => {
+    expect(targetReadsIpa(GEMINI_38)).toBe(true);
+    expect(targetReadsIpa({ provider: "google" })).toBe(true);
+    expect(
+      targetReadsIpa({
+        provider: "google",
+        model: "gemini-2.5-flash-preview-tts",
+      })
+    ).toBe(false);
+    expect(targetReadsIpa({ provider: "google", model: null })).toBe(false);
+    expect(targetReadsIpa(OPENAI)).toBe(false);
+    expect(targetReadsIpa({ provider: "constructor" })).toBe(false);
+  });
+});
+
+describe("matchPronunciations", () => {
+  it("applies the longest rule and never re-matches its span", () => {
+    const cities: PronunciationRule[] = [
+      { word: "York", respelling: "yawk" },
+      { word: "New York", respelling: "noo YAWK" },
+    ];
+    expect(matchPronunciations("I love New York", cities)).toEqual([
+      "new york",
+    ]);
+    expect(matchPronunciations("New York or York", cities)).toEqual([
+      "new york",
+      "york",
+    ]);
+  });
+
+  it("never matches inside an audio tag", () => {
+    const rules: PronunciationRule[] = [
+      { word: "laughs", respelling: "laffs" },
+    ];
+    expect(matchPronunciations("[laughs] hi", rules)).toEqual([]);
+    expect(matchPronunciations("[laughs] he laughs", rules)).toEqual([
+      "laughs",
+    ]);
+  });
+
+  it("honors caseSensitive", () => {
+    const rules: PronunciationRule[] = [
+      { word: "Nice", respelling: "neese", caseSensitive: true },
+    ];
+    expect(matchPronunciations("a nice day", rules)).toEqual([]);
+    expect(matchPronunciations("Nice, France", rules)).toEqual(["Nice"]);
+  });
+
+  it("matches a rule that has only ipa, whatever the target", () => {
+    const rules: PronunciationRule[] = [
+      { word: "gif", respelling: "", ipa: "dʒɪf" },
+    ];
+    expect(matchPronunciations("a gif", rules)).toEqual(["gif"]);
+    expect(keys("a gif", rules, OPENAI)).toEqual([]);
+    expect(keys("a gif", rules, GEMINI_38)).toEqual(["gif"]);
+  });
+
+  it("lets the later duplicate win", () => {
+    const rules: PronunciationRule[] = [
+      { word: "Nice", respelling: "neese", caseSensitive: true },
+      { word: "Nice", respelling: "nyce", caseSensitive: true },
+      { word: "nice", respelling: "nyce" },
+      { word: "NICE", respelling: "N I C E" },
+    ];
+    expect(matchPronunciations("so nice", rules)).toEqual(["nice"]);
+    expect(
+      resolvePronunciations("so nice", rules, OPENAI)[0]?.replacement
+    ).toBe("N I C E");
+    expect(
+      matchPronunciations("so nice", [
+        { word: "nice", respelling: "nyce" },
+        { word: "nice", respelling: "nyce", caseSensitive: true },
+        { word: "nice", respelling: "", ipa: "naɪs", caseSensitive: true },
+      ])
+    ).toEqual(["nice"]);
+    expect(
+      matchPronunciations("so NICE", [
+        { word: "nice", respelling: "nyce" },
+        { word: "nice", respelling: "", ipa: "naɪs", caseSensitive: true },
+      ])
+    ).toEqual([]);
   });
 });
 
@@ -277,8 +401,20 @@ describe("resolvePronunciations property", () => {
       }
 
       const target = random() < 0.5 ? OPENAI : GEMINI_38;
-      const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
+      const ruleMap = mergeRules(rules, {
+        useIpa: targetReadsIpa(target),
+        formatIpa: ipaFormatterFor(target.provider),
+      });
       expect(keys(text, rules, target)).toEqual(appliedKeys(text, ruleMap));
+
+      const everyRuleHasRespelling = rules.every(
+        (rule) => rule.respelling.trim().length > 0
+      );
+      if (everyRuleHasRespelling) {
+        expect(matchPronunciations(text, rules)).toEqual(
+          keys(text, rules, target)
+        );
+      }
     }
   });
 });

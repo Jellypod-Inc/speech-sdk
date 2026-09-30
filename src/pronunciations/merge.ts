@@ -1,4 +1,5 @@
 import { modelReadsIpa, type ResolvedModel } from "../speech-provider.js";
+import { ipaFormatterFor } from "./ipa-models.js";
 import type {
   MergedPronunciation,
   PronunciationForm,
@@ -32,18 +33,28 @@ function toRule(input: PronunciationInputRule | null | undefined) {
   };
 }
 
+interface MergeOptions {
+  /** Applied to a rule's `ipa` when it is chosen; the result is what synthesis substitutes. */
+  formatIpa?: (ipa: string) => string;
+  useIpa?: boolean;
+}
+
 // Ends only — internal whitespace is significant, so "New York" -> "noo YORK" keeps matching.
 function normalizeRule(
   input: PronunciationInputRule,
-  useIpa: boolean
+  { useIpa = false, formatIpa }: MergeOptions
 ): MergedPronunciation | undefined {
   const rule = toRule(input);
   const form: PronunciationForm =
     useIpa && rule.ipa.length > 0 ? "ipa" : "respelling";
-  const replacement = form === "ipa" ? rule.ipa : rule.respelling;
-  if (rule.word.length === 0 || replacement.length === 0) {
+  if (rule.word.length === 0) {
     return;
   }
+  if (form === "respelling" && rule.respelling.length === 0) {
+    return;
+  }
+  const replacement =
+    form === "ipa" ? (formatIpa?.(rule.ipa) ?? rule.ipa) : rule.respelling;
   return {
     word: rule.word,
     replacement,
@@ -52,14 +63,17 @@ function normalizeRule(
   };
 }
 
-/** Rules resolve to `ipa` only when `useIpa` is set and the rule has one; otherwise to their respelling. */
+/**
+ * Rules resolve to `ipa` only when `useIpa` is set and the rule has one; otherwise to their respelling.
+ * `formatIpa` rewrites a chosen `ipa` into the form the model reads (e.g. `/…/` for Gemini).
+ */
 export function mergeRules(
   rules: readonly PronunciationInputRule[],
-  { useIpa = false }: { useIpa?: boolean } = {}
+  options: MergeOptions = {}
 ): Map<string, MergedPronunciation> {
   const map = new Map<string, MergedPronunciation>();
   for (const rule of rules) {
-    const normalized = normalizeRule(rule, useIpa);
+    const normalized = normalizeRule(rule, options);
     if (normalized === undefined) {
       continue;
     }
@@ -77,5 +91,27 @@ export function mergeRulesForModel(
   }
   return mergeRules(pronunciations.rules, {
     useIpa: modelReadsIpa(resolved),
+    formatIpa: ipaFormatterFor(resolved.provider.id),
   });
+}
+
+// Target-independent: a rule is kept when it has any spoken form, since matching depends only on its word.
+export function mergeMatchableRules(
+  rules: readonly PronunciationInputRule[]
+): Map<string, MergedPronunciation> {
+  const map = new Map<string, MergedPronunciation>();
+  for (const input of rules) {
+    const rule = toRule(input);
+    const replacement = rule.respelling || rule.ipa;
+    if (rule.word.length === 0 || replacement.length === 0) {
+      continue;
+    }
+    map.set(ruleMapKey(rule.word, rule.caseSensitive), {
+      word: rule.word,
+      replacement,
+      caseSensitive: rule.caseSensitive,
+      form: rule.respelling ? "respelling" : "ipa",
+    });
+  }
+  return map;
 }
