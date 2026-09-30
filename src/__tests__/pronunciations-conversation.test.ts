@@ -232,3 +232,71 @@ describe("generateConversation with pronunciations (stitch path)", () => {
     ]);
   });
 });
+
+describe("generateConversation sizes native dialogue on the text as sent", () => {
+  const PCM_MEDIA_TYPE = "audio/pcm;rate=24000";
+
+  function dialogueProvider(maxTotalChars: number) {
+    const clip = () =>
+      Promise.resolve({
+        audio: new Uint8Array(4800).fill(1),
+        mediaType: PCM_MEDIA_TYPE,
+      });
+    return {
+      id: "fake",
+      defaultModel: "d1",
+      models: [{ id: "d1", features: [] }],
+      generate: vi.fn(clip),
+      generateDialogue: vi.fn(clip),
+      dialogueCapabilities: () => ({ maxVoices: 2, maxTotalChars }),
+      getStitchOptions: () => ({
+        providerOptions: {},
+        mediaType: PCM_MEDIA_TYPE,
+      }),
+    };
+  }
+
+  function sentTurnTexts(
+    generateDialogue: ReturnType<typeof vi.fn>
+  ): string[][] {
+    return generateDialogue.mock.calls.map((call) =>
+      call[0].turns.map((t: { text: string }) => t.text)
+    );
+  }
+
+  it("splits a conversation that fits raw but exceeds the limit after substitution", async () => {
+    const provider = dialogueProvider(30);
+    await generateConversation({
+      model: { provider, modelId: "d1" } as never,
+      turns: [
+        { text: "LLM here", voice: "v1" },
+        { text: "ok", voice: "v2" },
+        { text: "LLM there", voice: "v1" },
+        { text: "yes", voice: "v2" },
+      ],
+      pronunciations: {
+        rules: [{ word: "LLM", replacement: "el el em el el em" }],
+      },
+    });
+
+    expect(sentTurnTexts(provider.generateDialogue).sort()).toEqual([
+      ["el el em el el em here", "ok"],
+      ["el el em el el em there", "yes"],
+    ]);
+  });
+
+  it("keeps one native call when substitution brings an over-limit conversation under it", async () => {
+    const provider = dialogueProvider(10);
+    await generateConversation({
+      model: { provider, modelId: "d1" } as never,
+      turns: [
+        { text: "Mississippi", voice: "v1" },
+        { text: "ok", voice: "v2" },
+      ],
+      pronunciations: { rules: [{ word: "Mississippi", replacement: "M" }] },
+    });
+
+    expect(sentTurnTexts(provider.generateDialogue)).toEqual([["M", "ok"]]);
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
+});

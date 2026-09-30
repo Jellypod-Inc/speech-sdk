@@ -45,8 +45,11 @@ import {
   inverseAlignWithQuality,
   PRONUNCIATION_TIMESTAMP_ESTIMATE_WARNING,
 } from "./pronunciations/inverse-align.js";
-import { mergeRules } from "./pronunciations/merge.js";
-import type { Pronunciation } from "./pronunciations/types.js";
+import { mergeRulesForModel } from "./pronunciations/merge.js";
+import type {
+  Pronunciation,
+  PronunciationsInput,
+} from "./pronunciations/types.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
 import {
@@ -129,6 +132,30 @@ function describeConversationModels(
   return [
     ...new Set(resolvedPerTurn.map((r) => `${r.provider.id}/${r.modelId}`)),
   ].join(", ");
+}
+
+// Native dialogue limits count the text actually sent, after audio-tag processing and pronunciation substitution.
+function turnsAsSent<V extends Voice>(
+  turns: readonly ConversationTurn<V>[],
+  resolvedPerTurn: readonly ResolvedModel<V>[],
+  pronunciations: PronunciationsInput | undefined
+): ConversationTurn<V>[] {
+  const ruleMaps = new Map<
+    ResolvedModel<V>,
+    ReturnType<typeof mergeRulesForModel>
+  >();
+  return turns.map((turn, index) => {
+    const resolved = resolvedPerTurn[index];
+    if (!ruleMaps.has(resolved)) {
+      ruleMaps.set(resolved, mergeRulesForModel(pronunciations, resolved));
+    }
+    const [prepared] = buildSubstitutedTurns(
+      [turn],
+      resolved,
+      ruleMaps.get(resolved) ?? null
+    );
+    return { ...turn, text: prepared?.text ?? turn.text };
+  });
 }
 
 export function generateConversation<
@@ -231,7 +258,7 @@ export async function generateConversation<
   const path = chooseConversationPath({
     forceStitch,
     resolvedPerTurn,
-    turns: options.turns,
+    turns: turnsAsSent(options.turns, resolvedPerTurn, options.pronunciations),
     output: options.output,
   });
 
@@ -538,9 +565,7 @@ async function runNative<V extends Voice>(args: {
     );
   }
 
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
-    : null;
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
 
   const substitutedTurns = buildSubstitutedTurns(
     options.turns,
@@ -733,9 +758,7 @@ async function runNativeSplit<V extends Voice>(args: {
   const hasNativeTimestamps = modelDeclaresNativeTimestamps(resolved);
   const shouldRequestNative = requestTimestamps && hasNativeTimestamps;
 
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
-    : null;
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
   const substitutedTurns = buildSubstitutedTurns(
     options.turns,
     resolved,

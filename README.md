@@ -472,6 +472,37 @@ The same option is available on `streamSpeech` and `generateConversation`. On `g
 
 `word` and `replacement` are trimmed at the ends before matching, so `'hello '` behaves exactly like `'hello'`; internal whitespace is preserved, so multi-word rules like `'New York'` keep matching. A rule whose `word` or `replacement` is empty after trimming is skipped — the remaining rules still apply.
 
+A rule matches a standalone word: it can't touch a letter, digit or underscore on either side (so `cat` matches in `cat's` but not in `category` or `café`). Matching ignores case unless `caseSensitive: true`. Longer rules win and replaced text is never matched again, so with rules for `New York` and `York`, only `New York` applies to "I love New York". Rules with the same key (the word, lowercased unless `caseSensitive`) replace each other, and the last one listed wins; otherwise, when two rules of the same length match at the same spot, the one listed first wins. Audio tags are removed before matching, so a rule never applies inside a tag.
+
+Rules can also be written as `{ word, respelling, ipa?, caseSensitive? }`. `respelling` is the spoken form and is trimmed and skipped when blank, exactly like `replacement`; the `{ word, replacement }` form keeps working unchanged and is treated as a respelling. Models that read IPA (today Gemini 3.8: `gemini-3.8-flash-tts`, `gemini-3.8-flash-lite-tts`) receive `ipa`; every other model receives `respelling`, as does any rule without `ipa`:
+
+```ts
+pronunciations: {
+  rules: [{ word: 'gif', respelling: 'jif', ipa: 'dʒɪf' }],
+}
+```
+
+To find out which rules apply to a line, and the exact replacement synthesis will send, call `resolvePronunciations`. It runs the same matching as synthesis, does no I/O, and returns each applied rule once, sorted by `ruleKey`:
+
+```ts
+import { resolvePronunciations } from '@speech-sdk/core/pronunciations';
+
+const rules = [
+  { word: 'New York', respelling: 'noo YORK', ipa: 'nuː ˈjɔːrk' },
+  { word: 'York', respelling: 'YORK' },
+];
+
+resolvePronunciations('I love New York', rules, {
+  provider: 'google',
+  model: 'gemini-3.8-flash-tts', // optional; defaults to the provider's default model
+});
+// [{ ruleKey: 'new york', word: 'New York', caseSensitive: false, replacement: 'nuː ˈjɔːrk', form: 'ipa' }]
+```
+
+`resolvePronunciations` knows the SDK's built-in providers. For a custom provider whose models declare `FEATURES.IPA_PRONUNCIATION`, it reports the respelling while synthesis sends `ipa`.
+
+Store the result with a voiced line; resolving again with the current rules and comparing tells you whether a rule change affects it.
+
 ## Voice cloning
 
 Some providers support reference-audio cloning. Pass a voice object instead of a string.

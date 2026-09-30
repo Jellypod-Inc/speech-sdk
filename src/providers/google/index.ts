@@ -19,6 +19,7 @@ import {
 } from "../../provider-utils.js";
 import { SENTENCE_TERMINATOR_RE } from "../../sentence-boundaries.js";
 import {
+  FEATURES,
   hasFeature,
   type ModelInfo,
   type ResolvedModel,
@@ -27,6 +28,12 @@ import {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
+import {
+  GEMINI_3_8_MODELS,
+  GOOGLE_DEFAULT_MODEL,
+  GOOGLE_IPA_PRONUNCIATION_MODELS,
+  GOOGLE_PROVIDER_ID,
+} from "./models.js";
 
 function safeParseJson(input: string): unknown {
   try {
@@ -200,10 +207,6 @@ const GEMINI_TTS_TEXT_CHAR_BUDGET =
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
-const GEMINI_3_8_MODELS = new Set([
-  "gemini-3.8-flash-tts",
-  "gemini-3.8-flash-lite-tts",
-]);
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
@@ -283,8 +286,6 @@ export interface GoogleSpeechProviderConfig {
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
-
-export const GOOGLE_PROVIDER_ID = "google" as const;
 
 const GOOGLE_GEMINI_2_5_LANGUAGES = [
   "en",
@@ -402,7 +403,7 @@ const GOOGLE_DIALOGUE_MAX_TOTAL_CHARS: Readonly<Record<string, number>> = {
   "gemini-3.8-flash-lite-tts": 8000,
 };
 
-export const GOOGLE_MODELS: readonly ModelInfo[] = [
+const GOOGLE_MODEL_CATALOG: readonly ModelInfo[] = [
   {
     id: "gemini-3.8-flash-tts",
     releaseDate: "2026-07-01",
@@ -452,9 +453,19 @@ export const GOOGLE_MODELS: readonly ModelInfo[] = [
   },
 ] as const;
 
+export const GOOGLE_MODELS: readonly ModelInfo[] = GOOGLE_MODEL_CATALOG.map(
+  (model) =>
+    GOOGLE_IPA_PRONUNCIATION_MODELS.has(model.id)
+      ? {
+          ...model,
+          features: [...model.features, FEATURES.IPA_PRONUNCIATION],
+        }
+      : model
+);
+
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = GOOGLE_PROVIDER_ID;
-  readonly defaultModel = "gemini-3.8-flash-lite-tts";
+  readonly defaultModel = GOOGLE_DEFAULT_MODEL;
 
   readonly models = GOOGLE_MODELS;
 

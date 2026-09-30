@@ -1,25 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateSpeech } from "../generate-speech.js";
+import { resolvePronunciations } from "../pronunciations/index.js";
+import { GOOGLE_MODELS } from "../providers/google/index.js";
 import type { ResolvedModel, SpeechProvider } from "../speech-provider.js";
 
 const SUBSTITUTED_PATTERN = /el el em/;
 const AUDIO_TAG_PATTERN = /\[pause\]/;
 
-function fakeModel(spy: ReturnType<typeof vi.fn>): ResolvedModel<string> {
+function fakeModel(
+  spy: ReturnType<typeof vi.fn>,
+  providerId = "fake",
+  modelId = "f1",
+  features: readonly string[] = ["timestamps"]
+): ResolvedModel<string> {
   const provider: SpeechProvider<string, string> = {
-    id: "fake",
-    defaultModel: "f1",
+    id: providerId,
+    defaultModel: modelId,
     models: [
       {
-        id: "f1",
-        features: ["timestamps"],
+        id: modelId,
+        features,
         languages: [],
         releaseDate: "2024-01-01",
       },
     ],
     generate: spy,
   };
-  return { provider, modelId: "f1" } as ResolvedModel<string>;
+  return { provider, modelId } as ResolvedModel<string>;
 }
 
 describe("generateSpeech with pronunciations", () => {
@@ -36,6 +43,44 @@ describe("generateSpeech with pronunciations", () => {
     });
     expect(generateSpy).toHaveBeenCalledTimes(1);
     expect(generateSpy.mock.calls[0][0].text).toBe("What is el el em?");
+  });
+
+  it("sends the replacement resolvePronunciations reports for the model", async () => {
+    const rules = [{ word: "gif", respelling: "jif", ipa: "dʒɪf" }];
+    const googleFeatures = (id: string) =>
+      GOOGLE_MODELS.find((m) => m.id === id)?.features.map(String) ?? [];
+    const cases = [
+      { providerId: "google", modelId: "gemini-3.8-flash-tts", sent: "dʒɪf" },
+      {
+        providerId: "google",
+        modelId: "gemini-2.5-flash-preview-tts",
+        sent: "jif",
+      },
+      { providerId: "fake", modelId: "f1", sent: "jif" },
+    ];
+    for (const { providerId, modelId, sent } of cases) {
+      const generateSpy = vi.fn().mockResolvedValue({
+        audio: new Uint8Array([1]),
+        mediaType: "audio/wav",
+      });
+      await generateSpeech({
+        model: fakeModel(
+          generateSpy,
+          providerId,
+          modelId,
+          providerId === "google" ? googleFeatures(modelId) : undefined
+        ),
+        voice: "v1",
+        text: "a gif",
+        pronunciations: { rules },
+      });
+      const [resolved] = resolvePronunciations("a gif", rules, {
+        provider: providerId,
+        model: modelId,
+      });
+      expect(resolved?.replacement).toBe(sent);
+      expect(generateSpy.mock.calls[0][0].text).toBe(`a ${sent}`);
+    }
   });
 
   it("inverse-aligns timestamps so callers see the original word", async () => {

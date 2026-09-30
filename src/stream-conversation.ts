@@ -20,7 +20,7 @@ import {
   validateInstructionSupport,
 } from "./instructions.js";
 import type { SpeechMetadata } from "./metadata.js";
-import { mergeRules } from "./pronunciations/merge.js";
+import { mergeRulesForModel } from "./pronunciations/merge.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import { resolveModel } from "./resolve-provider.js";
 import { buildRetryOptions } from "./retry-options.js";
@@ -153,9 +153,7 @@ export async function streamConversation<
   const resolved = resolveModel(options.model, {
     apiKey: options.apiKey,
   }) as ResolvedModel<V>;
-  const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
-    : null;
+  const ruleMap = mergeRulesForModel(options.pronunciations, resolved);
   const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
   const streamDialogue = streamableDialogue(resolved, prepared);
   for (const turn of options.turns) {
