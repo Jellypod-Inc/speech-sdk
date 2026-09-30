@@ -22,8 +22,7 @@ export interface PronunciationsInput {
 export type PronunciationForm = "respelling" | "ipa";
 
 export interface PronunciationTarget {
-  /** Omitted: the provider's default model. `null`: the model is unknown, so no IPA is sent. */
-  readonly model?: string | null;
+  readonly model?: string;
   readonly provider: string;
 }
 

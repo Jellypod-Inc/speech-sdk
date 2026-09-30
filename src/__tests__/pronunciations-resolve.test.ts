@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { textWithoutAudioTags } from "../audio-tags.js";
 import {
-  matchPronunciations,
   mergeRules,
   type PronunciationRule,
   type PronunciationTarget,
@@ -228,18 +227,6 @@ describe("resolvePronunciations", () => {
     expect(resolveIpa("/dʒɪf")).toBe("//dʒɪf/");
     expect(resolveIpa("/")).toBe("///");
   });
-
-  it("sends no IPA when the model is null (unknown)", () => {
-    const rules: PronunciationRule[] = [
-      { word: "gif", respelling: "jif", ipa: "dʒɪf" },
-    ];
-    expect(
-      resolvePronunciations("a gif", rules, {
-        provider: "google",
-        model: null,
-      })[0]
-    ).toMatchObject({ replacement: "jif", form: "respelling" });
-  });
 });
 
 describe("targetReadsIpa", () => {
@@ -256,78 +243,8 @@ describe("targetReadsIpa", () => {
         model: "gemini-2.5-flash-preview-tts",
       })
     ).toBe(false);
-    expect(targetReadsIpa({ provider: "google", model: null })).toBe(false);
     expect(targetReadsIpa(OPENAI)).toBe(false);
     expect(targetReadsIpa({ provider: "constructor" })).toBe(false);
-  });
-});
-
-describe("matchPronunciations", () => {
-  it("applies the longest rule and never re-matches its span", () => {
-    const cities: PronunciationRule[] = [
-      { word: "York", respelling: "yawk" },
-      { word: "New York", respelling: "noo YAWK" },
-    ];
-    expect(matchPronunciations("I love New York", cities)).toEqual([
-      "new york",
-    ]);
-    expect(matchPronunciations("New York or York", cities)).toEqual([
-      "new york",
-      "york",
-    ]);
-  });
-
-  it("never matches inside an audio tag", () => {
-    const rules: PronunciationRule[] = [
-      { word: "laughs", respelling: "laffs" },
-    ];
-    expect(matchPronunciations("[laughs] hi", rules)).toEqual([]);
-    expect(matchPronunciations("[laughs] he laughs", rules)).toEqual([
-      "laughs",
-    ]);
-  });
-
-  it("honors caseSensitive", () => {
-    const rules: PronunciationRule[] = [
-      { word: "Nice", respelling: "neese", caseSensitive: true },
-    ];
-    expect(matchPronunciations("a nice day", rules)).toEqual([]);
-    expect(matchPronunciations("Nice, France", rules)).toEqual(["Nice"]);
-  });
-
-  it("matches a rule that has only ipa, whatever the target", () => {
-    const rules: PronunciationRule[] = [
-      { word: "gif", respelling: "", ipa: "dʒɪf" },
-    ];
-    expect(matchPronunciations("a gif", rules)).toEqual(["gif"]);
-    expect(keys("a gif", rules, OPENAI)).toEqual([]);
-    expect(keys("a gif", rules, GEMINI_38)).toEqual(["gif"]);
-  });
-
-  it("lets the later duplicate win", () => {
-    const rules: PronunciationRule[] = [
-      { word: "Nice", respelling: "neese", caseSensitive: true },
-      { word: "Nice", respelling: "nyce", caseSensitive: true },
-      { word: "nice", respelling: "nyce" },
-      { word: "NICE", respelling: "N I C E" },
-    ];
-    expect(matchPronunciations("so nice", rules)).toEqual(["nice"]);
-    expect(
-      resolvePronunciations("so nice", rules, OPENAI)[0]?.replacement
-    ).toBe("N I C E");
-    expect(
-      matchPronunciations("so nice", [
-        { word: "nice", respelling: "nyce" },
-        { word: "nice", respelling: "nyce", caseSensitive: true },
-        { word: "nice", respelling: "", ipa: "naɪs", caseSensitive: true },
-      ])
-    ).toEqual(["nice"]);
-    expect(
-      matchPronunciations("so NICE", [
-        { word: "nice", respelling: "nyce" },
-        { word: "nice", respelling: "", ipa: "naɪs", caseSensitive: true },
-      ])
-    ).toEqual([]);
   });
 });
 
@@ -406,15 +323,6 @@ describe("resolvePronunciations property", () => {
         formatIpa: ipaFormatterFor(target.provider),
       });
       expect(keys(text, rules, target)).toEqual(appliedKeys(text, ruleMap));
-
-      const everyRuleHasRespelling = rules.every(
-        (rule) => rule.respelling.trim().length > 0
-      );
-      if (everyRuleHasRespelling) {
-        expect(matchPronunciations(text, rules)).toEqual(
-          keys(text, rules, target)
-        );
-      }
     }
   });
 });

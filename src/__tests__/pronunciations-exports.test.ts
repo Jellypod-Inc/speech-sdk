@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, join, normalize } from "node:path";
+import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Pronunciation, PronunciationsInput } from "../index.js";
@@ -23,7 +23,11 @@ function importGraph(entry: string): { files: string[]; packages: string[] } {
     for (const [, specifier] of source.matchAll(IMPORT_SPECIFIER)) {
       if (specifier.startsWith(".")) {
         visit(
-          normalize(join(dirname(file), specifier.replace(JS_EXTENSION, ".ts")))
+          // posix keeps graph paths "/"-separated on Windows too, so the provider-file check always runs.
+          posix.join(
+            posix.dirname(file),
+            specifier.replace(JS_EXTENSION, ".ts")
+          )
         );
       } else {
         packages.add(specifier);
@@ -44,7 +48,6 @@ describe("public exports — pronunciations", () => {
   it("exports every pronunciations helper from the subpath", () => {
     expect(Object.keys(pronunciations).sort()).toEqual([
       "inverseAlign",
-      "matchPronunciations",
       "mergeRules",
       "resolvePronunciations",
       "ruleMapKey",
@@ -57,6 +60,7 @@ describe("public exports — pronunciations", () => {
     const { files, packages } = importGraph("pronunciations/index.ts");
     expect(packages).toEqual([]);
     const providerFiles = files.filter((file) => file.startsWith("providers/"));
+    expect(providerFiles).toContain("providers/google/models.ts");
     for (const file of providerFiles) {
       expect(file).toMatch(PROVIDER_MODELS_FILE);
     }

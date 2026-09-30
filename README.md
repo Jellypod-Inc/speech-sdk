@@ -482,16 +482,16 @@ pronunciations: {
 }
 ```
 
-Pass raw IPA. Gemini reads IPA between slashes, so for Google the SDK sends `ipa` as `/dʒɪf/`; a value you already wrapped (it starts and ends with `/`) is sent as is. The slashes are added when the rule is resolved, not later in the provider, so `resolvePronunciations` reports exactly the text that is spoken. Custom providers that declare `FEATURES.IPA_PRONUNCIATION` receive `ipa` as written.
+`ipa` should be plain IPA, such as `dʒɪf`. Each provider formats it the way its models read IPA: Gemini reads IPA only between slashes, so Google is sent `/dʒɪf/`. A value that already starts and ends with `/` is sent unchanged, so rules written pre-wrapped keep working.
 
-To ask whether a provider/model will be sent a rule's IPA form, call `targetReadsIpa`. An omitted `model` means the provider's default model; `model: null` means the model is unknown, which never reads IPA (the same target shape `resolvePronunciations` takes):
+`targetReadsIpa` tells you whether this provider/model is sent a rule's IPA form; an omitted model means the provider's default:
 
 ```ts
 import { targetReadsIpa } from '@speech-sdk/core/pronunciations';
 
-targetReadsIpa({ provider: 'google' }); // true: the default model is gemini-3.8-flash-lite-tts
+targetReadsIpa({ provider: 'google' }); // true: the default model reads IPA
 targetReadsIpa({ provider: 'google', model: 'gemini-2.5-flash-preview-tts' }); // false
-targetReadsIpa({ provider: 'google', model: null }); // false
+targetReadsIpa({ provider: 'openai', model: 'tts-1' }); // false
 ```
 
 To find out which rules apply to a line, and the exact replacement synthesis will send, call `resolvePronunciations`. It runs the same matching as synthesis, does no I/O, and returns each applied rule once, sorted by `ruleKey`:
@@ -509,14 +509,6 @@ resolvePronunciations('I love New York', rules, {
   model: 'gemini-3.8-flash-tts', // optional; defaults to the provider's default model
 });
 // [{ ruleKey: 'new york', word: 'New York', caseSensitive: false, replacement: '/nuː ˈjɔːrk/', form: 'ipa' }]
-```
-
-To find out only which rules a line uses, whatever the provider, call `matchPronunciations`. It returns each matched rule's `ruleMapKey(word, caseSensitive)`, once and sorted, using the same matcher as `resolvePronunciations` (duplicate keys merged with the last one winning, whole words, case-insensitive unless `caseSensitive`, longest rule first, never inside an audio tag). A rule counts when it has a `respelling` or an `ipa`, so a rule with only `ipa` still matches: what matters is where the word is spoken, not which form is sent.
-
-```ts
-import { matchPronunciations } from '@speech-sdk/core/pronunciations';
-
-matchPronunciations('[laughs] I love New York', rules); // ['new york']
 ```
 
 `resolvePronunciations` knows the SDK's built-in providers. For a custom provider whose models declare `FEATURES.IPA_PRONUNCIATION`, it reports the respelling while synthesis sends `ipa`.

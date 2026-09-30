@@ -7,12 +7,12 @@ import type { PronunciationTarget } from "./types.js";
 
 interface IpaSupport {
   readonly defaultModel: string;
-  /** How the provider's models expect IPA to be written in the text they read. */
+  /** Turns a rule's plain `ipa` into the text the provider's models read as IPA. */
   readonly formatIpa: (ipa: string) => string;
   readonly models: ReadonlySet<string>;
 }
 
-// Gemini reads IPA between slashes; a value the caller already wrapped is sent as is.
+// Gemini reads IPA only between slashes; a value the caller already wrapped is sent as is.
 function wrapInSlashes(ipa: string): string {
   const isWrapped = ipa.length > 1 && ipa.startsWith("/") && ipa.endsWith("/");
   return isWrapped ? ipa : `/${ipa}/`;
@@ -33,13 +33,10 @@ function ipaSupportFor(providerId: string): IpaSupport | undefined {
     : undefined;
 }
 
-/**
- * Whether synthesis on `target` sends a rule's `ipa` rather than its `respelling`. An omitted `model` means the
- * provider's default model; `model: null` means the model is unknown, which never reads IPA.
- */
+/** Whether this provider/model is sent a rule's IPA form; an omitted model means the provider's default. */
 export function targetReadsIpa(target: PronunciationTarget): boolean {
   const support = ipaSupportFor(target.provider);
-  if (!support || target.model === null) {
+  if (!support) {
     return false;
   }
   return support.models.has(target.model ?? support.defaultModel);
