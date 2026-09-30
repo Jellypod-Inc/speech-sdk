@@ -1,5 +1,5 @@
 import { textWithoutAudioTags } from "../audio-tags.js";
-import { targetReadsIpa } from "./ipa-models.js";
+import { ipaFormatterFor, targetReadsIpa } from "./ipa-models.js";
 import { mergeRules } from "./merge.js";
 import { substitute } from "./substitute.js";
 import type {
@@ -20,7 +20,10 @@ export function resolvePronunciations(
   rules: readonly PronunciationInputRule[],
   target: PronunciationTarget
 ): ResolvedPronunciation[] {
-  const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
+  const ruleMap = mergeRules(rules, {
+    useIpa: targetReadsIpa(target),
+    formatIpa: ipaFormatterFor(target.provider),
+  });
   const { edits } = substitute(textWithoutAudioTags(text), ruleMap);
   const appliedKeys = [...new Set(edits.map((edit) => edit.ruleKey))].sort();
   return appliedKeys.flatMap((ruleKey) => {

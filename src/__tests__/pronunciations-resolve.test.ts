@@ -3,11 +3,17 @@ import { textWithoutAudioTags } from "../audio-tags.js";
 import {
   mergeRules,
   type PronunciationRule,
+  type PronunciationTarget,
   resolvePronunciations,
   ruleMapKey,
   substitute,
+  targetReadsIpa as targetReadsIpaExport,
 } from "../pronunciations/index.js";
-import { targetReadsIpa } from "../pronunciations/ipa-models.js";
+import {
+  ipaFormatterFor,
+  targetReadsIpa,
+} from "../pronunciations/ipa-models.js";
+import { mergeRulesForModel } from "../pronunciations/merge.js";
 import { resolveModel, SUPPORTED_PROVIDER_IDS } from "../resolve-provider.js";
 import { FEATURES, hasFeature } from "../speech-provider.js";
 
@@ -20,7 +26,7 @@ const GEMINI_38 = {
 function keys(
   text: string,
   rules: readonly PronunciationRule[],
-  target = OPENAI
+  target: PronunciationTarget = OPENAI
 ) {
   return resolvePronunciations(text, rules, target).map((r) => r.ruleKey);
 }
@@ -81,7 +87,7 @@ describe("resolvePronunciations", () => {
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
     ];
     expect(resolvePronunciations("a gif", rules, GEMINI_38)[0]).toMatchObject({
-      replacement: "dʒɪf",
+      replacement: "/dʒɪf/",
       form: "ipa",
     });
     expect(
@@ -201,9 +207,44 @@ describe("resolvePronunciations", () => {
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
     ];
     const [resolved] = resolvePronunciations("a gif", rules, GEMINI_38);
-    expect(substitute("a gif", mergeRules(rules, { useIpa: true })).text).toBe(
+    const google = resolveModel("google/gemini-3.8-flash-tts");
+    const ruleMap = mergeRulesForModel({ rules }, google);
+    expect(ruleMap && substitute("a gif", ruleMap).text).toBe(
       `a ${resolved?.replacement}`
     );
+  });
+
+  it("wraps Gemini IPA in slashes unless the caller already did", () => {
+    const resolveIpa = (ipa: string) =>
+      resolvePronunciations(
+        "a gif",
+        [{ word: "gif", respelling: "jif", ipa }],
+        GEMINI_38
+      )[0]?.replacement;
+    expect(resolveIpa("dʒɪf")).toBe("/dʒɪf/");
+    expect(resolveIpa("/dʒɪf/")).toBe("/dʒɪf/");
+    expect(resolveIpa(" /dʒɪf/ ")).toBe("/dʒɪf/");
+    expect(resolveIpa("/dʒɪf")).toBe("//dʒɪf/");
+    expect(resolveIpa("/")).toBe("///");
+  });
+});
+
+describe("targetReadsIpa", () => {
+  it("is exported from the pronunciations entry point", () => {
+    expect(targetReadsIpaExport).toBe(targetReadsIpa);
+  });
+
+  it("reads IPA only on IPA models, with an omitted model meaning the provider default", () => {
+    expect(targetReadsIpa(GEMINI_38)).toBe(true);
+    expect(targetReadsIpa({ provider: "google" })).toBe(true);
+    expect(
+      targetReadsIpa({
+        provider: "google",
+        model: "gemini-2.5-flash-preview-tts",
+      })
+    ).toBe(false);
+    expect(targetReadsIpa(OPENAI)).toBe(false);
+    expect(targetReadsIpa({ provider: "constructor" })).toBe(false);
   });
 });
 
@@ -277,7 +318,10 @@ describe("resolvePronunciations property", () => {
       }
 
       const target = random() < 0.5 ? OPENAI : GEMINI_38;
-      const ruleMap = mergeRules(rules, { useIpa: targetReadsIpa(target) });
+      const ruleMap = mergeRules(rules, {
+        useIpa: targetReadsIpa(target),
+        formatIpa: ipaFormatterFor(target.provider),
+      });
       expect(keys(text, rules, target)).toEqual(appliedKeys(text, ruleMap));
     }
   });

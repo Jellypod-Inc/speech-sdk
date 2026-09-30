@@ -482,6 +482,18 @@ pronunciations: {
 }
 ```
 
+`ipa` should be plain IPA, such as `dʒɪf`. Each provider formats it the way its models read IPA: Gemini reads IPA only between slashes, so Google is sent `/dʒɪf/`. A value that already starts and ends with `/` is sent unchanged, so rules written pre-wrapped keep working.
+
+`targetReadsIpa` tells you whether this provider/model is sent a rule's IPA form; an omitted model means the provider's default:
+
+```ts
+import { targetReadsIpa } from '@speech-sdk/core/pronunciations';
+
+targetReadsIpa({ provider: 'google' }); // true: the default model reads IPA
+targetReadsIpa({ provider: 'google', model: 'gemini-2.5-flash-preview-tts' }); // false
+targetReadsIpa({ provider: 'openai', model: 'tts-1' }); // false
+```
+
 To find out which rules apply to a line, and the exact replacement synthesis will send, call `resolvePronunciations`. It runs the same matching as synthesis, does no I/O, and returns each applied rule once, sorted by `ruleKey`:
 
 ```ts
@@ -496,7 +508,7 @@ resolvePronunciations('I love New York', rules, {
   provider: 'google',
   model: 'gemini-3.8-flash-tts', // optional; defaults to the provider's default model
 });
-// [{ ruleKey: 'new york', word: 'New York', caseSensitive: false, replacement: 'nuː ˈjɔːrk', form: 'ipa' }]
+// [{ ruleKey: 'new york', word: 'New York', caseSensitive: false, replacement: '/nuː ˈjɔːrk/', form: 'ipa' }]
 ```
 
 `resolvePronunciations` knows the SDK's built-in providers. For a custom provider whose models declare `FEATURES.IPA_PRONUNCIATION`, it reports the respelling while synthesis sends `ipa`.

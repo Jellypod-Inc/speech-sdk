@@ -11,7 +11,9 @@
 
 | Model                    | Streaming | Audio Tags        | Native Timestamps | Notes                                  |
 | ------------------------ | --------- | ----------------- | ----------------- | -------------------------------------- |
-| `eleven_v3`              | Yes       | Yes (passthrough) | Yes               | Most expressive; `maxInputChars: 5000` |
+| `eleven_v4`              | Yes       | Yes (passthrough) | Yes               | Most expressive, 90+ languages, native dialogue; `maxInputChars: 10000` |
+| `eleven_v4_turbo`        | Yes       | Yes (passthrough) | Yes               | Real-time v4 (~100 ms); no HTTP native dialogue; `maxInputChars: 10000` |
+| `eleven_v3`              | Yes       | Yes (passthrough) | Yes               | Previous flagship, native dialogue; `maxInputChars: 5000` |
 | `eleven_multilingual_v2` | Yes       | No                | Yes               | Default; `maxInputChars: 10000`        |
 | `eleven_flash_v2_5`      | Yes       | No                | Yes               | Low-latency multilingual; `maxInputChars: 40000` |
 | `eleven_flash_v2`        | Yes       | No                | Yes               | Low-latency English; `maxInputChars: 30000` |
@@ -30,11 +32,11 @@ await generateSpeech({
 
 ## Audio Tags
 
-`eleven_v3` passes `[tag]` straight through:
+`eleven_v4`, `eleven_v4_turbo`, and `eleven_v3` pass `[tag]` straight through:
 
 ```ts
 await generateSpeech({
-  model: "elevenlabs/eleven_v3",
+  model: "elevenlabs/eleven_v4",
   text: "[laugh] That's hilarious! [sigh] But really though.",
   voice: "EXAVITQu4vr4xnSDxMaL",
 })

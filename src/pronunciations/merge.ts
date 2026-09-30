@@ -1,4 +1,5 @@
 import { modelReadsIpa, type ResolvedModel } from "../speech-provider.js";
+import { ipaFormatterFor } from "./ipa-models.js";
 import type {
   MergedPronunciation,
   PronunciationForm,
@@ -32,10 +33,16 @@ function toRule(input: PronunciationInputRule | null | undefined) {
   };
 }
 
+interface MergeOptions {
+  /** Rewrites a chosen `ipa` into the form the model reads; see `IPA_PRONUNCIATION_MODELS`. */
+  formatIpa?: (ipa: string) => string;
+  useIpa?: boolean;
+}
+
 // Ends only — internal whitespace is significant, so "New York" -> "noo YORK" keeps matching.
 function normalizeRule(
   input: PronunciationInputRule,
-  useIpa: boolean
+  { useIpa = false, formatIpa }: MergeOptions
 ): MergedPronunciation | undefined {
   const rule = toRule(input);
   const form: PronunciationForm =
@@ -46,20 +53,24 @@ function normalizeRule(
   }
   return {
     word: rule.word,
-    replacement,
+    replacement:
+      form === "ipa" && formatIpa ? formatIpa(replacement) : replacement,
     caseSensitive: rule.caseSensitive,
     form,
   };
 }
 
-/** Rules resolve to `ipa` only when `useIpa` is set and the rule has one; otherwise to their respelling. */
+/**
+ * Rules resolve to `ipa` only when `useIpa` is set and the rule has one; otherwise to their respelling.
+ * `formatIpa`, when given, rewrites a chosen `ipa` into the form the model reads.
+ */
 export function mergeRules(
   rules: readonly PronunciationInputRule[],
-  { useIpa = false }: { useIpa?: boolean } = {}
+  options: MergeOptions = {}
 ): Map<string, MergedPronunciation> {
   const map = new Map<string, MergedPronunciation>();
   for (const rule of rules) {
-    const normalized = normalizeRule(rule, useIpa);
+    const normalized = normalizeRule(rule, options);
     if (normalized === undefined) {
       continue;
     }
@@ -77,5 +88,6 @@ export function mergeRulesForModel(
   }
   return mergeRules(pronunciations.rules, {
     useIpa: modelReadsIpa(resolved),
+    formatIpa: ipaFormatterFor(resolved.provider.id),
   });
 }
