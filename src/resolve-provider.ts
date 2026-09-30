@@ -15,7 +15,8 @@ import {
   createFishAudio,
   FISH_AUDIO_PROVIDER_ID,
 } from "./providers/fish-audio/index.js";
-import { createGoogle, GOOGLE_PROVIDER_ID } from "./providers/google/index.js";
+import { createGoogle } from "./providers/google/index.js";
+import { GOOGLE_PROVIDER_ID } from "./providers/google/models.js";
 import {
   createGradium,
   GRADIUM_PROVIDER_ID,

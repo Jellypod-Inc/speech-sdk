@@ -27,6 +27,11 @@ import {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
+import {
+  GEMINI_3_8_MODELS,
+  GOOGLE_DEFAULT_MODEL,
+  GOOGLE_PROVIDER_ID,
+} from "./models.js";
 
 function safeParseJson(input: string): unknown {
   try {
@@ -200,10 +205,6 @@ const GEMINI_TTS_TEXT_CHAR_BUDGET =
 // Real progressive streaming is only available via the /interactions endpoint, and only for 3.1+ TTS models.
 // The legacy generateContent/streamGenerateContent endpoints buffer the full clip server-side.
 const INTERACTIONS_STREAMING_MODELS = new Set(["gemini-3.1-flash-tts-preview"]);
-const GEMINI_3_8_MODELS = new Set([
-  "gemini-3.8-flash-tts",
-  "gemini-3.8-flash-lite-tts",
-]);
 const CUSTOM_VOICE_ID_RE = /^(voice_|voicekey_)/;
 const CONTENT_REFUSAL_CODE_RE = /safety|block|policy|refus/i;
 
@@ -283,8 +284,6 @@ export interface GoogleSpeechProviderConfig {
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
-
-export const GOOGLE_PROVIDER_ID = "google" as const;
 
 const GOOGLE_GEMINI_2_5_LANGUAGES = [
   "en",
@@ -454,7 +453,7 @@ export const GOOGLE_MODELS: readonly ModelInfo[] = [
 
 export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   readonly id = GOOGLE_PROVIDER_ID;
-  readonly defaultModel = "gemini-3.8-flash-lite-tts";
+  readonly defaultModel = GOOGLE_DEFAULT_MODEL;
 
   readonly models = GOOGLE_MODELS;
 

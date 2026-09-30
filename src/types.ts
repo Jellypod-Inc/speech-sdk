@@ -24,6 +24,7 @@ export type {
 export type { SpeechMetadata, SpokenTagReport } from "./metadata.js";
 export type {
   Pronunciation,
+  PronunciationRule,
   PronunciationsInput,
 } from "./pronunciations/types.js";
 export type { CartesiaSpeechProviderConfig } from "./providers/cartesia/index.js";

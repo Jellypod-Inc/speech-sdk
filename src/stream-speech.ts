@@ -90,7 +90,10 @@ export async function streamSpeech<
 
   let textToSend = processedText;
   if (options.pronunciations?.rules?.length) {
-    const ruleMap = mergeRules(options.pronunciations.rules);
+    const ruleMap = mergeRules(options.pronunciations.rules, {
+      provider: resolved.provider.id,
+      model: resolved.modelId,
+    });
     textToSend = substitute(processedText, ruleMap).text;
   }
 

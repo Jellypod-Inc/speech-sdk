@@ -150,7 +150,10 @@ export async function generateSpeech<
   let synthesizedCanonicalText = canonicalText;
   let pronunciationEdits: readonly Edit[] = [];
   if (options.pronunciations?.rules?.length) {
-    const ruleMap = mergeRules(options.pronunciations.rules);
+    const ruleMap = mergeRules(options.pronunciations.rules, {
+      provider: resolved.provider.id,
+      model: resolved.modelId,
+    });
     textToSend = substitute(providerText, ruleMap).text;
     const canonicalSubstitution = substitute(canonicalText, ruleMap);
     synthesizedCanonicalText = canonicalSubstitution.text;

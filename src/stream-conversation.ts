@@ -154,7 +154,10 @@ export async function streamConversation<
     apiKey: options.apiKey,
   }) as ResolvedModel<V>;
   const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
+    ? mergeRules(options.pronunciations.rules, {
+        provider: resolved.provider.id,
+        model: resolved.modelId,
+      })
     : null;
   const prepared = buildSubstitutedTurns(options.turns, resolved, ruleMap);
   const streamDialogue = streamableDialogue(resolved, prepared);

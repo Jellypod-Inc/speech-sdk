@@ -539,7 +539,10 @@ async function runNative<V extends Voice>(args: {
   }
 
   const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
+    ? mergeRules(options.pronunciations.rules, {
+        provider: resolved.provider.id,
+        model: resolved.modelId,
+      })
     : null;
 
   const substitutedTurns = buildSubstitutedTurns(
@@ -734,7 +737,10 @@ async function runNativeSplit<V extends Voice>(args: {
   const shouldRequestNative = requestTimestamps && hasNativeTimestamps;
 
   const ruleMap = options.pronunciations?.rules?.length
-    ? mergeRules(options.pronunciations.rules)
+    ? mergeRules(options.pronunciations.rules, {
+        provider: resolved.provider.id,
+        model: resolved.modelId,
+      })
     : null;
   const substitutedTurns = buildSubstitutedTurns(
     options.turns,

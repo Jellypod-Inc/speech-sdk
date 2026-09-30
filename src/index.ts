@@ -54,6 +54,7 @@ export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
 export type {
   Pronunciation,
+  PronunciationRule,
   PronunciationsInput,
 } from "./pronunciations/types.js";
 export { streamConversation } from "./stream-conversation.js";
