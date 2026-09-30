@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **ElevenLabs `eleven_v4` and `eleven_v4_turbo`.** Both accept 10,000 characters per request, 90+ languages, and inline audio tags (passed through as written). `eleven_v4` also dispatches `generateConversation` to native dialogue (`/v1/text-to-dialogue`) like `eleven_v3`; `eleven_v4_turbo` only offers dialogue over ElevenLabs' WebSocket API, so its conversations use the stitch path. The default ElevenLabs model is unchanged.
+
 ## 0.35.0
 
 - **`resolvePronunciations(text, rules, { provider, model? })`** from `@speech-sdk/core/pronunciations` returns the pronunciation rules synthesis will apply to a line, each once and sorted by `ruleKey`, with the exact `replacement` it sends and its `form` (`'respelling' | 'ipa'`). It is pure and runs the same merge and matching as synthesis: standalone words only, case-insensitive unless `caseSensitive`, longest rule first, replaced text never re-matched (with rules for "New York" and "York", only "New York" applies to "I love New York"), last duplicate wins, blank words skipped, audio tags removed first. Record the result with a voiced line and resolve again later to see whether a rule change affects it. An omitted `model` means the provider's default model.

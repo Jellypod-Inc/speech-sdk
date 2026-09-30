@@ -315,6 +315,19 @@ describe("ElevenLabsSpeechProvider", () => {
   });
 
   describe("processAudioTags", () => {
+    it.each([
+      "eleven_v4",
+      "eleven_v4_turbo",
+    ])("passes all tags through for %s", (modelId) => {
+      const provider = new ElevenLabsSpeechProvider({ apiKey: "test-key" });
+      const result = provider.processAudioTags(
+        "[laughs] Hello [whispers] world",
+        modelId
+      );
+      expect(result.text).toBe("[laughs] Hello [whispers] world");
+      expect(result.warnings).toEqual([]);
+    });
+
     it("passes all tags through for eleven_v3", () => {
       const provider = new ElevenLabsSpeechProvider({ apiKey: "test-key" });
       const result = provider.processAudioTags(
@@ -505,5 +518,48 @@ describe("ElevenLabsSpeechProvider", () => {
     });
 
     expect(result.mediaType).toBe("audio/pcm;rate=44100");
+  });
+
+  describe("dialogueCapabilities", () => {
+    it.each([
+      "eleven_v4",
+      "eleven_v3",
+    ])("supports native dialogue for %s", (modelId) => {
+      const provider = new ElevenLabsSpeechProvider({ apiKey: "test-key" });
+      expect(provider.dialogueCapabilities(modelId)).toEqual({
+        maxVoices: 10,
+        maxTotalChars: 2000,
+      });
+    });
+
+    it("has no HTTP native dialogue for eleven_v4_turbo", () => {
+      const provider = new ElevenLabsSpeechProvider({ apiKey: "test-key" });
+      expect(provider.dialogueCapabilities("eleven_v4_turbo")).toBeUndefined();
+    });
+
+    it("sends eleven_v4 dialogue to /v1/text-to-dialogue", async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "audio/mpeg" },
+        })
+      );
+      const provider = new ElevenLabsSpeechProvider({
+        apiKey: "test-key",
+        fetch: mockFetch,
+      });
+
+      await provider.generateDialogue({
+        modelId: "eleven_v4",
+        turns: [
+          { voice: "a", text: "Hi." },
+          { voice: "b", text: "Hey." },
+        ],
+      });
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toContain("/v1/text-to-dialogue");
+      expect(JSON.parse(init.body).model_id).toBe("eleven_v4");
+    });
   });
 });

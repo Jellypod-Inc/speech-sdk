@@ -191,11 +191,131 @@ const ELEVENLABS_V3_LANGUAGES = [
   "cy",
 ] as const;
 
+const ELEVENLABS_V4_LANGUAGES = [
+  "af",
+  "am",
+  "ar",
+  "hy",
+  "as",
+  "ast",
+  "az",
+  "be",
+  "bn",
+  "bs",
+  "bg",
+  "my",
+  "yue",
+  "ca",
+  "ceb",
+  "hr",
+  "cs",
+  "da",
+  "nl",
+  "en",
+  "et",
+  "fil",
+  "fi",
+  "fr",
+  "ff",
+  "gl",
+  "ka",
+  "de",
+  "el",
+  "gu",
+  "ha",
+  "he",
+  "hi",
+  "hu",
+  "is",
+  "id",
+  "it",
+  "ja",
+  "jv",
+  "kam",
+  "kn",
+  "kk",
+  "ko",
+  "ky",
+  "lo",
+  "lv",
+  "ln",
+  "lt",
+  "lg",
+  "lb",
+  "mk",
+  "ms",
+  "ml",
+  "mt",
+  "zh",
+  "mi",
+  "mr",
+  "mn",
+  "ne",
+  "no",
+  "oc",
+  "or",
+  "ps",
+  "fa",
+  "pl",
+  "pt",
+  "pa",
+  "ro",
+  "ru",
+  "sr",
+  "sn",
+  "sd",
+  "sk",
+  "sl",
+  "so",
+  "ckb",
+  "es",
+  "sw",
+  "sv",
+  "tg",
+  "ta",
+  "te",
+  "th",
+  "tr",
+  "uk",
+  "ur",
+  "uz",
+  "vi",
+  "cy",
+  "wo",
+  "zu",
+] as const;
+
 const ELEVENLABS_PCM_WAV_RATES = [
   8000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
 ] as const;
 
 export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
+  {
+    id: "eleven_v4",
+    releaseDate: "2026-09-28",
+    languages: ELEVENLABS_V4_LANGUAGES,
+    features: [
+      "streaming",
+      "audio-tags",
+      "timestamps",
+      "voice-cloning",
+      "voice-design",
+    ],
+    maxInputChars: 10_000,
+  },
+  {
+    id: "eleven_v4_turbo",
+    releaseDate: "2026-09-28",
+    languages: ELEVENLABS_V4_LANGUAGES,
+    features: [
+      "streaming",
+      "audio-tags",
+      "timestamps",
+      "voice-cloning",
+      "voice-design",
+    ],
+    maxInputChars: 10_000,
+  },
   {
     id: "eleven_v3",
     releaseDate: "2025-06-08",
@@ -231,6 +351,12 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
     maxInputChars: 30_000,
   },
 ] as const;
+
+// eleven_v4_turbo only serves dialogue over the WebSocket API, not HTTP /v1/text-to-dialogue.
+const ELEVENLABS_DIALOGUE_MODELS: ReadonlySet<string> = new Set([
+  "eleven_v4",
+  "eleven_v3",
+]);
 
 // request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
 function missingAudioError(
@@ -564,7 +690,7 @@ export class ElevenLabsSpeechProvider
   }
 
   dialogueCapabilities(modelId: string) {
-    if (modelId === "eleven_v3") {
+    if (ELEVENLABS_DIALOGUE_MODELS.has(modelId)) {
       return { maxVoices: 10, maxTotalChars: 2000 };
     }
     return;
@@ -581,9 +707,9 @@ export class ElevenLabsSpeechProvider
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    if (options.modelId !== "eleven_v3") {
+    if (!ELEVENLABS_DIALOGUE_MODELS.has(options.modelId)) {
       throw new SpeechSDKError(
-        `elevenlabs/${options.modelId} does not support native dialogue; use eleven_v3.`
+        `elevenlabs/${options.modelId} does not support native dialogue; use eleven_v4 or eleven_v3.`
       );
     }
 

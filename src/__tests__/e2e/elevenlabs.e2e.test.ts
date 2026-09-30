@@ -8,6 +8,8 @@ const VOICE = process.env.ELEVENLABS_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 
 describe("ElevenLabs e2e", () => {
   describe.each([
+    "eleven_v4",
+    "eleven_v4_turbo",
     "eleven_v3",
     "eleven_multilingual_v2",
     "eleven_flash_v2_5",
