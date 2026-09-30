@@ -11,18 +11,27 @@ export function ruleMapKey(word: string, caseSensitive: boolean): string {
   return caseSensitive ? word : word.toLowerCase();
 }
 
+function trimmedString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+// Checks values, not keys: untyped callers can pass `respelling: null` alongside a legacy `replacement`.
 function chooseReplacement(
   rule: PronunciationInputRule,
   useIpa: boolean
 ): { form: PronunciationForm; replacement: string } {
-  if (!("respelling" in rule)) {
-    return { form: "respelling", replacement: rule.replacement.trim() };
-  }
-  const ipa = rule.ipa?.trim() ?? "";
+  const ipa = "ipa" in rule ? trimmedString(rule.ipa) : "";
   if (useIpa && ipa.length > 0) {
     return { form: "ipa", replacement: ipa };
   }
-  return { form: "respelling", replacement: rule.respelling.trim() };
+  const respelling = "respelling" in rule ? rule.respelling : undefined;
+  const replacement = "replacement" in rule ? rule.replacement : undefined;
+  return {
+    form: "respelling",
+    replacement: trimmedString(
+      typeof respelling === "string" ? respelling : replacement
+    ),
+  };
 }
 
 // Ends only — internal whitespace is significant, so "New York" -> "noo YORK" keeps matching.

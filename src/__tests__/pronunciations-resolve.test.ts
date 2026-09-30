@@ -159,6 +159,22 @@ describe("resolvePronunciations", () => {
     ]);
   });
 
+  it("tolerates untyped rules with a missing or null respelling", () => {
+    const untyped = [
+      { word: "LLM", replacement: "el el em", respelling: null },
+      { word: "GPU", respelling: undefined },
+    ] as unknown as PronunciationRule[];
+    expect(resolvePronunciations("LLM on a GPU", untyped, OPENAI)).toEqual([
+      {
+        ruleKey: "llm",
+        word: "LLM",
+        caseSensitive: false,
+        replacement: "el el em",
+        form: "respelling",
+      },
+    ]);
+  });
+
   it("reports the replacement synthesis substitutes", () => {
     const rules: PronunciationRule[] = [
       { word: "gif", respelling: "jif", ipa: "dʒɪf" },
