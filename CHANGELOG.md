@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.35.0
+
+- **`resolvePronunciations(text, rules, { provider, model? })`** from `@speech-sdk/core/pronunciations` returns the pronunciation rules synthesis will apply to a line, each once and sorted by `ruleKey`, with the exact `replacement` it sends and its `form` (`'respelling' | 'ipa'`). It is pure and runs the same merge and matching as synthesis: standalone words only, case-insensitive unless `caseSensitive`, longest rule first, replaced text never re-matched (with rules for "New York" and "York", only "New York" applies to "I love New York"), last duplicate wins, blank words skipped. Record the result with a voiced line and resolve again later to see whether a rule change affects it. An omitted `model` means the provider's default model.
+- **IPA pronunciations.** Rules can be `{ word, respelling, ipa?, caseSensitive? }`. Models that declare the new `ipa-pronunciation` feature (`FEATURES.IPA_PRONUNCIATION`; today `gemini-3.8-flash-tts` and `gemini-3.8-flash-lite-tts`) receive `ipa`; every other model, and any rule without a non-blank `ipa`, receives `respelling`. `generateSpeech`, `streamSpeech`, `generateConversation` and `streamConversation` choose through the same code as `resolvePronunciations`, so the recorded and spoken replacement always match. `{ word, replacement, caseSensitive? }` rules keep working unchanged.
+- New exported types `PronunciationRule`, `ResolvedPronunciation` and `PronunciationTarget`. `mergeRules` takes an optional `{ useIpa }` and its map values gain `form`.
+- **Fix:** a rule with a non-string field from untyped code (e.g. `respelling: null` beside `replacement`, or `word: null`) no longer throws; the field reads as blank, so the rule falls back to `replacement` or is skipped like a blank rule.
+
 ## 0.34.0
 
 - **Gemini 3.8 native dialogue fits 8,000 characters in one call (was 2,500).** `gemini-3.8-flash-tts` and `gemini-3.8-flash-lite-tts` rendered 20,000 characters (~18 minutes) of two-speaker dialogue in a single request with no truncation, so `generateConversation` now splits only past 8,000 characters and `streamConversation` throws `DialogueConstraintError` past the same limit. Fewer conversations are cut into stitched blocks, so fewer pitch and pace resets at seams. A single long call is a few seconds slower than parallel blocks (about 7 s at 8,000 characters). Other Google models keep 2,500.
