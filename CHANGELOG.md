@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.36.0
 
 - **ElevenLabs `eleven_v4` and `eleven_v4_turbo`.** Both accept 10,000 characters per request, 90+ languages, and inline audio tags (passed through as written). `eleven_v4` also dispatches `generateConversation` to native dialogue (`/v1/text-to-dialogue`) like `eleven_v3`; `eleven_v4_turbo` only offers dialogue over ElevenLabs' WebSocket API, so its conversations use the stitch path. The default ElevenLabs model is unchanged.
 
