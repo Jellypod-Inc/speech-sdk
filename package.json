@@ -26,6 +26,10 @@
     "./plugins": {
       "types": "./dist/plugins/index.d.ts",
       "default": "./dist/plugins/index.js"
+    },
+    "./providers/sixtydb": {
+      "types": "./dist/providers/sixtydb/index.d.ts",
+      "default": "./dist/providers/sixtydb/index.js"
     }
   },
   "files": [

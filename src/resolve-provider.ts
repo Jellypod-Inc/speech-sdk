@@ -41,6 +41,10 @@ import {
   RESEMBLE_PROVIDER_ID,
 } from "./providers/resemble/index.js";
 import {
+  createSixtyDB,
+  SIXTYDB_PROVIDER_ID,
+} from "./providers/sixtydb/index.js";
+import {
   createSmallestAI,
   SMALLEST_AI_PROVIDER_ID,
 } from "./providers/smallest-ai/index.js";
@@ -70,6 +74,7 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [MURF_PROVIDER_ID]: createMurf,
   [OPENAI_PROVIDER_ID]: createOpenAI,
   [RESEMBLE_PROVIDER_ID]: createResemble,
+  [SIXTYDB_PROVIDER_ID]: createSixtyDB,
   [SMALLEST_AI_PROVIDER_ID]: createSmallestAI,
   [SPEECHIFY_PROVIDER_ID]: createSpeechify,
   [XAI_PROVIDER_ID]: createXai,
