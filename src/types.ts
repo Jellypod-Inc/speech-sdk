@@ -40,6 +40,7 @@ export type { MistralSpeechProviderConfig } from "./providers/mistral/index.js";
 export type { MurfSpeechProviderConfig } from "./providers/murf/index.js";
 export type { OpenAISpeechProviderConfig } from "./providers/openai/index.js";
 export type { ResembleSpeechProviderConfig } from "./providers/resemble/index.js";
+export type { SixtyDBSpeechProviderConfig } from "./providers/sixtydb/index.js";
 export type { XaiSpeechProviderConfig } from "./providers/xai/index.js";
 export type {
   Feature,

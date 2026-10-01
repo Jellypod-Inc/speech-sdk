@@ -108,6 +108,7 @@ A bare provider id (`'openai'`) uses that provider's default model. An unrecogni
 |---|---|---|
 | [OpenAI](https://platform.openai.com/docs/guides/text-to-speech) | `openai` | `OPENAI_API_KEY` |
 | [ElevenLabs](https://elevenlabs.io/docs) | `elevenlabs` | `ELEVENLABS_API_KEY` |
+| [60db](https://docs.60db.ai/api-reference/tts/text-to-speech) | `sixtydb` | `SIXTYDB_API_KEY` |
 | [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `DEEPGRAM_API_KEY` |
 | [Cartesia](https://docs.cartesia.ai) | `cartesia` | `CARTESIA_API_KEY` |
 | [Hume](https://dev.hume.ai/docs/text-to-speech-tts/overview) | `hume` | `HUME_API_KEY` |
@@ -126,6 +127,32 @@ A bare provider id (`'openai'`) uses that provider's default model. An unrecogni
 The prefix is what a string `model` like `"openai/tts-1"` resolves to, and the env var supplies the key for both the string and factory forms — see [Model string vs factory](#model-string-vs-factory). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
+
+### 60db
+
+60db provides speech synthesis through a workspace API key and workspace voice IDs.
+Use `sixtydb` or `sixtydb/tts` with a voice UUID from
+[`GET /voices`](https://docs.60db.ai/api-reference/voices/get-voices). The voice selects
+the synthesis tier; `tts` is the SDK routing name and is not sent as a model ID.
+
+```ts
+const result = await generateSpeech({
+  model: 'sixtydb',
+  text: 'Hello from Speech SDK.',
+  voice: process.env.SIXTYDB_VOICE_ID!,
+  output: { format: 'wav', sampleRate: 24000 },
+});
+```
+
+Set `SIXTYDB_API_KEY`, or use `createSixtyDB({ apiKey })` from
+`@speech-sdk/core/providers`. The adapter requests mono LINEAR16 at 16000,
+24000 or 48000 Hz. Buffered synthesis returns WAV; streaming returns raw
+PCM with the sample rate in its media type. SDK output conversion supports
+WAV, PCM and MP3, and conversations use the same synthesis path.
+Pass native synthesis settings such as `target_language`, `speed`, `wpm`,
+`stability` and `similarity` through `providerOptions`. Native timestamps
+and cloning are not exposed by this adapter. Responses are capped at 64 MiB
+per request; use `maxChunkWords` for long buffered inputs.
 
 ## Streaming
 

@@ -27,6 +27,8 @@ export type { OpenAISpeechProviderConfig } from "./providers/openai/index.js";
 export { createOpenAI } from "./providers/openai/index.js";
 export type { ResembleSpeechProviderConfig } from "./providers/resemble/index.js";
 export { createResemble } from "./providers/resemble/index.js";
+export type { SixtyDBSpeechProviderConfig } from "./providers/sixtydb/index.js";
+export { createSixtyDB } from "./providers/sixtydb/index.js";
 export type { SmallestAISpeechProviderConfig } from "./providers/smallest-ai/index.js";
 export { createSmallestAI } from "./providers/smallest-ai/index.js";
 export type { SpeechifySpeechProviderConfig } from "./providers/speechify/index.js";
