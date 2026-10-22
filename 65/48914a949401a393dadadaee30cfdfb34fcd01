@@ -1,0 +1,63 @@
+src/providers/speechify/index.ts
+  s_81f5a53db9c101::t_943d9445600bc5 31-81,83-87,89-91,101
+  s_81f5a53db9c101::t_f17e7401ed2200 82
+  s_81f5a53db9c101::t_85e154340d8a84 88
+src/providers/gradium/index.ts
+  s_81f5a53db9c101::t_05124ecfb38208 41
+  s_81f5a53db9c101::t_aae13a75eb12dd 36-40
+  s_81f5a53db9c101::t_0442aa7ef9d446 35
+src/providers/inworld/index.ts
+  s_81f5a53db9c101::t_943d9445600bc5 128-129,135-142
+  s_81f5a53db9c101::t_7746d18133245a 143
+  s_81f5a53db9c101::t_f2c4ddd1bd5202 121-122
+src/providers/elevenlabs/index.ts
+  s_81f5a53db9c101::t_943d9445600bc5 242,248,254,296,298,300,303-304,322,329,338-339,341-342,344-353
+  s_81f5a53db9c101::t_3004b27e6fa3be 343
+  s_81f5a53db9c101::t_70815c6420ed36 762
+src/providers/cartesia/index.ts
+  s_81f5a53db9c101::t_943d9445600bc5 94-98
+  s_81f5a53db9c101::t_6c4d1c0d5798c5 93
+src/providers/fish-audio/index.ts
+  s_81f5a53db9c101::t_943d9445600bc5 42-53
+src/__tests__/latest-models.test.ts
+  s_81f5a53db9c101::t_aae13a75eb12dd 6-13
+  s_81f5a53db9c101::t_ade127235540c4 3-5
+  s_81f5a53db9c101::t_ba19d8129dc5b1 14-16
+  s_81f5a53db9c101::t_242d6fa4a70593 1-2,17-89
+CHANGELOG.md
+  s_81f5a53db9c101::t_fbd43e9d6d7c53 4,8-9
+README.md
+  s_81f5a53db9c101::t_472156b1601900 110,127-133
+skills/speech-sdk/references/providers.md
+  s_81f5a53db9c101::t_42b35af450e228 92-95
+src/__tests__/heygen-speech-model.test.ts
+  s_81f5a53db9c101::t_5a69bf32d95e6b 1-178
+src/providers.ts
+  s_81f5a53db9c101::t_13ec02f3a72646 16-17
+src/providers/deepgram/index.ts
+  s_81f5a53db9c101::t_c82d1262cbf7e8 15-16,38-41,54-59,178-180
+src/providers/heygen/index.ts
+  s_81f5a53db9c101::t_42acb8e73e6dcc 1-212
+src/providers/mistral/index.ts
+  s_81f5a53db9c101::t_5f787d7bb57bb2 55-82,248-253,270-275
+src/resolve-provider.ts
+  s_81f5a53db9c101::t_5361b48beaeb18 24,67
+src/speech-provider.ts
+  s_81f5a53db9c101::t_a6fd04ea93ae43 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6548914a949401a393dadadaee30cfdfb34fcd01",
+  "prompts": {},
+  "sessions": {
+    "s_81f5a53db9c101": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16442-c7f6-7d13-9b64-91502d008909",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
