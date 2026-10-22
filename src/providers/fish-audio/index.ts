@@ -40,6 +40,18 @@ const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
   {
+    id: "s2.1-pro",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
+  {
+    id: "s2.1-pro-free",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
+  {
     id: "s2-pro",
     releaseDate: "2026-03-09",
     languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],

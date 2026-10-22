@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.1
+
+- Add HeyGen Voice 1, Turbo, and Turbo Free speech generation, output conversion, and conversation stitching.
+- Add Sonic 3.6, Inworld TTS-2 Flash, Fish S2.1 Pro variants, Simba 3.5/3.2, Voxtral TTS 3, Deepgram Flux, and the Gradium TTS beta to the model catalogs.
+- Preserve existing provider defaults and document provider lifecycle changes and adapter limitations.
+
+
 ## 0.36.0
 
 - **ElevenLabs `eleven_v4` and `eleven_v4_turbo`.** Both accept 10,000 characters per request, 90+ languages, and inline audio tags (passed through as written). `eleven_v4` also dispatches `generateConversation` to native dialogue (`/v1/text-to-dialogue`) like `eleven_v3`; `eleven_v4_turbo` only offers dialogue over ElevenLabs' WebSocket API, so its conversations use the stitch path. The default ElevenLabs model is unchanged.

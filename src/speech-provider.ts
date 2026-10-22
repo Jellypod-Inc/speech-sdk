@@ -24,6 +24,7 @@ export interface ModelInfo {
   readonly id: string;
   readonly languages: readonly string[];
   readonly maxInputChars?: number;
+  /** ISO date, or an empty string when the release date is not documented. */
   readonly releaseDate: string;
 }
 

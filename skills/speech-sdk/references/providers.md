@@ -89,3 +89,7 @@ await generateSpeech({
 ## API Key Resolution
 
 String models read the upstream provider env var in the table above, or use the call's `apiKey` option. Factory models read the same env var, or use the factory's `apiKey` config. See `configuration.md`.
+
+## HeyGen
+
+Import `createHeyGen` from `@speech-sdk/core/providers`, or use `heygen/heygen-voice-1`, `heygen/heygen-voice-1-turbo`, or `heygen/heygen-voice-1-turbo-free`. Configure `HEYGEN_API_KEY` and pass an active HeyGen public or cloned voice ID. Completed audio is 44.1 kHz WAV and supports SDK output conversion and conversation stitching. Streaming, native timestamps, and voice creation are not exposed. Turbo variants accept public and instant voices; professional clones require `heygen-voice-1`. The SDK never falls back from the free variant to a paid model.

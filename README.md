@@ -107,6 +107,7 @@ A bare provider id (`'openai'`) uses that provider's default model. An unrecogni
 | Provider | Prefix | Env var |
 |---|---|---|
 | [OpenAI](https://platform.openai.com/docs/guides/text-to-speech) | `openai` | `OPENAI_API_KEY` |
+| [HeyGen](https://developers.heygen.com/docs/voices/heygen-voice-speech) | `heygen` | `HEYGEN_API_KEY` |
 | [ElevenLabs](https://elevenlabs.io/docs) | `elevenlabs` | `ELEVENLABS_API_KEY` |
 | [Deepgram](https://developers.deepgram.com/docs/text-to-speech) | `deepgram` | `DEEPGRAM_API_KEY` |
 | [Cartesia](https://docs.cartesia.ai) | `cartesia` | `CARTESIA_API_KEY` |
@@ -122,6 +123,13 @@ A bare provider id (`'openai'`) uses that provider's default model. An unrecogni
 | [xAI](https://docs.x.ai/docs/models) | `xai` | `XAI_API_KEY` |
 | [MiniMax](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | `minimax` | `MINIMAX_API_KEY` |
 | [Speechify](https://docs.speechify.ai) ([voice IDs](https://docs.speechify.ai/build/api-reference/v1/voices/get)) | `speechify` | `SPEECHIFY_API_KEY` |
+
+
+Current model additions include `gradium/gradium-tts-beta`, `elevenlabs/eleven_v4`, `cartesia/sonic-3.6`, `inworld/inworld-tts-2-flash`, `fish-audio/s2.1-pro`, `fish-audio/s2.1-pro-free`, `speechify/simba-3.5`, `speechify/simba-3.2`, `mistral/voxtral-mini-tts-3-0`, and `deepgram/flux` (use a Flux voice suffix such as `alexis-en`). Existing provider defaults are retained; select new models explicitly.
+
+HeyGen supports `heygen-voice-1`, `heygen-voice-1-turbo`, and `heygen-voice-1-turbo-free`. Pass an active public or cloned voice ID. It returns 44.1 kHz WAV; the SDK converts output formats and stitches conversations locally. HeyGen streaming and native timestamps are not exposed by this adapter. The free variant has shared capacity and is offered through November 30, 2026; the SDK never switches it to a paid model.
+
+[Eleven v4 Turbo](https://elevenlabs.io/docs/overview/models) requires a separate WebSocket integration and is not listed by this HTTP provider. [Hume API access ends November 13, 2026](https://dev.hume.ai/voice/docs/text-to-speech-tts/overview). [OpenAI Speech API models shut down January 6, 2027](https://developers.openai.com/api/docs/guides/text-to-speech); their Realtime replacement requires a different API workflow. Speechify's legacy default `simba-english` is retired for newer API versions; use `speechify/simba-3.5` for new integrations.
 
 The prefix is what a string `model` like `"openai/tts-1"` resolves to, and the env var supplies the key for both the string and factory forms — see [Model string vs factory](#model-string-vs-factory). Most providers ship a default model (`createOpenAI()()`); a few (e.g. fal) require an explicit model id. See the linked docs for each provider's full model list.
 
