@@ -1,0 +1,33 @@
+website/app/docs/[[...slug]]/page.tsx
+  s_81f5a53db9c101::t_19f32eac5c796f 2-5,15,17-21,23-24,26-41,45,49,51-55,57-61,63-69
+website/app/docs/layout.tsx
+  s_81f5a53db9c101::t_b0feeb93efc774 8,10-18
+website/app/llms.mdx/docs/[[...slug]]/route.ts
+  s_81f5a53db9c101::t_ca59f75b7812cd 8-9,11-15,17-21,25
+website/content/docs/index.mdx
+  s_81f5a53db9c101::t_af279b223565e1 6
+website/content/docs/meta.json
+  s_81f5a53db9c101::t_dcf08c39fd722b 2-21
+website/content/docs/providers/meta.json
+  s_81f5a53db9c101::t_d38f98a9a71078 2-23
+website/shared/docs/components/docs-mobile-nav.tsx
+  s_81f5a53db9c101::t_d66dd216d58711 7-13,16-18,22-26,30-33,37-38,40-41,43-55,57-78,80-92,96-100,102-103,105-164
+website/tsconfig.json
+  s_81f5a53db9c101::t_98e22646219f7c 2-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd61ddc8da339d5c0c092a6fe56924e024303cea",
+  "prompts": {},
+  "sessions": {
+    "s_81f5a53db9c101": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16442-c7f6-7d13-9b64-91502d008909",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
