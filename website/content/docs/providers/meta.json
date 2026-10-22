@@ -1,24 +1,24 @@
 {
-  "title": "Providers",
-  "pages": [
-    "index",
-    "openai",
-    "elevenlabs",
-    "deepgram",
-    "cartesia",
-    "hume",
-    "google",
-    "fish-audio",
-    "inworld",
-    "murf",
-    "resemble",
-    "smallest-ai",
-    "fal",
-    "mistral",
-    "xai",
-    "heygen",
-    "gradium",
-    "minimax",
-    "speechify"
-  ]
+	"title": "Providers",
+	"pages": [
+		"index",
+		"openai",
+		"elevenlabs",
+		"deepgram",
+		"cartesia",
+		"hume",
+		"google",
+		"fish-audio",
+		"inworld",
+		"murf",
+		"resemble",
+		"smallest-ai",
+		"fal",
+		"mistral",
+		"xai",
+		"heygen",
+		"gradium",
+		"minimax",
+		"speechify"
+	]
 }

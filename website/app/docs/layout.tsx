@@ -5,15 +5,15 @@ import { baseOptions } from "@/lib/layout.shared";
 import { source } from "@/lib/source";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const tree = source.getPageTree();
+	const tree = source.getPageTree();
 
-  return (
-    <>
-      <Nav tree={tree} />
-      <DocsLayout tree={tree} {...baseOptions()}>
-        {children}
-      </DocsLayout>
-      <Footer />
-    </>
-  );
+	return (
+		<>
+			<Nav tree={tree} />
+			<DocsLayout tree={tree} {...baseOptions()}>
+				{children}
+			</DocsLayout>
+			<Footer />
+		</>
+	);
 }
