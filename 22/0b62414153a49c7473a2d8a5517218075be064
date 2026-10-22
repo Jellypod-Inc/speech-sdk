@@ -1,0 +1,19 @@
+README.md
+  s_81f5a53db9c101::t_df8596b4dbad22 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "220b62414153a49c7473a2d8a5517218075be064",
+  "prompts": {},
+  "sessions": {
+    "s_81f5a53db9c101": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16442-c7f6-7d13-9b64-91502d008909",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
