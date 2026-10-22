@@ -1,0 +1,37 @@
+---
+title: HeyGen
+description: HeyGen Voice 1, Turbo, and Turbo Free speech generation.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `heygen` |
+| **Default model** | `heygen-voice-1` |
+| **Env var** | `HEYGEN_API_KEY` |
+| **Official docs** | [HeyGen speech API](https://developers.heygen.com/docs/voices/heygen-voice-speech) |
+
+## Models
+
+<ProviderModels prefix="heygen" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "heygen/heygen-voice-1-turbo",
+  text: "Hello from SpeechSDK!",
+  voice: "83548de556df48ba8c09c42a57c51d85",
+  providerOptions: { expressiveness_boost: 0.5 },
+  output: { format: "wav" },
+})
+```
+
+Use an active HeyGen public or instant voice with Turbo. Professional clones require `heygen-voice-1`. HeyGen returns mono PCM16 WAV at 44.1 kHz; SpeechSDK can convert it to MP3 or PCM and stitch it into conversations. Custom `sampleRate` must be 44,100 Hz.
+
+Turbo Free shares capacity and is offered through November 30, 2026. Select `heygen/heygen-voice-1-turbo-free` explicitly to use it. The SDK never switches to a paid model after a failure.
+
+This adapter exposes completed audio. The provider's SSE streaming API, native character timestamps, and voice creation are not yet exposed by SpeechSDK. Configure a timestamp fallback when you need captions.

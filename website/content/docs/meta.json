@@ -1,0 +1,22 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "---SpeechSDK---",
+    "index",
+    "providers",
+    "---Features---",
+    "streaming",
+    "multi-speaker-conversation",
+    "auto-chunking",
+    "timestamps",
+    "audio-tags",
+    "output-formats",
+    "pronunciations",
+    "speed",
+    "voice-cloning",
+    "---Usage---",
+    "configuration",
+    "result",
+    "error-handling"
+  ]
+}

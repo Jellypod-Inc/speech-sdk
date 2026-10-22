@@ -1,0 +1,154 @@
+---
+title: Multi-Speaker Conversation
+description: Generate a single audio file from a multi-turn, multi-voice script with generateConversation.
+---
+
+Use `generateConversation` to turn a script of turns into a single audio file — each turn rendered with its own model and voice, concatenated and volume-leveled. One call, multiple voices, any mix of providers.
+
+## Quick Start
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+
+const result = await generateConversation({
+  turns: [
+    {
+      model: "inworld/inworld-tts-2-flash",
+      voice: "Ashley",
+      text: "Welcome to the Speech SDK — we just shipped conversation mode.",
+    },
+    {
+      model: "elevenlabs/eleven_v4",
+      voice: "JBFqnCBsd6RMkjVDRZzb",
+      text: "That's right — one call, multiple voices, automatic volume leveling.",
+    },
+  ],
+})
+
+result.audio.uint8Array // Uint8Array
+result.audio.mediaType // e.g. "audio/mpeg"
+```
+
+Each turn accepts the same `model` and `voice` values you'd pass to [`generateSpeech`](/docs) — a `provider/model` string, a bare provider name, or a [configured `ResolvedModel`](/docs/configuration).
+
+## How It Works
+
+SpeechSDK picks the cheapest execution path that satisfies your script:
+
+- **Native dialogue** — when every turn uses the same model and that model has native multi-speaker support (e.g. some providers' dialogue models), SpeechSDK makes a single API call and lets the provider render the full conversation.
+- **Stitch** — otherwise SpeechSDK generates each turn independently, transcodes them to a common media type, and concatenates the chunks into one file. This is how you can mix providers in a single conversation.
+
+Either way, the call signature and result shape are identical. You don't need to think about which path is taken.
+
+## Options
+
+```ts
+interface GenerateConversationOptions {
+  turns: ConversationTurn[]
+  normalizeVolume?: boolean // default: true
+  timestamps?: boolean // default: false
+  abortSignal?: AbortSignal
+}
+
+interface ConversationTurn {
+  model: string | ResolvedModel
+  voice: Voice
+  text: string
+}
+```
+
+### Volume Normalization
+
+Different providers output audio at different loudness levels. By default, SpeechSDK normalizes each turn to a consistent loudness target before concatenating, so no single speaker is noticeably quieter or louder than the others.
+
+Set `normalizeVolume: false` to skip this step when you want the raw output:
+
+```ts
+await generateConversation({
+  turns,
+  normalizeVolume: false,
+})
+```
+
+### Timestamps
+
+Pass `timestamps` to get a `ConversationWordTimestamp[]` — every word carries a `turnIndex` pointing back at the turn that produced it. That makes it trivial to derive per-speaker time ranges.
+
+```ts
+const result = await generateConversation({
+  turns: [
+    { model: "elevenlabs/eleven_v4", voice: "rachel", text: "Hi there." },
+    { model: "elevenlabs/eleven_v4", voice: "adam",   text: "Hello!" },
+    { model: "elevenlabs/eleven_v4", voice: "rachel", text: "How are you?" },
+  ],
+  timestamps: true,
+})
+
+result.timestamps
+// [
+//   { text: "Hi",       start: 0.00, end: 0.15, turnIndex: 0 },
+//   { text: "there.",   start: 0.16, end: 0.42, turnIndex: 0 },
+//   { text: "Hello!",   start: 0.72, end: 1.05, turnIndex: 1 },
+//   { text: "How",      start: 1.35, end: 1.50, turnIndex: 2 },
+//   { text: "are",      start: 1.51, end: 1.66, turnIndex: 2 },
+//   { text: "you?",     start: 1.67, end: 1.92, turnIndex: 2 },
+// ]
+```
+
+#### Aggregating words into per-speaker time ranges
+
+Group consecutive same-`turnIndex` words to get one span per turn, then map each span to the voice that produced it via `turns[turnIndex].voice`:
+
+```ts
+// [
+//   { turnIndex: 0, voice: "rachel", start: 0.00, end: 0.42, text: "Hi there." },
+//   { turnIndex: 1, voice: "adam",   start: 0.72, end: 1.05, text: "Hello!" },
+//   { turnIndex: 2, voice: "rachel", start: 1.35, end: 1.92, text: "How are you?" },
+// ]
+```
+
+You can now answer "which voice is playing right now?" by binary-searching `spans` for the current playback time, drive a chat-bubble UI, or render speaker-attributed transcripts. The `start` of span `i+1` is the natural hand-off point — the `(spans[i].end, spans[i+1].start)` window is the inter-turn silence (controlled by `gapMs`).
+
+See the [timestamps & captions guide](/docs/timestamps) for mode semantics, provider support, and converting the result into SRT or WebVTT via `timestampsToCaptions`.
+
+### Aborting
+
+Pass an `AbortSignal` to cancel an in-flight conversation — any outstanding per-turn requests are aborted too:
+
+```ts
+const controller = new AbortController()
+
+const result = await generateConversation({
+  turns,
+  abortSignal: controller.signal,
+})
+
+setTimeout(() => controller.abort(), 5000)
+```
+
+## Mixing Providers
+
+Any combination of providers that each support single-turn generation can be stitched together. This is useful when you want a specific voice from one provider paired with a specific voice from another:
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+import { createInworld, createElevenLabs } from "@speech-sdk/core/providers"
+
+const inworld = createInworld({ apiKey: process.env.INWORLD_API_KEY })
+const eleven = createElevenLabs({ apiKey: process.env.ELEVENLABS_API_KEY })
+
+const result = await generateConversation({
+  turns: [
+    { model: inworld(), voice: "Ashley", text: "Hi!" },
+    { model: eleven("eleven_v4"), voice: "EXAVITQu4vr4xnSDxMaL", text: "Hello!" },
+    { model: inworld(), voice: "Ashley", text: "Nice to meet you." },
+  ],
+})
+```
+
+## Limits
+
+- Every turn must include a non-empty `text`.
+- Every provider referenced in the script must support either native dialogue (for single-provider scripts) or stitching (for multi-provider scripts).
+
+There is no cap on the number of unique voices in a conversation — you can mix as many distinct `(provider, voice)` pairs as your script needs, and the same voice may reappear in any number of turns.

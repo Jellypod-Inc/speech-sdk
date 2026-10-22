@@ -1,0 +1,96 @@
+---
+title: Cartesia
+description: Cartesia Sonic text-to-speech with SSML, voice cloning, and audio tags.
+ogTitle: Cartesia TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `cartesia` |
+| **Default model** | `sonic-3.5` |
+| **Env var** | `CARTESIA_API_KEY` |
+| **Official docs** | [docs.cartesia.ai](https://docs.cartesia.ai) |
+
+## Models
+
+<ProviderModels prefix="cartesia" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "cartesia/sonic-3.6",
+  text: "Hello from SpeechSDK!",
+  voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
+})
+```
+
+Default output is `audio/wav` at 44.1 kHz.
+
+## Audio Tags
+
+`sonic-3` supports [audio tags](/docs/audio-tags) with two paths:
+
+- **Emotion tags** (`[happy]`, `[sad]`, `[angry]`, `[excited]`, etc.) are converted to Cartesia's SSML `<emotion>` elements.
+- **`[laughter]`** is passed through natively.
+- Unknown tags are stripped with a warning.
+
+```ts
+await generateSpeech({
+  model: "cartesia/sonic-3.6",
+  text: "[happy] What a lovely day! [laughter] I can't believe it.",
+  voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
+})
+```
+
+## Voice Cloning
+
+`sonic-3` supports inline voice cloning from reference audio. See [Voice Cloning](/docs/voice-cloning) for details.
+
+```ts
+await generateSpeech({
+  model: "cartesia/sonic-3.6",
+  text: "Hello in a cloned voice!",
+  voice: { audio: "base64-encoded-audio..." },
+})
+```
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "cartesia/sonic-3.6",
+  text: "Hello!",
+  voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
+  providerOptions: {
+    language: "en",
+    output_format: {
+      container: "wav",
+      encoding: "pcm_s16le",
+      sample_rate: 44_100,
+    },
+    speed: "normal",
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createCartesia } from "@speech-sdk/core/providers"
+
+const cartesia = createCartesia({
+  apiKey: process.env.CARTESIA_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: cartesia("sonic-3.6"),
+  text: "Hello!",
+  voice: "a0e99841-438c-4a64-b679-ae501e7d6091",
+})
+```

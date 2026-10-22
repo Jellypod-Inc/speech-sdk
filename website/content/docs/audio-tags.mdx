@@ -1,0 +1,47 @@
+---
+title: Audio Tags
+description: Write expressive audio cues once and let SpeechSDK translate them for each provider.
+---
+
+Every TTS provider has its own way of handling expressive cues — ElevenLabs uses bracket syntax, Cartesia uses SSML, Fish Audio S2 takes natural-language descriptions in brackets, xAI mixes inline and wrapping tags, and most providers don't support them at all. SpeechSDK gives you a single, standardized format that works across all providers.
+
+Write `[tag]` in your text and SpeechSDK handles the rest: passing tags through natively where supported, converting to SSML where needed, and cleanly stripping them (with warnings) everywhere else. One syntax, every provider.
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "[laugh] Oh that is so funny! [sigh] But seriously though.",
+  voice: "voice-id",
+})
+
+console.log(result.warnings) // undefined — eleven_v3 supports all tags
+```
+
+## Provider Behavior
+
+| Provider                  | Behavior                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| ElevenLabs (`eleven_v3`)  | All `[tag]` passed through natively                                                                                      |
+| Cartesia (`sonic-3`)      | Emotion tags (`[happy]`, `[sad]`, `[angry]`, etc.) converted to SSML; `[laughter]` passed through; unknown tags stripped |
+| Fish Audio (`s2-pro`)     | All `[tag]` passed through natively — S2 accepts free-form natural-language descriptions, not a fixed tag set            |
+| xAI (`grok-tts`)          | Inline tags (`[laugh]`, `[pause]`, `[long-pause]`) and wrapping tags (`<whisper>`, `<soft>`, `<slow>`) passed through    |
+| All others                | Tags stripped and warnings returned                                                                                      |
+
+## Warnings
+
+When a provider doesn't support audio tags, SpeechSDK strips them from the text before sending the request and returns warnings in `result.warnings`:
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "[laugh] Hello world",
+  voice: "alloy",
+})
+
+console.log(result.warnings)
+// ["Audio tag [laugh] is not supported by openai/gpt-4o-mini-tts and was removed."]
+```
+
+If the provider supports all tags, `result.warnings` is `undefined`.

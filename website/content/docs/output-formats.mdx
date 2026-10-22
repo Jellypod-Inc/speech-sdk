@@ -1,0 +1,104 @@
+---
+title: Output Formats
+description: Request wav, mp3, or pcm audio from generateSpeech and generateConversation.
+---
+
+Pass `output` to `generateSpeech` or `generateConversation` to control the encoding of the returned audio. If you don't pass `output`, behavior is unchanged — SpeechSDK returns whatever format the provider returns by default.
+
+## Quick Start
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  output: { format: "mp3" },
+})
+
+result.audio.mediaType // "audio/mpeg"
+```
+
+```ts
+interface AudioOutput {
+  format: "wav" | "mp3" | "pcm"
+  bitrate?: number // mp3 only — kbps; default 96
+}
+```
+
+`bitrate` is mp3-only. Passing it with `format: "wav"` or `format: "pcm"` throws `AudioOutputInputError`.
+
+## MP3 With a Custom Bitrate
+
+```ts
+await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Higher quality MP3.",
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+  output: { format: "mp3", bitrate: 192 },
+})
+```
+
+## PCM for Real-Time Pipelines
+
+```ts
+await generateSpeech({
+  model: "deepgram/aura-2",
+  text: "Raw PCM samples.",
+  voice: "thalia-en",
+  output: { format: "pcm" },
+})
+
+// result.audio.mediaType is e.g. "audio/pcm;rate=24000"
+```
+
+## Conversations
+
+`generateConversation` accepts the same `output` option. Stitched and native-dialogue conversations both convert once at the end — you get a single mixed audio file in the format you asked for.
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+
+const result = await generateConversation({
+  turns: [
+    { model: "elevenlabs/eleven_v4", voice: "JBFqnCBsd6RMkjVDRZzb", text: "Hi!" },
+    { model: "elevenlabs/eleven_v4", voice: "EXAVITQu4vr4xnSDxMaL", text: "Hello!" },
+  ],
+  output: { format: "mp3", bitrate: 128 },
+})
+```
+
+## Streaming
+
+`streamSpeech` doesn't accept `output` — use the provider's native streaming format (see each [provider page](/docs/providers)).
+
+## Errors
+
+| Error                              | When                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `AudioOutputInputError`            | Invalid `output` shape — unknown format, `bitrate` on non-mp3, etc.            |
+| `OutputConversionUnsupportedError` | Provider can't return the requested format and the SDK has no path to convert. |
+
+```ts
+import {
+  AudioOutputInputError,
+  OutputConversionUnsupportedError,
+  generateSpeech,
+} from "@speech-sdk/core"
+
+try {
+  await generateSpeech({
+    model: "openai/gpt-4o-mini-tts",
+    text: "Hello!",
+    voice: "alloy",
+    output: { format: "mp3", bitrate: 999 }, // throws AudioOutputInputError
+  })
+} catch (error) {
+  if (error instanceof AudioOutputInputError) {
+    // Bad input shape.
+  } else if (error instanceof OutputConversionUnsupportedError) {
+    // Provider can't reach the requested format.
+  }
+}
+```

@@ -1,0 +1,118 @@
+---
+title: Pronunciations
+description: Customize how specific words are pronounced via text substitution rules and gateway-managed dictionaries, with timestamps mapped back to your original text.
+---
+
+Pass `pronunciations` to `generateSpeech`, `streamSpeech`, or `generateConversation` to control how specific words are spoken. Returned timestamps still track your original word — its `start`/`end` cover the full replacement, so callers don't have to map back to the substituted text.
+
+```ts
+interface Pronunciation {
+  word: string
+  replacement: string
+}
+
+interface PronunciationsInput {
+  rules?: Pronunciation[]
+  dictionaryIds?: string[] // gateway path only
+}
+```
+
+## Quick Start
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "What is an LLM?",
+  voice: "alloy",
+  pronunciations: {
+    rules: [{ word: "LLM", replacement: "el el em" }],
+  },
+})
+```
+
+The provider hears `"What is an el el em?"`. With `timestamps: true`, the returned timestamps still list `LLM` as a single word — its `start` is the start of "el", its `end` is the end of "em".
+
+```ts
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Visit jellypod.ai for the docs.",
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+  timestamps: true,
+  pronunciations: {
+    rules: [{ word: "jellypod.ai", replacement: "jelly pod dot A I" }],
+  },
+})
+
+result.timestamps?.find((w) => w.text === "jellypod.ai")
+// → start = start of "jelly", end = end of "I"
+```
+
+Rules match on whole-word, Unicode-aware boundaries (case-insensitive by default), apply in order, and don't match against [audio tags](/docs/audio-tags) like `[laugh]`.
+
+## Gateway Dictionaries
+
+When the call is routed through a [speech gateway](/docs/providers), pass `dictionaryIds` to apply organization-managed pronunciation dictionaries. The gateway merges dictionary entries with any inline `rules` you pass and applies them server-side.
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createSpeechGateway } from "@speech-sdk/core/providers"
+
+const gateway = createSpeechGateway({
+  apiKey: process.env.JELLYPOD_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: gateway("openai/gpt-4o-mini-tts"),
+  text: "Welcome to ACME Corp.",
+  voice: "alloy",
+  pronunciations: {
+    dictionaryIds: ["dict_company_terms", "dict_product_names"],
+    rules: [{ word: "v0.8.2", replacement: "version zero point eight point two" }],
+  },
+})
+```
+
+`dictionaryIds` are gateway-only. Direct-provider calls reject them at compile time and throw `DictionaryIdsRequireGatewayError` at runtime.
+
+```ts
+import { DictionaryIdsRequireGatewayError, generateSpeech } from "@speech-sdk/core"
+
+try {
+  await generateSpeech({
+    model: "openai/gpt-4o-mini-tts", // direct path
+    text: "Hello!",
+    voice: "alloy",
+    // @ts-expect-error — dictionaryIds rejected on direct calls
+    pronunciations: { dictionaryIds: ["dict_company_terms"] },
+  })
+} catch (error) {
+  if (error instanceof DictionaryIdsRequireGatewayError) {
+    // Use a gateway model, or remove dictionaryIds.
+  }
+}
+```
+
+## Conversations
+
+`generateConversation` accepts the same `pronunciations` option. Rules apply per-turn, and timestamps remain tagged with the correct `turnIndex`.
+
+```ts
+const result = await generateConversation({
+  turns: [
+    { model: "elevenlabs/eleven_v4", voice: "JBFqnCBsd6RMkjVDRZzb", text: "Welcome to ACME." },
+    { model: "elevenlabs/eleven_v4", voice: "EXAVITQu4vr4xnSDxMaL", text: "Glad to be at ACME!" },
+  ],
+  pronunciations: {
+    rules: [{ word: "ACME", replacement: "ack-mee" }],
+  },
+  timestamps: true,
+})
+```
+
+## Notes
+
+- `streamSpeech` accepts `pronunciations` with the same semantics as `generateSpeech`.
+- Billing units, length checks, and any input-size signal use your original (un-substituted) text.
+- `pronunciations: {}` is valid. On the gateway path, the server may still apply organization defaults.

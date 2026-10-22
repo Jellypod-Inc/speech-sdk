@@ -1,0 +1,28 @@
+---
+title: MiniMax
+description: MiniMax Speech 2.8 HD and Turbo speech synthesis.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `minimax` |
+| **Default model** | `speech-2.8-hd` |
+| **Env var** | `MINIMAX_API_KEY` |
+| **Official docs** | [MiniMax speech API](https://platform.minimax.io/docs/api-reference/speech-t2a-http) |
+
+## Models
+
+<ProviderModels prefix="minimax" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "minimax/speech-2.8-hd",
+  text: "Hello from SpeechSDK!",
+})
+```

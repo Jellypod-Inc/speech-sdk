@@ -1,0 +1,236 @@
+---
+title: Timestamps & Captions
+description: Return word-level timestamps from generateSpeech and convert them into SRT or WebVTT captions.
+---
+
+Pass `timestamps: true` to `generateSpeech` or `generateConversation` to get word-level timestamps alongside the audio. Feed the result to `timestampsToCaptions` for an SRT or WebVTT caption file — no extra API calls required when the provider returns timestamps natively.
+
+## Quick Start
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Hello from SpeechSDK!",
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+  timestamps: true,
+})
+
+result.timestamps
+// [
+//   { text: "Hello",  start: 0.00, end: 0.32 },
+//   { text: "from",   start: 0.36, end: 0.55 },
+//   { text: "SpeechSDK!", start: 0.58, end: 1.12 },
+// ]
+```
+
+Timings are always word-granularity, with `start` and `end` measured in seconds from the beginning of the generated audio. Providers that natively return character- or phoneme-level data are aggregated into words internally.
+
+## WordTimestamp
+
+```ts
+interface WordTimestamp {
+  readonly text: string
+  readonly start: number // seconds
+  readonly end: number // seconds
+}
+```
+
+## How `timestamps` Works
+
+`timestamps` is a boolean. The behavior depends on whether the model has native timestamps:
+
+| `timestamps` | Native-timestamps model                                       | No native timestamps                                                                 |
+| ------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `true`       | Returned in the TTS response — no extra calls.                | SDK uses the configured timestamp fallback to recover timings.                       |
+| `false` *(default)* | Not returned.                                          | Not returned.                                                                         |
+
+```ts
+await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  timestamps: true, // uses timestamp fallback — OpenAI has no native TTS timestamps
+})
+```
+
+When `timestamps: true` is omitted (or set to `false`), `result.timestamps` is `undefined`, even on providers that would have returned timestamps for free.
+
+## Timestamp Fallback
+
+With `timestamps: true` and a TTS provider that lacks native timestamps, SpeechSDK uses a fallback speech-to-text model to recover word timings. The default fallback is OpenAI Whisper (`openai/whisper-1`, reads `OPENAI_API_KEY`). Expect extra cost and latency on this path.
+
+Override the fallback by passing `fallbackSTT` to the provider factory when you create the client:
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createCartesia, createOpenAI } from "@speech-sdk/core/providers"
+
+const cartesia = createCartesia({
+  apiKey: process.env.CARTESIA_API_KEY,
+  fallbackSTT: createOpenAI({ apiKey: process.env.MY_WHISPER_KEY }).stt("whisper-1"),
+})
+
+await generateSpeech({
+  model: cartesia("sonic-3.6"),
+  text: "Hello!",
+  voice: "voice-id",
+  timestamps: true,
+})
+```
+
+Every provider factory (`createElevenLabs`, `createCartesia`, `createOpenAI`, `createInworld`, …) accepts an optional `fallbackSTT: ResolvedSTTModel`. When you reference a model by string (e.g. `"openai/gpt-4o-mini-tts"`), the SDK uses the default Whisper fallback unless you pre-create the client with `fallbackSTT` and pass the resolved model in.
+
+If `timestamps: true` is requested but the fallback API key is missing, SpeechSDK throws [`TimestampKeyMissingError`](/docs/error-handling) naming the env var you'd need to set.
+
+## Provider Support
+
+| Provider                                                                                   | Native timestamps?                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| ElevenLabs (`eleven_v3`, `eleven_multilingual_v2`, `eleven_flash_v2`, `eleven_flash_v2_5`) | **Yes** — returned in the TTS response                                                |
+| Murf (`GEN2`)                                                                              | **Yes** — `wordDurations` from the TTS response (FALCON streaming model excluded)     |
+| Hume (`octave-2`)                                                                          | **Yes** — word timing from the JSON `/v0/tts` endpoint (`octave-1` not supported)     |
+| Inworld (`inworld-tts-1.5-max`, `inworld-tts-1.5-mini`)                                    | **Yes** — `timestampInfo.wordAlignment` (best on English/Spanish)                     |
+| Cartesia (`sonic-3`, `sonic-2`)                                                            | **Yes** — SSE endpoint with `add_timestamps: true`                                    |
+| Resemble (`default`)                                                                       | **Yes** — `audio_timestamps` from `/synthesize`, aggregated into words                |
+| OpenAI, Deepgram, Google, Fish Audio, fal, Mistral, xAI                                    | No native timestamps. `timestamps: true` routes through timestamp fallback             |
+
+Each `ModelInfo` declares its capabilities in a `features` array — models with native timestamps include `"timestamps"`. You can inspect the array on a resolved model:
+
+```ts
+import { createElevenLabs } from "@speech-sdk/core/providers"
+
+const elevenlabs = createElevenLabs({ apiKey: process.env.ELEVENLABS_API_KEY })
+const model = elevenlabs("eleven_v4")
+
+const info = model.provider.models.find((m) => m.id === model.modelId)
+const hasNativeTimestamps = info?.features.includes("timestamps") ?? false
+```
+
+When `hasNativeTimestamps` is `false`, `timestamps: true` will route through timestamp fallback (Whisper by default in the standalone SDK).
+
+## Multi-Speaker Conversations
+
+`generateConversation` accepts the same `timestamps` option. The result is a `ConversationWordTimestamp[]` — every word carries a `turnIndex` pointing back at the turn that produced it, so you can derive per-speaker time ranges without doing any time-bucketing yourself.
+
+- **Stitch path** — per-turn timings are offset by the cumulative turn duration plus the inter-turn gap; `turnIndex` is set during compose.
+- **Native dialogue path** — provider timestamps on the mixed audio, with `turnIndex` attributed via greedy text-matching against `turns[i].text`.
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+
+const result = await generateConversation({
+  turns: [
+    { model: "elevenlabs/eleven_v4", voice: "JBFqnCBsd6RMkjVDRZzb", text: "Hello!" },
+    { model: "elevenlabs/eleven_v4", voice: "EXAVITQu4vr4xnSDxMaL", text: "Hi there." },
+  ],
+  timestamps: true,
+})
+
+result.timestamps
+// [
+//   { text: "Hello!",   start: 0.00, end: 0.42, turnIndex: 0 },
+//   { text: "Hi",       start: 0.72, end: 0.90, turnIndex: 1 },
+//   { text: "there.",   start: 0.91, end: 1.18, turnIndex: 1 },
+// ]
+```
+
+For the full pattern — aggregating words into per-speaker time spans and mapping each span back to its voice — see [Multi-Speaker Conversation › Timestamps](/docs/multi-speaker-conversation#timestamps).
+
+## Captions (SRT / WebVTT)
+
+Use `timestampsToCaptions` to turn word-level timestamps into a caption file. SRT is the default; pass `format: "vtt"` for WebVTT (required for the HTML `<track>` element).
+
+```ts
+import { generateSpeech, timestampsToCaptions } from "@speech-sdk/core"
+
+const { timestamps } = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Hello world. This is a test.",
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+  timestamps: true,
+})
+
+const srt = timestampsToCaptions(timestamps ?? [])
+// 1
+// 00:00:00,000 --> 00:00:01,200
+// Hello world.
+//
+// 2
+// 00:00:01,300 --> 00:00:02,800
+// This is a test.
+
+const vtt = timestampsToCaptions(timestamps ?? [], { format: "vtt" })
+// WEBVTT
+//
+// 1
+// 00:00:00.000 --> 00:00:01.200
+// Hello world.
+//
+// 2
+// 00:00:01.300 --> 00:00:02.800
+// This is a test.
+```
+
+Output follows the SubRip and [W3C WebVTT](https://www.w3.org/TR/webvtt1/) conventions: comma-decimal (SRT) vs period-decimal (VTT) timestamps, sequential numeric cue IDs, blank-line cue separators with a trailing blank line, and HTML-escaped body text (`&`, `<`, `>`) on the VTT path.
+
+Cues break on sentence boundaries (`.`, `!`, `?`, along with CJK, Devanagari, and Arabic equivalents). Long sentences are subdivided by character count, cue duration, and soft comma breaks.
+
+### Options
+
+```ts
+interface CaptionsOptions {
+  format?: "srt" | "vtt" // default: "srt"
+  maxLineLength?: number // default: 42
+  maxLinesPerCue?: number // default: 2
+  maxCharsPerCue?: number // default: maxLineLength * maxLinesPerCue
+  maxCueDurationMs?: number // default: 7000
+  longPhraseCommaBreakChars?: number // default: 60
+}
+```
+
+| Option                      | Purpose                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `format`                    | `"srt"` or `"vtt"`. VTT is required for HTML `<track>`.                                                                                    |
+| `maxLineLength`             | Characters per line (word-boundary wrap). `42` is the common broadcast convention for Latin-alphabet subtitles; try `16` for CJK content.  |
+| `maxLinesPerCue`            | Hard ceiling on lines in a single cue.                                                                                                     |
+| `maxCharsPerCue`            | Hard ceiling on characters in a single cue before SpeechSDK forces a cue break.                                                            |
+| `maxCueDurationMs`          | Hard ceiling on cue length; a cue that would exceed this is split at the next word boundary.                                               |
+| `longPhraseCommaBreakChars` | Minimum cue character count at which a trailing comma triggers a soft cue break. Prevents tiny fragments after every comma.                |
+
+### Serving as an HTML `<track>`
+
+```ts
+import { generateSpeech, timestampsToCaptions } from "@speech-sdk/core"
+
+export async function GET() {
+  const { timestamps } = await generateSpeech({
+    model: "elevenlabs/eleven_v4",
+    text: "Hello world.",
+    voice: "JBFqnCBsd6RMkjVDRZzb",
+    timestamps: true,
+  })
+
+  const vtt = timestampsToCaptions(timestamps ?? [], { format: "vtt" })
+
+  return new Response(vtt, {
+    headers: { "Content-Type": "text/vtt" },
+  })
+}
+```
+
+```html
+<video>
+  <source src="/audio.mp3" />
+  <track default src="/captions.vtt" kind="captions" srclang="en" />
+</video>
+```
+
+### Writing SRT to Disk
+
+```ts
+import { writeFileSync } from "node:fs"
+
+writeFileSync("captions.srt", timestampsToCaptions(timestamps ?? []))
+```

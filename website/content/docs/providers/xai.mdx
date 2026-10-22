@@ -1,0 +1,83 @@
+---
+title: xAI (Grok)
+description: xAI Grok text-to-speech with native audio tags and BCP-47 language control.
+ogTitle: Grok TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `xai` |
+| **Default model** | `grok-tts` |
+| **Env var** | `XAI_API_KEY` |
+| **Official docs** | [docs.x.ai](https://docs.x.ai) |
+
+## Models
+
+<ProviderModels prefix="xai" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "xai/grok-tts",
+  text: "Hello from SpeechSDK!",
+  voice: "ava",
+})
+```
+
+The `voice` string is sent to xAI as `voice_id`.
+
+## Audio Tags
+
+`grok-tts` natively supports both styles of [audio tags](/docs/audio-tags), so SpeechSDK passes your text through unchanged:
+
+- **Inline bracket tags** — `[pause]`, `[laugh]`, `[sigh]`, etc.
+- **Wrapping angle-bracket tags** — `<whisper>quiet part</whisper>`
+
+```ts
+await generateSpeech({
+  model: "xai/grok-tts",
+  text: "[laugh] Oh that's great. <whisper>Don't tell anyone.</whisper>",
+  voice: "ava",
+})
+```
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "xai/grok-tts",
+  text: "Hello!",
+  voice: "ava",
+  providerOptions: {
+    language: "en", // BCP-47, or "auto" (default)
+    output_format: {
+      codec: "wav", // mp3 (default) | wav | pcm | mulaw | alaw
+    },
+  },
+})
+```
+
+`language` is required by the xAI API — SpeechSDK defaults it to `"auto"` if you don't pass one.
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createXai } from "@speech-sdk/core/providers"
+
+const xai = createXai({
+  apiKey: process.env.XAI_API_KEY,
+  baseURL: "https://api.x.ai/v1",
+})
+
+const result = await generateSpeech({
+  model: xai("grok-tts"),
+  text: "Hello!",
+  voice: "ava",
+})
+```

@@ -1,0 +1,63 @@
+---
+title: Inworld
+description: Inworld text-to-speech with streaming and multilingual voices.
+ogTitle: Inworld TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `inworld` |
+| **Default model** | `inworld-tts-1.5-max` |
+| **Env var** | `INWORLD_API_KEY` |
+| **Official docs** | [docs.inworld.ai](https://docs.inworld.ai) |
+
+## Models
+
+<ProviderModels prefix="inworld" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "inworld/inworld-tts-2-flash",
+  text: "Hello from SpeechSDK!",
+  voice: "Ashley",
+})
+```
+
+Built-in voices include `Ashley`, `Dominus`, `Edward`, `Hades`, `Priya`, and others — see the Inworld docs for the full list.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "inworld/inworld-tts-2-flash",
+  text: "Hello!",
+  voice: "Ashley",
+  providerOptions: {
+    temperature: 0.8,
+    language: "en",
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createInworld } from "@speech-sdk/core/providers"
+
+const inworld = createInworld({
+  apiKey: process.env.INWORLD_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: inworld(),
+  text: "Hello!",
+  voice: "Ashley",
+})
+```

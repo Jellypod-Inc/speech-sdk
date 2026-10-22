@@ -1,0 +1,76 @@
+---
+title: Speed Control
+description: Slow down or speed up generated audio with the `speed` parameter on generateSpeech and generateConversation.
+---
+
+Pass `speed` to `generateSpeech` or `generateConversation` to time-stretch the final audio without changing pitch. `1` is unchanged, values below `1` are slower, values above `1` are faster.
+
+## Quick Start
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  speed: 1.25,
+})
+
+result.audio.mediaType // "audio/mpeg"
+```
+
+## Range
+
+`speed` must be a finite number between `0.75` and `1.5`. Passing a value outside that range throws `RangeError`. `1` (or omitting the parameter) is a no-op.
+
+## How It Works
+
+The SDK uses a WSOLA-based time-stretching step on mono PCM audio. It decodes the provider's audio, stretches in the time domain, and re-encodes to your requested output format.
+
+- **Direct provider path** — time-stretch happens locally in the SDK. To avoid a wasted decode/re-encode round-trip, when `speed` is set the SDK requests a decodable wire format (PCM/WAV) from the provider and applies the final `output` format conversion as part of the stretch step.
+- **Gateway path** — `speed` is forwarded in the wire payload to the gateway, which applies the stretch server-side. The gateway invariant (one request, one billed call) is preserved.
+
+`timestamps` and `audioDurationMs` on the result are scaled by `1 / speed`, so word timings and reported duration match the actual stretched audio.
+
+## Output Format
+
+When `speed` is set without an explicit `output`, the stretched audio is encoded as `mp3` — matching what most providers return natively. Set `output` explicitly to override:
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  speed: 0.85,
+  output: { format: "wav" },
+})
+
+result.audio.mediaType // "audio/wav"
+```
+
+## Conversations
+
+`generateConversation` accepts `speed` at the top level and per-turn:
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+
+const result = await generateConversation({
+  model: "elevenlabs/eleven_v4",
+  speed: 1.1, // applies to every turn that doesn't set its own
+  turns: [
+    { voice: "voice-a", text: "Welcome to the show." },
+    { voice: "voice-b", text: "Glad to be here.", speed: 0.9 },
+    { voice: "voice-a", text: "Let's get started." },
+  ],
+})
+```
+
+A per-turn `speed` forces the stitch path on direct providers, since a single multi-speaker request can't carry per-turn stretch settings. On the gateway path, both top-level and per-turn `speed` are forwarded as-is.
+
+## Notes
+
+- Mono only. Stereo or multi-channel input is not stretched; pass mono audio (which is what every supported provider returns).
+- Stretching happens in the time domain, so pitch is preserved. Extreme values toward the edges of the supported range may introduce mild artifacts; stay close to `1` for the cleanest result.
+- The same stretch primitive is exported from `@speech-sdk/core/plugins` as `timeStretch` if you want to apply it outside the SDK pipeline.

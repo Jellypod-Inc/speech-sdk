@@ -1,7 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
-docs/
+/docs/
 .docs/superpowers/
 .env
 .worktrees/
@@ -11,3 +11,4 @@ e2e-output/
 *.md
 !CHANGELOG.md
 !skills/**/*.md
+!website/README.md

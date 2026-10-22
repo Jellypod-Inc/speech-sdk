@@ -1,0 +1,78 @@
+---
+title: Smallest AI
+description: Smallest AI Lightning text-to-speech models with multilingual voices and configurable output formats.
+ogTitle: Smallest AI TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `smallest-ai` |
+| **Default model** | `lightning_v3.1` |
+| **Env var** | `SMALLEST_API_KEY` |
+| **Official docs** | [docs.smallest.ai](https://docs.smallest.ai/waves/v-4-0-0/documentation/text-to-speech-lightning/quickstart) |
+
+## Models
+
+<ProviderModels prefix="smallest-ai" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "smallest-ai/lightning_v3.1",
+  text: "Hello from SpeechSDK!",
+  voice: "magnus",
+})
+```
+
+`magnus` is the SDK's default voice when none is supplied. Smallest AI exposes 80+ voices — see their [voice library](https://docs.smallest.ai/waves/v-4-0-0/documentation/text-to-speech-lightning/quickstart) for the full list.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "smallest-ai/lightning_v3.1",
+  text: "Hello!",
+  voice: "magnus",
+  providerOptions: {
+    language: "en", // "en" | "hi" | "es" | "ta" | "auto" (default)
+    output_format: "wav", // "pcm" | "wav" | "mp3" | "mulaw"
+    sample_rate: 24_000, // 8000 | 16000 | 24000 | 44100
+    speed: 1.0, // 0.5 – 2.0
+  },
+})
+```
+
+## Output Formats
+
+`lightning_v3.1` advertises native pass-through for `wav`, `mp3`, and `pcm` via the [output formats](/docs/output-formats) option:
+
+```ts
+await generateSpeech({
+  model: "smallest-ai/lightning_v3.1",
+  text: "Hello!",
+  voice: "magnus",
+  output: { format: "mp3" },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createSmallestAI } from "@speech-sdk/core/providers"
+
+const smallestAI = createSmallestAI({
+  apiKey: process.env.SMALLEST_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: smallestAI("lightning_v3.1"),
+  text: "Hello!",
+  voice: "magnus",
+})
+```

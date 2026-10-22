@@ -1,0 +1,31 @@
+---
+title: Gradium
+description: Gradium speech generation and streaming.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `gradium` |
+| **Default model** | `default` |
+| **Env var** | `GRADIUM_API_KEY` |
+| **Official docs** | [Gradium docs](https://docs.gradium.ai) |
+
+## Models
+
+<ProviderModels prefix="gradium" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "gradium/gradium-tts-beta",
+  text: "Hello from SpeechSDK!",
+  voice: "your-gradium-voice-id",
+})
+```
+
+The beta is opt-in. The SDK retains `default` for bare `gradium` calls.

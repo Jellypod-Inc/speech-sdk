@@ -1,0 +1,81 @@
+---
+title: OpenAI
+description: OpenAI text-to-speech models (gpt-4o-mini-tts, tts-1, tts-1-hd).
+ogTitle: OpenAI TTS
+---
+
+> The [current OpenAI Speech API models](https://developers.openai.com/api/docs/guides/text-to-speech) shut down January 6, 2027. Their replacement uses the Realtime API and cannot be passed to this HTTP speech provider.
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `openai` |
+| **Default model** | `gpt-4o-mini-tts` |
+| **Env var** | `OPENAI_API_KEY` |
+| **Official docs** | [platform.openai.com/docs/guides/text-to-speech](https://platform.openai.com/docs/guides/text-to-speech) |
+
+## Models
+
+<ProviderModels prefix="openai" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello from SpeechSDK!",
+  voice: "alloy",
+})
+```
+
+Built-in voices: `alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`, `onyx`, `nova`, `sage`, `shimmer`, `verse`.
+
+## Audio Tags
+
+`gpt-4o-mini-tts` is steerable — SpeechSDK maps standardized [audio tags](/docs/audio-tags) in your text to the OpenAI `instructions` field:
+
+```ts
+await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "[cheerful] Welcome back!",
+  voice: "alloy",
+})
+```
+
+`tts-1` and `tts-1-hd` do not accept instructions — tags are stripped and a warning is returned.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  providerOptions: {
+    speed: 1.2,
+    response_format: "opus", // mp3 | opus | aac | flac | wav | pcm
+    instructions: "Speak with a warm, friendly tone.",
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createOpenAI } from "@speech-sdk/core/providers"
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https://my-proxy.com/v1",
+})
+
+const result = await generateSpeech({
+  model: openai("gpt-4o-mini-tts"),
+  text: "Hello!",
+  voice: "alloy",
+})
+```

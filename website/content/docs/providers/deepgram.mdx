@@ -1,0 +1,68 @@
+---
+title: Deepgram
+description: Deepgram Flux and Aura text-to-speech.
+ogTitle: Deepgram TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `deepgram` |
+| **Default model** | `aura-2` |
+| **Env var** | `DEEPGRAM_API_KEY` |
+| **Official docs** | [developers.deepgram.com/docs/text-to-speech](https://developers.deepgram.com/docs/text-to-speech) |
+
+## Models
+
+<ProviderModels prefix="deepgram" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "deepgram/flux",
+  text: "Hello from SpeechSDK!",
+  voice: "alexis-en",
+})
+```
+
+## Voice + Model
+
+Deepgram's API expects the voice to be concatenated with the model (e.g. `aura-2-thalia-en`). SpeechSDK builds this identifier for you from the `voice` parameter — just pass the voice suffix like `thalia-en`, `apollo-en`, or `orion-en`.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "deepgram/flux",
+  text: "Hello!",
+  voice: "alexis-en",
+  providerOptions: {
+    encoding: "mp3",
+    sample_rate: 24_000,
+    container: "none",
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createDeepgram } from "@speech-sdk/core/providers"
+
+const deepgram = createDeepgram({
+  apiKey: process.env.DEEPGRAM_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: deepgram("flux"),
+  text: "Hello!",
+  voice: "alexis-en",
+})
+```
+
+Flux uses `/v2/speak`; Aura uses `/v1/speak`. For Flux, pass `model: "deepgram/flux"` and a Flux voice suffix such as `voice: "alexis-en"`.

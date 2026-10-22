@@ -1,0 +1,75 @@
+---
+title: fal
+description: fal.ai TTS model marketplace with voice cloning on select models.
+ogTitle: fal TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `fal-ai` |
+| **Default model** | _(user-specified)_ |
+| **Env var** | `FAL_API_KEY` |
+| **Official docs** | [fal.ai/models](https://fal.ai/models) |
+
+fal.ai is a marketplace — there's no default TTS model. You must pass a specific model identifier. Common choices include `fal-ai/f5-tts`, `fal-ai/dia-tts`, `fal-ai/index-tts-2`, and `fal-ai/chatterbox`.
+
+## Models
+
+<ProviderModels prefix="fal-ai" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "fal-ai/fal-ai/f5-tts",
+  text: "Hello from SpeechSDK!",
+  voice: { url: "https://example.com/reference.wav" },
+})
+```
+
+The model string is `fal-ai/<model-path>` — the first `fal-ai` is the SpeechSDK provider prefix, and the rest is the fal model path.
+
+## Voice Cloning
+
+Voice-cloning fal models accept either a URL or an inline audio object:
+
+```ts
+// from a URL
+await generateSpeech({
+  model: "fal-ai/fal-ai/f5-tts",
+  text: "Hello!",
+  voice: { url: "https://example.com/reference.wav" },
+})
+
+// from bytes
+import { readFileSync } from "fs"
+
+await generateSpeech({
+  model: "fal-ai/fal-ai/f5-tts",
+  text: "Hello!",
+  voice: { audio: readFileSync("./reference.wav") },
+})
+```
+
+See [Voice Cloning](/docs/voice-cloning) for the full `Voice` type.
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createFal } from "@speech-sdk/core/providers"
+
+const fal = createFal({
+  apiKey: process.env.FAL_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: fal("fal-ai/f5-tts"),
+  text: "Hello!",
+  voice: { url: "https://example.com/reference.wav" },
+})
+```

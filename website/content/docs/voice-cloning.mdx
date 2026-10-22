@@ -1,0 +1,71 @@
+---
+title: Voice Cloning
+description: Clone voices using reference audio with supported providers.
+---
+
+Some providers support inline voice cloning — pass a voice object with reference audio instead of a voice ID string.
+
+## From Base64 Audio
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createMistral } from "@speech-sdk/core/providers"
+
+const mistral = createMistral()
+
+const result = await generateSpeech({
+  model: mistral(),
+  text: "Hello in a cloned voice!",
+  voice: { audio: "base64-encoded-audio..." },
+})
+```
+
+You can also pass a `Uint8Array`:
+
+```ts
+import { readFileSync } from "fs"
+
+const audioBytes = readFileSync("./reference.wav")
+
+const result = await generateSpeech({
+  model: mistral(),
+  text: "Hello!",
+  voice: { audio: audioBytes },
+})
+```
+
+## From a URL
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createFal } from "@speech-sdk/core/providers"
+
+const fal = createFal()
+
+const result = await generateSpeech({
+  model: fal("fal-ai/chatterbox"),
+  text: "Hello in a cloned voice!",
+  voice: { url: "https://example.com/reference.wav" },
+})
+```
+
+## Voice Type
+
+The `voice` parameter accepts three forms:
+
+```ts
+type Voice =
+  | string // Voice ID (e.g., 'alloy', 'EXAVITQu4vr4...')
+  | { audio: string | Uint8Array } // Inline clone from audio data
+  | { url: string } // Inline clone from URL
+```
+
+## Providers with Voice Cloning
+
+| Provider             | Voice Cloning | Method     |
+| -------------------- | ------------- | ---------- |
+| Cartesia (`sonic-3`) | Yes           | Audio data |
+| Mistral              | Yes           | Audio data |
+| fal                  | Yes           | URL        |
+
+Not all models from a provider support voice cloning. Check the provider's documentation for model-specific support.

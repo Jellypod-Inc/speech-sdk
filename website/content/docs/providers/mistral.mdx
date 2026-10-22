@@ -1,0 +1,75 @@
+---
+title: Mistral (Voxtral TTS)
+description: Mistral Voxtral open-source text-to-speech with voice cloning.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `mistral` |
+| **Default model** | `voxtral-mini-tts-2603` |
+| **Env var** | `MISTRAL_API_KEY` |
+| **Official docs** | [docs.mistral.ai/capabilities/audio/text_to_speech/speech](https://docs.mistral.ai/capabilities/audio/text_to_speech/speech) |
+
+## Models
+
+<ProviderModels prefix="mistral" />
+
+## Usage
+
+Mistral Voxtral is voice-cloning first — there are no built-in voice IDs. Every request passes a reference audio clip:
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "mistral/voxtral-mini-tts-3-0",
+  text: "Hello from SpeechSDK!",
+  voice: { audio: "base64-encoded-audio..." },
+})
+```
+
+You can also pass a `Uint8Array`:
+
+```ts
+import { readFileSync } from "fs"
+
+await generateSpeech({
+  model: "mistral/voxtral-mini-tts-3-0",
+  text: "Hello!",
+  voice: { audio: readFileSync("./reference.wav") },
+})
+```
+
+See [Voice Cloning](/docs/voice-cloning) for the full `Voice` type.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "mistral/voxtral-mini-tts-3-0",
+  text: "Hello!",
+  voice: { audio: "..." },
+  providerOptions: {
+    response_format: "mp3", // mp3 | opus | wav
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createMistral } from "@speech-sdk/core/providers"
+
+const mistral = createMistral({
+  apiKey: process.env.MISTRAL_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: mistral(),
+  text: "Hello!",
+  voice: { audio: "base64-encoded-audio..." },
+})
+```
