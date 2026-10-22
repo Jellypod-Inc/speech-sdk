@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.36.1
+## 0.37.0
 
 - Add HeyGen Voice 1, Turbo, and Turbo Free speech generation, output conversion, and conversation stitching.
 - Add Sonic 3.6, Inworld TTS-2 Flash, Fish S2.1 Pro variants, Simba 3.5/3.2, Voxtral TTS 3, Deepgram Flux, and the Gradium TTS beta to the model catalogs.
