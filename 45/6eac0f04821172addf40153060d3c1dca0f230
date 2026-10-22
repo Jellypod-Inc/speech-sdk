@@ -1,0 +1,304 @@
+website/components/nav.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-126
+website/components/nav-link.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-26,28-34
+  s_81f5a53db9c101::t_f26f381cc1773f 27
+website/app/api/search/route.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-6
+website/components/providers-table.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 2-92
+  s_81f5a53db9c101::t_abb8a6b94d4efd 1
+website/styles/fumadocs.css
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-14
+website/lib/get-llm-text.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-10
+website/app/robots.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-8
+website/components/feature-cards.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-100
+website/lib/npm.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-4,6-25
+  s_81f5a53db9c101::t_7d146c33198c7c 5
+website/components/toolkit.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 3-21,23-100
+  s_81f5a53db9c101::t_2a8344710f41c3 1-2,22
+website/shared/blocks/components/why-speech-sdk-section.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-26
+website/shared/ui/assets/providers.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-88
+website/data/playground-voices.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-159,161-163
+  s_81f5a53db9c101::t_ee4623699901d0 160
+website/shared/ui/components/sonner.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-45
+website/shared/blocks/examples/generate-conversation.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-19
+.gitignore
+  s_81f5a53db9c101::t_0caead72914efb 14
+  s_81f5a53db9c101::t_000ead6a1e1101 4
+website/lib/layout.shared.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-12
+website/shared/ui/components/select.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-41,43-84,86-121,123-161,163-179,181-201
+  s_81f5a53db9c101::t_2574a590c1a3c3 42,85,122,162,180
+website/app/not-found.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-69
+website/components/stats-bar.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-21,23-34
+  s_81f5a53db9c101::t_f372caf7903cb9 22
+website/app/api/og/route.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-14,16-99,101-102
+  s_81f5a53db9c101::t_33c632a46d4369 15,100
+website/shared/blocks/components/install-command.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-13,15-24
+  s_81f5a53db9c101::t_e37aa06c686343 14
+website/components/hero-data.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-110,112-128,130
+  s_81f5a53db9c101::t_42d32b2d983d0e 111,129
+website/app/models/page.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-39
+website/components/code-header.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-13,15-42
+  s_81f5a53db9c101::t_5c602c87fe1f98 14
+website/components/faq.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-46,48-65
+  s_81f5a53db9c101::t_f75551d942cecb 47
+website/components/gemini-banner.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-16
+website/components/provider-models.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-29,31-120,123-135
+  s_81f5a53db9c101::t_c5011a03e493a6 30,121-122
+website/components/gateway-callout.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-33
+website/next-env.d.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-7
+website/package.json
+  s_81f5a53db9c101::t_36ee40d997c120 1,70
+  s_81f5a53db9c101::t_10b1645fb6fc07 2-65,68-69
+  s_81f5a53db9c101::t_c7432a8ebf7aab 66-67
+website/app/llms-full.txt/route.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-11
+website/app/icon.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-31,33-34
+  s_81f5a53db9c101::t_d8722f8e9ed956 32
+website/data/index.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-3
+website/components/theme-provider.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-71
+website/data/models.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-5,7-40,42-44
+  s_81f5a53db9c101::t_3328d054d1e1e8 6,41
+website/components/github-icon.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-13
+website/data/provider-registry.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-117,119-146,148-156
+  s_81f5a53db9c101::t_654eefe8daa6c7 118,147
+website/shared/blocks/components/syntax-highlight.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-63,65-128
+  s_81f5a53db9c101::t_99f51695a608cb 64
+website/shared/ui/components/input.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-9,11-19
+  s_81f5a53db9c101::t_63c336c8d5c58d 10
+website/shared/ui/components/sheet.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-29,31-53,55-105,107-136
+  s_81f5a53db9c101::t_71a4397c7f7fe7 30,54,106
+website/app/page.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-29,31-56
+  s_81f5a53db9c101::t_c0923154f0a9c4 30
+website/app/sitemap.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-24
+website/components/footer.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-22,24-137
+  s_81f5a53db9c101::t_0caead72914efb 23
+website/components/mdx.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-15
+website/shared/ui/components/popover.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-38,40-89
+  s_81f5a53db9c101::t_c93f98f25c5013 39
+website/shared/ui/components/table.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-45,47-58,60-71,73-84,86-115
+  s_81f5a53db9c101::t_51c506b93e03a4 46,59,72,85
+website/lib/source.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-7
+website/shared/ui/lib/utils.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-6
+website/components.json
+  s_81f5a53db9c101::t_b6efdf0a90a8dc 8
+  s_81f5a53db9c101::t_e4f20e3451747c 1-7,9-23
+.github/workflows/website.yml
+  s_81f5a53db9c101::t_0caead72914efb 1-37
+website/lib/brand.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-4
+website/shared/ui/components/copy-button.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-30,32-43
+  s_81f5a53db9c101::t_84c5a7f43ccbe9 31
+website/source.config.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-20
+website/lib/latest-model.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1,3-12
+  s_81f5a53db9c101::t_b67aaea36cec90 2
+website/components/models-table.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-130,132-167,169-392,394-436,438-476
+  s_81f5a53db9c101::t_0ad4478a453aaa 131,168,393,437
+website/shared/ui/components/button.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-41,43-60
+  s_81f5a53db9c101::t_0b025dad32a9e3 42
+website/README.md
+  s_81f5a53db9c101::t_0caead72914efb 1-22
+  s_81f5a53db9c101::t_1f00d1657c0d7e 23-24
+website/app/playground/page.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 2-3,5
+  s_81f5a53db9c101::t_4e0ebc0800f6a9 1,4
+website/next.config.mjs
+  s_81f5a53db9c101::t_36ee40d997c120 1-22
+website/components/llm-copy-button.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-36
+website/shared/ui/styles/globals.css
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-185
+website/components/technical-details.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-116
+website/lib/github.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-4,6-14
+  s_81f5a53db9c101::t_9e5690104b75ce 5
+website/components/syntax-highlight.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-40,42-48
+  s_81f5a53db9c101::t_539fa62b0c1fd2 41
+website/shared/ui/components/badge.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-25,27-40,42-51
+  s_81f5a53db9c101::t_05f135f3b850a8 26,41
+website/app/layout.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-55,57-97
+  s_81f5a53db9c101::t_99bad007acdb0a 56
+website/components/npm-downloads.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-30
+website/data/playground-providers.ts
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-27,29-36
+  s_81f5a53db9c101::t_7a354b35ffabfc 28
+website/app/llms.txt/route.ts
+  s_81f5a53db9c101::t_36ee40d997c120 1-32
+website/shared/ui/components/accordion.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-36,38-69,71-79
+  s_81f5a53db9c101::t_602784cf55bfd5 37,70
+website/components/github-stars.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-24
+website/shared/ui/components/toggle.tsx
+  s_81f5a53db9c101::t_88dadb4ee5c3d0 1-28,30-47
+  s_81f5a53db9c101::t_fb09bc1e57ac3a 29
+website/components/hero.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-35,37-45,47-96,98-128,130-161
+  s_81f5a53db9c101::t_53db0f1dd28114 36,46,97,129
+website/components/speech-sdk-logo.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-13
+website/app/contact/page.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-53
+website/components/code-examples.tsx
+  s_81f5a53db9c101::t_36ee40d997c120 1-77
+website/.gitignore
+  s_81f5a53db9c101::t_e28b113f4c4720 1-6
+website/app/docs/[[...slug]]/page.tsx
+  s_81f5a53db9c101::t_984f155abee3e2 1-70
+website/app/docs/layout.tsx
+  s_81f5a53db9c101::t_c5d082e4dd6956 1-19
+website/app/llms.mdx/docs/[[...slug]]/route.ts
+  s_81f5a53db9c101::t_4adc45ee740bad 1-26
+website/biome.jsonc
+  s_81f5a53db9c101::t_af4fce6b300a00 1-13
+website/content/docs/audio-tags.mdx
+  s_81f5a53db9c101::t_1ae99b7fdbac25 1-47
+website/content/docs/auto-chunking.mdx
+  s_81f5a53db9c101::t_424abb143a0efb 1-113
+website/content/docs/configuration.mdx
+  s_81f5a53db9c101::t_c971de1510d3f6 1-153
+website/content/docs/error-handling.mdx
+  s_81f5a53db9c101::t_d7649941f107ff 1-158
+website/content/docs/index.mdx
+  s_81f5a53db9c101::t_ce2816eeaba63b 1-71
+website/content/docs/meta.json
+  s_81f5a53db9c101::t_caed1bf7c568c4 1-22
+website/content/docs/multi-speaker-conversation.mdx
+  s_81f5a53db9c101::t_305a0885b714e3 1-154
+website/content/docs/output-formats.mdx
+  s_81f5a53db9c101::t_2935e9f97bba76 1-104
+website/content/docs/pronunciations.mdx
+  s_81f5a53db9c101::t_a1ac5f7a8740d2 1-118
+website/content/docs/providers/cartesia.mdx
+  s_81f5a53db9c101::t_70ea0a604e9e6a 1-96
+website/content/docs/providers/deepgram.mdx
+  s_81f5a53db9c101::t_fa13e2a4383185 1-68
+website/content/docs/providers/elevenlabs.mdx
+  s_81f5a53db9c101::t_fd8ddb488ac3c0 1-88
+website/content/docs/providers/fal.mdx
+  s_81f5a53db9c101::t_b802e4711bbff9 1-75
+website/content/docs/providers/fish-audio.mdx
+  s_81f5a53db9c101::t_d9b94055911b6b 1-81
+website/content/docs/providers/google.mdx
+  s_81f5a53db9c101::t_2cebd2efa4110b 1-69
+website/content/docs/providers/gradium.mdx
+  s_81f5a53db9c101::t_ecb39780e55258 1-31
+website/content/docs/providers/heygen.mdx
+  s_81f5a53db9c101::t_d3d2fdca3808ba 1-37
+website/content/docs/providers/hume.mdx
+  s_81f5a53db9c101::t_3b7871cab0fbd6 1-71
+website/content/docs/providers/index.mdx
+  s_81f5a53db9c101::t_3101ac2b8d9c27 1-62
+website/content/docs/providers/inworld.mdx
+  s_81f5a53db9c101::t_85464c6dec4ced 1-63
+website/content/docs/providers/meta.json
+  s_81f5a53db9c101::t_90e80a14e1e8a7 1-24
+website/content/docs/providers/minimax.mdx
+  s_81f5a53db9c101::t_92c03c2661b342 1-28
+website/content/docs/providers/mistral.mdx
+  s_81f5a53db9c101::t_b0fc16d8d740e3 1-75
+website/content/docs/providers/murf.mdx
+  s_81f5a53db9c101::t_1acaf15811a8f6 1-64
+website/content/docs/providers/openai.mdx
+  s_81f5a53db9c101::t_9c55b36a9dba09 1-81
+website/content/docs/providers/resemble.mdx
+  s_81f5a53db9c101::t_dccf54d63ef482 1-68
+website/content/docs/providers/smallest-ai.mdx
+  s_81f5a53db9c101::t_1e2248cffad627 1-78
+website/content/docs/providers/speechify.mdx
+  s_81f5a53db9c101::t_fd4c38be8e9bc3 1-31
+website/content/docs/providers/xai.mdx
+  s_81f5a53db9c101::t_563db2830483ea 1-83
+website/content/docs/result.mdx
+  s_81f5a53db9c101::t_b6b664295e163f 1-164
+website/content/docs/speed.mdx
+  s_81f5a53db9c101::t_ffb6ad93e14a39 1-76
+website/content/docs/streaming.mdx
+  s_81f5a53db9c101::t_586f56c901dfe2 1-108
+website/content/docs/timestamps.mdx
+  s_81f5a53db9c101::t_9ac73c37b7f0d1 1-236
+website/content/docs/voice-cloning.mdx
+  s_81f5a53db9c101::t_ce577d9299bf1f 1-71
+website/pnpm-lock.yaml
+  s_81f5a53db9c101::t_d0a49b06af96b1 1-7527
+website/pnpm-workspace.yaml
+  s_81f5a53db9c101::t_fd8f70e7cf9a74 1-2
+website/postcss.config.mjs
+  s_81f5a53db9c101::t_a488761414c4b5 1
+website/public/logo.svg
+  s_81f5a53db9c101::t_7a059ef0c1ab81 1-34
+website/public/logo_white.svg
+  s_81f5a53db9c101::t_f9e86e48eda9a1 1-34
+website/shared/docs/components/docs-mobile-nav.tsx
+  s_81f5a53db9c101::t_a2e5a3ea25f6fc 1-165
+website/tsconfig.json
+  s_81f5a53db9c101::t_453cc9fdbd49fe 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "456eac0f04821172addf40153060d3c1dca0f230",
+  "prompts": {},
+  "sessions": {
+    "s_81f5a53db9c101": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16442-c7f6-7d13-9b64-91502d008909",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
