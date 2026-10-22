@@ -1,0 +1,21 @@
+CHANGELOG.md
+  s_81f5a53db9c101::t_15c6e7d94579e3 3
+package.json
+  s_81f5a53db9c101::t_07c7fd6a41ff53 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "252a5679593ea5310ab23ccb0f74654ffa41eaf5",
+  "prompts": {},
+  "sessions": {
+    "s_81f5a53db9c101": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16442-c7f6-7d13-9b64-91502d008909",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Pierson Marks <pierson@jellypod.ai>"
+    }
+  }
+}
