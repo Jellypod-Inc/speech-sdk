@@ -26,6 +26,7 @@ src/__tests__/latest-models.test.ts
   s_81f5a53db9c101::t_242d6fa4a70593 1-2,17-89
 CHANGELOG.md
   s_81f5a53db9c101::t_fbd43e9d6d7c53 4,8-9
+  s_81f5a53db9c101::t_79cf26f90b3cf3 3
 README.md
   s_81f5a53db9c101::t_472156b1601900 110,127-133
 skills/speech-sdk/references/providers.md
