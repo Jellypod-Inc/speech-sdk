@@ -21,6 +21,7 @@ import {
   createGradium,
   GRADIUM_PROVIDER_ID,
 } from "./providers/gradium/index.js";
+import { createHeyGen, HEYGEN_PROVIDER_ID } from "./providers/heygen/index.js";
 import { createHume, HUME_PROVIDER_ID } from "./providers/hume/index.js";
 import {
   createInworld,
@@ -63,6 +64,7 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [FISH_AUDIO_PROVIDER_ID]: createFishAudio,
   [GOOGLE_PROVIDER_ID]: createGoogle,
   [GRADIUM_PROVIDER_ID]: createGradium,
+  [HEYGEN_PROVIDER_ID]: createHeyGen,
   [HUME_PROVIDER_ID]: createHume,
   [INWORLD_PROVIDER_ID]: createInworld,
   [MINIMAX_PROVIDER_ID]: createMiniMax,

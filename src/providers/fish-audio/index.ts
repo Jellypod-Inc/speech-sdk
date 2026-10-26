@@ -38,7 +38,24 @@ export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
 const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
+const FISH_AUDIO_DIALOGUE_MODELS: ReadonlySet<string> = new Set([
+  "s2-pro",
+  "s2.1-pro",
+]);
+
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
+  {
+    id: "s2.1-pro",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
+  {
+    id: "s2.1-pro-free",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
   {
     id: "s2-pro",
     releaseDate: "2026-03-09",
@@ -352,7 +369,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   }
 
   dialogueCapabilities(modelId: string) {
-    if (modelId === "s2-pro") {
+    if (FISH_AUDIO_DIALOGUE_MODELS.has(modelId)) {
       return { maxVoices: 4 };
     }
     return;
@@ -369,9 +386,9 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    if (options.modelId !== "s2-pro") {
+    if (!FISH_AUDIO_DIALOGUE_MODELS.has(options.modelId)) {
       throw new Error(
-        `fish-audio/${options.modelId} does not support native dialogue; use s2-pro.`
+        `fish-audio/${options.modelId} does not support native dialogue; use s2-pro or s2.1-pro.`
       );
     }
 

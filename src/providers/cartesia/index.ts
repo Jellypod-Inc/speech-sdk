@@ -91,6 +91,12 @@ const SONIC_LANGUAGES = [
 
 export const CARTESIA_MODELS: readonly ModelInfo[] = [
   {
+    id: "sonic-3.6",
+    releaseDate: "2026-08-27",
+    languages: [...SONIC_LANGUAGES, "or", "ur"],
+    features: ["streaming", "audio-tags", "voice-cloning", "timestamps"],
+  },
+  {
     id: "sonic-3.5",
     releaseDate: "2026-05-04",
     languages: SONIC_LANGUAGES,

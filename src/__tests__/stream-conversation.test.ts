@@ -80,7 +80,6 @@ describe("streamConversation", () => {
       response_format: { type: "audio" },
       generation_config: {
         speech_config: {
-          mode: "conversational",
           speakers: [
             { speaker: "Speaker1", voice: "Kore" },
             { speaker: "Speaker2", voice: "Puck" },

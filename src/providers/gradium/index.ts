@@ -33,6 +33,13 @@ export const GRADIUM_PROVIDER_ID = "gradium" as const;
 
 export const GRADIUM_MODELS: readonly ModelInfo[] = [
   {
+    id: "gradium-tts-beta",
+    releaseDate: "2026-07-30",
+    languages: ["en", "fr", "de", "es", "pt"],
+    features: ["streaming", "voice-cloning"],
+    maxInputChars: 20_000,
+  },
+  {
     id: "default",
     releaseDate: "2026-02-01",
     languages: ["en", "fr", "de", "es", "pt"],
