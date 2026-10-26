@@ -261,7 +261,6 @@ function gemini38DialogueRequest(options: {
   return {
     input: [{ type: "user_input", content }],
     speechConfig: {
-      mode: "conversational",
       speakers: [...voiceToLabel].map(([voice, speaker]) => ({
         speaker,
         voice,

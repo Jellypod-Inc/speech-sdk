@@ -5,6 +5,7 @@
 - Add HeyGen Voice 1, Turbo, and Turbo Free speech generation, output conversion, and conversation stitching.
 - Add Sonic 3.6, Inworld TTS-2 Flash, Fish S2.1 Pro variants, Simba 3.5/3.2, Voxtral TTS 3, Deepgram Flux, and the Gradium TTS beta to the model catalogs.
 - Preserve existing provider defaults and document provider lifecycle changes and adapter limitations.
+- Gemini 3.8 native dialogue no longer sends `speech_config.mode`. Since 2026-10-23 the Interactions API rejects it with `400 Unknown parameter 'mode' at 'generation_config.structured_speech_config'`, which failed every `generateDialogue`/`streamDialogue` call on Gemini 3.8 TTS models.
 
 
 ## 0.36.0
