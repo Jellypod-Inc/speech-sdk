@@ -46,14 +46,14 @@ await generateSpeech({
 
 ## Audio Tags
 
-`sonic-3.5` / `sonic-3`:
+`sonic-3.6` / `sonic-3.5` / `sonic-3`:
 - Emotion tags (`[happy]`, `[sad]`, `[angry]`, `[excited]`, …) → Cartesia SSML `<emotion>`
 - `[laughter]` passed through
 - Unknown tags stripped with warning
 
 ## Voice Cloning
 
-`sonic-3.5` and `sonic-3` support inline cloning via `voice: { audio: ... }`.
+`sonic-3.6`, `sonic-3.5`, and `sonic-3` support inline cloning via `voice: { audio: ... }`.
 
 ## Provider Options
 
