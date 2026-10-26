@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.1
+
+- **Gemini 3.8 native dialogue no longer sends `speech_config.mode`.** Since 2026-10-23 the Interactions API rejects it with `400 Unknown parameter 'mode' at 'generation_config.structured_speech_config'`, failing every `generateDialogue`/`streamDialogue` call on Gemini 3.8 TTS models. Requests now carry only `speech_config.speakers`.
+
 ## 0.36.0
 
 - **ElevenLabs `eleven_v4` and `eleven_v4_turbo`.** Both accept 10,000 characters per request, 90+ languages, and inline audio tags (passed through as written). `eleven_v4` also dispatches `generateConversation` to native dialogue (`/v1/text-to-dialogue`) like `eleven_v3`; `eleven_v4_turbo` only offers dialogue over ElevenLabs' WebSocket API, so its conversations use the stitch path. The default ElevenLabs model is unchanged.
