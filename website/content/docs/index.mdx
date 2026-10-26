@@ -1,0 +1,71 @@
+---
+title: Getting Started
+description: Get started with SpeechSDK — the universal text-to-speech SDK for JavaScript and TypeScript.
+---
+
+SpeechSDK is a lightweight, provider-agnostic TypeScript toolkit for text-to-speech. One API, multiple providers, zero lock-in.
+
+## Install
+
+```bash
+npm install @speech-sdk/core
+```
+
+### For Agents
+
+Give your AI coding assistant full knowledge of this library. Works with Claude Code, Cursor, Codex, and more.
+
+```bash
+npx skills add Jellypod-Inc/speech-sdk --skill speech-sdk
+```
+
+## Quick Start
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello from SpeechSDK!",
+  voice: "alloy",
+})
+
+result.audio.uint8Array // Uint8Array
+result.audio.base64 // string (lazy-computed)
+result.audio.mediaType // "audio/mpeg"
+```
+
+That's it — no provider SDK to install, no client to initialize. Just pass a `provider/model` string and go.
+
+## How It Works
+
+SpeechSDK resolves the provider from the model string, reads the API key from the corresponding environment variable, calls the provider's API, and returns a normalized result.
+
+```ts
+// These all work the same way
+generateSpeech({ model: "openai/gpt-4o-mini-tts", text: "...", voice: "alloy" })
+generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "...",
+  voice: "voice-id",
+})
+generateSpeech({ model: "deepgram/aura-2", text: "...", voice: "thalia-en" })
+
+// Pass just the provider name to use its default model
+generateSpeech({ model: "openai", text: "...", voice: "alloy" })
+```
+
+## Next Steps
+
+- [Providers](/docs/providers) — see all 14 supported providers and their models
+- [Streaming](/docs/streaming) — stream audio chunk-by-chunk for low-latency playback
+- [Multi-Speaker Conversation](/docs/multi-speaker-conversation) — generate a single audio file from a multi-turn, multi-voice script
+- [Auto-Chunking](/docs/auto-chunking) — split long inputs at sentence boundaries and stitch the audio
+- [Timestamps & Captions](/docs/timestamps) — word-level timestamps and SRT / WebVTT caption generation
+- [Audio Tags](/docs/audio-tags) — write expressive cues once, every provider handles them
+- [Output Formats](/docs/output-formats) — request wav, mp3, or pcm with native pass-through
+- [Pronunciations](/docs/pronunciations) — substitute custom pronunciations with timestamps mapped back to the original text
+- [Speed Control](/docs/speed) — slow down or speed up generated audio without changing pitch
+- [Voice Cloning](/docs/voice-cloning) — clone voices with reference audio
+- [Configuration](/docs/configuration) — custom API keys, base URLs, and fetch
+- [Error Handling](/docs/error-handling) — handle API errors gracefully

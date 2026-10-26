@@ -1,0 +1,68 @@
+---
+title: Resemble
+description: Open-source Resemble AI text-to-speech with voice cloning.
+ogTitle: Resemble TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `resemble` |
+| **Default model** | `default` |
+| **Env var** | `RESEMBLE_API_KEY` |
+| **Official docs** | [docs.resemble.ai](https://docs.resemble.ai) |
+
+## Models
+
+<ProviderModels prefix="resemble" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "resemble/default",
+  text: "Hello from SpeechSDK!",
+  voice: "voice-uuid-from-resemble",
+})
+```
+
+The `voice` string is sent to Resemble as `voice_uuid`.
+
+## Voice Cloning
+
+Resemble is built around voice cloning — create a clone in the Resemble dashboard, then pass its UUID as the `voice` parameter.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "resemble/default",
+  text: "Hello!",
+  voice: "voice-uuid-from-resemble",
+  providerOptions: {
+    output_format: "mp3",
+    sample_rate: 44_100,
+    precision: "PCM_16",
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createResemble } from "@speech-sdk/core/providers"
+
+const resemble = createResemble({
+  apiKey: process.env.RESEMBLE_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: resemble(),
+  text: "Hello!",
+  voice: "voice-uuid-from-resemble",
+})
+```

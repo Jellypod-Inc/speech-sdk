@@ -1,0 +1,108 @@
+---
+title: Streaming
+description: Stream text-to-speech audio chunk-by-chunk with streamSpeech for low-latency playback.
+---
+
+Use `streamSpeech` to receive audio as it's generated, instead of waiting for the full file. This is ideal for real-time playback, voice agents, and long-form text where time-to-first-byte matters.
+
+## Quick Start
+
+```ts
+import { streamSpeech } from "@speech-sdk/core"
+
+const result = await streamSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Streaming audio, one chunk at a time.",
+  voice: "voice-id",
+})
+
+for await (const chunk of result.audio) {
+  // chunk is a Uint8Array of audio bytes
+  process.stdout.write(chunk)
+}
+```
+
+`result.audio` is a standard Web `ReadableStream<Uint8Array>`, so it works anywhere streams do — Node.js, Edge runtimes, and the browser.
+
+## StreamSpeechResult
+
+```ts
+interface StreamSpeechResult {
+  readonly audio: ReadableStream<Uint8Array>
+  readonly mediaType: string
+  readonly providerMetadata?: Record<string, unknown>
+  readonly warnings?: string[]
+}
+```
+
+## Returning a Streaming Response
+
+Pass `result.audio` straight to a `Response` to stream audio to a client:
+
+```ts
+export async function GET() {
+  const result = await streamSpeech({
+    model: "deepgram/aura-2",
+    text: "Hello from the edge.",
+    voice: "thalia-en",
+  })
+
+  return new Response(result.audio, {
+    headers: { "Content-Type": result.mediaType },
+  })
+}
+```
+
+## Playing in the Browser
+
+Use the [Media Source Extensions](https://developer.mozilla.org/en-US/docs/Web/API/Media_Source_Extensions_API) API or buffer chunks into a `Blob` as they arrive:
+
+```ts
+const result = await streamSpeech({
+  model: "cartesia/sonic-3.6",
+  text: "Streaming in the browser.",
+  voice: "voice-id",
+})
+
+const chunks: Uint8Array[] = []
+for await (const chunk of result.audio) {
+  chunks.push(chunk)
+}
+
+const blob = new Blob(chunks, { type: result.mediaType })
+new Audio(URL.createObjectURL(blob)).play()
+```
+
+## Aborting a Stream
+
+Pass an `AbortSignal` to cancel the request mid-stream:
+
+```ts
+const controller = new AbortController()
+
+const result = await streamSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "...",
+  voice: "voice-id",
+  abortSignal: controller.signal,
+})
+
+// Cancel after 2 seconds
+setTimeout(() => controller.abort(), 2000)
+```
+
+## Provider Support
+
+Not every model supports streaming. Check the [Models](/models) page for the full matrix, or check the model's `features` array at runtime:
+
+```ts
+import type { ModelInfo } from "@speech-sdk/core/types"
+
+function supportsStreaming(model: ModelInfo): boolean {
+  return model.features.some((f) =>
+    typeof f === "string" ? f === "streaming" : f.id === "streaming"
+  )
+}
+```
+
+Calling `streamSpeech` on a model without streaming support throws a `StreamingNotSupportedError` — fall back to [`generateSpeech`](/docs) for those models.

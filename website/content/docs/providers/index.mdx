@@ -1,0 +1,62 @@
+---
+title: All Providers
+description: All supported text-to-speech providers, their models, and configuration.
+---
+
+import { ProviderOverview, ProviderCapabilities } from "@/components/provider-models";
+
+SpeechSDK supports the providers listed below. Use `provider/model` strings to select a provider and model, or pass just the provider name to use its default model.
+
+Browse the full list of models on the [Models page](/models), or jump into a provider page below.
+
+## Provider Table
+
+<ProviderOverview />
+
+## Capability Matrix
+
+<ProviderCapabilities />
+
+A "Yes" means at least one model exposes this capability in the SDK. Check the provider's model table for details. Models without native timestamps can use timestamp fallback; see the [timestamps guide](/docs/timestamps).
+
+The SDK retains existing defaults for compatibility. For new workspaces, explicitly select `speechify/simba-3.5` because Speechify's legacy default is retired on newer API versions. [Hume closes its API November 13, 2026](https://dev.hume.ai/voice/docs/text-to-speech-tts/overview); [OpenAI's Speech API models shut down January 6, 2027](https://developers.openai.com/api/docs/guides/text-to-speech).
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+// provider/model string
+await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello from SpeechSDK!",
+  voice: "alloy",
+})
+
+// just the provider name uses the default model
+await generateSpeech({
+  model: "elevenlabs",
+  text: "Hello from SpeechSDK!",
+  voice: "EXAVITQu4vr4xnSDxMaL",
+})
+```
+
+## Provider Options
+
+Each provider accepts provider-specific parameters via `providerOptions`. These are sent directly to the provider's API using the API's own field names.
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  providerOptions: {
+    speed: 1.2,
+    response_format: "opus",
+  },
+})
+```
+
+## API Key Resolution
+
+When using string models (e.g., `'openai/gpt-4o-mini-tts'`), API keys are resolved from environment variables automatically (see the table above). You can override this with [custom configuration](/docs/configuration).

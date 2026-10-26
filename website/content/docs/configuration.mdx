@@ -1,0 +1,153 @@
+---
+title: Configuration
+description: Custom API keys, base URLs, and fetch implementations.
+---
+
+By default, SpeechSDK reads API keys from environment variables. Use provider factory functions when you need custom API keys, base URLs, or fetch implementations.
+
+## Factory Functions
+
+All provider `create*` factories are exported from `@speech-sdk/core/providers`:
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createOpenAI } from "@speech-sdk/core/providers"
+
+const myOpenAI = createOpenAI({
+  apiKey: "sk-...",
+  baseURL: "https://my-proxy.com/v1",
+})
+
+const result = await generateSpeech({
+  model: myOpenAI("gpt-4o-mini-tts"),
+  text: "Hello!",
+  voice: "alloy",
+})
+```
+
+The factory returns a function that accepts an optional model ID. Call it without arguments to use the provider's default model:
+
+```ts
+import { createElevenLabs } from "@speech-sdk/core/providers"
+
+const elevenlabs = createElevenLabs({ apiKey: "..." })
+
+// Uses the provider's default model
+generateSpeech({ model: elevenlabs(), text: "...", voice: "EXAVITQu4vr4xnSDxMaL" })
+
+// Or pick a specific model
+generateSpeech({ model: elevenlabs("eleven_v4"), text: "...", voice: "EXAVITQu4vr4xnSDxMaL" })
+```
+
+## Available Factories
+
+All factories are imported from `@speech-sdk/core/providers`:
+
+| Function               |
+| ---------------------- |
+| `createOpenAI()`       |
+| `createElevenLabs()`   |
+| `createDeepgram()`     |
+| `createCartesia()`     |
+| `createHume()`         |
+| `createGoogle()`       |
+| `createFishAudio()`    |
+| `createInworld()`      |
+| `createMurf()`         |
+| `createResemble()`     |
+| `createFal()`          |
+| `createMistral()`      |
+| `createXai()`          |
+| `createSmallestAI()`   |
+| `createSpeechGateway()`|
+
+## Configuration Options
+
+All factory functions accept the same base options:
+
+```ts
+interface ProviderConfig {
+  apiKey?: string // Override the env var
+  baseURL?: string // Custom API endpoint (proxies, self-hosted)
+  fetch?: typeof globalThis.fetch // Custom fetch implementation
+}
+```
+
+### Custom Fetch
+
+Pass a custom `fetch` for logging, instrumentation, or environments without a global `fetch`:
+
+```ts
+import { createOpenAI } from "@speech-sdk/core/providers"
+
+const openai = createOpenAI({
+  fetch: async (url, init) => {
+    console.log(`Requesting: ${url}`)
+    return globalThis.fetch(url, init)
+  },
+})
+```
+
+## Request Options
+
+Every `generateSpeech` call accepts these options:
+
+```ts
+generateSpeech({
+  model: string | ResolvedModel,       // required
+  text: string,                        // required
+  voice: Voice,                        // required
+  providerOptions?: object,            // provider-specific API params
+  timestamps?: boolean,                // word-level timestamps, default: false
+  speed?: number,                      // 0.75–1.5; time-stretch the final audio (see /docs/speed)
+  maxRetries?: number,                 // default: 2
+  abortSignal?: AbortSignal,           // cancel the request
+  headers?: Record<string, string>,    // additional HTTP headers
+});
+```
+
+### Abort Signal
+
+Cancel an in-flight request:
+
+```ts
+const controller = new AbortController()
+
+const promise = generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  abortSignal: controller.signal,
+})
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000)
+```
+
+### Custom Headers
+
+Pass additional HTTP headers to the provider's API:
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  headers: {
+    "X-Custom-Header": "value",
+  },
+})
+```
+
+### Retries
+
+SpeechSDK retries on 5xx and network errors with exponential backoff. Does not retry 4xx errors. Default: 2 retries.
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  maxRetries: 5,
+})
+```

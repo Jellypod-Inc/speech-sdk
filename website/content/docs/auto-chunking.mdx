@@ -1,0 +1,113 @@
+---
+title: Auto-Chunking
+description: Generate speech from inputs that exceed a provider's per-request character limit by splitting on sentence boundaries and stitching the audio.
+---
+
+Most TTS providers cap how much text you can send in a single request. When your input is over the cap, SpeechSDK splits it, renders each piece, and stitches the result back into one audio file — with timestamps reconnected end-to-end. The call signature and result shape don't change.
+
+## Quick Start
+
+Pass `maxInputChars` to override (or supply) a chunking limit on `generateSpeech` or `generateConversation`:
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const longText = "First sentence. Second sentence. ... thousands of words ..."
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: longText,
+  voice: "alloy",
+  maxInputChars: 4000, // override the model default
+})
+
+result.audio.uint8Array // single stitched audio file
+```
+
+If a model declares its own `maxInputChars`, SpeechSDK uses that automatically — you only set the option to override it or to opt in a model that has no default.
+
+## Splitting
+
+Chunks split on sentence boundaries and are balanced so each piece is a similar size. Even splits matter because TTS providers shape prosody — pacing, breath, intonation — across the whole request: a greedy "fill to the cap then break" produces an audible tonal shift at the seam, while balanced cuts blend together. Sentence terminators are detected across ASCII, CJK, Devanagari, and Arabic; paragraph and line breaks are preferred natural break points.
+
+## Long-Form `generateSpeech`
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { readFileSync } from "node:fs"
+
+const article = readFileSync("./article.txt", "utf8") // 50 kB of text
+
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: article,
+  voice: "JBFqnCBsd6RMkjVDRZzb",
+  maxInputChars: 5000,
+  output: { format: "mp3" },
+  timestamps: true,
+})
+
+result.audio.mediaType // "audio/mpeg"
+result.timestamps // word-level timestamps across the full article
+```
+
+## `generateConversation` That Exceeds Limits
+
+If any turn would blow past the limit, SpeechSDK forces the conversation onto the stitch path — even when the chosen model supports native multi-speaker dialogue. Each oversize turn is chunked individually; per-turn timestamps stay tagged with the correct `turnIndex`.
+
+```ts
+import { generateConversation } from "@speech-sdk/core"
+
+// A long monologue that exceeds the per-request cap.
+const longMonologue = "Lorem ipsum dolor sit amet… (thousands of words)"
+
+const result = await generateConversation({
+  turns: [
+    {
+      model: "openai/gpt-4o-mini-tts",
+      voice: "alloy",
+      text: "A short opening line.",
+    },
+    {
+      model: "openai/gpt-4o-mini-tts",
+      voice: "verse",
+      text: longMonologue,
+    },
+  ],
+  maxInputChars: 4000,
+  timestamps: true,
+})
+```
+
+## Gateway Routing
+
+Calls routed through a [speech gateway](/docs/providers) skip client-side chunking. The gateway handles input limits server-side, so `maxInputChars` is ignored on the wire.
+
+## Errors
+
+If chunking is required but the selected provider can't produce a format the SDK can stitch, the call throws `TextChunkingUnsupportedError`. Pick a different model, lower `maxInputChars`, or shorten the input.
+
+```ts
+import { TextChunkingUnsupportedError, generateSpeech } from "@speech-sdk/core"
+
+const veryLongText = "…20 kB of input text…"
+
+try {
+  await generateSpeech({
+    model: "some-provider/exotic-model",
+    text: veryLongText,
+    voice: "voice-id",
+    maxInputChars: 2000,
+  })
+} catch (error) {
+  if (error instanceof TextChunkingUnsupportedError) {
+    // Provider can't produce a decodable format for stitching.
+  }
+}
+```
+
+## Notes
+
+- Per-model `maxInputChars` defaults exist for OpenAI, ElevenLabs, fal, Hume, Inworld, Deepgram, and xAI. A caller-supplied value always wins.
+- [Pronunciation rules](/docs/pronunciations) and [output conversion](/docs/output-formats) apply to the final stitched audio just like any other call.
+- `streamSpeech` does not chunk.

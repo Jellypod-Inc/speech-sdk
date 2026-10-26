@@ -1,0 +1,14 @@
+/* Offset fumadocs sticky elements for our external Nav (h-14 = 3.5rem) */
+#nd-docs-layout {
+	--fd-banner-height: 3.5rem;
+}
+
+/* Remove all fumadocs shadows */
+#nd-docs-layout,
+#nd-docs-layout *,
+#nd-sidebar,
+#nd-sidebar * {
+	--tw-shadow: 0 0 #0000 !important;
+	--tw-shadow-colored: 0 0 #0000 !important;
+	box-shadow: none !important;
+}

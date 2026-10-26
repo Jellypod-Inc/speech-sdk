@@ -1,0 +1,71 @@
+---
+title: Hume
+description: Hume Octave text-to-speech with expressive voices and voice cloning.
+ogTitle: Hume TTS
+---
+
+> [Hume TTS and EVI API access ends November 13, 2026](https://dev.hume.ai/voice/docs/text-to-speech-tts/overview). Existing models remain available until then.
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `hume` |
+| **Default model** | `octave-2` |
+| **Env var** | `HUME_API_KEY` |
+| **Official docs** | [dev.hume.ai/docs/text-to-speech-tts/overview](https://dev.hume.ai/docs/text-to-speech-tts/overview) |
+
+## Models
+
+<ProviderModels prefix="hume" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "hume/octave-2",
+  text: "Hello from SpeechSDK!",
+  voice: "Dacher",
+})
+```
+
+Under the hood, SpeechSDK wraps the `voice` string as `{ name: "Dacher", provider: "HUME_AI" }` for the Hume API.
+
+## Voice Cloning
+
+`octave-2` supports voice cloning. To use a custom voice from your Hume account, pass the voice name as the `voice` parameter — Hume resolves the name against your account's library.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "hume/octave-2",
+  text: "Hello!",
+  voice: "Dacher",
+  providerOptions: {
+    description: "Warm, friendly tone, speaking softly.",
+    format: { type: "mp3" },
+  },
+})
+```
+
+The `description` field is Hume's native steering input — describe how the voice should sound.
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createHume } from "@speech-sdk/core/providers"
+
+const hume = createHume({
+  apiKey: process.env.HUME_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: hume("octave-2"),
+  text: "Hello!",
+  voice: "Dacher",
+})
+```

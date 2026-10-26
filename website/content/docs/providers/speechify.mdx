@@ -1,0 +1,31 @@
+---
+title: Speechify
+description: Speechify Simba speech models, streaming, and output formats.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `speechify` |
+| **Default model** | `simba-english` (legacy) |
+| **Env var** | `SPEECHIFY_API_KEY` |
+| **Official docs** | [Speechify models](https://docs.speechify.ai/build/guides/concepts/models) |
+
+## Models
+
+<ProviderModels prefix="speechify" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "speechify/simba-3.5",
+  text: "Hello from SpeechSDK!",
+  voice: "your-speechify-voice-id",
+})
+```
+
+Simba 3.5 supports 48 languages. Simba 3.2 is English-only. Existing provider defaults remain unchanged for compatibility. New workspaces cannot use the legacy `simba-english` or `simba-multilingual` models; select `simba-3.5` explicitly.

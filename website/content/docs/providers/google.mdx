@@ -1,0 +1,69 @@
+---
+title: Google (Gemini TTS)
+description: Google Gemini 3.1 Flash and 2.5 Flash/Pro text-to-speech preview models.
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `google` |
+| **Default model** | `gemini-3.8-flash-lite-tts` |
+| **Env var** | `GOOGLE_API_KEY` |
+| **Official docs** | [ai.google.dev/gemini-api/docs/text-generation](https://ai.google.dev/gemini-api/docs/text-generation) |
+
+## Models
+
+<ProviderModels prefix="google" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "google/gemini-3.8-flash-tts",
+  text: "Hello from SpeechSDK!",
+  voice: "Kore",
+})
+```
+
+Built-in voices include `Kore`, `Puck`, `Charon`, `Fenrir`, `Aoede`, and others — see the Gemini TTS docs for the full list.
+
+## Output Format
+
+Gemini returns raw PCM audio. SpeechSDK sets `mediaType` to `audio/L16;rate=24000` and passes through the `uint8Array` unchanged. If you need a container like WAV, wrap the bytes yourself or use a different provider.
+
+## Streaming
+
+Gemini's streaming surface is server-buffered SSE — SpeechSDK exposes it through `streamSpeech`, but chunks may arrive in larger batches than with true chunked providers.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "google/gemini-3.8-flash-tts",
+  text: "Hello!",
+  voice: "Kore",
+  providerOptions: {
+    temperature: 0.9,
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createGoogle } from "@speech-sdk/core/providers"
+
+const google = createGoogle({
+  apiKey: process.env.GOOGLE_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: google("gemini-3.8-flash-tts"),
+  text: "Hello!",
+  voice: "Kore",
+})
+```

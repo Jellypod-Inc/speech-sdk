@@ -1,0 +1,88 @@
+---
+title: ElevenLabs
+description: Eleven v4 and earlier ElevenLabs text-to-speech models.
+ogTitle: ElevenLabs TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `elevenlabs` |
+| **Default model** | `eleven_multilingual_v2` |
+| **Env var** | `ELEVENLABS_API_KEY` |
+| **Official docs** | [elevenlabs.io/docs](https://elevenlabs.io/docs) |
+
+## Models
+
+<ProviderModels prefix="elevenlabs" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Hello from SpeechSDK!",
+  voice: "EXAVITQu4vr4xnSDxMaL",
+})
+```
+
+The `voice` is an ElevenLabs voice ID — find IDs in the ElevenLabs voice library.
+
+## Audio Tags
+
+`eleven_v4` and `eleven_v3` support SpeechSDK's standardized [audio tags](/docs/audio-tags) natively via bracket syntax:
+
+```ts
+await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "[laugh] That's hilarious! [sigh] But really though.",
+  voice: "EXAVITQu4vr4xnSDxMaL",
+})
+```
+
+Tags are passed straight through to the API. Earlier ElevenLabs models strip tags and return warnings.
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "elevenlabs/eleven_v4",
+  text: "Hello!",
+  voice: "EXAVITQu4vr4xnSDxMaL",
+  providerOptions: {
+    output_format: "mp3_44100_128",
+    enable_logging: false,
+    optimize_streaming_latency: 3,
+    voice_settings: {
+      stability: 0.5,
+      similarity_boost: 0.8,
+      style: 0.2,
+      use_speaker_boost: true,
+    },
+  },
+})
+```
+
+`output_format`, `enable_logging`, and `optimize_streaming_latency` are sent as query parameters. `voice_settings` is sent in the JSON body.
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createElevenLabs } from "@speech-sdk/core/providers"
+
+const elevenlabs = createElevenLabs({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: elevenlabs("eleven_v4"),
+  text: "[whispers] Hello from SpeechSDK.",
+  voice: "EXAVITQu4vr4xnSDxMaL",
+})
+```
+
+Eleven v4 Turbo uses the Text to Dialogue WebSocket API. The HTTP provider does not expose that model.

@@ -1,0 +1,164 @@
+---
+title: Speech Result
+description: Working with the audio data returned by generateSpeech.
+---
+
+`generateSpeech` returns a `SpeechResult` containing the generated audio and optional provider metadata.
+
+## SpeechResult
+
+```ts
+interface SpeechResult {
+  readonly audio: GeneratedAudioFile
+  readonly metadata: SpeechMetadata
+  readonly timestamps?: readonly WordTimestamp[]
+  readonly providerMetadata?: Record<string, unknown>
+  readonly warnings?: string[]
+}
+```
+
+## Audio File
+
+The `audio` property provides the generated audio in multiple formats:
+
+```ts
+interface GeneratedAudioFile {
+  readonly uint8Array: Uint8Array // Raw audio bytes
+  readonly base64: string // Base64 encoded (lazy-computed)
+  readonly mediaType: string // MIME type, e.g. "audio/mpeg"
+}
+```
+
+### Accessing Audio Data
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+})
+
+// Raw bytes — best for writing to files or streaming
+result.audio.uint8Array
+
+// Base64 — useful for data URIs or JSON serialization
+result.audio.base64
+
+// Media type — use for Content-Type headers
+result.audio.mediaType
+```
+
+The `base64` property is lazy-computed from `uint8Array` on first access, so there's no overhead if you only need the raw bytes.
+
+### Writing to a File (Node.js)
+
+```ts
+import { writeFileSync } from "fs"
+
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+})
+
+writeFileSync("output.mp3", result.audio.uint8Array)
+```
+
+### Creating a Response (Edge/Server)
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+})
+
+return new Response(result.audio.uint8Array, {
+  headers: { "Content-Type": result.audio.mediaType },
+})
+```
+
+### Playing in the Browser
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+})
+
+const blob = new Blob([result.audio.uint8Array], {
+  type: result.audio.mediaType,
+})
+const url = URL.createObjectURL(blob)
+const audio = new Audio(url)
+audio.play()
+```
+
+## Metadata
+
+Every `SpeechResult` carries a `metadata` object with request-level diagnostics that are useful for logging and cost accounting:
+
+```ts
+interface SpeechMetadata {
+  readonly provider: string // e.g. "elevenlabs"
+  readonly model: string // e.g. "eleven_v4"
+  readonly inputChars: number // characters sent (after audio tag processing)
+  readonly latencyMs: number // request start → response ready
+  readonly audioDurationMs?: number // parsed from audio bytes when available
+  readonly ttfbMs?: number // streaming only: first-byte latency
+}
+```
+
+`audioDurationMs` is computed locally from the returned audio so it reflects the true duration even when the provider doesn't report it. For `streamSpeech`, the SDK cannot decode the full audio up front, so `audioDurationMs` is only set when the provider reports it and `latencyMs` equals `ttfbMs`.
+
+## Timestamps
+
+When you pass `timestamps: true`, the result includes an array of word-level timestamps:
+
+```ts
+interface WordTimestamp {
+  readonly text: string
+  readonly start: number // seconds
+  readonly end: number // seconds
+}
+```
+
+See the [timestamps & captions guide](/docs/timestamps) for modes, provider support, and converting timestamps into SRT or WebVTT caption files via `timestampsToCaptions`.
+
+## Provider Metadata
+
+Some providers return additional metadata alongside the audio. Access it via `providerMetadata`:
+
+```ts
+const result = await generateSpeech({
+  model: "hume/octave-2",
+  text: "Hello!",
+  voice: "Dacher",
+})
+
+if (result.providerMetadata) {
+  console.log(result.providerMetadata)
+}
+```
+
+The shape of metadata varies by provider.
+
+## Warnings
+
+When using features that aren't supported by all providers (like [audio tags](/docs/audio-tags)), SpeechSDK returns warnings instead of throwing:
+
+```ts
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "[laugh] Hello world",
+  voice: "alloy",
+})
+
+if (result.warnings) {
+  console.log(result.warnings)
+  // ["Audio tag [laugh] is not supported by openai/gpt-4o-mini-tts and was removed."]
+}
+```
+
+`warnings` is `undefined` when there are no warnings.

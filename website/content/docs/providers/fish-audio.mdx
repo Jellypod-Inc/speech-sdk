@@ -1,0 +1,81 @@
+---
+title: Fish Audio
+description: Open-source Fish Audio S2 with audio tags and voice cloning.
+ogTitle: Fish Audio TTS
+---
+
+import { ProviderModels } from "@/components/provider-models";
+
+| | |
+| --- | --- |
+| **Prefix** | `fish-audio` |
+| **Default model** | `s2-pro` |
+| **Env var** | `FISH_AUDIO_API_KEY` |
+| **Official docs** | [docs.fish.audio](https://docs.fish.audio) |
+
+## Models
+
+<ProviderModels prefix="fish-audio" />
+
+## Usage
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+
+const result = await generateSpeech({
+  model: "fish-audio/s2.1-pro",
+  text: "Hello from SpeechSDK!",
+  voice: "reference-id-from-fish",
+})
+```
+
+The `voice` string is sent to Fish Audio as `reference_id`.
+
+## Voice Cloning
+
+Fish Audio supports inline voice cloning. Upload a reference audio clip to get a `reference_id` in the Fish Audio console, or use a built-in reference voice. See [Voice Cloning](/docs/voice-cloning).
+
+## Audio Tags
+
+`s2-pro` supports [audio tags](/docs/audio-tags) — bracket tags in your text are passed through to the model.
+
+```ts
+await generateSpeech({
+  model: "fish-audio/s2.1-pro",
+  text: "[laugh] That's a great joke!",
+  voice: "reference-id-from-fish",
+})
+```
+
+## Provider Options
+
+```ts
+await generateSpeech({
+  model: "fish-audio/s2.1-pro",
+  text: "Hello!",
+  voice: "reference-id-from-fish",
+  providerOptions: {
+    format: "mp3",
+    mp3_bitrate: 128,
+    chunk_length: 200,
+    normalize: true,
+  },
+})
+```
+
+## Custom Configuration
+
+```ts
+import { generateSpeech } from "@speech-sdk/core"
+import { createFishAudio } from "@speech-sdk/core/providers"
+
+const fishAudio = createFishAudio({
+  apiKey: process.env.FISH_AUDIO_API_KEY,
+})
+
+const result = await generateSpeech({
+  model: fishAudio("s2.1-pro"),
+  text: "Hello!",
+  voice: "reference-id-from-fish",
+})
+```

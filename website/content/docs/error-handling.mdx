@@ -1,0 +1,158 @@
+---
+title: Error Handling
+description: Handle API errors, empty responses, and other failure modes.
+---
+
+SpeechSDK provides typed error classes for common failure modes.
+
+## Error Classes
+
+```ts
+import {
+  generateSpeech,
+  ApiError,
+  NoSpeechGeneratedError,
+  SpeechSDKError,
+} from "@speech-sdk/core"
+```
+
+| Error                          | When                                                                        |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| `ApiError`                     | Provider API returns a non-2xx response                                     |
+| `NoSpeechGeneratedError`       | Provider returned empty audio data                                          |
+| `StreamingNotSupportedError`   | `streamSpeech` called on a model that has no streaming endpoint             |
+| `TimestampKeyMissingError`     | `timestamps: true` requested but the timestamp fallback API key is not configured |
+| `SpeechSDKError`               | Base class for all SDK errors                                               |
+
+## Catching Errors
+
+```ts
+import { generateSpeech, ApiError, SpeechSDKError } from "@speech-sdk/core"
+
+try {
+  const result = await generateSpeech({
+    model: "openai/gpt-4o-mini-tts",
+    text: "Hello!",
+    voice: "alloy",
+  })
+} catch (error) {
+  if (error instanceof ApiError) {
+    console.log(error.statusCode) // 401
+    console.log(error.model) // "openai/gpt-4o-mini-tts"
+    console.log(error.responseBody) // raw response from the API
+  } else if (error instanceof SpeechSDKError) {
+    console.log(error.message)
+  }
+}
+```
+
+## ApiError
+
+Thrown when the provider returns a non-2xx HTTP status. Contains details about what went wrong:
+
+```ts
+class ApiError extends SpeechSDKError {
+  readonly statusCode: number // HTTP status code
+  readonly responseBody?: unknown // Raw response body
+  readonly model: string // Model string that was used
+  readonly retryAfterMs?: number // Parsed Retry-After header (when present)
+}
+```
+
+Common status codes:
+
+- `401` — Invalid or missing API key
+- `403` — Insufficient permissions
+- `429` — Rate limited (will be retried; see below)
+- `500` — Provider server error (will be retried)
+
+## NoSpeechGeneratedError
+
+Thrown when the provider returns a successful response but the audio data is empty:
+
+```ts
+import { NoSpeechGeneratedError } from '@speech-sdk/core';
+
+try {
+  const result = await generateSpeech({ ... });
+} catch (error) {
+  if (error instanceof NoSpeechGeneratedError) {
+    // Provider returned no audio — try a different model or voice
+  }
+}
+```
+
+## TimestampKeyMissingError
+
+Thrown when `timestamps: true` is requested but the SDK can't obtain word-level timestamps because the API key for the timestamp fallback provider is not set. The message names the env var that would unblock the request.
+
+```ts
+import { TimestampKeyMissingError } from "@speech-sdk/core"
+
+try {
+  await generateSpeech({
+    model: "openai/gpt-4o-mini-tts",
+    text: "Hello!",
+    voice: "alloy",
+    timestamps: true, // OpenAI TTS has no native timestamps — needs timestamp fallback
+  })
+} catch (error) {
+  if (error instanceof TimestampKeyMissingError) {
+    // Set OPENAI_API_KEY (the default fallback) or pre-create the provider
+    // client with `fallbackSTT` — see /docs/timestamps.
+  }
+}
+```
+
+The fallback defaults to OpenAI Whisper. Override it by passing `fallbackSTT` to the provider factory when you create the client — see the [timestamps guide](/docs/timestamps#timestamp-fallback).
+
+## Retries
+
+SpeechSDK automatically retries on 5xx errors (excluding `501`), `429` rate limits, and network failures with exponential backoff and jitter (`randomize: true`). Other 4xx errors — like authentication failures — are **not** retried. Default: 2 retries.
+
+```ts
+// Increase retries for unreliable connections
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  maxRetries: 5,
+})
+```
+
+```ts
+// Disable retries
+const result = await generateSpeech({
+  model: "openai/gpt-4o-mini-tts",
+  text: "Hello!",
+  voice: "alloy",
+  maxRetries: 0,
+})
+```
+
+### Rate Limits & `Retry-After`
+
+`429` responses are retried alongside 5xx. When the provider includes a `Retry-After` header, SpeechSDK honors both forms allowed by [RFC 7231 §7.1.3](https://www.rfc-editor.org/rfc/rfc7231#section-7.1.3) — `delay-seconds` (e.g. `Retry-After: 30`) and `HTTP-date` (e.g. `Retry-After: Wed, 21 Oct 2026 07:28:00 GMT`). The wait is capped at **60 seconds** and gets **+250 ms of jitter** to avoid thundering-herd retries. The SDK subtracts p-retry's own backoff so total wait time targets the header value.
+
+The parsed delay is exposed on `ApiError.retryAfterMs` whenever the header is present — **even on terminal errors** that exhaust retries or aren't retriable. Use it to decide whether to surface a message to the user, queue the request for later, or back off application-wide.
+
+```ts
+import { generateSpeech, ApiError } from "@speech-sdk/core"
+
+try {
+  await generateSpeech({
+    model: "openai/gpt-4o-mini-tts",
+    text: "Hello!",
+    voice: "alloy",
+  })
+} catch (error) {
+  if (error instanceof ApiError && error.statusCode === 429) {
+    if (error.retryAfterMs != null) {
+      // Provider asked us to wait this long. Schedule a follow-up.
+      console.warn(`Rate limited. Retry after ${error.retryAfterMs} ms.`)
+    } else {
+      console.warn("Rate limited (no Retry-After header).")
+    }
+  }
+}
+```
