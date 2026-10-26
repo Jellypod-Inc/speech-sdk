@@ -80,7 +80,7 @@ describe("HeyGen speech", () => {
       voice: "public-voice",
       output: { format: "pcm" },
     });
-    expect(result.audio.mediaType).toContain("audio/pcm");
+    expect(result.audio.mediaType).toBe("audio/pcm;rate=44100");
     expect(result.audio.uint8Array).toHaveLength(882);
   });
 
@@ -127,31 +127,39 @@ describe("HeyGen speech", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("surfaces synthesis and audio-download HTTP failures", async () => {
-    for (const stage of ["synthesis", "download"]) {
-      const { fetch } = await setup();
-      if (stage === "synthesis") {
-        fetch
-          .mockReset()
-          .mockResolvedValueOnce(new Response("busy", { status: 503 }));
-      } else {
-        fetch
-          .mockReset()
-          .mockResolvedValueOnce(
-            Response.json({
-              data: { audio_url: "https://files.heygen.ai/speech.wav" },
-            })
-          )
-          .mockResolvedValueOnce(new Response("expired", { status: 403 }));
-      }
-      await expect(
-        new HeyGenSpeechProvider({ apiKey: "test", fetch }).generate({
-          modelId: "heygen-voice-1",
-          text: "Hello",
-          voice: "voice",
-        })
-      ).rejects.toThrow();
+  it.each([
+    ["synthesis", 503, true],
+    ["download", 403, false],
+  ] as const)("surfaces %s HTTP failures as provider errors", async (stage, status, retryable) => {
+    const { fetch } = await setup();
+    if (stage === "synthesis") {
+      fetch
+        .mockReset()
+        .mockResolvedValueOnce(new Response("busy", { status: 503 }));
+    } else {
+      fetch
+        .mockReset()
+        .mockResolvedValueOnce(
+          Response.json({
+            data: { audio_url: "https://files.heygen.ai/speech.wav" },
+          })
+        )
+        .mockResolvedValueOnce(new Response("expired", { status: 403 }));
     }
+    await expect(
+      new HeyGenSpeechProvider({ apiKey: "test", fetch }).generate({
+        modelId: "heygen-voice-1",
+        text: "Hello",
+        voice: "voice",
+      })
+    ).rejects.toMatchObject({
+      name: "SpeechSdkProviderError",
+      status,
+      provider: "heygen",
+      model: "heygen-voice-1",
+      stage: "synthesis",
+      retryable,
+    });
   });
 
   it("resolves strings and negotiates fixed-rate WAV for stitching and conversion", () => {

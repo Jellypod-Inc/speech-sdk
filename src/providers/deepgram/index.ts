@@ -1,4 +1,5 @@
 import type { AudioOutput } from "../../audio-output.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -35,10 +36,15 @@ function buildSpeakUrl(
     }
     qs.set(k, typeof v === "string" ? v : String(v));
   }
-  const speakBaseURL = options.modelId.startsWith("flux")
-    ? baseURL.replace(V1_PATH, "/v2")
-    : baseURL;
-  return `${speakBaseURL}/speak?${qs.toString()}`;
+  if (!options.modelId.startsWith("flux")) {
+    return `${baseURL}/speak?${qs.toString()}`;
+  }
+  if (!V1_PATH.test(baseURL)) {
+    throw new SpeechSDKError(
+      `deepgram/${options.modelId}: baseURL must end in /v1 so Flux can be routed to /v2/speak`
+    );
+  }
+  return `${baseURL.replace(V1_PATH, "/v2")}/speak?${qs.toString()}`;
 }
 
 export interface DeepgramSpeechProviderConfig {

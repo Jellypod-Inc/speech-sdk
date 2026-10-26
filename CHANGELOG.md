@@ -4,7 +4,11 @@
 
 - Add HeyGen Voice 1, Turbo, and Turbo Free speech generation, output conversion, and conversation stitching.
 - Add Sonic 3.6, Inworld TTS-2 Flash, Fish S2.1 Pro variants, Simba 3.5/3.2, Voxtral TTS 3, Deepgram Flux, and the Gradium TTS beta to the model catalogs.
-- Preserve existing provider defaults and document provider lifecycle changes and adapter limitations.
+- Fish Audio `s2.1-pro` uses native multi-speaker dialogue for `generateConversation`, like `s2-pro`. `s2.1-pro-free` still stitches.
+- Deepgram `flux` requests go to `/v2/speak`. A custom `baseURL` must end in `/v1` for Flux; otherwise the call throws instead of silently hitting the Aura route.
+- Existing provider defaults are unchanged. Speechify's default stays `simba-english`, which is retired for newer API versions; use `speechify/simba-3.5` for new integrations.
+- Lifecycle: Hume API access ends November 13, 2026; OpenAI Speech API models shut down January 6, 2027; HeyGen's free variant (`heygen-voice-1-turbo-free`) is offered through November 30, 2026 and is never switched to a paid model.
+- Adapter limits: HeyGen returns 44.1 kHz WAV only and exposes no streaming or native timestamps; Eleven v4 Turbo needs ElevenLabs' WebSocket API for dialogue, so its conversations stitch.
 - Gemini 3.8 native dialogue no longer sends `speech_config.mode`. Since 2026-10-23 the Interactions API rejects it with `400 Unknown parameter 'mode' at 'generation_config.structured_speech_config'`, which failed every `generateDialogue`/`streamDialogue` call on Gemini 3.8 TTS models.
 
 

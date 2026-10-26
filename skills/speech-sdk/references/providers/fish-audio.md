@@ -9,9 +9,11 @@
 
 ## Models
 
-| Model    | Streaming | Audio Tags | Voice Cloning | Open Source | Notes                 |
-| -------- | --------- | ---------- | ------------- | ----------- | --------------------- |
-| `s2-pro` | Yes       | Yes        | Yes           | Yes         | Default; multilingual |
+| Model           | Streaming | Audio Tags | Voice Cloning | Open Source | Notes                                       |
+| --------------- | --------- | ---------- | ------------- | ----------- | ------------------------------------------- |
+| `s2.1-pro`      | Yes       | Yes        | Yes           | No          | Native multi-speaker dialogue               |
+| `s2.1-pro-free` | Yes       | Yes        | Yes           | No          | Free variant; conversations are stitched    |
+| `s2-pro`        | Yes       | Yes        | Yes           | Yes         | Default; native multi-speaker dialogue      |
 
 ## Usage
 

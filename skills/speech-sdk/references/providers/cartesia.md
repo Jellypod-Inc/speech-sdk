@@ -11,7 +11,8 @@
 
 | Model       | Streaming | Audio Tags     | Voice Cloning | Native Timestamps | Notes                                       |
 | ----------- | --------- | -------------- | ------------- | ----------------- | ------------------------------------------- |
-| `sonic-3.5` | Yes       | Yes (via SSML) | Yes           | Yes               | Current flagship; drop-in for `sonic-3`     |
+| `sonic-3.6` | Yes       | Yes (via SSML) | Yes           | Yes               | Latest; adds Odia (`or`) and Urdu (`ur`)    |
+| `sonic-3.5` | Yes       | Yes (via SSML) | Yes           | Yes               | Default; drop-in for `sonic-3`              |
 | `sonic-3`   | Yes       | Yes (via SSML) | Yes           | Yes               | Emotion tags                                |
 | `sonic-2`   | Yes       | No             | No            | Yes               | Previous generation                         |
 
