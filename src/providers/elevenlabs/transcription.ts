@@ -24,7 +24,7 @@ const scribeResponseSchema = z.object({
 });
 
 const gatewayScribeMetadataSchema = z.object({
-  elevenlabs: scribeResponseSchema.default({ words: [] }),
+  elevenlabs: scribeResponseSchema,
 });
 
 function timedScribeWords(
@@ -83,7 +83,7 @@ export class ElevenLabsTranscriptionProvider implements TranscriptionProvider {
         abortSignal: options.abortSignal,
       });
       const metadata = gatewayScribeMetadataSchema.parse(
-        result.providerMetadata ?? {}
+        result.providerMetadata
       );
       return timedScribeWords(metadata.elevenlabs.words);
     }

@@ -129,9 +129,11 @@ describe("VercelAIGatewayClient", () => {
 
     expect(requestOf(fetch).body.outputFormat).toBe("pcm");
     expect(mediaType).toBe("audio/pcm;rate=24000");
-    expect(new Uint8Array(await new Response(stream).arrayBuffer())).toEqual(
-      pcm
-    );
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual([pcm]);
     expect(
       provider.dialogueCapabilities("gemini-3.8-flash-tts")?.streaming
     ).toBe(false);

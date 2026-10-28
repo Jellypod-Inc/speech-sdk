@@ -137,7 +137,7 @@ Provider-specific parameters pass through via `providerOptions` using each API's
 
 ### Vercel AI Gateway
 
-A provider can send its requests through [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) instead of its own API. The provider keeps its models and request shape; the client only changes where requests go and how they're billed.
+A provider can send its requests through [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) instead of its own API. The provider keeps its models and voices, but requests take the gateway's shape: for Gemini, `providerOptions` are the gateway's Google speech options (AI SDK names), not Interactions `generation_config` fields.
 
 ```ts
 import { createElevenLabs, createGoogle, createVercelAIGatewayClient } from '@speech-sdk/core/providers';
@@ -149,7 +149,7 @@ const google = createGoogle({ client: gateway });         // Gemini 3.8 TTS, Ver
 const elevenLabs = createElevenLabs({ client: gateway }); // Scribe transcription only
 ```
 
-The gateway serves Gemini 3.8 TTS and ElevenLabs Scribe for these providers. It has no streaming speech output, voice cloning, voice design or forced alignment, and can't reach voices owned by your provider account.
+The gateway serves Gemini 3.8 TTS and ElevenLabs Scribe for these providers. Gateway speech isn't streamed: `streamSpeech()` returns the whole clip as one PCM chunk. The gateway has no voice cloning, voice design or forced alignment, and can't reach voices owned by your provider account.
 
 ## Streaming
 

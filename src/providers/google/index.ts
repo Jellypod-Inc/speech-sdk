@@ -1012,8 +1012,12 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     client: VercelAIGatewayClient,
     content: readonly ReturnType<typeof gemini38Content>[],
     speakers: readonly { voice: string; speaker?: string }[]
-  ): Promise<{ stream: ReadableStream<Uint8Array>; mediaType: string }> {
-    const { audio } = await this.postGateway(
+  ): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const { audio, providerMetadata } = await this.postGateway(
       options,
       client,
       content,
@@ -1023,6 +1027,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     return {
       stream: singleChunkStream(audio),
       mediaType: `audio/pcm;rate=${DEFAULT_GEMINI_SAMPLE_RATE}`,
+      ...(providerMetadata && { providerMetadata }),
     };
   }
 
@@ -1122,7 +1127,9 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
+    providerMetadata?: Record<string, unknown>;
   }> {
+    this.assertGatewayModel(options.modelId);
     const { content, input, speakers, speechConfig } =
       this.gemini38Dialogue(options);
     if (this.client) {

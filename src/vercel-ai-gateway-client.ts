@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { base64ToUint8Array } from "./audio-utils.js";
+import { base64ToUint8Array, uint8ArrayToBase64 } from "./audio-utils.js";
 import { MissingApiKeyError, type ProviderErrorStage } from "./errors.js";
 import { handleErrorResponse, SDK_USER_AGENT } from "./provider-utils.js";
 
@@ -59,17 +59,6 @@ const transcriptionResponseSchema = z.object({
 export type VercelAIGatewayTranscription = z.infer<
   typeof transcriptionResponseSchema
 >;
-
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x80_00;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(
-      ...bytes.subarray(offset, offset + chunkSize)
-    );
-  }
-  return btoa(binary);
-}
 
 /**
  * Sends speech and transcription requests through Vercel AI Gateway instead of a provider's own API.
