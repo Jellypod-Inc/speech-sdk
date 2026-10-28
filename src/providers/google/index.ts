@@ -727,6 +727,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           model: options.modelId,
           provider: this.id,
           reason: noSpeechReason(reshapedJson ?? json),
+          retryable: reshapedJson === undefined,
         }
       );
     }
