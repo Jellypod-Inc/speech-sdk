@@ -28,6 +28,7 @@ import {
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { parseSseBase64Stream } from "../../sse-stream.js";
+import type { VercelAIGatewayClient } from "../../vercel-ai-gateway-client.js";
 import {
   GEMINI_3_8_MODELS,
   GOOGLE_DEFAULT_MODEL,
@@ -245,7 +246,13 @@ function gemini38DialogueRequest(options: {
   modelId: string;
   turns: readonly { voice: string; text: string; instructions?: string }[];
   instructions?: string;
-}): { input: unknown; speechConfig: unknown; voices: string[] } {
+}): {
+  content: ReturnType<typeof gemini38Content>[];
+  input: unknown;
+  speakers: { voice: string; speaker: string }[];
+  speechConfig: unknown;
+  voices: string[];
+} {
   const voiceToLabel = new Map<string, string>();
   const content = options.turns.map((turn) => {
     let speaker = voiceToLabel.get(turn.voice);
@@ -258,16 +265,64 @@ function gemini38DialogueRequest(options: {
       .join("; ");
     return gemini38Content(turn.text, style || undefined, speaker);
   });
+  const speakers = [...voiceToLabel].map(([voice, speaker]) => ({
+    speaker,
+    voice,
+  }));
   return {
+    content,
     input: [{ type: "user_input", content }],
-    speechConfig: {
-      speakers: [...voiceToLabel].map(([voice, speaker]) => ({
-        speaker,
-        voice,
-      })),
-    },
+    speakers,
+    speechConfig: { speakers },
     voices: [...voiceToLabel.keys()],
   };
+}
+
+// The gateway's Vertex route rejects an empty top-level text even when turns carry the transcript; the turns take precedence.
+function gemini38GatewayRequest(
+  content: readonly ReturnType<typeof gemini38Content>[],
+  speakers: readonly { voice: string; speaker?: string }[]
+): { text: string; voice?: string; google: Record<string, unknown> } {
+  const turns = content.map((item) => {
+    const metadata = item.annotations?.[0];
+    return {
+      text: item.text,
+      speechMetadata: {
+        ...(metadata?.speaker && { speaker: metadata.speaker }),
+        ...(metadata?.style && { style: metadata.style }),
+      },
+    };
+  });
+  const [single] = turns;
+  if (speakers.length === 1 && turns.length === 1 && single) {
+    const { style } = single.speechMetadata;
+    return {
+      text: single.text,
+      voice: speakers[0]?.voice,
+      google: style ? { speechMetadata: { style } } : {},
+    };
+  }
+  return {
+    text: turns.map((turn) => turn.text).join(" "),
+    google: {
+      multiSpeakerVoiceConfig: {
+        speakerVoiceConfigs: speakers.map(({ voice, speaker }, index) => ({
+          speaker: speaker ?? `Speaker${index + 1}`,
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+        })),
+      },
+      turns,
+    },
+  };
+}
+
+function singleChunkStream(audio: Uint8Array): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(audio);
+      controller.close();
+    },
+  });
 }
 
 // /interactions step.delta events carry base64 PCM in delta.data, tagged by delta.mime_type (e.g. "audio/l16"). Non-audio deltas are ignored.
@@ -282,6 +337,8 @@ const interactionAudioDeltaSchema = z.object({
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  /** Routes Gemini 3.8 TTS through Vercel AI Gateway; there `providerOptions` are its Google speech options. */
+  client?: VercelAIGatewayClient;
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
@@ -471,12 +528,61 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
+  private readonly client: VercelAIGatewayClient | undefined;
 
   constructor(config: GoogleSpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL =
       config.baseURL ?? "https://generativelanguage.googleapis.com/v1beta";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+    this.client = config.client;
+  }
+
+  private assertGatewayModel(modelId: string): void {
+    if (this.client && !GEMINI_3_8_MODELS.has(modelId)) {
+      throw new SpeechSDKError(
+        `google/${modelId} is not served by Vercel AI Gateway; only Gemini 3.8 TTS models are.`
+      );
+    }
+  }
+
+  private async postGateway(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    client: VercelAIGatewayClient,
+    content: readonly ReturnType<typeof gemini38Content>[],
+    speakers: readonly { voice: string; speaker?: string }[],
+    outputFormat: "wav" | "pcm"
+  ): Promise<{
+    audio: Uint8Array;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const { text, voice, google } = gemini38GatewayRequest(content, speakers);
+    const result = await client.speech({
+      provider: this.id,
+      model: `google/${options.modelId}`,
+      text,
+      ...(voice && { voice }),
+      outputFormat,
+      providerOptions: { google: { ...google, ...options.providerOptions } },
+      abortSignal: options.abortSignal,
+      headers: options.headers,
+    });
+    if (result.audio.length === 0) {
+      throw new NoSpeechGeneratedError(
+        `google/${options.modelId}: no audio in Vercel AI Gateway response.`,
+        {
+          model: options.modelId,
+          provider: this.id,
+          reason: "provider_empty_response",
+        }
+      );
+    }
+    return result;
   }
 
   // Gemini 3.1 Flash TTS supports inline audio tags natively; older models don't and need stripping.
@@ -575,6 +681,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    this.assertGatewayModel(options.modelId);
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.generateInteraction(options);
     }
@@ -620,6 +727,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
           model: options.modelId,
           provider: this.id,
           reason: noSpeechReason(reshapedJson ?? json),
+          retryable: reshapedJson === undefined,
         }
       );
     }
@@ -632,7 +740,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
-  private generateInteraction(options: {
+  private async generateInteraction(options: {
     modelId: string;
     text: string;
     instructions?: string;
@@ -641,15 +749,27 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }) {
-    const input = [
-      {
-        type: "user_input",
-        content: [gemini38Content(options.text, options.instructions)],
-      },
-    ];
-    return this.postInteraction(options, input, [
-      { voice: options.voice ?? "Kore" },
-    ]);
+    const content = [gemini38Content(options.text, options.instructions)];
+    const speakers = [{ voice: options.voice ?? "Kore" }];
+    if (this.client) {
+      const { audio, providerMetadata } = await this.postGateway(
+        options,
+        this.client,
+        content,
+        speakers,
+        "wav"
+      );
+      return {
+        audio,
+        mediaType: "audio/wav",
+        ...(providerMetadata && { providerMetadata }),
+      };
+    }
+    return this.postInteraction(
+      options,
+      [{ type: "user_input", content }],
+      speakers
+    );
   }
 
   private async postInteraction(
@@ -746,6 +866,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    this.assertGatewayModel(options.modelId);
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
       return this.streamInteractions(options);
     }
@@ -755,13 +876,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
 
     // 2.5 TTS has no progressive streaming endpoint; wrap the buffered generate() output as a single-chunk stream.
     const { audio, mediaType, providerMetadata } = await this.generate(options);
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(audio);
-        controller.close();
-      },
-    });
-    return { stream, mediaType, providerMetadata };
+    return { stream: singleChunkStream(audio), mediaType, providerMetadata };
   }
 
   // Real-time TTS streaming is served by /interactions with stream:true (Gemini 3.1+); chunks are raw 16-bit mono PCM @ 24kHz.
@@ -777,6 +892,14 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
   }> {
+    if (this.client) {
+      return this.streamGateway(
+        options,
+        this.client,
+        [gemini38Content(options.text, options.instructions)],
+        [{ voice: options.voice ?? "Kore" }]
+      );
+    }
     const input = GEMINI_3_8_MODELS.has(options.modelId)
       ? [
           {
@@ -878,6 +1001,36 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     };
   }
 
+  // The gateway has no streaming speech output, so a stream carries the whole clip as one PCM chunk.
+  private async streamGateway(
+    options: {
+      modelId: string;
+      providerOptions?: Record<string, unknown>;
+      abortSignal?: AbortSignal;
+      headers?: Record<string, string>;
+    },
+    client: VercelAIGatewayClient,
+    content: readonly ReturnType<typeof gemini38Content>[],
+    speakers: readonly { voice: string; speaker?: string }[]
+  ): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }> {
+    const { audio, providerMetadata } = await this.postGateway(
+      options,
+      client,
+      content,
+      speakers,
+      "pcm"
+    );
+    return {
+      stream: singleChunkStream(audio),
+      mediaType: `audio/pcm;rate=${DEFAULT_GEMINI_SAMPLE_RATE}`,
+      ...(providerMetadata && { providerMetadata }),
+    };
+  }
+
   supportedSampleRates(modelId: string): readonly number[] {
     if (!this.models.some((m) => m.id === modelId)) {
       return [];
@@ -934,7 +1087,7 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
         maxTotalChars:
           GOOGLE_DIALOGUE_MAX_TOTAL_CHARS[modelId] ??
           DEFAULT_GOOGLE_DIALOGUE_MAX_TOTAL_CHARS,
-        streaming: GEMINI_3_8_MODELS.has(modelId),
+        streaming: GEMINI_3_8_MODELS.has(modelId) && !this.client,
       };
     }
     return;
@@ -974,8 +1127,14 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
   }): Promise<{
     stream: ReadableStream<Uint8Array>;
     mediaType: string;
+    providerMetadata?: Record<string, unknown>;
   }> {
-    const { input, speechConfig } = this.gemini38Dialogue(options);
+    this.assertGatewayModel(options.modelId);
+    const { content, input, speakers, speechConfig } =
+      this.gemini38Dialogue(options);
+    if (this.client) {
+      return await this.streamGateway(options, this.client, content, speakers);
+    }
     return await this.postInteractionStream(options, input, speechConfig);
   }
 
@@ -991,8 +1150,24 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
+    this.assertGatewayModel(options.modelId);
     if (GEMINI_3_8_MODELS.has(options.modelId)) {
-      const { input, speechConfig } = this.gemini38Dialogue(options);
+      const { content, input, speakers, speechConfig } =
+        this.gemini38Dialogue(options);
+      if (this.client) {
+        const { audio, providerMetadata } = await this.postGateway(
+          options,
+          this.client,
+          content,
+          speakers,
+          "wav"
+        );
+        return {
+          audio,
+          mediaType: "audio/wav",
+          ...(providerMetadata && { providerMetadata }),
+        };
+      }
       return this.postInteraction(options, input, speechConfig);
     }
     const voiceToLabel = new Map<string, string>();

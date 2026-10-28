@@ -223,6 +223,7 @@ describe("Google terse-input reshaped retry", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(error).toBeInstanceOf(NoSpeechGeneratedError);
     expect(error.message).toContain("retried with a quoted payload");
+    expect(error).toMatchObject({ retryable: false });
     expect(error.message).toContain('text response: "Sure!"');
   });
   // Google attributes PROHIBITED_CONTENT on a TTS model to a prompt too vague to trip the speech

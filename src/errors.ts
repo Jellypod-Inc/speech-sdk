@@ -158,6 +158,8 @@ export interface NoSpeechGeneratedErrorOptions {
   readonly provider?: string;
   readonly reason?: NoSpeechReason;
   readonly requestId?: string;
+  // False when the provider already spent its own differently shaped retry on this response.
+  readonly retryable?: boolean;
   readonly turnIndex?: number;
 }
 
@@ -178,7 +180,8 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
     this.provider = options?.provider;
     this.reason = options?.reason ?? "provider_empty_response";
     this.requestId = options?.requestId;
-    this.retryable = this.reason === "provider_empty_response";
+    this.retryable =
+      (options?.retryable ?? true) && this.reason === "provider_empty_response";
     this.turnIndex = options?.turnIndex;
   }
 }
@@ -203,6 +206,7 @@ export function withTurnIndex(err: unknown, turnIndex: number): unknown {
       provider: err.provider,
       reason: err.reason,
       requestId: err.requestId,
+      retryable: err.retryable,
       turnIndex,
     });
   }

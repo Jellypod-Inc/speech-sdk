@@ -35,3 +35,11 @@ export type { SpeechifySpeechProviderConfig } from "./providers/speechify/index.
 export { createSpeechify } from "./providers/speechify/index.js";
 export type { XaiSpeechProviderConfig } from "./providers/xai/index.js";
 export { createXai } from "./providers/xai/index.js";
+export type {
+  VercelAIGatewayApiKey,
+  VercelAIGatewayClientConfig,
+} from "./vercel-ai-gateway-client.js";
+export {
+  createVercelAIGatewayClient,
+  VercelAIGatewayClient,
+} from "./vercel-ai-gateway-client.js";
