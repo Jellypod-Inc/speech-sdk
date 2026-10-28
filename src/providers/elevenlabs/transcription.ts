@@ -6,9 +6,11 @@ import {
 } from "../../provider-utils.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import type { TranscriptionProvider } from "../../transcription-provider.js";
+import type { VercelAIGatewayClient } from "../../vercel-ai-gateway-client.js";
 import { speechFileForm } from "./speech-file-form.js";
 
 const SCRIBE_MODEL_ID = "scribe_v2";
+const GATEWAY_SCRIBE_MODEL_ID = "elevenlabs/scribe-v2";
 
 const scribeWordSchema = z.object({
   end: z.number().nullish(),
@@ -19,6 +21,10 @@ const scribeWordSchema = z.object({
 
 const scribeResponseSchema = z.object({
   words: z.array(scribeWordSchema).default([]),
+});
+
+const gatewayScribeMetadataSchema = z.object({
+  elevenlabs: scribeResponseSchema.default({ words: [] }),
 });
 
 function timedScribeWords(
@@ -48,15 +54,18 @@ export class ElevenLabsTranscriptionProvider implements TranscriptionProvider {
   private readonly apiKey: string | undefined;
   private readonly baseURL: string;
   private readonly fetchFn: typeof globalThis.fetch;
+  private readonly client: VercelAIGatewayClient | undefined;
 
   constructor(config: {
     apiKey?: string;
     baseURL?: string;
+    client?: VercelAIGatewayClient;
     fetch?: typeof globalThis.fetch;
   }) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? "https://api.elevenlabs.io";
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
+    this.client = config.client;
   }
 
   async transcribe(options: {
@@ -64,6 +73,20 @@ export class ElevenLabsTranscriptionProvider implements TranscriptionProvider {
     audio: Uint8Array;
     mediaType: string;
   }): Promise<WordTimestamp[]> {
+    if (this.client) {
+      const result = await this.client.transcription({
+        provider: "elevenlabs",
+        model: GATEWAY_SCRIBE_MODEL_ID,
+        audio: options.audio,
+        mediaType: options.mediaType,
+        providerOptions: { elevenlabs: { tagAudioEvents: false } },
+        abortSignal: options.abortSignal,
+      });
+      const metadata = gatewayScribeMetadataSchema.parse(
+        result.providerMetadata ?? {}
+      );
+      return timedScribeWords(metadata.elevenlabs.words);
+    }
     const form = speechFileForm(options.audio, options.mediaType);
     form.append("model_id", SCRIBE_MODEL_ID);
     form.append("tag_audio_events", "false");

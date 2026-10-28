@@ -32,6 +32,7 @@ import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
 import type { TranscriptionProvider } from "../../transcription-provider.js";
+import type { VercelAIGatewayClient } from "../../vercel-ai-gateway-client.js";
 import {
   alignmentToWordTimestamps,
   elevenLabsAlignmentSchema,
@@ -117,6 +118,8 @@ function resolveElevenLabsDialogueTimestamps(
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  /** Routes Scribe transcription through Vercel AI Gateway; speech, cloning, design and alignment stay direct. */
+  client?: VercelAIGatewayClient;
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }

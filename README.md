@@ -135,6 +135,22 @@ The prefix is what a string `model` like `"openai/tts-1"` resolves to, and the e
 
 Provider-specific parameters pass through via `providerOptions` using each API's native field names.
 
+### Vercel AI Gateway
+
+A provider can send its requests through [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) instead of its own API. The provider keeps its models and request shape; the client only changes where requests go and how they're billed.
+
+```ts
+import { createElevenLabs, createGoogle, createVercelAIGatewayClient } from '@speech-sdk/core/providers';
+
+// Uses AI_GATEWAY_API_KEY, then VERCEL_OIDC_TOKEN, unless `apiKey` is passed.
+const gateway = createVercelAIGatewayClient({ order: { google: ['vertex', 'google'] } });
+
+const google = createGoogle({ client: gateway });         // Gemini 3.8 TTS, Vertex first
+const elevenLabs = createElevenLabs({ client: gateway }); // Scribe transcription only
+```
+
+The gateway serves Gemini 3.8 TTS and ElevenLabs Scribe for these providers. It has no streaming speech output, voice cloning, voice design or forced alignment, and can't reach voices owned by your provider account.
+
 ## Streaming
 
 `streamSpeech()` returns audio incrementally as a `ReadableStream<Uint8Array>`.
