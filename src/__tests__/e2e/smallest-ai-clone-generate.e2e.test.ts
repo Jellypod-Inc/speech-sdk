@@ -29,9 +29,9 @@ describe.skipIf(!process.env.SMALLEST_API_KEY)(
       const smallest = createSmallestAI();
 
       const sample = await generateSpeech({
-        model: smallest("lightning_v3.1"),
+        model: smallest("lightning_v3.1_pro"),
         text: SAMPLE_TEXT,
-        voice: "magnus",
+        voice: "meher",
         output: { format: "wav" },
       });
       expect(isRiffWav(sample.audio.uint8Array)).toBe(true);
@@ -49,11 +49,11 @@ describe.skipIf(!process.env.SMALLEST_API_KEY)(
       expect(cloned.voiceId.length).toBeGreaterThan(0);
 
       // A freshly cloned voice can take a few seconds to propagate before
-      // get_speech accepts it (transient "Invalid Voice ID"), so retry briefly.
+      // TTS accepts it (transient "Invalid Voice ID"), so retry briefly.
       const speech = await pRetry(
         () =>
           generateSpeech({
-            model: smallest("lightning_v3.1"),
+            model: smallest("lightning_v3.1_pro"),
             text: "Hello, this audio was generated using my freshly cloned voice.",
             voice: cloned.voiceId,
             output: { format: "wav" },

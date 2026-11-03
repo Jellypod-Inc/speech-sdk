@@ -23,9 +23,7 @@ describe("SmallestAISpeechProvider", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe(
-      "https://waves-api.smallest.ai/api/v1/lightning-v3.1/get_speech"
-    );
+    expect(url).toBe("https://api.smallest.ai/waves/v1/tts");
     expect(init.method).toBe("POST");
   });
 
@@ -50,7 +48,7 @@ describe("SmallestAISpeechProvider", () => {
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body.text).toBe("Hello");
-    expect(body.voice_id).toBe("magnus");
+    expect(body.voice_id).toBe("meher");
     expect(body.language).toBe("auto");
     expect(body.output_format).toBe("wav");
     expect(body.model).toBe("lightning_v3.1");
@@ -128,7 +126,7 @@ describe("SmallestAISpeechProvider", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      // get_speech always reports audio/wav even when it returns mp3 bytes.
+      // The TTS endpoint may report audio/wav even when it returns mp3 bytes.
       headers: new Headers({ "content-type": "audio/wav" }),
       arrayBuffer: async () => new Uint8Array([1]).buffer,
     });
@@ -208,7 +206,7 @@ describe("SmallestAISpeechProvider", () => {
     await provider.generate({ modelId: "lightning_v3.1", text: "Hello" });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("https://my-proxy.com/waves/v1/lightning-v3.1/get_speech");
+    expect(url).toBe("https://my-proxy.com/waves/v1/tts");
   });
 
   it("getStitchOptions returns wav config for known model", () => {
@@ -227,7 +225,7 @@ describe("SmallestAISpeechProvider", () => {
 });
 
 describe("SmallestAISpeechProvider — lightning_v3.1_pro", () => {
-  it("calls the lightning-v3.1 get_speech endpoint for the pro model", async () => {
+  it("calls the unified tts endpoint for the pro model", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -246,9 +244,7 @@ describe("SmallestAISpeechProvider — lightning_v3.1_pro", () => {
     });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(
-      "https://waves-api.smallest.ai/api/v1/lightning-v3.1/get_speech"
-    );
+    expect(url).toBe("https://api.smallest.ai/waves/v1/tts");
   });
 
   it("sets model field in body for pro model", async () => {
@@ -338,7 +334,7 @@ describe("SmallestAISpeechProvider — lightning_v3.1_pro", () => {
     await provider.generate({ modelId: "lightning_v3.1_pro", text: "Hello" });
 
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("https://my-proxy.com/waves/v1/lightning-v3.1/get_speech");
+    expect(url).toBe("https://my-proxy.com/waves/v1/tts");
   });
 
   it("getStitchOptions returns wav config for pro model", () => {
