@@ -15,8 +15,7 @@ import {
 } from "../../speech-provider.js";
 
 const SMALLEST_DEFAULT_BASE_URL = "https://api.smallest.ai/waves/v1";
-// Unified TTS endpoint: the model is selected by the `model` body field. The
-// legacy per-model /lightning-v3.1/get_speech route retires on 2026-11-30.
+// Unified TTS endpoint: the model is selected by the `model` body field.
 const SMALLEST_TTS_PATH = "tts";
 // Voice cloning uses a single model-agnostic endpoint.
 const SMALLEST_CLONE_PATH = "voice-cloning";
@@ -37,31 +36,41 @@ export class SmallestAISpeechProvider
 
   readonly models = [
     {
-      id: "lightning_v3.1",
-      releaseDate: "2025-01-01",
+      id: "lightning_v3.1_pro",
+      releaseDate: "2025-05-01",
       languages: [
         "en",
         "hi",
-        "es",
-        "ta",
-        "kn",
-        "te",
-        "ml",
         "mr",
+        "ta",
+        "ml",
+        "te",
+        "kn",
+        "pa",
+        "bn",
+        "or",
         "gu",
+        "ar",
+        "zh",
+        "id",
+        "ja",
+        "ko",
+        "ms",
+        "tr",
+        "vi",
+        "de",
+        "es",
         "fr",
         "it",
         "nl",
         "sv",
         "pt",
-        "de",
+        "ru",
+        "el",
+        "fi",
+        "no",
+        "pl",
       ] as const,
-      features: ["voice-cloning"],
-    },
-    {
-      id: "lightning_v3.1_pro",
-      releaseDate: "2025-05-01",
-      languages: ["en", "hi"] as const,
       features: ["voice-cloning"],
     },
   ] as const;
@@ -94,8 +103,6 @@ export class SmallestAISpeechProvider
     const outputFormat =
       (options.providerOptions?.output_format as string | undefined) ?? "wav";
 
-    // lightning_v3.1 is served by lightning_v3.1_pro from 2026-11-30, and the
-    // standard voice pool goes away with it, so both models default to a Pro voice.
     const body: Record<string, unknown> = {
       voice_id: options.voice ?? "meher",
       language: "auto",

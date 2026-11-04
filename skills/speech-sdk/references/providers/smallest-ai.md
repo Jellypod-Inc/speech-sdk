@@ -11,8 +11,7 @@
 
 | Model                | Streaming | Audio Tags | Voice Cloning | Native Timestamps | Notes                                          |
 | -------------------- | --------- | ---------- | ------------- | ----------------- | ---------------------------------------------- |
-| `lightning_v3.1`     | No        | No         | Yes           | No                | Retires 2026-11-30; served by `lightning_v3.1_pro` after that |
-| `lightning_v3.1_pro` | No        | No         | No            | No                | 44 kHz, English + Hindi, curated Pro voice catalog |
+| `lightning_v3.1_pro` | No        | No         | Yes           | No                | 44 kHz, 31 languages, curated Pro voice catalog |
 
 Streaming is not supported — `streamSpeech` throws `StreamingNotSupportedError`. `timestamps: true` on a direct factory falls back to the default Whisper STT pass.
 
@@ -28,13 +27,9 @@ await generateSpeech({
 })
 ```
 
-Default voice: `meher`. Supported languages: `en`, `hi` (Indian voices code-switch; British and American voices are English-only). The `model: "lightning_v3.1_pro"` field is injected into the request body automatically — do not set it via `providerOptions`.
+Default voice: `meher`. Supported languages: `en`, `hi` (native code-switching between Indian-accented English and Hindi within one utterance), plus `mr`, `ta`, `ml`, `te`, `kn`, `pa`, `bn`, `or`, `gu`, `ar`, `zh`, `id`, `ja`, `ko`, `ms`, `tr`, `vi`, `de`, `es`, `fr`, `it`, `nl`, `sv`, `pt`, `ru`, `el`, `fi`, `no`, `pl` — 31 languages total. `language: "auto"` (the default) routes across all of them using any English or Hindi voice. The `model: "lightning_v3.1_pro"` field is injected into the request body automatically — do not set it via `providerOptions`.
 
 Pro voice catalog (see the [Lightning v3.1 Pro model card](https://docs.smallest.ai/waves/model-cards/text-to-speech/lightning-v-3-1-pro) for the full list): Indian female — `rhea`, `zariya`, `kareena`, `mishka`, `inaaya`, `saira`, `meher`, `aarini`; Indian male — `aviraj`, `vyom`, `zoravar`, `reyansh`, `ahan`; British female — `sophie`, `ellie`, `cressida`, `ottilie`, `elowen`, `seraphina`; British male — `sam`, `henry`, `benedict`, `cormac`, `rupert`, `finley`; American female — `kaitlyn`, `savannah`, `amelia`, `zoe`, `ruby`, `leah`, `jenna`, `kate`, `molly`, `sara`, `fiona`; American male — `blake`, `austin`, `henry`, `jack`, `leo`, `luke`, `owen`.
-
-### lightning_v3.1 (retiring)
-
-`lightning_v3.1` and its standard voice pool (`magnus`, etc.) retire on 2026-11-30 18:30 UTC. After that, `lightning_v3.1` requests are served by `lightning_v3.1_pro`, so use a Pro voice. Both models go to the unified `POST /waves/v1/tts` endpoint; the model is set in the request body.
 
 ## Provider Options
 
@@ -53,7 +48,7 @@ await generateSpeech({
 
 ## Output Formats
 
-`output: { format: "wav" | "pcm" | "mp3" }` is supported natively at 24 kHz for both models. The SDK forwards the chosen format to the provider as `output_format`.
+`output: { format: "wav" | "pcm" | "mp3" }` is supported natively at 24 kHz. The SDK forwards the chosen format to the provider as `output_format`.
 
 ## Factory
 
