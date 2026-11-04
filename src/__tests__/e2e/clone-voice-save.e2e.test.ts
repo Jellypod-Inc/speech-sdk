@@ -123,7 +123,7 @@ describe.skipIf(!process.env.OPENAI_API_KEY)(
       const r = await cloneGenerateSave(
         "smallest-ai",
         createSmallestAI(),
-        "lightning_v3.1"
+        "lightning_v3.1_pro"
       );
       expect(r.voiceId.length).toBeGreaterThan(0);
       expect(r.bytes).toBeGreaterThan(0);

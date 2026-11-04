@@ -30,7 +30,7 @@ describe("SmallestAISpeechProvider.cloneVoice", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe("https://waves-api.smallest.ai/api/v1/voice-cloning");
+    expect(url).toBe("https://api.smallest.ai/waves/v1/voice-cloning");
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer smallest-key");
     expect(init.headers["X-User-Agent"]).toBe(SDK_USER_AGENT);

@@ -14,12 +14,10 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 
-const SMALLEST_DEFAULT_BASE_URL = "https://waves-api.smallest.ai/api/v1";
-// Both lightning_v3.1 and lightning_v3.1_pro are served by the lightning-v3.1
-// family route; the specific variant is selected by the `model` body field.
-const SMALLEST_TTS_MODEL_PATH = "lightning-v3.1";
-// Voice cloning moved off the retired per-model add_voice route to a single
-// model-agnostic endpoint (defaults to and recommends lightning-v3.1).
+const SMALLEST_DEFAULT_BASE_URL = "https://api.smallest.ai/waves/v1";
+// Unified TTS endpoint: the model is selected by the `model` body field.
+const SMALLEST_TTS_PATH = "tts";
+// Voice cloning uses a single model-agnostic endpoint.
 const SMALLEST_CLONE_PATH = "voice-cloning";
 
 export const SMALLEST_AI_PROVIDER_ID = "smallest-ai" as const;
@@ -34,35 +32,45 @@ export class SmallestAISpeechProvider
   implements SpeechProvider<string, string>
 {
   readonly id = SMALLEST_AI_PROVIDER_ID;
-  readonly defaultModel = "lightning_v3.1";
+  readonly defaultModel = "lightning_v3.1_pro";
 
   readonly models = [
     {
-      id: "lightning_v3.1",
-      releaseDate: "2025-01-01",
+      id: "lightning_v3.1_pro",
+      releaseDate: "2025-05-01",
       languages: [
         "en",
         "hi",
-        "es",
-        "ta",
-        "kn",
-        "te",
-        "ml",
         "mr",
+        "ta",
+        "ml",
+        "te",
+        "kn",
+        "pa",
+        "bn",
+        "or",
         "gu",
+        "ar",
+        "zh",
+        "id",
+        "ja",
+        "ko",
+        "ms",
+        "tr",
+        "vi",
+        "de",
+        "es",
         "fr",
         "it",
         "nl",
         "sv",
         "pt",
-        "de",
+        "ru",
+        "el",
+        "fi",
+        "no",
+        "pl",
       ] as const,
-      features: ["voice-cloning"],
-    },
-    {
-      id: "lightning_v3.1_pro",
-      releaseDate: "2025-05-01",
-      languages: ["en", "hi"] as const,
       features: ["voice-cloning"],
     },
   ] as const;
@@ -75,8 +83,8 @@ export class SmallestAISpeechProvider
   constructor(config: SmallestAISpeechProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL ?? SMALLEST_DEFAULT_BASE_URL;
-    // Clone and TTS now share one host (waves-api.smallest.ai/api/v1), so a
-    // custom baseURL (proxy/self-host) routes both by deriving from it.
+    // Clone and TTS share one base URL, so a custom baseURL (proxy/self-host)
+    // routes both by deriving from it.
     this.cloneURL = `${this.baseURL}/${SMALLEST_CLONE_PATH}`;
     this.fetchFn = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
@@ -95,10 +103,8 @@ export class SmallestAISpeechProvider
     const outputFormat =
       (options.providerOptions?.output_format as string | undefined) ?? "wav";
 
-    const isProModel = options.modelId === "lightning_v3.1_pro";
-
     const body: Record<string, unknown> = {
-      voice_id: options.voice ?? (isProModel ? "meher" : "magnus"),
+      voice_id: options.voice ?? "kaitlyn",
       language: "auto",
       ...options.providerOptions,
       text: options.text,
@@ -106,7 +112,7 @@ export class SmallestAISpeechProvider
       model: options.modelId,
     };
 
-    const url = `${this.baseURL}/${SMALLEST_TTS_MODEL_PATH}/get_speech`;
+    const url = `${this.baseURL}/${SMALLEST_TTS_PATH}`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -128,7 +134,7 @@ export class SmallestAISpeechProvider
     });
 
     const arrayBuffer = await response.arrayBuffer();
-    // get_speech always returns `Content-Type: audio/wav` even for mp3/pcm, so
+    // The TTS endpoint may report `Content-Type: audio/wav` even for mp3/pcm, so
     // derive the media type from the requested format instead of the header.
     const mediaType = smallestAIMediaType(outputFormat, body.sample_rate);
 
