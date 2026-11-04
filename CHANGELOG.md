@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.0
+
+- **Breaking: Smallest AI drops `lightning_v3.1`.** `lightning_v3.1_pro` is now the provider's only model and default — passing `lightning_v3.1` as a model id now fails like any other unknown model. Pro already covered everything the standard tier offered (voice cloning) at equal or better quality, so there's no replacement model to migrate to beyond using Pro directly. TTS and cloning both go through the unified `POST /waves/v1/tts` and `POST /waves/v1/voice-cloning` routes; the model is set via the `model` body field.
+- **Fix: Smallest AI's language list was wrong.** The provider only declared `en`/`hi` for `lightning_v3.1_pro`, but it actually supports 31 languages (`en`, `hi`, `mr`, `ta`, `ml`, `te`, `kn`, `pa`, `bn`, `or`, `gu`, `ar`, `zh`, `id`, `ja`, `ko`, `ms`, `tr`, `vi`, `de`, `es`, `fr`, `it`, `nl`, `sv`, `pt`, `ru`, `el`, `fi`, `no`, `pl`), per the Lightning v3.1 Pro model card. `language: "auto"` routes across all of them using any English or Hindi voice.
+- **Smallest AI's default voice changes from `meher` to `kaitlyn`.** Calls that relied on the default (no `voice` passed) now get an American voice instead of an Indian one; pass `voice` explicitly to keep the old behavior.
+
 ## 0.38.0
 
 - **`VercelAIGatewayClient`.** `createVercelAIGatewayClient({ apiKey?, order? })` from `@speech-sdk/core/providers` sends requests through [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) instead of a provider's own API. Pass it to a provider as `client`; the provider still owns its models, voices and request shape. The key comes from `apiKey` (a string, or a function such as Vercel's `getVercelOidcToken`, whose tokens rotate), then `AI_GATEWAY_API_KEY`, then `VERCEL_OIDC_TOKEN`. `order` sets the gateway's provider order per speech-sdk provider, e.g. `{ google: ['vertex', 'google'] }`.
