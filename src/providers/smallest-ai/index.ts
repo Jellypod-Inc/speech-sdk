@@ -104,7 +104,7 @@ export class SmallestAISpeechProvider
       (options.providerOptions?.output_format as string | undefined) ?? "wav";
 
     const body: Record<string, unknown> = {
-      voice_id: options.voice ?? "meher",
+      voice_id: options.voice ?? "kaitlyn",
       language: "auto",
       ...options.providerOptions,
       text: options.text,

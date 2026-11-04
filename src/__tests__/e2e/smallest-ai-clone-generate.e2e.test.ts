@@ -31,7 +31,7 @@ describe.skipIf(!process.env.SMALLEST_API_KEY)(
       const sample = await generateSpeech({
         model: smallest("lightning_v3.1_pro"),
         text: SAMPLE_TEXT,
-        voice: "meher",
+        voice: "kaitlyn",
         output: { format: "wav" },
       });
       expect(isRiffWav(sample.audio.uint8Array)).toBe(true);

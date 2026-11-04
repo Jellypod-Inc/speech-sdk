@@ -48,7 +48,7 @@ describe("SmallestAISpeechProvider", () => {
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse(init.body);
     expect(body.text).toBe("Hello");
-    expect(body.voice_id).toBe("meher");
+    expect(body.voice_id).toBe("kaitlyn");
     expect(body.language).toBe("auto");
     expect(body.output_format).toBe("wav");
     expect(body.model).toBe("lightning_v3.1_pro");
