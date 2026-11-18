@@ -115,6 +115,14 @@ describe("current model negotiation", () => {
     },
     {
       provider: new FishAudioSpeechProvider({}),
+      modelId: "drama-3",
+      stitch: [{ format: "wav", sample_rate: 44_100 }, "audio/wav"],
+      wav: [{ format: "wav", sample_rate: 44_100 }, "audio/wav"],
+      pcm: [{ format: "wav", sample_rate: 44_100 }, "audio/wav"],
+      mp3: [{ format: "mp3", sample_rate: 44_100 }, "audio/mpeg"],
+    },
+    {
+      provider: new FishAudioSpeechProvider({}),
       modelId: "s2.1-pro-free",
       stitch: [{ format: "wav", sample_rate: 44_100 }, "audio/wav"],
       wav: [{ format: "wav", sample_rate: 44_100 }, "audio/wav"],
@@ -228,27 +236,36 @@ describe("current model negotiation", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("sends Fish S2.1 Pro to native dialogue", async () => {
+  it.each([
+    "s2.1-pro",
+    "drama-3",
+  ])("sends Fish %s to native dialogue", async (modelId) => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       new Response(new Uint8Array([1]), {
         headers: { "content-type": "audio/mpeg" },
       })
     );
     const provider = new FishAudioSpeechProvider({ apiKey: "test", fetch });
-    expect(provider.dialogueCapabilities("s2.1-pro")).toEqual({
+    expect(provider.dialogueCapabilities(modelId)).toEqual({
       maxVoices: 4,
     });
     expect(provider.dialogueCapabilities("s2.1-pro-free")).toBeUndefined();
+    expect(provider.processAudioTags("[shaky breath] Hi", modelId)).toEqual({
+      text: "[shaky breath] Hi",
+      warnings: [],
+    });
     await provider.generateDialogue({
-      modelId: "s2.1-pro",
+      modelId,
       turns: [
-        { voice: "a", text: "Hello" },
+        { voice: "a", text: "[nervous] Hello" },
         { voice: "b", text: "Hi" },
       ],
     });
     const init = fetch.mock.calls[0][1];
-    expect(init?.headers).toMatchObject({ model: "s2.1-pro" });
-    expect(JSON.parse(String(init?.body)).reference_id).toEqual(["a", "b"]);
+    expect(init?.headers).toMatchObject({ model: modelId });
+    const body = JSON.parse(String(init?.body));
+    expect(body.reference_id).toEqual(["a", "b"]);
+    expect(body.text).toBe("<|speaker:0|>[nervous] Hello\n<|speaker:1|>Hi");
   });
 
   it("sends Eleven v4 to the native dialogue endpoint", async () => {
