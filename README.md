@@ -94,6 +94,7 @@ Use `instructions` for non-spoken delivery direction (`'warm and measured'`) on 
 | [MiniMax](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | `minimax` | `MINIMAX_API_KEY` |
 | [Speechify](https://docs.speechify.ai) | `speechify` | `SPEECHIFY_API_KEY` |
 | [AssemblyAI](https://www.assemblyai.com/docs/tts) | `assemblyai` | `ASSEMBLYAI_API_KEY` |
+| [Microsoft MAI-Voice](https://learn.microsoft.com/azure/ai-services/speech-service/mai-voices) | `microsoft` | `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` |
 
 Providers can also route through [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) with `createVercelAIGatewayClient()`. See the [docs](https://speechsdk.dev/) for per-provider models, voices, and caveats.
 

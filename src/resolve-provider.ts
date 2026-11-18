@@ -32,6 +32,10 @@ import {
   INWORLD_PROVIDER_ID,
 } from "./providers/inworld/index.js";
 import {
+  createMicrosoft,
+  MICROSOFT_PROVIDER_ID,
+} from "./providers/microsoft/index.js";
+import {
   createMiniMax,
   MINIMAX_PROVIDER_ID,
 } from "./providers/minimax/index.js";
@@ -72,6 +76,7 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [HEYGEN_PROVIDER_ID]: createHeyGen,
   [HUME_PROVIDER_ID]: createHume,
   [INWORLD_PROVIDER_ID]: createInworld,
+  [MICROSOFT_PROVIDER_ID]: createMicrosoft,
   [MINIMAX_PROVIDER_ID]: createMiniMax,
   [MISTRAL_PROVIDER_ID]: createMistral,
   [MURF_PROVIDER_ID]: createMurf,
