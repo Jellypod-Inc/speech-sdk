@@ -8,7 +8,8 @@ import { createGoogle } from "../providers/google/index.js";
 import { streamConversation } from "../stream-conversation.js";
 
 const SSE =
-  'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
+  'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n' +
+  'event: interaction.completed\ndata: {"interaction":{"status":"completed"},"event_type":"interaction.completed"}\n\n';
 
 const TURNS = [
   { text: "Did you see the results?", voice: "Kore" },

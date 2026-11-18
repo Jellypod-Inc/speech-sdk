@@ -151,7 +151,8 @@ describe("Gemini 3.8 bracket tags", () => {
 
   it("converts tags when streaming", async () => {
     const sse =
-      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
+      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n' +
+      'event: interaction.completed\ndata: {"interaction":{"status":"completed"},"event_type":"interaction.completed"}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
     const result = await streamSpeech({
       model: createGoogle({ apiKey: "key", fetch })(MODEL_ID),

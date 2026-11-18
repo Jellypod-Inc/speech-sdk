@@ -1,6 +1,8 @@
 export interface ParseSseBase64Options {
   extractBase64(eventData: string): string | null;
   extractMetadata?(eventData: string): Record<string, unknown> | null;
+  /** Runs once the source ends and every complete event is processed; throw to error the stream instead of closing it. */
+  onEnd?(): void;
 }
 
 export interface ParseSseBase64Result {
@@ -101,12 +103,19 @@ export function parseSseBase64Stream(
   const decoder = new TextDecoder();
   const state = { buffer: "" };
 
+  const reader = source.getReader();
+  let cancelled = false;
+  let sourceReleased = false;
+  let failure: { error: unknown } | undefined;
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const reader = source.getReader();
       try {
         while (true) {
           const { value, done } = await reader.read();
+          if (cancelled) {
+            return;
+          }
           if (done) {
             state.buffer += decoder.decode();
             drainBuffer(state, options, controller, setMetadata);
@@ -115,11 +124,27 @@ export function parseSseBase64Stream(
           state.buffer += decoder.decode(value, { stream: true });
           drainBuffer(state, options, controller, setMetadata);
         }
+        options.onEnd?.();
         controller.close();
+      } catch (error) {
+        failure = { error };
+        await reader.cancel(error).catch(() => undefined);
+      } finally {
         setMetadata(undefined);
-      } catch (err) {
-        controller.error(err);
-        setMetadata(undefined);
+        reader.releaseLock();
+        sourceReleased = true;
+      }
+    },
+    // Runs once start() settles and the queue is empty, so audio parsed before a failure still reaches the consumer.
+    pull(controller) {
+      if (failure) {
+        controller.error(failure.error);
+      }
+    },
+    cancel(reason) {
+      cancelled = true;
+      if (!sourceReleased) {
+        return reader.cancel(reason);
       }
     },
   });

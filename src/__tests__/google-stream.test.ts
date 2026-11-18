@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { NoSpeechGeneratedError, SpeechSDKError } from "../errors.js";
 import { GoogleSpeechProvider } from "../providers/google/index.js";
 
 async function collect(
@@ -100,6 +101,7 @@ describe("GoogleSpeechProvider.stream", () => {
       'event: step.delta\ndata: {"index":0,"delta":{"mime_type":"audio/l16","data":"QUI="},"event_type":"step.delta"}\n\n',
       'event: step.delta\ndata: {"index":0,"delta":{"mime_type":"audio/l16","data":"Q0Q="},"event_type":"step.delta"}\n\n',
       'event: step.stop\ndata: {"index":0,"event_type":"step.stop"}\n\n',
+      'event: interaction.completed\ndata: {"interaction":{"status":"completed"},"event_type":"interaction.completed"}\n\n',
       "event: done\ndata: [DONE]\n\n",
     ].join("");
     const encoder = new TextEncoder();
@@ -195,5 +197,132 @@ describe("GoogleSpeechProvider.stream", () => {
       decoded.byteLength
     );
     expect(view.getUint32(24, true)).toBe(48_000);
+  });
+});
+
+const AUDIO_DELTA =
+  'event: step.delta\ndata: {"index":0,"delta":{"mime_type":"audio/l16","data":"QUI=","channels":1,"sample_rate":24000,"type":"audio"},"event_type":"step.delta"}\n\n';
+const CREATED =
+  'event: interaction.created\ndata: {"interaction":{"id":"v1_abc","object":"interaction"},"event_type":"interaction.created"}\n\n';
+
+function completedEvent(status: string): string {
+  return `event: interaction.completed\ndata: {"interaction":{"id":"v1_abc","status":"${status}"},"event_type":"interaction.completed"}\n\n`;
+}
+
+const ENTRY_POINTS = [
+  {
+    name: "stream (gemini-3.1-flash-tts-preview)",
+    open: (provider: GoogleSpeechProvider) =>
+      provider.stream({
+        modelId: "gemini-3.1-flash-tts-preview",
+        text: "hi",
+        voice: "Kore",
+      }),
+  },
+  {
+    name: "streamDialogue (gemini-3.8-flash-tts)",
+    open: (provider: GoogleSpeechProvider) =>
+      provider.streamDialogue({
+        modelId: "gemini-3.8-flash-tts",
+        turns: [
+          { voice: "Kore", text: "Hi." },
+          { voice: "Puck", text: "Hello." },
+        ],
+      }),
+  },
+];
+
+describe.each(
+  ENTRY_POINTS
+)("GoogleSpeechProvider.$name interaction lifecycle", ({ open }) => {
+  async function streamOf(sse: string) {
+    const provider = new GoogleSpeechProvider({
+      apiKey: "gg-test",
+      fetch: vi.fn().mockResolvedValue(new Response(sse)),
+    });
+    return (await open(provider)).stream;
+  }
+
+  async function failureOf(sse: string): Promise<unknown> {
+    return await collect(await streamOf(sse)).catch((err: unknown) => err);
+  }
+
+  it("delivers the audio received before an error event, then errors", async () => {
+    const reader = (
+      await streamOf(
+        `${CREATED + AUDIO_DELTA}event: error\ndata: {"error":{"message":"Deadline expired before operation could complete.","code":"gateway_timeout"},"event_type":"error"}\n\n`
+      )
+    ).getReader();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe("AB");
+    await expect(reader.read()).rejects.toThrow(
+      "Deadline expired before operation could complete. (code: gateway_timeout) (request: v1_abc)"
+    );
+  });
+
+  it("errors on a failed status_update", async () => {
+    const error = await failureOf(
+      `${AUDIO_DELTA}event: interaction.status_update\ndata: {"interaction_id":"v1_abc","status":"failed","event_type":"interaction.status_update"}\n\n`
+    );
+    expect(error).toBeInstanceOf(SpeechSDKError);
+    expect((error as Error).message).toContain("interaction failed");
+  });
+
+  it("errors when the interaction completes as incomplete", async () => {
+    const error = await failureOf(
+      `${AUDIO_DELTA}event: interaction.completed\ndata: {"interaction":{"id":"v1_abc","status":"incomplete","error":{"message":"Output limit reached"}},"event_type":"interaction.completed"}\n\n`
+    );
+    expect((error as Error).message).toContain(
+      "interaction incomplete: Output limit reached"
+    );
+  });
+
+  it("errors when the interaction completes with a non-terminal status", async () => {
+    const error = await failureOf(
+      AUDIO_DELTA + completedEvent("requires_action")
+    );
+    expect((error as Error).message).toContain(
+      "ended with status requires_action"
+    );
+  });
+
+  it("errors when the body ends before interaction.completed", async () => {
+    const error = await failureOf(
+      `${AUDIO_DELTA}event: done\ndata: [DONE]\n\n`
+    );
+    expect((error as Error).message).toContain(
+      "ended before interaction.completed"
+    );
+  });
+
+  it("throws NoSpeechGeneratedError when the interaction completes without audio", async () => {
+    const error = await failureOf(completedEvent("completed"));
+    expect(error).toBeInstanceOf(NoSpeechGeneratedError);
+    expect(error).toMatchObject({
+      reason: "provider_empty_response",
+      requestId: "v1_abc",
+    });
+  });
+
+  it("classifies a refusal before any audio as content_refusal", async () => {
+    const error = await failureOf(
+      `${CREATED}event: interaction.completed\ndata: {"interaction":{"id":"v1_abc","status":"failed","error":{"code":"safety_blocked","message":"Blocked"}},"event_type":"interaction.completed"}\n\n`
+    );
+    expect(error).toBeInstanceOf(NoSpeechGeneratedError);
+    expect(error).toMatchObject({
+      reason: "content_refusal",
+      retryable: false,
+      requestId: "v1_abc",
+    });
+  });
+
+  it("accepts a completed event whose optional fields are null", async () => {
+    const audio = await collect(
+      await streamOf(
+        `${AUDIO_DELTA}event: interaction.completed\ndata: {"interaction":{"id":"v1_abc","status":"completed","error":null},"event_type":"interaction.completed"}\n\n`
+      )
+    );
+    expect(new TextDecoder().decode(audio)).toBe("AB");
   });
 });
