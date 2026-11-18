@@ -1,4 +1,6 @@
 // biome-ignore-all lint/performance/noBarrelFile: public provider factory entry point
+export type { AssemblyAISpeechProviderConfig } from "./providers/assemblyai/index.js";
+export { createAssemblyAI } from "./providers/assemblyai/index.js";
 export type { CartesiaSpeechProviderConfig } from "./providers/cartesia/index.js";
 export { createCartesia } from "./providers/cartesia/index.js";
 export type { DeepgramSpeechProviderConfig } from "./providers/deepgram/index.js";
@@ -19,6 +21,8 @@ export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
 export { createHume } from "./providers/hume/index.js";
 export type { InworldSpeechProviderConfig } from "./providers/inworld/index.js";
 export { createInworld } from "./providers/inworld/index.js";
+export type { MicrosoftSpeechProviderConfig } from "./providers/microsoft/index.js";
+export { createMicrosoft } from "./providers/microsoft/index.js";
 export type { MiniMaxSpeechProviderConfig } from "./providers/minimax/index.js";
 export { createMiniMax } from "./providers/minimax/index.js";
 export type { MistralSpeechProviderConfig } from "./providers/mistral/index.js";

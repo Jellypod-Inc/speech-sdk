@@ -11,6 +11,7 @@
 
 | Model           | Streaming | Audio Tags | Voice Cloning | Open Source | Notes                                       |
 | --------------- | --------- | ---------- | ------------- | ----------- | ------------------------------------------- |
+| `drama-3`       | Yes       | Yes        | Yes           | Yes         | Directed performances; native dialogue      |
 | `s2.1-pro`      | Yes       | Yes        | Yes           | No          | Native multi-speaker dialogue               |
 | `s2.1-pro-free` | Yes       | Yes        | Yes           | No          | Free variant; conversations are stitched    |
 | `s2-pro`        | Yes       | Yes        | Yes           | Yes         | Default; native multi-speaker dialogue      |
@@ -65,3 +66,7 @@ await generateSpeech({
 import { createFishAudio } from "@speech-sdk/core/providers"
 const fishAudio = createFishAudio({ apiKey: process.env.FISH_AUDIO_API_KEY })
 ```
+
+## Drama 3
+
+`drama-3` takes free-form directions in brackets before a line (`[nervous, voice cracking] I didn't do it.`), sound cues (`[shaky breath]`), and paired tags such as `<whisper>…</whisper>` or `<emphasis>…</emphasis>`; all of them pass through untouched. It speaks 83 languages and supports native multi-speaker dialogue through `generateConversation`, using the same voices as the S2 models. It is billed at a higher rate than `s2.1-pro`; check Fish's pricing page before switching high-volume workloads.

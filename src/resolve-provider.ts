@@ -1,4 +1,8 @@
 import {
+  ASSEMBLYAI_PROVIDER_ID,
+  createAssemblyAI,
+} from "./providers/assemblyai/index.js";
+import {
   CARTESIA_PROVIDER_ID,
   createCartesia,
 } from "./providers/cartesia/index.js";
@@ -27,6 +31,10 @@ import {
   createInworld,
   INWORLD_PROVIDER_ID,
 } from "./providers/inworld/index.js";
+import {
+  createMicrosoft,
+  MICROSOFT_PROVIDER_ID,
+} from "./providers/microsoft/index.js";
 import {
   createMiniMax,
   MINIMAX_PROVIDER_ID,
@@ -57,6 +65,7 @@ type ProviderFactory = (config: {
 }) => (modelId?: string) => ResolvedModel<string>;
 
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
+  [ASSEMBLYAI_PROVIDER_ID]: createAssemblyAI,
   [CARTESIA_PROVIDER_ID]: createCartesia,
   [DEEPGRAM_PROVIDER_ID]: createDeepgram,
   [ELEVENLABS_PROVIDER_ID]: createElevenLabs,
@@ -67,6 +76,7 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [HEYGEN_PROVIDER_ID]: createHeyGen,
   [HUME_PROVIDER_ID]: createHume,
   [INWORLD_PROVIDER_ID]: createInworld,
+  [MICROSOFT_PROVIDER_ID]: createMicrosoft,
   [MINIMAX_PROVIDER_ID]: createMiniMax,
   [MISTRAL_PROVIDER_ID]: createMistral,
   [MURF_PROVIDER_ID]: createMurf,
