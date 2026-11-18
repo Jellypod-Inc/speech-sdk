@@ -334,6 +334,53 @@ const interactionAudioDeltaSchema = z.object({
   }),
 });
 
+const interactionErrorSchema = z
+  .object({
+    code: z.unknown().optional(),
+    message: z.string().nullish(),
+  })
+  .nullish()
+  .catch(undefined);
+
+// Interactions streams report failure in-band after HTTP 200, as an `error` event or a non-completed status, so EOF alone is not success.
+const interactionStreamEventSchema = z.object({
+  event_type: z.string(),
+  interaction_id: z.string().nullish().catch(undefined),
+  status: z.string().nullish().catch(undefined),
+  error: interactionErrorSchema,
+  interaction: z
+    .object({
+      id: z.string().nullish().catch(undefined),
+      status: z.string().nullish().catch(undefined),
+      error: interactionErrorSchema,
+    })
+    .nullish()
+    .catch(undefined),
+});
+
+type InteractionError = z.infer<typeof interactionErrorSchema>;
+
+const FAILED_INTERACTION_STATUSES = new Set([
+  "failed",
+  "cancelled",
+  "incomplete",
+]);
+
+function interactionErrorCode(error: InteractionError): string | undefined {
+  const code = error?.code;
+  return typeof code === "string" || typeof code === "number"
+    ? String(code)
+    : undefined;
+}
+
+function describeInteractionError(error: InteractionError): string {
+  if (!error) {
+    return "";
+  }
+  const code = interactionErrorCode(error);
+  return `: ${error.message ?? "unknown error"}${code ? ` (code: ${code})` : ""}`;
+}
+
 export interface GoogleSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
@@ -980,18 +1027,79 @@ export class GoogleSpeechProvider implements SpeechProvider<string, string> {
       throw new Error(`google/${options.modelId}: response has no body`);
     }
 
+    const label = `google/${options.modelId}`;
+    let completed = false;
+    let receivedAudio = false;
+    let requestId: string | undefined;
+    const fail = (message: string, error?: InteractionError): Error => {
+      if (receivedAudio) {
+        return new SpeechSDKError(
+          `${label}: ${message}${requestId ? ` (request: ${requestId})` : ""}`
+        );
+      }
+      return new NoSpeechGeneratedError(`${label}: ${message}`, {
+        model: options.modelId,
+        provider: this.id,
+        ...(requestId && { requestId }),
+        reason: CONTENT_REFUSAL_CODE_RE.test(interactionErrorCode(error) ?? "")
+          ? "content_refusal"
+          : "provider_empty_response",
+      });
+    };
+    const handleLifecycleEvent = (eventData: unknown): void => {
+      const parsed = interactionStreamEventSchema.safeParse(eventData);
+      if (!parsed.success) {
+        return;
+      }
+      const event = parsed.data;
+      requestId ??= event.interaction?.id ?? event.interaction_id ?? undefined;
+      const error = event.interaction?.error ?? event.error;
+      if (event.event_type === "error") {
+        throw fail(
+          `interaction stream error${describeInteractionError(error)}`,
+          error
+        );
+      }
+      const status = event.interaction?.status ?? event.status;
+      if (status && FAILED_INTERACTION_STATUSES.has(status)) {
+        throw fail(
+          `interaction ${status}${describeInteractionError(error)}`,
+          error
+        );
+      }
+      if (event.event_type !== "interaction.completed") {
+        return;
+      }
+      if (status !== "completed") {
+        throw fail(`interaction ended with status ${status ?? "unknown"}`);
+      }
+      if (!receivedAudio) {
+        throw fail("interaction completed without audio");
+      }
+      completed = true;
+    };
+
     const { stream } = parseSseBase64Stream(response.body, {
       extractBase64(eventData) {
-        const result = interactionAudioDeltaSchema.safeParse(
-          safeParseJson(eventData)
-        );
+        const json = safeParseJson(eventData);
+        const result = interactionAudioDeltaSchema.safeParse(json);
         if (!result.success) {
+          handleLifecycleEvent(json);
           return null;
         }
-        return result.data.delta.type === "audio" ||
-          result.data.delta.mime_type?.startsWith("audio/")
-          ? result.data.delta.data
-          : null;
+        const { delta } = result.data;
+        if (delta.type !== "audio" && !delta.mime_type?.startsWith("audio/")) {
+          return null;
+        }
+        receivedAudio ||= delta.data.length > 0;
+        return delta.data;
+      },
+      onEnd() {
+        if (!completed) {
+          throw fail(
+            "interaction stream ended before interaction.completed; the audio may be truncated"
+          );
+        }
       },
     });
 

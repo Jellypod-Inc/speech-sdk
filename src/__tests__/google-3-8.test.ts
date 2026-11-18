@@ -128,7 +128,8 @@ describe("Gemini 3.8 TTS", () => {
 
   it("streams headerless PCM from interactions", async () => {
     const sse =
-      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
+      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n' +
+      'event: interaction.completed\ndata: {"interaction":{"status":"completed"},"event_type":"interaction.completed"}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
     const provider = new GoogleSpeechProvider({ apiKey: "key", fetch });
     const result = await provider.stream({
