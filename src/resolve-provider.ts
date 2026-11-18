@@ -28,6 +28,10 @@ import {
   INWORLD_PROVIDER_ID,
 } from "./providers/inworld/index.js";
 import {
+  createLokutor,
+  LOKUTOR_PROVIDER_ID,
+} from "./providers/lokutor/index.js";
+import {
   createMiniMax,
   MINIMAX_PROVIDER_ID,
 } from "./providers/minimax/index.js";
@@ -67,6 +71,7 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [HEYGEN_PROVIDER_ID]: createHeyGen,
   [HUME_PROVIDER_ID]: createHume,
   [INWORLD_PROVIDER_ID]: createInworld,
+  [LOKUTOR_PROVIDER_ID]: createLokutor,
   [MINIMAX_PROVIDER_ID]: createMiniMax,
   [MISTRAL_PROVIDER_ID]: createMistral,
   [MURF_PROVIDER_ID]: createMurf,
