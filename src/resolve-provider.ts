@@ -1,4 +1,8 @@
 import {
+  ASSEMBLYAI_PROVIDER_ID,
+  createAssemblyAI,
+} from "./providers/assemblyai/index.js";
+import {
   CARTESIA_PROVIDER_ID,
   createCartesia,
 } from "./providers/cartesia/index.js";
@@ -57,6 +61,7 @@ type ProviderFactory = (config: {
 }) => (modelId?: string) => ResolvedModel<string>;
 
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
+  [ASSEMBLYAI_PROVIDER_ID]: createAssemblyAI,
   [CARTESIA_PROVIDER_ID]: createCartesia,
   [DEEPGRAM_PROVIDER_ID]: createDeepgram,
   [ELEVENLABS_PROVIDER_ID]: createElevenLabs,

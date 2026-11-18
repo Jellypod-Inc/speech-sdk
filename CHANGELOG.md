@@ -6,6 +6,7 @@
 - **Fix: Smallest AI's language list was wrong.** The provider only declared `en`/`hi` for `lightning_v3.1_pro`, but it actually supports 31 languages (`en`, `hi`, `mr`, `ta`, `ml`, `te`, `kn`, `pa`, `bn`, `or`, `gu`, `ar`, `zh`, `id`, `ja`, `ko`, `ms`, `tr`, `vi`, `de`, `es`, `fr`, `it`, `nl`, `sv`, `pt`, `ru`, `el`, `fi`, `no`, `pl`), per the Lightning v3.1 Pro model card. `language: "auto"` routes across all of them using any English or Hindi voice.
 - **Smallest AI's default voice changes from `meher` to `kaitlyn`.** Calls that relied on the default (no `voice` passed) now get an American voice instead of an Indian one; pass `voice` explicitly to keep the old behavior.
 - **Fish Audio Drama 3.** `fish-audio/drama-3` directs a performance with free-form bracket directions (`[nervous, voice cracking]`), sound cues and paired tags such as `<whisper>`, in 83 languages. It uses native multi-speaker dialogue in `generateConversation`, like `s2-pro` and `s2.1-pro`. The default Fish model stays `s2-pro`.
+- **AssemblyAI provider.** `assemblyai/assemblyai-tts-1` (or `createAssemblyAI()`) generates speech in English, Spanish, German, Italian, Portuguese and French with AssemblyAI's voice library or voices cloned in its dashboard. It returns 16-bit WAV up to 48 kHz, so output conversion and conversation stitching work; MP3 is requested natively. Set `baseURL` to `https://tts.eu.assemblyai.com` for the EU zone. Streaming and word timestamps are not exposed yet.
 
 ## 0.38.0
 

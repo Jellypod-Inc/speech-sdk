@@ -1,4 +1,6 @@
 // biome-ignore-all lint/performance/noBarrelFile: public provider factory entry point
+export type { AssemblyAISpeechProviderConfig } from "./providers/assemblyai/index.js";
+export { createAssemblyAI } from "./providers/assemblyai/index.js";
 export type { CartesiaSpeechProviderConfig } from "./providers/cartesia/index.js";
 export { createCartesia } from "./providers/cartesia/index.js";
 export type { DeepgramSpeechProviderConfig } from "./providers/deepgram/index.js";
