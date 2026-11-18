@@ -175,9 +175,9 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Smallest AI returns wav for lightning-v3.1", () => {
+  it("Smallest AI returns wav for lightning-v3.1-pro", () => {
     const p = new SmallestAISpeechProvider({});
-    expect(p.getStitchOptions?.("lightning_v3.1")).toEqual({
+    expect(p.getStitchOptions?.("lightning_v3.1_pro")).toEqual({
       providerOptions: { output_format: "wav" },
       mediaType: "audio/wav",
     });
