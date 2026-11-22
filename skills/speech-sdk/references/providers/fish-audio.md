@@ -69,4 +69,4 @@ const fishAudio = createFishAudio({ apiKey: process.env.FISH_AUDIO_API_KEY })
 
 ## Drama 3
 
-`drama-3` takes free-form directions in brackets before a line (`[nervous, voice cracking] I didn't do it.`), sound cues (`[shaky breath]`), and paired tags such as `<whisper>…</whisper>` or `<emphasis>…</emphasis>`; all of them pass through untouched. It speaks 83 languages and supports native multi-speaker dialogue through `generateConversation`, using the same voices as the S2 models. It is billed at a higher rate than `s2.1-pro`; check Fish's pricing page before switching high-volume workloads.
+`drama-3` takes free-form directions in brackets before a line (`[nervous, voice cracking] I didn't do it.`), sound cues (`[shaky breath]`), and paired tags such as `<whisper>…</whisper>` or `<emphasis>…</emphasis>`; all of them pass through untouched. It speaks 83 languages and supports native multi-speaker dialogue through `generateConversation` with up to four voices (more voices are stitched), using the same voices as the S2 models. It is billed at a higher rate than `s2.1-pro`; check Fish's pricing page before switching high-volume workloads.

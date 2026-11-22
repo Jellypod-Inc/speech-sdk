@@ -24,7 +24,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Smallest AI  | `smallest-ai`  | `SMALLEST_API_KEY`     |
 | MiniMax      | `minimax`      | `MINIMAX_API_KEY`      |
 | AssemblyAI   | `assemblyai`   | `ASSEMBLYAI_API_KEY`   |
-| Microsoft    | `microsoft`    | `AZURE_SPEECH_KEY` (+ `AZURE_SPEECH_REGION`) |
+| Microsoft    | `microsoft`    | `AZURE_SPEECH_KEY` (+ `AZURE_SPEECH_REGION` unless `baseURL` is set) |
 
 ## Capability Matrix
 

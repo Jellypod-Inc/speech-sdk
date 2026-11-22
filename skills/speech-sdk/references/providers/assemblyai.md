@@ -25,7 +25,7 @@ await generateSpeech({
 
 `voice` is sent as `voice_id`: a library slug such as `aai-kyla` or `aai-donatien`, or the slug of a voice you cloned in the AssemblyAI dashboard. Without `voice`, AssemblyAI picks its default voice for the language. There is no API to list voices; browse them in the dashboard.
 
-The SDK requests a buffered 16-bit WAV (up to 48 kHz), so output conversion and conversation stitching work. `mp3` output is requested natively. Bracket tags such as `[laughs]` are stripped with a warning, because AssemblyAI would read them aloud; steer delivery with punctuation instead. `speed` is not supported.
+The SDK requests a buffered 16-bit WAV (up to 48 kHz), so output conversion and conversation stitching work. `mp3` output is requested natively. Bracket tags such as `[laughs]` are stripped with a warning, because AssemblyAI would read them aloud; steer delivery with punctuation instead. AssemblyAI has no native speed parameter, so `speed` is applied by the SDK's time-stretch step.
 
 ## Provider Options
 

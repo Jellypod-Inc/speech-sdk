@@ -30,7 +30,7 @@ Pass a voice id from Microsoft's MAI voice table (`en-US-Harper`, `en-GB-Emily`,
 
 The text is XML-escaped into an SSML document, so SSML inside `text` is spoken literally. Bracket tags such as `[laughs]` are stripped with a warning.
 
-The SDK asks Azure for 16-bit WAV at 24 kHz, the voices' native rate, so output conversion and conversation stitching work; WAV at 8–48 kHz and MP3 at 16, 24 or 48 kHz can be requested with `output`.
+The SDK asks Azure for 16-bit WAV at 24 kHz, the voices' native rate, so output conversion and conversation stitching work; WAV at 8, 22.05, 24, 44.1 or 48 kHz (Azure has no 16 kHz WAV) and MP3 at 16, 24 or 48 kHz can be requested with `output`.
 
 ## Provider Options
 
@@ -38,7 +38,7 @@ The SDK asks Azure for 16-bit WAV at 24 kHz, the voices' native rate, so output 
 | ------------- | ---------------------------------------------------------------------------------------- |
 | `style`       | Wraps the text in `<mstts:express-as style="…">`. Each voice lists its styles, e.g. `joyful`, `narrator`, `customer_call_center`. |
 | `styleDegree` | Sets `styledegree` on the style.                                                          |
-| `outputFormat`| Any Azure Speech `X-Microsoft-OutputFormat` value; overrides the SDK's choice.            |
+| `outputFormat`| An Azure Speech `X-Microsoft-OutputFormat` value; overrides the SDK's choice. The result's media type follows it: `riff-*` is WAV, `raw-*-16bit-mono-pcm` is PCM, MP3, Ogg and WebM are labeled as such. |
 
 ```ts
 await generateSpeech({
@@ -57,4 +57,4 @@ const microsoft = createMicrosoft({ region: "eastus" })
 await generateSpeech({ model: microsoft("mai-voice-2.1"), text: "...", voice: "en-US-Harper" })
 ```
 
-`apiKey` is the Speech resource key. For a resource with a custom domain, pass `baseURL: "https://<resource>.cognitiveservices.azure.com"` instead of `region`.
+`apiKey` is the Speech resource key. For a resource with a custom domain, pass `baseURL: "https://<resource>.cognitiveservices.azure.com"` instead of `region`. `AZURE_SPEECH_REGION` is then not needed.

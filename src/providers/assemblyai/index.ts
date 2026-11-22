@@ -2,6 +2,7 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
+import { isWavWithoutSamples } from "../../audio-utils.js";
 import { NoSpeechGeneratedError } from "../../errors.js";
 import {
   handleErrorResponse,
@@ -100,7 +101,7 @@ export class AssemblyAISpeechProvider
       stage: "synthesis",
     });
     const audio = new Uint8Array(await response.arrayBuffer());
-    if (audio.length === 0) {
+    if (audio.length === 0 || isWavWithoutSamples(audio)) {
       throw new NoSpeechGeneratedError("AssemblyAI returned no audio.", {
         provider: this.id,
         model: options.modelId,

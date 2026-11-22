@@ -2,6 +2,7 @@ import {
   type AudioOutput,
   DEFAULT_MP3_BITRATE_KBPS,
 } from "../../audio-output.js";
+import { isWavWithoutSamples } from "../../audio-utils.js";
 import { NoSpeechGeneratedError, SpeechSDKError } from "../../errors.js";
 import { handleErrorResponse, resolveApiKey } from "../../provider-utils.js";
 import {
@@ -57,6 +58,12 @@ const VOICE_SUFFIXES: Readonly<Record<string, string>> = {
   "mai-voice-2.1-flash": "MAI-Voice-2.1-Flash",
 };
 
+function voiceSuffix(modelId: string): string | undefined {
+  return Object.hasOwn(VOICE_SUFFIXES, modelId)
+    ? VOICE_SUFFIXES[modelId]
+    : undefined;
+}
+
 export const MICROSOFT_MODELS: readonly ModelInfo[] = [
   {
     id: "mai-voice-2.1",
@@ -74,7 +81,6 @@ export const MICROSOFT_MODELS: readonly ModelInfo[] = [
 
 const WAV_FORMATS: Readonly<Record<number, string>> = {
   8000: "riff-8khz-16bit-mono-pcm",
-  16000: "riff-16khz-16bit-mono-pcm",
   22050: "riff-22050hz-16bit-mono-pcm",
   24000: "riff-24khz-16bit-mono-pcm",
   44100: "riff-44100hz-16bit-mono-pcm",
@@ -99,6 +105,30 @@ const XML_ESCAPES: Readonly<Record<string, string>> = {
 const XML_SPECIAL_CHARS = /[&<>"']/g;
 const VOICE_LOCALE = /^([a-z]{2,3}-[A-Z]{2})-/;
 const TRAILING_SLASHES = /\/+$/;
+
+const RAW_PCM_FORMAT = /^raw-(\d+)(khz|hz)-16bit-mono-pcm$/;
+
+function mediaTypeForOutputFormat(outputFormat: string): string {
+  const format = outputFormat.toLowerCase();
+  const rawPcm = RAW_PCM_FORMAT.exec(format);
+  if (rawPcm) {
+    const rate = Number(rawPcm[1]) * (rawPcm[2] === "khz" ? 1000 : 1);
+    return `audio/pcm;rate=${rate}`;
+  }
+  if (format.startsWith("riff-")) {
+    return "audio/wav";
+  }
+  if (format.includes("mp3")) {
+    return "audio/mpeg";
+  }
+  if (format.startsWith("ogg-")) {
+    return "audio/ogg";
+  }
+  if (format.startsWith("webm-")) {
+    return "audio/webm";
+  }
+  return "application/octet-stream";
+}
 
 function escapeXml(value: string): string {
   return value.replace(XML_SPECIAL_CHARS, (char) => XML_ESCAPES[char] ?? char);
@@ -163,7 +193,7 @@ export class MicrosoftSpeechProvider implements SpeechProvider<string, string> {
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
   }) {
-    const suffix = VOICE_SUFFIXES[options.modelId];
+    const suffix = voiceSuffix(options.modelId);
     if (!suffix) {
       throw new SpeechSDKError(
         `microsoft/${options.modelId} is not a known MAI-Voice model.`
@@ -202,7 +232,7 @@ export class MicrosoftSpeechProvider implements SpeechProvider<string, string> {
       stage: "synthesis",
     });
     const audio = new Uint8Array(await response.arrayBuffer());
-    if (audio.length === 0) {
+    if (audio.length === 0 || isWavWithoutSamples(audio)) {
       throw new NoSpeechGeneratedError("Azure Speech returned no audio.", {
         provider: this.id,
         model: options.modelId,
@@ -211,7 +241,7 @@ export class MicrosoftSpeechProvider implements SpeechProvider<string, string> {
     }
     return {
       audio,
-      mediaType: outputFormat.includes("mp3") ? "audio/mpeg" : "audio/wav",
+      mediaType: mediaTypeForOutputFormat(outputFormat),
       providerMetadata: {
         requestId: response.headers.get("X-RequestId"),
         voice: voiceName,
@@ -220,11 +250,11 @@ export class MicrosoftSpeechProvider implements SpeechProvider<string, string> {
   }
 
   supportedSampleRates(modelId: string): readonly number[] {
-    return modelId in VOICE_SUFFIXES ? WAV_SAMPLE_RATES : [];
+    return voiceSuffix(modelId) ? WAV_SAMPLE_RATES : [];
   }
 
   getStitchOptions(modelId: string, options?: { sampleRate?: number }) {
-    if (!(modelId in VOICE_SUFFIXES)) {
+    if (!voiceSuffix(modelId)) {
       return;
     }
     const rate = resolveSampleRate(
@@ -248,7 +278,7 @@ export class MicrosoftSpeechProvider implements SpeechProvider<string, string> {
         }
       );
     }
-    if (!(modelId in VOICE_SUFFIXES)) {
+    if (!voiceSuffix(modelId)) {
       return;
     }
     const rate = resolveSampleRate(

@@ -30,6 +30,34 @@ export function parseMediaTypeParam(
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+const RIFF_HEADER_BYTES = 12;
+const CHUNK_HEADER_BYTES = 8;
+
+/** True when `bytes` is a RIFF/WAVE file whose `data` chunk holds no samples. */
+export function isWavWithoutSamples(bytes: Uint8Array): boolean {
+  const ascii = (offset: number) =>
+    String.fromCharCode(...bytes.subarray(offset, offset + 4));
+  if (
+    bytes.length < RIFF_HEADER_BYTES ||
+    ascii(0) !== "RIFF" ||
+    ascii(8) !== "WAVE"
+  ) {
+    return false;
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = RIFF_HEADER_BYTES;
+  while (offset + CHUNK_HEADER_BYTES <= bytes.length) {
+    const size = view.getUint32(offset + 4, true);
+    const body = offset + CHUNK_HEADER_BYTES;
+    if (ascii(offset) === "data") {
+      return Math.min(size, bytes.length - body) === 0;
+    }
+    // RIFF chunks are padded to an even length.
+    offset = body + size + (size % 2);
+  }
+  return true;
+}
+
 export async function wrapPcm16Mono(
   pcm: Uint8Array,
   sampleRate: number

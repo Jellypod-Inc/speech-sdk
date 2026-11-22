@@ -128,23 +128,30 @@ describe("Microsoft MAI-Voice speech", () => {
         fetch,
       }).generate({ modelId: "mai-voice-2", text: "Hello" })
     ).rejects.toThrow("not a known MAI-Voice model");
+    await expect(
+      new MicrosoftSpeechProvider({
+        apiKey: "test",
+        region: "eastus",
+        fetch,
+      }).generate({ modelId: "constructor", text: "Hello" })
+    ).rejects.toThrow("not a known MAI-Voice model");
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("strips bracket tags and converts WAV to PCM through the public API", async () => {
-    const { fetch } = await wavFetch(16_000);
+    const { fetch } = await wavFetch(22_050);
     const result = await generateSpeech({
       model: createMicrosoft({ apiKey: "test", region: "eastus", fetch })(),
       text: "[laughs] Hello",
-      output: { format: "pcm", sampleRate: 16_000 },
+      output: { format: "pcm", sampleRate: 22_050 },
     });
     const init = fetch.mock.calls[0][1];
     expect(init?.headers).toMatchObject({
-      "X-Microsoft-OutputFormat": "riff-16khz-16bit-mono-pcm",
+      "X-Microsoft-OutputFormat": "riff-22050hz-16bit-mono-pcm",
     });
     expect(String(init?.body)).toContain(">Hello</voice>");
     expect(result.warnings.length).toBeGreaterThan(0);
-    expect(result.audio.mediaType).toBe("audio/pcm;rate=16000");
+    expect(result.audio.mediaType).toBe("audio/pcm;rate=22050");
     expect(result.audio.uint8Array).toHaveLength(480);
   });
 
@@ -204,6 +211,43 @@ describe("Microsoft MAI-Voice speech", () => {
     ).rejects.toMatchObject({ name: "NoSpeechGeneratedError" });
   });
 
+  it.each([
+    ["raw-24khz-16bit-mono-pcm", "audio/pcm;rate=24000"],
+    ["raw-22050hz-16bit-mono-pcm", "audio/pcm;rate=22050"],
+    ["riff-48khz-16bit-mono-pcm", "audio/wav"],
+    ["audio-24khz-160kbitrate-mono-mp3", "audio/mpeg"],
+    ["ogg-24khz-16bit-mono-opus", "audio/ogg"],
+    ["raw-8khz-8bit-mono-mulaw", "application/octet-stream"],
+  ])("labels a custom outputFormat %s as %s", async (outputFormat, mediaType) => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3, 4])));
+    const result = await new MicrosoftSpeechProvider({
+      apiKey: "test",
+      region: "eastus",
+      fetch,
+    }).generate({
+      modelId: "mai-voice-2.1",
+      text: "Hello",
+      providerOptions: { outputFormat },
+    });
+    expect(result.mediaType).toBe(mediaType);
+  });
+
+  it("treats a WAV with no samples as no speech", async () => {
+    const headerOnly = await wrapPcm16Mono(new Uint8Array(), 24_000);
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(headerOnly));
+    await expect(
+      new MicrosoftSpeechProvider({
+        apiKey: "test",
+        region: "eastus",
+        fetch,
+      }).generate({ modelId: "mai-voice-2.1", text: "Hello" })
+    ).rejects.toMatchObject({ name: "NoSpeechGeneratedError" });
+  });
+
   it("resolves strings and negotiates native-rate WAV for stitching", () => {
     expect(resolveModel("microsoft").modelId).toBe("mai-voice-2.1-flash");
     expect(resolveModel("microsoft/mai-voice-2.1").provider.id).toBe(
@@ -217,6 +261,11 @@ describe("Microsoft MAI-Voice speech", () => {
     expect(() =>
       provider.getStitchOptions("mai-voice-2.1", { sampleRate: 32_000 })
     ).toThrow();
+    expect(() =>
+      provider.getStitchOptions("mai-voice-2.1", { sampleRate: 16_000 })
+    ).toThrow();
+    expect(provider.getStitchOptions("constructor")).toBeUndefined();
+    expect(provider.supportedSampleRates("toString")).toEqual([]);
     expect(provider.getStitchOptions("unknown")).toBeUndefined();
     expect(
       provider.resolveOutputFormat("unknown", { format: "mp3" })

@@ -201,6 +201,21 @@ describe("AssemblyAI speech", () => {
     });
   });
 
+  it("treats a WAV with no samples as no speech", async () => {
+    const headerOnly = await wrapPcm16Mono(new Uint8Array(), 24_000);
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        new Response(headerOnly, { headers: { "Content-Type": "audio/wav" } })
+      );
+    await expect(
+      new AssemblyAISpeechProvider({ apiKey: "test", fetch }).generate({
+        modelId: "assemblyai-tts-1",
+        text: "\u{1F600}",
+      })
+    ).rejects.toMatchObject({ name: "NoSpeechGeneratedError" });
+  });
+
   it("resolves strings and negotiates WAV for stitching", () => {
     expect(resolveModel("assemblyai").modelId).toBe("assemblyai-tts-1");
     expect(resolveModel("assemblyai/assemblyai-tts-1").provider.id).toBe(
