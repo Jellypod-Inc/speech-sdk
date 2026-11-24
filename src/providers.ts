@@ -21,6 +21,8 @@ export type { HumeSpeechProviderConfig } from "./providers/hume/index.js";
 export { createHume } from "./providers/hume/index.js";
 export type { InworldSpeechProviderConfig } from "./providers/inworld/index.js";
 export { createInworld } from "./providers/inworld/index.js";
+export type { LokutorSpeechProviderConfig } from "./providers/lokutor/index.js";
+export { createLokutor } from "./providers/lokutor/index.js";
 export type { MicrosoftSpeechProviderConfig } from "./providers/microsoft/index.js";
 export { createMicrosoft } from "./providers/microsoft/index.js";
 export type { MiniMaxSpeechProviderConfig } from "./providers/minimax/index.js";

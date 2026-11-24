@@ -86,6 +86,7 @@ Use `instructions` for non-spoken delivery direction (`'warm and measured'`) on 
 | [Inworld](https://docs.inworld.ai/tts) | `inworld` | `INWORLD_API_KEY` |
 | [Fish Audio](https://docs.fish.audio) | `fish-audio` | `FISH_AUDIO_API_KEY` |
 | [Gradium](https://docs.gradium.ai) | `gradium` | `GRADIUM_API_KEY` |
+| [Lokutor](https://docs.lokutor.com) | `lokutor` | `LOKUTOR_API_KEY` |
 | [Murf](https://murf.ai/api/docs) | `murf` | `MURF_API_KEY` |
 | [Resemble](https://docs.resemble.ai) | `resemble` | `RESEMBLE_API_KEY` |
 | [fal](https://fal.ai/models) | `fal-ai` | `FAL_API_KEY` |
