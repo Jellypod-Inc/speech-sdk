@@ -104,6 +104,22 @@ describe("NoSpeechGeneratedError classification", () => {
     expect(noSpeech.requestId).toBe("req_abc123");
     expect(noSpeech.turnIndex).toBe(4);
   });
+
+  it("keeps a non-retryable empty response non-retryable when a turn index is attached", () => {
+    const error = withTurnIndex(
+      new NoSpeechGeneratedError("empty after reshape", {
+        reason: "provider_empty_response",
+        retryable: false,
+      }),
+      2
+    );
+
+    expect(error).toMatchObject({
+      reason: "provider_empty_response",
+      retryable: false,
+      turnIndex: 2,
+    });
+  });
 });
 
 describe("provider classification", () => {

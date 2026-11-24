@@ -5,12 +5,30 @@ export function newVoiceKeyer(): (voice: ConversationTurn["voice"]) => string {
   return (voice) => `s:${voice}`;
 }
 
+export function validateTurnTexts(
+  turns: readonly Pick<ConversationTurn, "text">[],
+  entryPoint: string
+): void {
+  if (turns.length === 0) {
+    throw new ConversationInputError(
+      `${entryPoint} requires at least one turn.`
+    );
+  }
+  for (const [i, turn] of turns.entries()) {
+    if (turn.text.trim().length === 0) {
+      throw new ConversationInputError(`turns[${i}].text must not be empty.`);
+    }
+  }
+}
+
 export function validateConversationInput(
   options: GenerateConversationOptions
 ): void {
-  if (options.turns.length === 0) {
+  validateTurnTexts(options.turns, "generateConversation");
+
+  if (options.splitTurns && options.timestamps !== true) {
     throw new ConversationInputError(
-      "generateConversation requires at least one turn."
+      "splitTurns requires timestamps: true — turn boundaries come from word timestamps."
     );
   }
 
@@ -19,9 +37,6 @@ export function validateConversationInput(
 
   for (let i = 0; i < options.turns.length; i++) {
     const turn = options.turns[i];
-    if (turn.text.trim().length === 0) {
-      throw new ConversationInputError(`turns[${i}].text must not be empty.`);
-    }
     const hasTurnModel = turn.model != null;
     if (hasTopLevel && hasTurnModel) {
       throw new ConversationInputError(

@@ -53,6 +53,34 @@ export const MISTRAL_PROVIDER_ID = "mistral" as const;
 
 export const MISTRAL_MODELS: readonly ModelInfo[] = [
   {
+    id: "voxtral-mini-tts-3-0",
+    releaseDate: "2026-10-21",
+    languages: [
+      "ar",
+      "ca",
+      "zh",
+      "nl",
+      "en",
+      "fr",
+      "de",
+      "hi",
+      "hu",
+      "it",
+      "ja",
+      "ko",
+      "no",
+      "pl",
+      "pt",
+      "ro",
+      "ru",
+      "es",
+      "tr",
+      "uk",
+      "vi",
+    ],
+    features: ["streaming", "voice-cloning"],
+  },
+  {
     id: "voxtral-mini-tts-2603",
     releaseDate: "2026-03-23",
     languages: ["en", "fr", "de", "es", "nl", "pt", "it", "hi", "ar"] as const,
@@ -217,6 +245,12 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
       this.supportedSampleRates(modelId),
       opts?.sampleRate
     );
+    if (modelId === "voxtral-mini-tts-3-0") {
+      return {
+        providerOptions: { response_format: "wav" },
+        mediaType: "audio/wav",
+      };
+    }
     // voxtral pcm is headerless float32 LE 24kHz mono; encoding=float32 tells the stitch decoder to convert to int16.
     return {
       providerOptions: { response_format: "pcm" },
@@ -233,6 +267,12 @@ export class MistralSpeechProvider implements SpeechProvider<string, string> {
       this.supportedSampleRates(modelId),
       output.sampleRate
     );
+    if (modelId === "voxtral-mini-tts-3-0" && output.format !== "mp3") {
+      return {
+        providerOptions: { response_format: "wav" },
+        expectedMediaType: "audio/wav",
+      };
+    }
     switch (output.format) {
       case "mp3":
         return {

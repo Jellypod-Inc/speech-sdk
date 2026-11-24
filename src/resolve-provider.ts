@@ -1,4 +1,8 @@
 import {
+  ASSEMBLYAI_PROVIDER_ID,
+  createAssemblyAI,
+} from "./providers/assemblyai/index.js";
+import {
   CARTESIA_PROVIDER_ID,
   createCartesia,
 } from "./providers/cartesia/index.js";
@@ -15,11 +19,13 @@ import {
   createFishAudio,
   FISH_AUDIO_PROVIDER_ID,
 } from "./providers/fish-audio/index.js";
-import { createGoogle, GOOGLE_PROVIDER_ID } from "./providers/google/index.js";
+import { createGoogle } from "./providers/google/index.js";
+import { GOOGLE_PROVIDER_ID } from "./providers/google/models.js";
 import {
   createGradium,
   GRADIUM_PROVIDER_ID,
 } from "./providers/gradium/index.js";
+import { createHeyGen, HEYGEN_PROVIDER_ID } from "./providers/heygen/index.js";
 import { createHume, HUME_PROVIDER_ID } from "./providers/hume/index.js";
 import {
   createInworld,
@@ -29,6 +35,10 @@ import {
   createLokutor,
   LOKUTOR_PROVIDER_ID,
 } from "./providers/lokutor/index.js";
+import {
+  createMicrosoft,
+  MICROSOFT_PROVIDER_ID,
+} from "./providers/microsoft/index.js";
 import {
   createMiniMax,
   MINIMAX_PROVIDER_ID,
@@ -59,6 +69,7 @@ type ProviderFactory = (config: {
 }) => (modelId?: string) => ResolvedModel<string>;
 
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
+  [ASSEMBLYAI_PROVIDER_ID]: createAssemblyAI,
   [CARTESIA_PROVIDER_ID]: createCartesia,
   [DEEPGRAM_PROVIDER_ID]: createDeepgram,
   [ELEVENLABS_PROVIDER_ID]: createElevenLabs,
@@ -66,9 +77,11 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   [FISH_AUDIO_PROVIDER_ID]: createFishAudio,
   [GOOGLE_PROVIDER_ID]: createGoogle,
   [GRADIUM_PROVIDER_ID]: createGradium,
+  [HEYGEN_PROVIDER_ID]: createHeyGen,
   [HUME_PROVIDER_ID]: createHume,
   [INWORLD_PROVIDER_ID]: createInworld,
   [LOKUTOR_PROVIDER_ID]: createLokutor,
+  [MICROSOFT_PROVIDER_ID]: createMicrosoft,
   [MINIMAX_PROVIDER_ID]: createMiniMax,
   [MISTRAL_PROVIDER_ID]: createMistral,
   [MURF_PROVIDER_ID]: createMurf,

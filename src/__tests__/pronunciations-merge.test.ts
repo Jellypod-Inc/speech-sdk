@@ -13,6 +13,7 @@ describe("mergeRules", () => {
       word: "LLM",
       replacement: "el el em",
       caseSensitive: false,
+      form: "respelling",
     });
   });
 
@@ -42,6 +43,7 @@ describe("mergeRules", () => {
       word: "hello",
       replacement: "HELLO",
       caseSensitive: false,
+      form: "respelling",
     });
     expect(map.get(ruleMapKey("new york", false))?.word).toBe("New York");
   });

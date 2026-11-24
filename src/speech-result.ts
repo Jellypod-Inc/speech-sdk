@@ -19,20 +19,56 @@ export interface SpeechResultWithTimestamps extends SpeechResult {
   readonly timestamps: readonly WordTimestamp[];
 }
 
+/** How `generateConversation` rendered the audio. */
+export type ConversationPathKind = "native" | "native-split" | "stitch";
+
+/** Why a conversation was rendered turn by turn instead of as native dialogue. */
+export type ConversationStitchReason =
+  | "custom-voice"
+  | "max-input-chars"
+  | "mixed-models"
+  | "native-limit-exceeded"
+  | "no-native-dialogue"
+  | "per-turn-provider-options"
+  | "per-turn-speed"
+  | "single-speaker"
+  | "too-many-voices";
+
 export interface ConversationMetadata extends SpeechMetadata {
+  readonly path: ConversationPathKind;
   // Populated on the stitch path (one generateSpeech call per turn). Undefined on the native dialogue
   // path, where per-turn boundaries don't exist as separate provider calls.
   readonly perTurn?: readonly SpeechMetadata[];
+  // Set on the stitch path.
+  readonly stitchReason?: ConversationStitchReason;
+}
+
+/** One input turn's slice of the conversation audio. */
+export interface ConversationTurnAudio {
+  /** Same format as the conversation `audio`. */
+  readonly audio: GeneratedAudioFile;
+  readonly endMs: number;
+  readonly startMs: number;
+  /** Word timings in seconds from the start of this turn's audio. */
+  readonly timestamps: readonly WordTimestamp[];
+  readonly turnIndex: number;
 }
 
 export interface ConversationResult
   extends Omit<SpeechResult, "metadata" | "timestamps"> {
   readonly metadata: ConversationMetadata;
   readonly timestamps?: readonly ConversationWordTimestamp[];
+  // Set when `splitTurns: true`: one entry per input turn, in order, covering the whole audio.
+  readonly turns?: readonly ConversationTurnAudio[];
 }
 
 export interface ConversationResultWithTimestamps extends ConversationResult {
   readonly timestamps: readonly ConversationWordTimestamp[];
+}
+
+export interface ConversationResultWithTurns
+  extends ConversationResultWithTimestamps {
+  readonly turns: readonly ConversationTurnAudio[];
 }
 
 export class DefaultGeneratedAudioFile implements GeneratedAudioFile {

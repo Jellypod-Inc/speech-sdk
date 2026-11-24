@@ -38,7 +38,123 @@ export const FISH_AUDIO_PROVIDER_ID = "fish-audio" as const;
 const FISH_AUDIO_WAV_RATES = [8000, 16_000, 24_000, 32_000, 44_100] as const;
 const FISH_AUDIO_MP3_RATES = [32_000, 44_100] as const;
 
+const FISH_AUDIO_DIALOGUE_MODELS: ReadonlySet<string> = new Set([
+  "drama-3",
+  "s2-pro",
+  "s2.1-pro",
+]);
+
+const DRAMA_3_LANGUAGES = [
+  "zh",
+  "en",
+  "ja",
+  "ko",
+  "es",
+  "pt",
+  "ar",
+  "ru",
+  "fr",
+  "de",
+  "sv",
+  "it",
+  "tr",
+  "no",
+  "nl",
+  "cy",
+  "eu",
+  "ca",
+  "da",
+  "gl",
+  "ta",
+  "hu",
+  "fi",
+  "pl",
+  "et",
+  "hi",
+  "la",
+  "ur",
+  "th",
+  "vi",
+  "jw",
+  "bn",
+  "yo",
+  "sl",
+  "cs",
+  "sw",
+  "nn",
+  "he",
+  "ms",
+  "uk",
+  "id",
+  "kk",
+  "bg",
+  "lv",
+  "my",
+  "tl",
+  "sk",
+  "ne",
+  "fa",
+  "af",
+  "el",
+  "bo",
+  "hr",
+  "ro",
+  "sn",
+  "mi",
+  "yi",
+  "am",
+  "be",
+  "km",
+  "is",
+  "az",
+  "sd",
+  "br",
+  "sq",
+  "ps",
+  "mn",
+  "ht",
+  "ml",
+  "sr",
+  "sa",
+  "te",
+  "ka",
+  "bs",
+  "pa",
+  "lt",
+  "kn",
+  "si",
+  "hy",
+  "mr",
+  "as",
+  "gu",
+  "fo",
+] as const;
+
 export const FISH_AUDIO_MODELS: readonly ModelInfo[] = [
+  {
+    id: "drama-3",
+    releaseDate: "2026-10-13",
+    languages: DRAMA_3_LANGUAGES,
+    features: [
+      "streaming",
+      "audio-tags",
+      "open-source",
+      "voice-cloning",
+      "voice-design",
+    ],
+  },
+  {
+    id: "s2.1-pro",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
+  {
+    id: "s2.1-pro-free",
+    releaseDate: "2026-06-23",
+    languages: ["ja", "en", "zh", "ko", "es", "pt", "ar", "ru", "fr", "de"],
+    features: ["streaming", "audio-tags", "voice-cloning", "voice-design"],
+  },
   {
     id: "s2-pro",
     releaseDate: "2026-03-09",
@@ -352,7 +468,7 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
   }
 
   dialogueCapabilities(modelId: string) {
-    if (modelId === "s2-pro") {
+    if (FISH_AUDIO_DIALOGUE_MODELS.has(modelId)) {
       return { maxVoices: 4 };
     }
     return;
@@ -369,9 +485,9 @@ export class FishAudioSpeechProvider implements SpeechProvider<string, string> {
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
   }> {
-    if (options.modelId !== "s2-pro") {
+    if (!FISH_AUDIO_DIALOGUE_MODELS.has(options.modelId)) {
       throw new Error(
-        `fish-audio/${options.modelId} does not support native dialogue; use s2-pro.`
+        `fish-audio/${options.modelId} does not support native dialogue; use drama-3, s2-pro or s2.1-pro.`
       );
     }
 

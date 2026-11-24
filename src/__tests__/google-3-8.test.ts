@@ -52,7 +52,7 @@ describe("Gemini 3.8 TTS", () => {
     expect(body.input[0].content).toEqual([
       {
         type: "text",
-        text: "Hello <laugh> world.",
+        text: "Hello <laughs> world.",
         annotations: [{ type: "speech_metadata", style: "warm and calm" }],
       },
     ]);
@@ -115,20 +115,6 @@ describe("Gemini 3.8 TTS", () => {
     }
   });
 
-  it("rejects unsupported directions rather than voicing them", async () => {
-    const provider = new GoogleSpeechProvider({
-      apiKey: "key",
-      fetch: vi.fn(),
-    });
-    await expect(
-      provider.generate({
-        modelId: "gemini-3.8-flash-tts",
-        text: "Hi [applause]",
-        voice: "Kore",
-      })
-    ).rejects.toThrow("Unsupported Gemini 3.8 audio tag");
-  });
-
   it("keeps vocal tags out of the alignment transcript", () => {
     const resolved = createGoogle({ apiKey: "key" })("gemini-3.8-flash-tts");
     const processed = preprocessSpeechText({
@@ -142,7 +128,8 @@ describe("Gemini 3.8 TTS", () => {
 
   it("streams headerless PCM from interactions", async () => {
     const sse =
-      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n';
+      'event: step.delta\ndata: {"event_type":"step.delta","delta":{"type":"audio","mime_type":"audio/l16","data":"AAAAAA=="}}\n\n' +
+      'event: interaction.completed\ndata: {"interaction":{"status":"completed"},"event_type":"interaction.completed"}\n\n';
     const fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }));
     const provider = new GoogleSpeechProvider({ apiKey: "key", fetch });
     const result = await provider.stream({

@@ -12,6 +12,8 @@ export {
   ConversationInputError,
   DialogueConstraintError,
   StitchUnsupportedError,
+  TurnSplitError,
+  type TurnSplitFailureReason,
 } from "./conversation/errors.js";
 export type {
   DesignedVoice,
@@ -52,8 +54,10 @@ export { generateConversation } from "./generate-conversation.js";
 export { generateSpeech } from "./generate-speech.js";
 export type {
   Pronunciation,
+  PronunciationRule,
   PronunciationsInput,
 } from "./pronunciations/types.js";
+export { streamConversation } from "./stream-conversation.js";
 export { streamSpeech } from "./stream-speech.js";
 export { timestampsToTurns } from "./turns.js";
 export type { GenerateSpeechOptions } from "./types.js";

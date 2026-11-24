@@ -1,8 +1,5 @@
 import { decodeAudioToPcm16 } from "../audio-decode.js";
-import {
-  type AudioOutput,
-  applyOptionalOutputConversion,
-} from "../audio-output.js";
+import { decodableMediaType } from "../audio-output.js";
 import { mapWithConcurrency } from "../concurrency.js";
 import { TimestampValidationError, withTurnIndex } from "../errors.js";
 import { generateSpeech } from "../generate-speech.js";
@@ -13,9 +10,11 @@ import type { PronunciationsInput } from "../pronunciations/types.js";
 import type { ResolvedModel, Voice } from "../speech-provider.js";
 import type { TimestampProvider } from "../timestamp-provider.js";
 import type { ConversationWordTimestamp } from "../timestamps.js";
+import type { TranscriptionProvider } from "../transcription-provider.js";
 import {
-  concatPcmToWav,
+  concatPcmToWavWithRanges,
   dbfsToInt16Rms,
+  gapMidpointsSec,
   normalizeRms,
   stitchTargetRate,
 } from "./pcm-concat.js";
@@ -24,18 +23,15 @@ import type { ConversationTurn } from "./types.js";
 interface StitchInput<V extends Voice = Voice> {
   readonly abortSignal?: AbortSignal;
   readonly apiKey?: string;
-  // When the caller will time-stretch the merged result downstream, skip the
-  // final output conversion here so we don't encode → decode → encode.
-  readonly deferOutputConversion?: boolean;
   readonly gapMs: number;
   readonly headers?: Record<string, string>;
   readonly instructions?: string;
   readonly maxConcurrency: number;
   readonly maxInputChars?: number;
   readonly maxRetries: number;
-  readonly output?: AudioOutput;
   readonly pronunciations?: PronunciationsInput;
   readonly resolvedPerTurn: readonly ResolvedModel<V>[];
+  readonly spokenTagCheck?: TranscriptionProvider | false;
   readonly stitchOptionsPerTurn: readonly {
     providerOptions: Record<string, unknown>;
     mediaType: string;
@@ -61,6 +57,8 @@ interface StitchOutput {
     | undefined
   )[];
   readonly timestamps?: readonly ConversationWordTimestamp[];
+  // Middle of each inserted gap, in seconds of the stitched audio — one per turn boundary.
+  readonly turnCutsSec: readonly number[];
   readonly warnings: readonly string[];
 }
 
@@ -104,20 +102,15 @@ export async function runStitch<V extends Voice>(
           maxInputChars: input.maxInputChars,
           maxConcurrency: chunkConcurrency,
           speed: turn.speed,
+          spokenTagCheck: input.spokenTagCheck,
         });
       } catch (err) {
         throw withTurnIndex(err, i);
       }
       // Hume and others omit sample rate from content-type; prefer getStitchOptions.
-      const resultMediaType = result.audio.mediaType.toLowerCase();
-      const decodeMediaType =
-        resultMediaType.startsWith("audio/wav") ||
-        resultMediaType.startsWith("audio/x-wav")
-          ? result.audio.mediaType
-          : stitchOpts.mediaType;
       const segment = await decodeAudioToPcm16(
         result.audio.uint8Array,
-        decodeMediaType
+        decodableMediaType(result.audio.mediaType, stitchOpts.mediaType)
       );
       return { result, segment };
     },
@@ -131,16 +124,10 @@ export async function runStitch<V extends Voice>(
   );
 
   const targetSampleRate = stitchTargetRate(leveledSegments);
-  const audio = await concatPcmToWav(leveledSegments, {
-    gapMs: input.gapMs,
-    targetSampleRate,
-  });
-
-  const { audio: finalAudio, mediaType } = await applyOptionalOutputConversion({
-    audio,
-    mediaType: "audio/wav",
-    output: input.deferOutputConversion ? undefined : input.output,
-  });
+  const { wav: audio, ranges } = await concatPcmToWavWithRanges(
+    leveledSegments,
+    { gapMs: input.gapMs, targetSampleRate }
+  );
 
   const totalSamples =
     perTurn.reduce(
@@ -193,8 +180,8 @@ export async function runStitch<V extends Voice>(
   }
 
   return {
-    audio: finalAudio,
-    mediaType,
+    audio,
+    mediaType: "audio/wav",
     metadata: {
       inputChars: input.turns.reduce((n, t) => n + t.text.length, 0),
       latencyMs: Math.round(performance.now() - start),
@@ -203,6 +190,7 @@ export async function runStitch<V extends Voice>(
     metadataPerTurn,
     providerMetadataPerTurn,
     timestamps,
+    turnCutsSec: gapMidpointsSec(ranges, targetSampleRate),
     warnings,
   };
 }

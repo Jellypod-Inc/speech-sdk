@@ -118,27 +118,29 @@ function toInworldLangCode(language: string): string {
 
 export const INWORLD_MODELS: readonly ModelInfo[] = [
   {
+    id: "inworld-tts-2-flash",
+    releaseDate: "2026-08-09",
+    languages: INWORLD_PRIMARY_LANGUAGES,
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
+    maxInputChars: 2000,
+  },
+  {
+    id: "inworld-tts-2",
+    releaseDate: "2026-05-05",
+    languages: INWORLD_PRIMARY_LANGUAGES,
+    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
+    maxInputChars: 2000,
+  },
+  {
     id: "inworld-tts-1.5-max",
-    releaseDate: "2025-08-15",
+    releaseDate: "2026-01-21",
     languages: INWORLD_PRIMARY_LANGUAGES,
     features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 2000,
   },
   {
     id: "inworld-tts-1.5-mini",
-    releaseDate: "2025-08-15",
-    languages: INWORLD_PRIMARY_LANGUAGES,
-    features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
-    maxInputChars: 2000,
-  },
-  {
-    // Realtime TTS-2 — adds `delivery_mode` (STABLE | BALANCED | CREATIVE);
-    // `temperature` is a no-op on this model. Both flow through verbatim via
-    // providerOptions — no extra plumbing needed in this provider. Supports
-    // 100+ BCP-47 languages on input; `languages` below is just the primary
-    // documented set.
-    id: "inworld-tts-2",
-    releaseDate: "2026-05-05",
+    releaseDate: "2026-01-21",
     languages: INWORLD_PRIMARY_LANGUAGES,
     features: ["streaming", "timestamps", "voice-cloning", "voice-design"],
     maxInputChars: 2000,

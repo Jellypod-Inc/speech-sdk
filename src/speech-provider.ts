@@ -1,6 +1,7 @@
 import { UnsupportedSampleRateError } from "./errors.js";
 import type { ResolvedSTTModel } from "./speech-to-text-provider.js";
 import type { WordTimestamp } from "./timestamps.js";
+import type { TranscriptionProvider } from "./transcription-provider.js";
 
 export type Voice = string;
 
@@ -23,6 +24,7 @@ export interface ModelInfo {
   readonly id: string;
   readonly languages: readonly string[];
   readonly maxInputChars?: number;
+  /** ISO date, or an empty string when the release date is not documented. */
   readonly releaseDate: string;
 }
 
@@ -34,6 +36,7 @@ export const FEATURES = {
   VOICE_DESIGN: "voice-design",
   OPEN_SOURCE: "open-source",
   TIMESTAMPS: "timestamps",
+  IPA_PRONUNCIATION: "ipa-pronunciation",
 } as const;
 
 /**
@@ -128,6 +131,8 @@ export interface SpeechProvider<
     | {
         maxVoices: number;
         maxTotalChars?: number;
+        // The model can stream native dialogue via `streamDialogue`.
+        streaming?: boolean;
       }
     | undefined;
 
@@ -215,6 +220,23 @@ export interface SpeechProvider<
   }>;
 
   /**
+   * Stream native multi-speaker dialogue as it is generated. Same options as `generateDialogue` except buffered-only
+   * ones such as `includeTimestamps`; only called for models whose `dialogueCapabilities` declare `streaming`.
+   */
+  streamDialogue?(options: {
+    modelId: string;
+    turns: readonly { voice: TVoice; text: string; instructions?: string }[];
+    instructions?: string;
+    providerOptions?: Record<string, unknown>;
+    abortSignal?: AbortSignal;
+    headers?: Record<string, string>;
+  }): Promise<{
+    stream: ReadableStream<Uint8Array>;
+    mediaType: string;
+    providerMetadata?: Record<string, unknown>;
+  }>;
+
+  /**
    * Sample rates (Hz) the provider's API can natively produce for this model.
    * `getStitchOptions` and `resolveOutputFormat` validate any caller-supplied
    * `sampleRate` against this set. The SDK defaults to `max(...)` when the
@@ -228,6 +250,8 @@ export interface ResolvedModel<TVoice extends Voice = Voice> {
   fallbackSTT?: ResolvedSTTModel;
   modelId: string;
   provider: SpeechProvider<string, TVoice>;
+  // The provider's own speech-to-text, used for the spoken-tag check when the caller configured no other.
+  transcription?: TranscriptionProvider;
 }
 
 export function modelDeclaresNativeTimestamps(
@@ -237,6 +261,13 @@ export function modelDeclaresNativeTimestamps(
     (m) => m.id === resolved.modelId
   );
   return modelInfo != null && hasFeature(modelInfo, FEATURES.TIMESTAMPS);
+}
+
+export function modelReadsIpa(resolved: ResolvedModel): boolean {
+  const modelInfo = resolved.provider.models?.find(
+    (m) => m.id === resolved.modelId
+  );
+  return modelInfo != null && hasFeature(modelInfo, FEATURES.IPA_PRONUNCIATION);
 }
 
 export function modelMaxInputChars(

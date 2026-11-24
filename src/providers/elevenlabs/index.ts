@@ -31,11 +31,14 @@ import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
 import { finalizeTimestamps } from "../../timestamp-finalization.js";
 import type { TimestampProvider } from "../../timestamp-provider.js";
 import type { WordTimestamp } from "../../timestamps.js";
+import type { TranscriptionProvider } from "../../transcription-provider.js";
+import type { VercelAIGatewayClient } from "../../vercel-ai-gateway-client.js";
 import {
   alignmentToWordTimestamps,
   elevenLabsAlignmentSchema,
 } from "./alignment.js";
 import { ElevenLabsForcedAlignmentProvider } from "./forced-alignment.js";
+import { ElevenLabsTranscriptionProvider } from "./transcription.js";
 
 const withTimestampsResponseSchema = z.object({
   audio_base64: z.string().optional(),
@@ -64,9 +67,59 @@ function resolveElevenLabsTimestamps(
   return alignment ? alignmentToWordTimestamps(alignment) : undefined;
 }
 
+const dialogueWithTimestampsResponseSchema =
+  withTimestampsResponseSchema.extend({
+    voice_segments: z
+      .array(
+        z.object({
+          character_start_index: z.number(),
+          character_end_index: z.number(),
+        })
+      )
+      .optional(),
+  });
+
+// Dialogue alignment can run turns together with no whitespace, so words are built per voice segment.
+function resolveElevenLabsDialogueTimestamps(
+  payload: z.infer<typeof dialogueWithTimestampsResponseSchema>,
+  text: string
+): WordTimestamp[] | undefined {
+  const { alignment, voice_segments: segments } = payload;
+  if (alignment && segments && segments.length > 0) {
+    const timestamps = [...segments]
+      .sort((a, b) => a.character_start_index - b.character_start_index)
+      .flatMap((segment) =>
+        alignmentToWordTimestamps({
+          characters: alignment.characters.slice(
+            segment.character_start_index,
+            segment.character_end_index
+          ),
+          character_start_times_seconds:
+            alignment.character_start_times_seconds.slice(
+              segment.character_start_index,
+              segment.character_end_index
+            ),
+          character_end_times_seconds:
+            alignment.character_end_times_seconds.slice(
+              segment.character_start_index,
+              segment.character_end_index
+            ),
+        })
+      );
+    if (
+      finalizeTimestamps({ text: textWithoutAudioTags(text), timestamps }).ok
+    ) {
+      return timestamps;
+    }
+  }
+  return resolveElevenLabsTimestamps(payload, text);
+}
+
 export interface ElevenLabsSpeechProviderConfig {
   apiKey?: string;
   baseURL?: string;
+  /** Routes Scribe transcription through Vercel AI Gateway; speech, cloning, design and alignment stay direct. */
+  client?: VercelAIGatewayClient;
   fallbackSTT?: ResolvedSTTModel;
   fetch?: typeof globalThis.fetch;
 }
@@ -189,11 +242,131 @@ const ELEVENLABS_V3_LANGUAGES = [
   "cy",
 ] as const;
 
+const ELEVENLABS_V4_LANGUAGES = [
+  "af",
+  "am",
+  "ar",
+  "hy",
+  "as",
+  "ast",
+  "az",
+  "be",
+  "bn",
+  "bs",
+  "bg",
+  "my",
+  "yue",
+  "ca",
+  "ceb",
+  "hr",
+  "cs",
+  "da",
+  "nl",
+  "en",
+  "et",
+  "fil",
+  "fi",
+  "fr",
+  "ff",
+  "gl",
+  "ka",
+  "de",
+  "el",
+  "gu",
+  "ha",
+  "he",
+  "hi",
+  "hu",
+  "is",
+  "id",
+  "it",
+  "ja",
+  "jv",
+  "kam",
+  "kn",
+  "kk",
+  "ko",
+  "ky",
+  "lo",
+  "lv",
+  "ln",
+  "lt",
+  "lg",
+  "lb",
+  "mk",
+  "ms",
+  "ml",
+  "mt",
+  "zh",
+  "mi",
+  "mr",
+  "mn",
+  "ne",
+  "no",
+  "oc",
+  "or",
+  "ps",
+  "fa",
+  "pl",
+  "pt",
+  "pa",
+  "ro",
+  "ru",
+  "sr",
+  "sn",
+  "sd",
+  "sk",
+  "sl",
+  "so",
+  "ckb",
+  "es",
+  "sw",
+  "sv",
+  "tg",
+  "ta",
+  "te",
+  "th",
+  "tr",
+  "uk",
+  "ur",
+  "uz",
+  "vi",
+  "cy",
+  "wo",
+  "zu",
+] as const;
+
 const ELEVENLABS_PCM_WAV_RATES = [
   8000, 16_000, 22_050, 24_000, 32_000, 44_100, 48_000,
 ] as const;
 
 export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
+  {
+    id: "eleven_v4",
+    releaseDate: "2026-09-28",
+    languages: ELEVENLABS_V4_LANGUAGES,
+    features: [
+      "streaming",
+      "audio-tags",
+      "timestamps",
+      "voice-cloning",
+      "voice-design",
+    ],
+    maxInputChars: 10_000,
+  },
+  {
+    id: "eleven_v4_turbo",
+    releaseDate: "2026-09-28",
+    languages: ELEVENLABS_V4_LANGUAGES,
+    features: [
+      "streaming",
+      "audio-tags",
+      "timestamps",
+      "voice-cloning",
+      "voice-design",
+    ],
+    maxInputChars: 10_000,
+  },
   {
     id: "eleven_v3",
     releaseDate: "2025-06-08",
@@ -229,6 +402,12 @@ export const ELEVENLABS_MODELS: readonly ModelInfo[] = [
     maxInputChars: 30_000,
   },
 ] as const;
+
+// eleven_v4_turbo only serves dialogue over the WebSocket API, not HTTP /v1/text-to-dialogue.
+const ELEVENLABS_DIALOGUE_MODELS: ReadonlySet<string> = new Set([
+  "eleven_v4",
+  "eleven_v3",
+]);
 
 // request-id is what ElevenLabs support traces; alignment presence separates "generated nothing" from "dropped on the way out".
 function missingAudioError(
@@ -562,7 +741,7 @@ export class ElevenLabsSpeechProvider
   }
 
   dialogueCapabilities(modelId: string) {
-    if (modelId === "eleven_v3") {
+    if (ELEVENLABS_DIALOGUE_MODELS.has(modelId)) {
       return { maxVoices: 10, maxTotalChars: 2000 };
     }
     return;
@@ -574,14 +753,16 @@ export class ElevenLabsSpeechProvider
     providerOptions?: Record<string, unknown>;
     abortSignal?: AbortSignal;
     headers?: Record<string, string>;
+    includeTimestamps?: boolean;
   }): Promise<{
     audio: Uint8Array;
     mediaType: string;
     providerMetadata?: Record<string, unknown>;
+    timestamps?: WordTimestamp[];
   }> {
-    if (options.modelId !== "eleven_v3") {
+    if (!ELEVENLABS_DIALOGUE_MODELS.has(options.modelId)) {
       throw new SpeechSDKError(
-        `elevenlabs/${options.modelId} does not support native dialogue; use eleven_v3.`
+        `elevenlabs/${options.modelId} does not support native dialogue; use eleven_v4 or eleven_v3.`
       );
     }
 
@@ -599,7 +780,10 @@ export class ElevenLabsSpeechProvider
       queryParams.set("output_format", String(output_format));
     }
     const qs = queryParams.toString();
-    const url = `${this.baseURL}/v1/text-to-dialogue${qs ? `?${qs}` : ""}`;
+    const path = options.includeTimestamps
+      ? "/v1/text-to-dialogue/with-timestamps"
+      : "/v1/text-to-dialogue";
+    const url = `${this.baseURL}${path}${qs ? `?${qs}` : ""}`;
 
     const response = await this.fetchFn(url, {
       method: "POST",
@@ -623,13 +807,34 @@ export class ElevenLabsSpeechProvider
       stage: "synthesis",
     });
 
+    const requestId = response.headers.get("request-id");
+
+    if (options.includeTimestamps) {
+      const payload = dialogueWithTimestampsResponseSchema.parse(
+        await response.json()
+      );
+      if (!payload.audio_base64) {
+        throw missingAudioError(options.modelId, requestId, payload);
+      }
+      return {
+        audio: base64ToUint8Array(payload.audio_base64),
+        mediaType: elevenLabsFormatToMediaType(
+          output_format == null ? undefined : String(output_format)
+        ),
+        providerMetadata: requestId ? { requestId } : undefined,
+        timestamps: resolveElevenLabsDialogueTimestamps(
+          payload,
+          options.turns.map((t) => t.text).join(" ")
+        ),
+      };
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     // ElevenLabs returns bare "audio/pcm" for pcm_<rate> requests; derive from requested output_format.
     const mediaType =
       output_format == null
         ? (response.headers.get("content-type") ?? "audio/mpeg")
         : elevenLabsFormatToMediaType(String(output_format));
-    const requestId = response.headers.get("request-id");
 
     return {
       audio: new Uint8Array(arrayBuffer),
@@ -776,17 +981,24 @@ export class ElevenLabsSpeechProvider
 
 export function createElevenLabs(config: ElevenLabsSpeechProviderConfig = {}) {
   const provider = new ElevenLabsSpeechProvider(config);
-  const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(config);
+  const transcriptionProvider = new ElevenLabsTranscriptionProvider(config);
+  const forcedAlignmentProvider = new ElevenLabsForcedAlignmentProvider(
+    config,
+    transcriptionProvider
+  );
   const fallbackSTT = config.fallbackSTT;
 
   const factory = (modelId?: string): ResolvedModel<string> => ({
     provider,
     modelId: modelId ?? provider.defaultModel,
     ...(fallbackSTT && { fallbackSTT }),
+    transcription: transcriptionProvider,
   });
 
   return Object.assign(factory, {
     forcedAlignment: (): TimestampProvider => forcedAlignmentProvider,
+    // Scribe v2 speech-to-text, for `spokenTagCheck`.
+    transcription: (): TranscriptionProvider => transcriptionProvider,
   });
 }
 

@@ -1,4 +1,4 @@
-import { decodeAudioToPcm16 } from "./audio-decode.js";
+import { type DecodedPcm16, decodeAudioToPcm16 } from "./audio-decode.js";
 import { base64ToUint8Array } from "./audio-utils.js";
 import {
   concatPcmToWav,
@@ -20,11 +20,17 @@ export async function adjustVolume(
       ? input.audio
       : base64ToUint8Array(input.audio);
 
-  const segment = await decodeAudioToPcm16(bytes, input.mediaType);
-  const [normalized] = normalizeRms(
-    [segment],
-    dbfsToInt16Rms(input.volumeDbfs)
+  return await normalizeVolumeToWav(
+    await decodeAudioToPcm16(bytes, input.mediaType),
+    input.volumeDbfs
   );
+}
+
+export async function normalizeVolumeToWav(
+  segment: DecodedPcm16,
+  volumeDbfs: number
+): Promise<Uint8Array> {
+  const [normalized] = normalizeRms([segment], dbfsToInt16Rms(volumeDbfs));
 
   return await concatPcmToWav([normalized], {
     gapMs: 0,

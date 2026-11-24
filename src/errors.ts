@@ -35,7 +35,7 @@ export class ApiError extends SpeechSDKError {
   }
 }
 
-export type ProviderErrorStage = "alignment" | "synthesis";
+export type ProviderErrorStage = "alignment" | "synthesis" | "transcription";
 
 export interface SpeechSdkProviderErrorOptions {
   readonly cause?: unknown;
@@ -158,6 +158,8 @@ export interface NoSpeechGeneratedErrorOptions {
   readonly provider?: string;
   readonly reason?: NoSpeechReason;
   readonly requestId?: string;
+  // False when the provider already spent its own differently shaped retry on this response.
+  readonly retryable?: boolean;
   readonly turnIndex?: number;
 }
 
@@ -178,7 +180,8 @@ export class NoSpeechGeneratedError extends SpeechSDKError {
     this.provider = options?.provider;
     this.reason = options?.reason ?? "provider_empty_response";
     this.requestId = options?.requestId;
-    this.retryable = this.reason === "provider_empty_response";
+    this.retryable =
+      (options?.retryable ?? true) && this.reason === "provider_empty_response";
     this.turnIndex = options?.turnIndex;
   }
 }
@@ -203,6 +206,7 @@ export function withTurnIndex(err: unknown, turnIndex: number): unknown {
       provider: err.provider,
       reason: err.reason,
       requestId: err.requestId,
+      retryable: err.retryable,
       turnIndex,
     });
   }
@@ -242,9 +246,9 @@ function copyProviderError(
 }
 
 export class StreamingNotSupportedError extends SpeechSDKError {
-  constructor(model: string) {
+  constructor(model: string, alternative = "generateSpeech()") {
     super(
-      `Streaming is not supported by ${model}. Use generateSpeech() instead.`
+      `Streaming is not supported by ${model}. Use ${alternative} instead.`
     );
     this.name = "StreamingNotSupportedError";
   }

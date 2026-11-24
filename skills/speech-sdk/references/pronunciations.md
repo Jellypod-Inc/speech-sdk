@@ -45,6 +45,10 @@ pronunciations: {
 }
 ```
 
+## IPA
+
+Rules can also be `{ word, respelling, ipa?, caseSensitive? }`; `replacement` above is the original name for `respelling` and both are accepted. Models that read IPA (Gemini 3.8) receive `ipa`; every other model receives `respelling`. `ipa` should be plain IPA; each provider formats it the way its models read it (Google: wrapped as `/…/`). A value already wrapped in slashes is sent unchanged.
+
 ## Timestamps
 
 When pronunciation rules substitute words and `timestamps: true` is set, the SDK inverse-aligns the returned timestamps so each entry's `text` and offsets reference the **original** input token rather than the substituted form. Callers consuming timestamps don't need to undo the substitution themselves.
@@ -63,10 +67,15 @@ The substitution / inverse-alignment helpers are exported from `@speech-sdk/core
 import {
   inverseAlign,
   mergeRules,
+  resolvePronunciations,
   substitute,
+  targetReadsIpa,
   type Pronunciation,
   type PronunciationsInput,
 } from "@speech-sdk/core/pronunciations"
 ```
+
+- `resolvePronunciations(text, rules, { provider, model? })`: the rules synthesis applies to `text` for that target, with the exact replacement it sends.
+- `targetReadsIpa({ provider, model? })`: whether this provider/model is sent a rule's IPA form; an omitted model means the provider's default.
 
 Most callers don't need this — pass `pronunciations` to `generateSpeech` and the SDK does the rest.

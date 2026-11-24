@@ -2,6 +2,7 @@ import type { AudioOutput } from "./audio-output.js";
 import type { PronunciationsInput } from "./pronunciations/types.js";
 import type { ResolvedModel, Voice } from "./speech-provider.js";
 import type { TimestampProvider } from "./timestamp-provider.js";
+import type { TranscriptionProvider } from "./transcription-provider.js";
 
 export type { AudioOutput, AudioOutputFormat } from "./audio-output.js";
 export type { CaptionFormat, CaptionsOptions } from "./captions.js";
@@ -20,9 +21,10 @@ export type {
   DesignVoiceOptions,
   VoiceDesignPreview,
 } from "./design-voice.js";
-export type { SpeechMetadata } from "./metadata.js";
+export type { SpeechMetadata, SpokenTagReport } from "./metadata.js";
 export type {
   Pronunciation,
+  PronunciationRule,
   PronunciationsInput,
 } from "./pronunciations/types.js";
 export type { CartesiaSpeechProviderConfig } from "./providers/cartesia/index.js";
@@ -47,8 +49,13 @@ export type {
   Voice,
 } from "./speech-provider.js";
 export type {
+  ConversationMetadata,
+  ConversationPathKind,
   ConversationResult,
   ConversationResultWithTimestamps,
+  ConversationResultWithTurns,
+  ConversationStitchReason,
+  ConversationTurnAudio,
   GeneratedAudioFile,
   SpeechResult,
   SpeechResultWithTimestamps,
@@ -58,6 +65,10 @@ export type {
   SpeechToTextProvider,
   STTModelInfo,
 } from "./speech-to-text-provider.js";
+export type {
+  StreamConversationOptions,
+  StreamConversationTurn,
+} from "./stream-conversation.js";
 export type { StreamSpeechResult } from "./stream-speech-result.js";
 export type { TimestampProvider } from "./timestamp-provider.js";
 export type {
@@ -65,6 +76,7 @@ export type {
   TimestampsSource,
   WordTimestamp,
 } from "./timestamps.js";
+export type { TranscriptionProvider } from "./transcription-provider.js";
 export type { TurnTimestamp } from "./turns.js";
 
 export interface GenerateSpeechOptions<
@@ -88,6 +100,13 @@ export interface GenerateSpeechOptions<
   providerOptions?: Record<string, unknown>;
   // Time-stretch the final audio. 1 = unchanged, <1 slower, >1 faster. Range 0.75–1.5. Mono only. Decodes → time-stretches → re-encodes (preserving `output` format if set, else WAV). Scales timestamps and audioDurationMs.
   speed?: number;
+  /**
+   * Splice out any audio tag the voice read aloud. On by default whenever tags reach the model and the model has a
+   * decodable PCM/WAV mode: it listens with this provider, else a `timestampProvider` that can transcribe, else the
+   * model's `fallbackSTT` or own speech-to-text. One transcription per tagged chunk; fails open. Checked audio comes
+   * back as WAV unless `output` asks for another format. `false` turns it off.
+   */
+  spokenTagCheck?: TranscriptionProvider | false;
   /** The exact spoken transcript expected in the generated audio. */
   text: string;
   timestampProvider?: TimestampProvider;

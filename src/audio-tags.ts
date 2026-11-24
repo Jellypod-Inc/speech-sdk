@@ -1,5 +1,12 @@
 const AUDIO_TAG_REGEX = /\[[^\]]+\]/g;
 
+const AUDIO_TAG_SPLIT_REGEX = new RegExp(`(${AUDIO_TAG_REGEX.source})`);
+
+/** The text split at its audio tags: script text at even indices, tags at odd ones. */
+export function splitAtAudioTags(text: string): string[] {
+  return text.split(AUDIO_TAG_SPLIT_REGEX);
+}
+
 export function detectAudioTags(text: string): string[] {
   return text.match(AUDIO_TAG_REGEX) ?? [];
 }

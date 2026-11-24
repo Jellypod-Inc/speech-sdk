@@ -1,4 +1,5 @@
 import type { AudioOutput } from "../../audio-output.js";
+import { SpeechSDKError } from "../../errors.js";
 import {
   handleErrorResponse,
   resolveApiKey,
@@ -11,6 +12,8 @@ import {
   type SpeechProvider,
 } from "../../speech-provider.js";
 import type { ResolvedSTTModel } from "../../speech-to-text-provider.js";
+
+const V1_PATH = /\/v1\/?$/;
 
 const DEEPGRAM_AURA_RATES = [8000, 16_000, 24_000, 32_000, 48_000] as const;
 
@@ -33,7 +36,15 @@ function buildSpeakUrl(
     }
     qs.set(k, typeof v === "string" ? v : String(v));
   }
-  return `${baseURL}/speak?${qs.toString()}`;
+  if (!options.modelId.startsWith("flux")) {
+    return `${baseURL}/speak?${qs.toString()}`;
+  }
+  if (!V1_PATH.test(baseURL)) {
+    throw new SpeechSDKError(
+      `deepgram/${options.modelId}: baseURL must end in /v1 so Flux can be routed to /v2/speak`
+    );
+  }
+  return `${baseURL.replace(V1_PATH, "/v2")}/speak?${qs.toString()}`;
 }
 
 export interface DeepgramSpeechProviderConfig {
@@ -46,6 +57,12 @@ export interface DeepgramSpeechProviderConfig {
 export const DEEPGRAM_PROVIDER_ID = "deepgram" as const;
 
 export const DEEPGRAM_MODELS: readonly ModelInfo[] = [
+  {
+    id: "flux",
+    releaseDate: "",
+    languages: ["en"],
+    features: ["streaming"],
+  },
   {
     id: "aura-2",
     releaseDate: "2025-04-15",
@@ -164,7 +181,9 @@ export class DeepgramSpeechProvider implements SpeechProvider<string, string> {
     if (!this.models.some((m) => m.id === modelId)) {
       return [];
     }
-    return DEEPGRAM_AURA_RATES;
+    return modelId === "flux"
+      ? [8000, 16_000, 24_000, 32_000, 44_100, 48_000]
+      : DEEPGRAM_AURA_RATES;
   }
 
   getStitchOptions(modelId: string, opts?: { sampleRate?: number }) {

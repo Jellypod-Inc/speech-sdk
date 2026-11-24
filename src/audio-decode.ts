@@ -47,16 +47,17 @@ function decodeRawPcm(bytes: Uint8Array, mediaType: string): DecodedPcm16 {
     return { pcm: new Int16Array(0), sampleRate, channels: 1 };
   }
 
+  const aligned = copyAligned(bytes, bytesPerSample);
   const data =
     format === "f32"
       ? new Float32Array(
-          copyAligned(bytes, 4).buffer,
-          0,
+          aligned.buffer,
+          aligned.byteOffset,
           numberOfFrames * channels
         )
       : new Int16Array(
-          copyAligned(bytes, 2).buffer,
-          0,
+          aligned.buffer,
+          aligned.byteOffset,
           numberOfFrames * channels
         );
 

@@ -31,6 +31,8 @@ describe("getStitchOptions per provider", () => {
   it("ElevenLabs returns pcm_48000 (highest supported rate) for all supported models by default", () => {
     const p = new ElevenLabsSpeechProvider({});
     for (const m of [
+      "eleven_v4",
+      "eleven_v4_turbo",
       "eleven_v3",
       "eleven_multilingual_v2",
       "eleven_flash_v2_5",
@@ -173,9 +175,9 @@ describe("getStitchOptions per provider", () => {
     });
   });
 
-  it("Smallest AI returns wav for lightning-v3.1", () => {
+  it("Smallest AI returns wav for lightning-v3.1-pro", () => {
     const p = new SmallestAISpeechProvider({});
-    expect(p.getStitchOptions?.("lightning_v3.1")).toEqual({
+    expect(p.getStitchOptions?.("lightning_v3.1_pro")).toEqual({
       providerOptions: { output_format: "wav" },
       mediaType: "audio/wav",
     });

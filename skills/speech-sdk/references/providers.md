@@ -14,6 +14,7 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Google       | `google`       | `GOOGLE_API_KEY`       |
 | Fish Audio   | `fish-audio`   | `FISH_AUDIO_API_KEY`   |
 | Gradium      | `gradium`      | `GRADIUM_API_KEY`      |
+| HeyGen       | `heygen`       | `HEYGEN_API_KEY`       |
 | Inworld      | `inworld`      | `INWORLD_API_KEY`      |
 | Murf         | `murf`         | `MURF_API_KEY`         |
 | Resemble     | `resemble`     | `RESEMBLE_API_KEY`     |
@@ -22,6 +23,8 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | xAI          | `xai`          | `XAI_API_KEY`          |
 | Smallest AI  | `smallest-ai`  | `SMALLEST_API_KEY`     |
 | MiniMax      | `minimax`      | `MINIMAX_API_KEY`      |
+| AssemblyAI   | `assemblyai`   | `ASSEMBLYAI_API_KEY`   |
+| Microsoft    | `microsoft`    | `AZURE_SPEECH_KEY` (+ `AZURE_SPEECH_REGION` unless `baseURL` is set) |
 
 ## Capability Matrix
 
@@ -35,12 +38,15 @@ SpeechSDK supports many upstream providers. `provider/model` strings (e.g. `"<pr
 | Google      | Yes            | Model-specific        | No             | Via STT     | No          |
 | Fish Audio  | Yes            | Yes                   | Yes            | Via STT     | Yes         |
 | Gradium     | Yes            | No                    | No             | Via STT     | No          |
+| HeyGen      | No             | No                    | No             | Via STT     | No          |
 | Inworld     | Yes            | No                    | No             | Native      | No          |
 | Murf        | Yes            | No                    | No             | Native      | No          |
 | Resemble    | Yes            | No                    | Yes            | Native      | Yes         |
 | fal         | No             | No                    | Model-specific | Via STT     | Yes         |
 | Mistral     | Yes            | No                    | Yes            | Via STT     | Yes         |
 | xAI         | Yes            | Yes                   | No             | Via STT     | No          |
+| AssemblyAI  | No             | No                    | No             | Via STT     | No          |
+| Microsoft   | No             | No                    | No             | Via STT     | No          |
 | Smallest AI | No             | No                    | No             | Via STT     | No          |
 | MiniMax     | No             | No                    | No             | Via STT     | No          |
 
@@ -89,3 +95,7 @@ await generateSpeech({
 ## API Key Resolution
 
 String models read the upstream provider env var in the table above, or use the call's `apiKey` option. Factory models read the same env var, or use the factory's `apiKey` config. See `configuration.md`.
+
+## HeyGen
+
+Import `createHeyGen` from `@speech-sdk/core/providers`, or use `heygen/heygen-voice-1`, `heygen/heygen-voice-1-turbo`, or `heygen/heygen-voice-1-turbo-free`. Configure `HEYGEN_API_KEY` and pass an active HeyGen public or cloned voice ID. Completed audio is 44.1 kHz WAV and supports SDK output conversion and conversation stitching. Streaming, native timestamps, and voice creation are not exposed. Turbo variants accept public and instant voices; professional clones require `heygen-voice-1`. The SDK never falls back from the free variant to a paid model.
